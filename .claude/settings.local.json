@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(git clone:*)",
+      "Bash(npm install -g .)",
+      "Bash(npm install:*)",
+      "Bash(bmad --help:*)",
+      "Bash(bmad install:*)",
+      "Bash(node -e \"\nconst path = require\\(''path''\\);\nconst cliDir = path.join\\(''C:\\\\\\\\Users\\\\\\\\samsung\\\\\\\\Downloads\\\\\\\\live commerce\\\\\\\\BMAD-METHOD'', ''tools'', ''cli''\\);\nconst { Installer } = require\\(path.join\\(cliDir, ''installers'', ''lib'', ''core'', ''installer''\\)\\);\n\nconst installer = new Installer\\(\\);\n\nconst config = {\n  directory: ''C:\\\\\\\\Users\\\\\\\\samsung\\\\\\\\Downloads\\\\\\\\live commerce'',\n  actionType: ''install'',\n  installCore: true,\n  modules: [''bmm'', ''bmb''],\n  ides: [''claude-code''],\n  skipIde: false,\n  coreConfig: {\n    user_name: ''Developer'',\n    communication_language: ''English'',\n    document_output_language: ''English'',\n    output_folder: ''_bmad-output''\n  },\n  customContent: { hasCustomContent: false }\n};\n\ninstaller.install\\(config\\).then\\(result => {\n  console.log\\(''Installation result:'', JSON.stringify\\(result, null, 2\\)\\);\n}\\).catch\\(err => {\n  console.error\\(''Error:'', err.message\\);\n  console.error\\(err.stack\\);\n}\\);\n\")",
+      "Bash(node:*)",
+      "Bash(bmad status:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
