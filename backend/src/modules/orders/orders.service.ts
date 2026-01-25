@@ -9,6 +9,7 @@ import {
   BusinessException,
 } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
+import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.events';
 
 @Injectable()
 export class OrdersService {
@@ -106,12 +107,19 @@ export class OrdersService {
       this.handleOrderExpiration(order.id);
     }, 10 * 60 * 1000);
 
-    // Emit event
-    this.eventEmitter.emit('order:created', {
-      orderId: order.id,
-      userId,
-      streamId: createOrderDto.streamId,
-    });
+    // Emit domain event
+    const event = new OrderCreatedEvent(
+      order.id,
+      order.userId,
+      Number(order.total),
+      order.orderItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceAtPurchase: Number(item.price),
+      })),
+    );
+
+    this.eventEmitter.emit('order.created', event);
 
     return this.mapToResponseDto(order);
   }
@@ -149,7 +157,9 @@ export class OrdersService {
     // Remove timer from Redis
     await this.redisService.del(`order:timer:${orderId}`);
 
-    this.eventEmitter.emit('order:confirmed', { orderId });
+    // Emit domain event
+    const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt!);
+    this.eventEmitter.emit('order.paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);
   }
@@ -177,7 +187,7 @@ export class OrdersService {
     // Remove timer
     await this.redisService.del(`order:timer:${orderId}`);
 
-    this.eventEmitter.emit('order:cancelled', { orderId });
+    this.eventEmitter.emit('order.cancelled', { orderId });
   }
 
   async findById(orderId: string): Promise<OrderResponseDto> {
@@ -229,8 +239,8 @@ export class OrdersService {
       data: { status: 'CANCELLED' },
     });
 
-    this.eventEmitter.emit('cart:expired', { orderId });
-    this.eventEmitter.emit('order:cancelled', { orderId });
+    this.eventEmitter.emit('cart.expired', { orderId });
+    this.eventEmitter.emit('order.cancelled', { orderId });
   }
 
   private mapToResponseDto(order: any): OrderResponseDto {
