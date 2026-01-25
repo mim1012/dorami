@@ -15,8 +15,8 @@ export function useAuth() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/auth/me');
-      setUser(response.data.data);
+      const response = await apiClient.get<any>('/auth/me');
+      setUser(response.data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
       setUser(null);

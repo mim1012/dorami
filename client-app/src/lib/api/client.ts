@@ -1,44 +1,81 @@
-import axios from 'axios';
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true, // Send cookies with requests
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+interface ApiResponse<T> {
+  data: T;
+}
 
-// Response interceptor for automatic token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+async function request<T>(
+  endpoint: string,
+  options?: RequestInit & { params?: Record<string, any> }
+): Promise<ApiResponse<T>> {
+  let url = `${API_BASE_URL}${endpoint}`;
 
-    // If 401 and haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Try to refresh token
-        await axios.post(
-          `${API_BASE_URL.replace('/api', '')}/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-
-        // Retry original request
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+  // Add query parameters if provided
+  if (options?.params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(options.params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, String(v)));
+        } else {
+          searchParams.append(key, String(value));
         }
-        return Promise.reject(refreshError);
       }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
     }
+  }
 
-    return Promise.reject(error);
-  },
-);
+  const defaultOptions: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  };
+
+  const response = await fetch(url, {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      message: 'An error occurred',
+    }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return { data };
+}
+
+export const apiClient = {
+  get: <T>(endpoint: string, options?: { params?: Record<string, any> }) =>
+    request<T>(endpoint, { method: 'GET', ...options }),
+
+  post: <T>(endpoint: string, body?: any) =>
+    request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  patch: <T>(endpoint: string, body?: any) =>
+    request<T>(endpoint, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  put: <T>(endpoint: string, body?: any) =>
+    request<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+};
