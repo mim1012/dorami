@@ -7,15 +7,62 @@ export class AdminService {
   constructor(private prisma: PrismaService) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
-    const { page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      search,
+      dateFrom,
+      dateTo,
+      minOrders,
+      maxOrders,
+      minAmount,
+      maxAmount,
+      status,
+    } = query;
 
     const skip = (page - 1) * limit;
 
-    // Get total count
-    const total = await this.prisma.user.count();
+    // Build where clause for filters
+    const where: any = {};
 
-    // Get paginated users with sorting
+    // Search filter (name, email, instagramId)
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { instagramId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Date range filter
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) {
+        where.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        where.createdAt.lte = endDate;
+      }
+    }
+
+    // Status filter
+    if (status && status.length > 0) {
+      where.status = { in: status };
+    }
+
+    // Note: Order count and purchase amount filters will be implemented in Epic 8
+    // For now, these filters are ignored as we don't have Orders table populated
+
+    // Get total count with filters
+    const total = await this.prisma.user.count({ where });
+
+    // Get paginated users with sorting and filters
     const users = await this.prisma.user.findMany({
+      where,
       skip,
       take: limit,
       orderBy: {

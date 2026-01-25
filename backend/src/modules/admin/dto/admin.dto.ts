@@ -1,5 +1,5 @@
-import { IsOptional, IsInt, Min, IsString, IsEnum } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsInt, Min, IsString, IsEnum, IsArray } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class GetUsersQueryDto {
   @IsOptional()
@@ -23,6 +23,49 @@ export class GetUsersQueryDto {
   @IsString()
   @IsEnum(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  // Search
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  // Date range filter
+  @IsOptional()
+  @IsString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
+
+  // Order count filter
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseInt(value, 10) : undefined))
+  @IsInt()
+  @Min(0)
+  minOrders?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseInt(value, 10) : undefined))
+  @IsInt()
+  @Min(0)
+  maxOrders?: number;
+
+  // Purchase amount filter
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
+  minAmount?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
+  maxAmount?: number;
+
+  // Status filter (array)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  status?: string[];
 }
 
 export class UserListItemDto {

@@ -3,10 +3,13 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { apiClient } from '@/lib/api/client';
 import { Table, Column } from '@/components/common/Table';
 import { Pagination } from '@/components/common/Pagination';
-import { Display, Body } from '@/components/common/Typography';
+import { Input } from '@/components/common/Input';
+import { Button } from '@/components/common/Button';
+import { Display, Body, Heading2 } from '@/components/common/Typography';
 
 interface UserListItem {
   id: string;
@@ -48,6 +51,16 @@ function AdminUsersContent() {
     (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
   );
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') || '');
+  const [dateTo, setDateTo] = useState(searchParams.get('dateTo') || '');
+  const [statusFilter, setStatusFilter] = useState<string[]>(
+    searchParams.get('status')?.split(',').filter(Boolean) || [],
+  );
+
   // Redirect if not admin
   useEffect(() => {
     if (!authLoading) {
@@ -67,8 +80,13 @@ function AdminUsersContent() {
     params.set('sortBy', sortBy);
     params.set('sortOrder', sortOrder);
 
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    if (statusFilter.length > 0) params.set('status', statusFilter.join(','));
+
     router.push(`/admin/users?${params.toString()}`, { scroll: false });
-  }, [page, pageSize, sortBy, sortOrder, router]);
+  }, [page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, statusFilter, router]);
 
   // Fetch users
   useEffect(() => {
@@ -79,14 +97,19 @@ function AdminUsersContent() {
       setError(null);
 
       try {
-        const response = await apiClient.get<UserListResponse>('/admin/users', {
-          params: {
-            page,
-            limit: pageSize,
-            sortBy,
-            sortOrder,
-          },
-        });
+        const params: any = {
+          page,
+          limit: pageSize,
+          sortBy,
+          sortOrder,
+        };
+
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (dateFrom) params.dateFrom = dateFrom;
+        if (dateTo) params.dateTo = dateTo;
+        if (statusFilter.length > 0) params.status = statusFilter;
+
+        const response = await apiClient.get<UserListResponse>('/admin/users', { params });
 
         setUsers(response.data.users);
         setTotal(response.data.total);
@@ -100,18 +123,16 @@ function AdminUsersContent() {
     };
 
     fetchUsers();
-  }, [user, page, pageSize, sortBy, sortOrder]);
+  }, [user, page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, statusFilter]);
 
   const handleSort = (key: string) => {
     if (key === sortBy) {
-      // Toggle sort order
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      // New sort column, default to desc
       setSortBy(key);
       setSortOrder('desc');
     }
-    setPage(1); // Reset to first page
+    setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -120,6 +141,21 @@ function AdminUsersContent() {
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
+    setStatusFilter([]);
+    setPage(1);
+  };
+
+  const handleStatusToggle = (status: string) => {
+    setStatusFilter((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+    );
     setPage(1);
   };
 
@@ -151,11 +187,7 @@ function AdminUsersContent() {
 
     const color = colors[status as keyof typeof colors] || colors.INACTIVE;
 
-    return (
-      <span className={`px-2 py-1 rounded text-caption border ${color}`}>
-        {status}
-      </span>
-    );
+    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
   };
 
   const columns: Column<UserListItem>[] = [
@@ -204,6 +236,9 @@ function AdminUsersContent() {
     },
   ];
 
+  const hasActiveFilters =
+    debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
+
   if (authLoading || (user && user.role !== 'ADMIN')) {
     return (
       <div className="min-h-screen bg-primary-black flex items-center justify-center">
@@ -217,9 +252,7 @@ function AdminUsersContent() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">User Management</Display>
-          <Body className="text-secondary-text">
-            View and manage all registered users
-          </Body>
+          <Body className="text-secondary-text">View and manage all registered users</Body>
         </div>
 
         {error && (
@@ -227,6 +260,86 @@ function AdminUsersContent() {
             <Body className="text-error">{error}</Body>
           </div>
         )}
+
+        {/* Search and Filter Section */}
+        <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
+          {/* Search Input */}
+          <div className="flex gap-4">
+            <Input
+              placeholder="Search by name, email, or Instagram ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              fullWidth
+            />
+            <Button
+              variant={isFilterOpen ? 'primary' : 'outline'}
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="whitespace-nowrap"
+            >
+              {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+            {hasActiveFilters && (
+              <Button variant="ghost" onClick={handleClearFilters}>
+                Clear All
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Panel */}
+          {isFilterOpen && (
+            <div className="pt-4 border-t border-primary-black space-y-4">
+              <Heading2 className="text-hot-pink text-body">Filters</Heading2>
+
+              {/* Date Range */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Registration Date From"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  fullWidth
+                />
+                <Input
+                  label="Registration Date To"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(1);
+                  }}
+                  fullWidth
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <Body className="text-primary-text font-medium mb-2">Status</Body>
+                <div className="flex gap-2">
+                  {['ACTIVE', 'INACTIVE', 'SUSPENDED'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleStatusToggle(status)}
+                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                        statusFilter.includes(status)
+                          ? 'bg-hot-pink text-primary-text'
+                          : 'bg-primary-black text-secondary-text hover:bg-primary-black/50'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Body className="text-secondary-text text-caption">
+                Note: Order count and purchase amount filters will be available in Epic 8
+              </Body>
+            </div>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -240,7 +353,7 @@ function AdminUsersContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
-              emptyMessage="No users found"
+              emptyMessage="No users found matching your filters"
             />
 
             <Pagination
