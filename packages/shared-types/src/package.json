@@ -1,0 +1,22 @@
+{
+  "name": "@live-commerce/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript type definitions for Live Commerce platform",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "typescript",
+    "types",
+    "live-commerce",
+    "shared"
+  ],
+  "author": "BMAD Method Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

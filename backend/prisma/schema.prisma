@@ -1,0 +1,337 @@
+// Prisma Schema for Live Commerce Backend
+// Database: PostgreSQL 16
+// Updated to match Epic & Stories specifications
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Epic 2: User Authentication & Profile Management
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  kakaoId         String     @unique
+  name            String
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  depositorName   String? // for bank transfer identification
+  instagramId     String?    @unique
+  shippingAddress Json? // encrypted US-format address
+  createdAt       DateTime   @default(now()) @map("created_at")
+  lastLoginAt     DateTime?  @map("last_login_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  liveStreams    LiveStream[]
+  chatMessages   ChatMessage[]
+  carts          Cart[]
+  reservations   Reservation[]
+  orders         Order[]
+  moderationLogs ModerationLog[]
+
+  @@index([email])
+  @@index([kakaoId])
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// Epic 3: Live Streaming Foundation
+model LiveStream {
+  id        String       @id @default(uuid())
+  streamKey String       @unique @map("stream_key")
+  userId    String       @map("user_id")
+  user      User         @relation(fields: [userId], references: [id])
+  status    StreamStatus @default(PENDING)
+  startedAt DateTime?    @map("started_at")
+  endedAt   DateTime?    @map("ended_at")
+  expiresAt DateTime     @map("expires_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  chatMessages ChatMessage[]
+  products     Product[]
+
+  @@index([streamKey])
+  @@index([userId])
+  @@map("live_streams")
+}
+
+enum StreamStatus {
+  PENDING
+  LIVE
+  OFFLINE
+}
+
+// Epic 4: Real-time Chat & Communication
+model ChatMessage {
+  id         String     @id @default(uuid())
+  streamKey  String     @map("stream_key")
+  liveStream LiveStream @relation(fields: [streamKey], references: [streamKey])
+  userId     String     @map("user_id")
+  user       User       @relation(fields: [userId], references: [id])
+  content    String     @db.Text
+  timestamp  DateTime   @default(now())
+  isDeleted  Boolean    @default(false) @map("is_deleted")
+
+  @@index([streamKey, timestamp])
+  @@map("chat_messages")
+}
+
+model ModerationLog {
+  id        String           @id @default(uuid())
+  adminId   String           @map("admin_id")
+  admin     User             @relation(fields: [adminId], references: [id])
+  action    ModerationAction
+  targetId  String           @map("target_id") // ChatMessage ID
+  reason    String?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([targetId])
+  @@map("moderation_logs")
+}
+
+enum ModerationAction {
+  DELETE_MESSAGE
+  MUTE
+  BAN
+}
+
+// Epic 5: Product Catalog & Live Product Management
+model Product {
+  id                  String        @id @default(uuid())
+  streamKey           String        @map("stream_key")
+  liveStream          LiveStream    @relation(fields: [streamKey], references: [streamKey])
+  name                String
+  price               Decimal       @db.Decimal(10, 2)
+  quantity            Int
+  colorOptions        String[]      @map("color_options") // Array of color tags
+  sizeOptions         String[]      @map("size_options") // Array of size tags
+  shippingFee         Decimal       @default(0) @map("shipping_fee") @db.Decimal(10, 2)
+  freeShippingMessage String?       @map("free_shipping_message")
+  timerEnabled        Boolean       @default(false) @map("timer_enabled")
+  timerDuration       Int           @default(10) @map("timer_duration") // minutes
+  imageUrl            String?       @map("image_url")
+  status              ProductStatus @default(AVAILABLE)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  carts        Cart[]
+  reservations Reservation[]
+  orderItems   OrderItem[]
+
+  @@index([streamKey])
+  @@index([status])
+  @@map("products")
+}
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD_OUT
+}
+
+// Epic 6: Shopping Cart & Reservation Timer
+model Cart {
+  id           String     @id @default(uuid())
+  userId       String     @map("user_id")
+  user         User       @relation(fields: [userId], references: [id])
+  productId    String     @map("product_id")
+  product      Product    @relation(fields: [productId], references: [id])
+  productName  String     @map("product_name") // Denormalized for history
+  price        Decimal    @db.Decimal(10, 2)
+  quantity     Int
+  color        String?
+  size         String?
+  shippingFee  Decimal    @default(0) @map("shipping_fee") @db.Decimal(10, 2)
+  timerEnabled Boolean    @default(false) @map("timer_enabled")
+  expiresAt    DateTime?  @map("expires_at")
+  status       CartStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@map("carts")
+}
+
+enum CartStatus {
+  ACTIVE
+  EXPIRED
+  COMPLETED
+}
+
+// Epic 7: Inventory Control & Reservation Queue System
+model Reservation {
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  user              User              @relation(fields: [userId], references: [id])
+  productId         String            @map("product_id")
+  product           Product           @relation(fields: [productId], references: [id])
+  productName       String            @map("product_name") // Denormalized for history
+  quantity          Int
+  reservationNumber Int               @map("reservation_number") // Sequential number per product
+  status            ReservationStatus @default(WAITING)
+  promotedAt        DateTime?         @map("promoted_at")
+  expiresAt         DateTime?         @map("expires_at") // Set when promoted
+  createdAt         DateTime          @default(now()) @map("created_at")
+
+  @@unique([productId, reservationNumber])
+  @@index([productId, reservationNumber])
+  @@index([userId, status])
+  @@map("reservations")
+}
+
+enum ReservationStatus {
+  WAITING
+  PROMOTED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+// Epic 8: Order Management & Payment Tracking
+model Order {
+  id              String         @id // ORD-YYYYMMDD-XXXXX format
+  userId          String         @map("user_id")
+  user            User           @relation(fields: [userId], references: [id])
+  userEmail       String         @map("user_email") // Denormalized for history
+  depositorName   String         @map("depositor_name") // For bank transfer matching
+  shippingAddress Json           @map("shipping_address") // Decrypted US address
+  instagramId     String         @map("instagram_id") // For seller reference
+  subtotal        Decimal        @db.Decimal(10, 2)
+  shippingFee     Decimal        @map("shipping_fee") @db.Decimal(10, 2)
+  total           Decimal        @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod  @default(BANK_TRANSFER) @map("payment_method")
+  paymentStatus   PaymentStatus  @default(PENDING) @map("payment_status")
+  shippingStatus  ShippingStatus @default(PENDING) @map("shipping_status")
+  status          OrderStatus    @default(PENDING_PAYMENT)
+  paidAt          DateTime?      @map("paid_at")
+  shippedAt       DateTime?      @map("shipped_at")
+  deliveredAt     DateTime?      @map("delivered_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  orderItems OrderItem[]
+
+  @@index([userId])
+  @@index([paymentStatus])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String  @map("order_id")
+  order       Order   @relation(fields: [orderId], references: [id])
+  productId   String  @map("product_id")
+  productName String  @map("product_name") // Denormalized
+  price       Decimal @db.Decimal(10, 2)
+  quantity    Int
+  color       String?
+  size        String?
+  shippingFee Decimal @map("shipping_fee") @db.Decimal(10, 2)
+  Product     Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum ShippingStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// Epic 9: Automated Notification System
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  type      String // ORDER_CONFIRMATION, PAYMENT_REMINDER, etc.
+  template  String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_templates")
+}
+
+// Epic 12: System Configuration & Administration
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String   @map("admin_id")
+  action    String
+  entity    String // User, Product, Order, etc.
+  entityId  String   @map("entity_id")
+  changes   Json // Before/after values
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+// Settlement Model (retained from original backend)
+model Settlement {
+  id               String           @id @default(uuid())
+  sellerId         String           @map("seller_id")
+  periodStart      DateTime         @map("period_start")
+  periodEnd        DateTime         @map("period_end")
+  totalSales       Decimal          @map("total_sales") @db.Decimal(10, 2)
+  commission       Decimal          @db.Decimal(10, 2) // Platform commission
+  settlementAmount Decimal          @map("settlement_amount") @db.Decimal(10, 2)
+  status           SettlementStatus @default(PENDING)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@map("settlements")
+}
+
+enum SettlementStatus {
+  PENDING
+  APPROVED
+  PAID
+}

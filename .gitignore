@@ -1,3 +1,68 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production builds
+dist/
+build/
+.next/
+out/
+
+# Environment variables
+.env
+.env*.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Prisma
+prisma/migrations/*.sql
+!prisma/migrations/migration_lock.toml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Turbopack
+.turbo/
+
+# Debug
+.vscode-test
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker
+docker-compose.override.yml
+
+# BMAD Output
 BMAD-METHOD/
 _bmad-output/
+_bmad/
+
+# Temporary
+temp/
+tmp/
+*.tmp

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Dark Mode & Hot Pink Theme */
+:root {
+  --primary-black: #121212;
+  --content-bg: #1E1E1E;
+  --hot-pink: #FF007A;
+  --primary-text: #FFFFFF;
+  --secondary-text: #A0A0A0;
+  --success: #34C759;
+  --error: #FF3B30;
+}
+
+body {
+  background-color: var(--primary-black);
+  color: var(--primary-text);
+  margin: 0;
+  padding: 0;
+}
