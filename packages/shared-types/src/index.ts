@@ -641,3 +641,9 @@ export function isReservationExpired(reservation: Reservation): boolean {
   }
   return new Date(reservation.expiresAt) < new Date();
 }
+
+// ============================================================================
+// WEBSOCKET EVENTS
+// ============================================================================
+
+export * from './events';

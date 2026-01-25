@@ -12,6 +12,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ProductsModule } from './modules/products/products.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
@@ -38,6 +39,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ProductsModule,
     StreamingModule,
     WebsocketModule,
+    ChatModule,
     OrdersModule,
     NotificationsModule,
     SettlementModule,
