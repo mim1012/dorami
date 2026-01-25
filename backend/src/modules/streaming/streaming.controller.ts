@@ -5,11 +5,18 @@ import {
   Get,
   Param,
   Body,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { StreamingService } from './streaming.service';
-import { StartStreamDto } from './dto/streaming.dto';
+import {
+  StartStreamDto,
+  GenerateKeyDto,
+  StreamHistoryQueryDto,
+} from './dto/streaming.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -55,5 +62,27 @@ export class StreamingController {
   @Get('active')
   async getActiveStreams() {
     return this.streamingService.getActiveStreams();
+  }
+
+  @Post('generate-key')
+  @UseGuards(JwtAuthGuard)
+  async generateKey(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: GenerateKeyDto,
+  ) {
+    return this.streamingService.generateKey(userId, dto);
+  }
+
+  @Public()
+  @Get('key/:streamKey/status')
+  async getStatusByKey(@Param('streamKey') streamKey: string) {
+    return this.streamingService.getStreamStatusByKey(streamKey);
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async getHistory(@Query() query: StreamHistoryQueryDto) {
+    return this.streamingService.getStreamHistory(query);
   }
 }

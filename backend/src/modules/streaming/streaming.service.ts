@@ -6,6 +6,11 @@ import { RedisService } from '../../common/redis/redis.service';
 import {
   StartStreamDto,
   StreamingSessionResponseDto,
+  GenerateKeyDto,
+  StreamStatusDto,
+  StreamHistoryQueryDto,
+  StreamHistoryResponseDto,
+  StreamHistoryItemDto,
 } from './dto/streaming.dto';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { randomBytes } from 'crypto';
@@ -40,13 +45,14 @@ export class StreamingService {
     }
 
     // Generate unique stream key
-    const streamKey = this.generateStreamKey();
+    const streamKey = this.generateUniqueKey();
 
     // Create streaming session
     const session = await this.prisma.liveStream.create({
       data: {
         userId,
         streamKey,
+        title: 'Live Stream',
         expiresAt: new Date(startStreamDto.expiresAt),
         status: 'PENDING',
       },
@@ -161,7 +167,198 @@ export class StreamingService {
     return sessions.map((s) => this.mapToResponseDto(s));
   }
 
-  private generateStreamKey(): string {
+  async generateKey(userId: string, dto: GenerateKeyDto): Promise<StreamingSessionResponseDto> {
+    // Check if user already has an active stream
+    const existingStream = await this.prisma.liveStream.findFirst({
+      where: {
+        userId,
+        status: { in: ['PENDING', 'LIVE'] },
+      },
+    });
+
+    if (existingStream) {
+      throw new BusinessException(
+        'STREAM_ALREADY_ACTIVE',
+        { streamId: existingStream.id },
+        'You already have an active streaming session',
+      );
+    }
+
+    // Generate unique stream key
+    const streamKey = this.generateUniqueKey();
+
+    // Set expiration to 24 hours from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    // Create streaming session
+    const session = await this.prisma.liveStream.create({
+      data: {
+        userId,
+        streamKey,
+        title: dto.title || 'Live Stream',
+        expiresAt,
+        status: 'PENDING',
+      },
+    });
+
+    // Store stream metadata in Redis for quick access
+    await this.redisService.set(
+      `stream:${session.streamKey}:meta`,
+      JSON.stringify({
+        userId: session.userId,
+        title: session.title,
+        status: session.status,
+        streamId: session.id,
+      }),
+      3600 * 24, // 24 hour TTL
+    );
+
+    // Initialize viewer count to 0
+    await this.redisService.set(`stream:${session.streamKey}:viewers`, '0', 3600 * 24);
+
+    this.eventEmitter.emit('stream:created', { streamId: session.id, streamKey: session.streamKey });
+
+    return this.mapToResponseDto(session);
+  }
+
+  async getStreamStatusByKey(streamKey: string): Promise<StreamStatusDto> {
+    // Try Redis cache first for metadata
+    const cached = await this.redisService.get(`stream:${streamKey}:meta`);
+
+    let title = 'Live Stream';
+    let status = 'OFFLINE';
+    let startedAt: Date | undefined;
+
+    if (cached) {
+      const data = JSON.parse(cached);
+      title = data.title;
+      status = data.status;
+    } else {
+      // Fallback to database
+      const session = await this.prisma.liveStream.findUnique({
+        where: { streamKey },
+      });
+
+      if (session) {
+        title = session.title;
+        status = session.status;
+        startedAt = session.startedAt || undefined;
+      }
+    }
+
+    // Get viewer count from Redis
+    const viewerCountStr = await this.redisService.get(`stream:${streamKey}:viewers`);
+    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+
+    return {
+      status,
+      viewerCount,
+      startedAt,
+      title,
+    };
+  }
+
+  async getStreamHistory(query: StreamHistoryQueryDto): Promise<StreamHistoryResponseDto> {
+    const { page = 1, limit = 20, userId, dateFrom, dateTo } = query;
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {};
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (dateFrom || dateTo) {
+      where.startedAt = {};
+      if (dateFrom) {
+        where.startedAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        where.startedAt.lte = endDate;
+      }
+    }
+
+    // Get total count
+    const total = await this.prisma.liveStream.count({ where });
+
+    // Get paginated streams
+    const streams = await this.prisma.liveStream.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const streamDtos: StreamHistoryItemDto[] = streams.map((stream) => ({
+      id: stream.id,
+      streamKey: stream.streamKey,
+      title: stream.title,
+      userId: stream.userId,
+      userName: stream.user.name,
+      startedAt: stream.startedAt,
+      endedAt: stream.endedAt,
+      totalDuration: stream.totalDuration,
+      peakViewers: stream.peakViewers,
+      status: stream.status,
+    }));
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      streams: streamDtos,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  async updateViewerCount(streamKey: string, delta: number): Promise<number> {
+    // Increment or decrement viewer count
+    const key = `stream:${streamKey}:viewers`;
+
+    if (delta > 0) {
+      await this.redisService.getClient().incr(key);
+    } else if (delta < 0) {
+      const current = await this.redisService.get(key);
+      const currentCount = current ? parseInt(current, 10) : 0;
+      if (currentCount > 0) {
+        await this.redisService.getClient().decr(key);
+      }
+    }
+
+    const viewerCountStr = await this.redisService.get(key);
+    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+
+    // Update peak viewers if needed
+    const session = await this.prisma.liveStream.findUnique({
+      where: { streamKey },
+      select: { id: true, peakViewers: true },
+    });
+
+    if (session && viewerCount > session.peakViewers) {
+      await this.prisma.liveStream.update({
+        where: { id: session.id },
+        data: { peakViewers: viewerCount },
+      });
+    }
+
+    return viewerCount;
+  }
+
+  private generateUniqueKey(): string {
     return randomBytes(16).toString('hex');
   }
 
@@ -173,6 +370,7 @@ export class StreamingService {
       id: session.id,
       userId: session.userId,
       streamKey: session.streamKey,
+      title: session.title || 'Live Stream',
       status: session.status,
       rtmpUrl,
       hlsUrl,

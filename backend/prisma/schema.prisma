@@ -52,15 +52,18 @@ enum UserStatus {
 
 // Epic 3: Live Streaming Foundation
 model LiveStream {
-  id        String       @id @default(uuid())
-  streamKey String       @unique @map("stream_key")
-  userId    String       @map("user_id")
-  user      User         @relation(fields: [userId], references: [id])
-  status    StreamStatus @default(PENDING)
-  startedAt DateTime?    @map("started_at")
-  endedAt   DateTime?    @map("ended_at")
-  expiresAt DateTime     @map("expires_at")
-  createdAt DateTime     @default(now()) @map("created_at")
+  id            String       @id @default(uuid())
+  streamKey     String       @unique @map("stream_key")
+  userId        String       @map("user_id")
+  user          User         @relation(fields: [userId], references: [id])
+  title         String       @default("Live Stream")
+  status        StreamStatus @default(PENDING)
+  startedAt     DateTime?    @map("started_at")
+  endedAt       DateTime?    @map("ended_at")
+  totalDuration Int?         @map("total_duration") // seconds
+  peakViewers   Int          @default(0) @map("peak_viewers")
+  expiresAt     DateTime     @map("expires_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
 
   // Relations
   chatMessages ChatMessage[]
@@ -68,6 +71,7 @@ model LiveStream {
 
   @@index([streamKey])
   @@index([userId])
+  @@index([status])
   @@map("live_streams")
 }
 
