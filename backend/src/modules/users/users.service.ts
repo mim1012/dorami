@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 import {
   UnauthorizedException,
   ProductNotFoundException,
@@ -8,7 +10,10 @@ import {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private encryptionService: EncryptionService,
+  ) {}
 
   async findById(id: string): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({
@@ -48,6 +53,75 @@ export class UsersService {
     });
   }
 
+  /**
+   * Check if Instagram ID is available (not taken by another user)
+   */
+  async isInstagramIdAvailable(instagramId: string, excludeUserId?: string): Promise<boolean> {
+    const existing = await this.prisma.user.findUnique({
+      where: { instagramId },
+      select: { id: true },
+    });
+
+    if (!existing) return true;
+    if (excludeUserId && existing.id === excludeUserId) return true;
+    return false;
+  }
+
+  /**
+   * Complete user profile with encrypted shipping address
+   */
+  async completeProfile(userId: string, dto: CompleteProfileDto): Promise<UserResponseDto> {
+    // Check Instagram ID uniqueness
+    const isAvailable = await this.isInstagramIdAvailable(dto.instagramId, userId);
+    if (!isAvailable) {
+      throw new ConflictException('This Instagram ID is already registered');
+    }
+
+    // Prepare shipping address for encryption
+    const shippingAddress: ShippingAddress = {
+      fullName: dto.fullName,
+      address1: dto.address1,
+      address2: dto.address2,
+      city: dto.city,
+      state: dto.state,
+      zip: dto.zip,
+      phone: dto.phone,
+    };
+
+    // Encrypt shipping address
+    const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
+
+    // Update user with profile data
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        depositorName: dto.depositorName,
+        instagramId: dto.instagramId,
+        shippingAddress: encryptedAddress as any, // Store encrypted string as Json
+      },
+    });
+
+    return this.mapToResponseDto(user);
+  }
+
+  /**
+   * Get decrypted shipping address (admin only)
+   */
+  async getShippingAddress(userId: string): Promise<ShippingAddress | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { shippingAddress: true },
+    });
+
+    if (!user || !user.shippingAddress) {
+      return null;
+    }
+
+    // Cast Json to string for decryption
+    const encryptedString = user.shippingAddress as string;
+    return this.encryptionService.decryptAddress(encryptedString);
+  }
+
   private mapToResponseDto(user: any): UserResponseDto {
     return {
       id: user.id,
@@ -56,6 +130,8 @@ export class UsersService {
       nickname: user.nickname,
       profileImage: user.profileImage,
       role: user.role,
+      depositorName: user.depositorName,
+      instagramId: user.instagramId,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

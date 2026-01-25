@@ -1,14 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'USER' | 'ADMIN';
-  instagramId?: string;
-  depositorName?: string;
-}
+import { User } from '../types/user';
 
 interface AuthState {
   user: User | null;

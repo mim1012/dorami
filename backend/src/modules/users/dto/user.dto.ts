@@ -27,6 +27,8 @@ export class UserResponseDto {
   nickname: string;
   profileImage?: string;
   role: string;
+  depositorName?: string;
+  instagramId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

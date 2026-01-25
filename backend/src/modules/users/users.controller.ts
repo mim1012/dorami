@@ -1,14 +1,17 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
+import { CompleteProfileDto, CheckInstagramDto } from './dto/complete-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -39,5 +42,22 @@ export class UsersController {
   async deleteMyAccount(@CurrentUser('userId') userId: string) {
     await this.usersService.deleteAccount(userId);
     return { message: 'Account deleted successfully' };
+  }
+
+  @Post('complete-profile')
+  async completeProfile(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CompleteProfileDto,
+  ) {
+    return this.usersService.completeProfile(userId, dto);
+  }
+
+  @Get('check-instagram')
+  async checkInstagramAvailability(
+    @Query('instagramId') instagramId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const isAvailable = await this.usersService.isInstagramIdAvailable(instagramId, userId);
+    return { data: { available: isAvailable } };
   }
 }
