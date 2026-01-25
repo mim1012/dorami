@@ -12,6 +12,7 @@ import {
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
 import { CompleteProfileDto, CheckInstagramDto } from './dto/complete-profile.dto';
+import { UpdateAddressDto } from './dto/profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -59,5 +60,18 @@ export class UsersController {
   ) {
     const isAvailable = await this.usersService.isInstagramIdAvailable(instagramId, userId);
     return { data: { available: isAvailable } };
+  }
+
+  @Get('profile/me')
+  async getMyFullProfile(@CurrentUser('userId') userId: string) {
+    return this.usersService.getProfile(userId);
+  }
+
+  @Patch('profile/address')
+  async updateMyAddress(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateAddressDto,
+  ) {
+    return this.usersService.updateAddress(userId, dto);
   }
 }

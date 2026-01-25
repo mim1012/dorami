@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
+import { UpdateAddressDto, ProfileResponseDto } from './dto/profile.dto';
 import {
   UnauthorizedException,
   ProductNotFoundException,
@@ -122,13 +123,75 @@ export class UsersService {
     return this.encryptionService.decryptAddress(encryptedString);
   }
 
+  /**
+   * Get user profile with decrypted shipping address
+   */
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new ProductNotFoundException(userId);
+    }
+
+    // Decrypt shipping address if exists
+    let shippingAddress: ShippingAddress | undefined;
+    if (user.shippingAddress) {
+      const encryptedString = user.shippingAddress as string;
+      shippingAddress = this.encryptionService.decryptAddress(encryptedString);
+    }
+
+    return {
+      id: user.id,
+      kakaoId: user.kakaoId,
+      email: user.email,
+      nickname: user.name, // Prisma schema uses 'name' field
+      profileImage: undefined, // Not in current schema
+      role: user.role,
+      depositorName: user.depositorName,
+      instagramId: user.instagramId,
+      shippingAddress,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  /**
+   * Update user shipping address
+   */
+  async updateAddress(userId: string, dto: UpdateAddressDto): Promise<ProfileResponseDto> {
+    const shippingAddress: ShippingAddress = {
+      fullName: dto.fullName,
+      address1: dto.address1,
+      address2: dto.address2,
+      city: dto.city,
+      state: dto.state,
+      zip: dto.zip,
+      phone: dto.phone,
+    };
+
+    // Encrypt shipping address
+    const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
+
+    // Update user with new address
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        shippingAddress: encryptedAddress as any,
+      },
+    });
+
+    return this.getProfile(userId);
+  }
+
   private mapToResponseDto(user: any): UserResponseDto {
     return {
       id: user.id,
       kakaoId: user.kakaoId,
       email: user.email,
-      nickname: user.nickname,
-      profileImage: user.profileImage,
+      nickname: user.name, // Prisma schema uses 'name' field
+      profileImage: undefined, // Not in current schema
       role: user.role,
       depositorName: user.depositorName,
       instagramId: user.instagramId,
