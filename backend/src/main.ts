@@ -4,9 +4,13 @@ import { AppModule } from './app.module';
 import { BusinessExceptionFilter } from './common/filters/business-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Cookie Parser Middleware (for HTTP-only cookies)
+  app.use(cookieParser());
 
   // Global Validation Pipe
   app.useGlobalPipes(

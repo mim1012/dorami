@@ -37,17 +37,24 @@ export class AuthService {
           email: profile.email,
           name: profile.nickname,
           role: 'USER', // Default role
+          status: 'ACTIVE', // Set status to ACTIVE
+          lastLoginAt: new Date(), // Set lastLoginAt
         },
       });
+
+      console.log(`✅ New user created: ${user.email}`);
     } else {
-      // Update user profile if changed
+      // Update user profile and lastLoginAt for returning users
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           name: profile.nickname,
           email: profile.email || user.email,
+          lastLoginAt: new Date(), // Update lastLoginAt
         },
       });
+
+      console.log(`✅ Returning user: ${user.email}`);
     }
 
     return user;
@@ -56,20 +63,22 @@ export class AuthService {
   async login(user: User): Promise<LoginResponseDto> {
     const payload: TokenPayload = {
       sub: user.id,
+      userId: user.id, // Add userId for JWT strategy compatibility
+      email: user.email, // Include email per Story 2.1 spec
       kakaoId: user.kakaoId,
       role: user.role,
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_EXPIRES_IN') || '1h',
+      expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m', // 15 minutes
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN') || '30d',
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN') || '7d', // 7 days
     });
 
-    // Store refresh token in Redis (TTL: 30 days)
-    const refreshTokenTTL = 30 * 24 * 60 * 60; // 30 days in seconds
+    // Store refresh token in Redis (TTL: 7 days)
+    const refreshTokenTTL = 7 * 24 * 60 * 60; // 7 days in seconds
     await this.redisService.set(
       `refresh_token:${user.id}`,
       refreshToken,

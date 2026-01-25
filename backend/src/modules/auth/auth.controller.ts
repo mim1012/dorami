@@ -31,25 +31,94 @@ export class AuthController {
   @Get('kakao/callback')
   @UseGuards(KakaoAuthGuard)
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user as any;
-    const loginResponse = await this.authService.login(user);
+    try {
+      const user = req.user as any;
+      const loginResponse = await this.authService.login(user);
 
-    // Redirect to frontend with tokens (or send JSON in API mode)
-    // For now, returning JSON
-    return res.json(loginResponse);
+      // Set tokens in HTTP-only cookies per Story 2.1 AC1
+      res.cookie('accessToken', loginResponse.accessToken, {
+        httpOnly: true, // JavaScript cannot access
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+      });
+
+      res.cookie('refreshToken', loginResponse.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      // Check if user needs to complete profile per Story 2.1 AC1
+      const needsProfileCompletion =
+        !user.instagramId || !user.depositorName;
+
+      // Redirect based on profile completion status
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const redirectUrl = needsProfileCompletion
+        ? `${frontendUrl}/profile/register`
+        : `${frontendUrl}/`;
+
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Kakao callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/login?error=auth_failed`);
+    }
   }
 
   @Public()
   @Post('refresh')
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshToken(refreshTokenDto.refreshToken);
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (!refreshToken) {
+        return res.status(401).json({
+          statusCode: 401,
+          errorCode: 'NO_REFRESH_TOKEN',
+          message: 'Refresh token not found',
+        });
+      }
+
+      const loginResponse = await this.authService.refreshToken(refreshToken);
+
+      // Set new access token in cookie per Story 2.1 AC3
+      res.cookie('accessToken', loginResponse.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000,
+      });
+
+      return res.json({
+        data: { message: 'Token refreshed successfully' },
+      });
+    } catch (error) {
+      return res.status(401).json({
+        statusCode: 401,
+        errorCode: 'TOKEN_REFRESH_FAILED',
+        message: error.message,
+      });
+    }
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@CurrentUser('userId') userId: string) {
+  async logout(
+    @CurrentUser('userId') userId: string,
+    @Res() res: Response,
+  ) {
     await this.authService.logout(userId);
-    return { message: 'Logged out successfully' };
+
+    // Clear cookies per Story 2.1
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+
+    return res.json({
+      data: { message: 'Logged out successfully' },
+    });
   }
 
   @Get('me')

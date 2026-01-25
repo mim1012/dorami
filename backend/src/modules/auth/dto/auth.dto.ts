@@ -19,7 +19,9 @@ export class RefreshTokenDto {
 }
 
 export class TokenPayload {
-  sub: string; // userId
+  sub: string; // userId (for compatibility)
+  userId: string; // User ID (duplicate of sub for clarity)
+  email: string; // User email
   kakaoId: string;
   role: string;
   iat?: number;
