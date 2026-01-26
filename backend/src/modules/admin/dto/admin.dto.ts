@@ -88,3 +88,43 @@ export class UserListResponseDto {
   limit: number;
   totalPages: number;
 }
+
+// Dashboard Stats DTOs
+export class StatItemDto {
+  value: number;
+  formatted: string;
+  trend: string;
+  trendUp: boolean;
+}
+
+export class DashboardStatsDto {
+  revenue: StatItemDto;
+  viewers: StatItemDto;
+  orders: StatItemDto;
+  messages: StatItemDto;
+}
+
+// Live Status DTOs
+export class LiveStatusDto {
+  isLive: boolean;
+  streamId: string | null;
+  title: string | null;
+  duration: string | null; // HH:MM:SS format
+  viewerCount: number;
+  thumbnailUrl: string | null;
+  startedAt: Date | null;
+}
+
+// Recent Activities DTOs
+export class ActivityLogDto {
+  id: string;
+  type: string;
+  message: string;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+export class RecentActivitiesDto {
+  activities: ActivityLogDto[];
+  total: number;
+}

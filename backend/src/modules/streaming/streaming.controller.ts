@@ -85,4 +85,11 @@ export class StreamingController {
   async getHistory(@Query() query: StreamHistoryQueryDto) {
     return this.streamingService.getStreamHistory(query);
   }
+
+  @Get('live-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async getLiveStatus() {
+    return this.streamingService.getLiveStatus();
+  }
 }

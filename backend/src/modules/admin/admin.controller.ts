@@ -15,4 +15,14 @@ export class AdminController {
   async getUserList(@Query() query: GetUsersQueryDto) {
     return this.adminService.getUserList(query);
   }
+
+  @Get('dashboard/stats')
+  async getDashboardStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('activities/recent')
+  async getRecentActivities(@Query('limit') limit?: number) {
+    return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
+  }
 }

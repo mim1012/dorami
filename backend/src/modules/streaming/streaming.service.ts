@@ -12,6 +12,7 @@ import {
   StreamHistoryResponseDto,
   StreamHistoryItemDto,
 } from './dto/streaming.dto';
+import { LiveStatusDto } from '../admin/dto/admin.dto';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { randomBytes } from 'crypto';
 
@@ -360,6 +361,58 @@ export class StreamingService {
 
   private generateUniqueKey(): string {
     return randomBytes(16).toString('hex');
+  }
+
+  async getLiveStatus(): Promise<LiveStatusDto> {
+    // Find the most recent LIVE stream
+    const liveStream = await this.prisma.liveStream.findFirst({
+      where: {
+        status: 'LIVE',
+      },
+      orderBy: {
+        startedAt: 'desc',
+      },
+    });
+
+    if (!liveStream) {
+      return {
+        isLive: false,
+        streamId: null,
+        title: null,
+        duration: null,
+        viewerCount: 0,
+        thumbnailUrl: null,
+        startedAt: null,
+      };
+    }
+
+    // Get viewer count from Redis
+    const viewerCountStr = await this.redisService.get(`stream:${liveStream.streamKey}:viewers`);
+    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+
+    // Calculate duration
+    const duration = liveStream.startedAt
+      ? this.formatDuration(new Date().getTime() - liveStream.startedAt.getTime())
+      : null;
+
+    return {
+      isLive: true,
+      streamId: liveStream.id,
+      title: liveStream.title,
+      duration,
+      viewerCount,
+      thumbnailUrl: null, // TODO: Implement thumbnail generation
+      startedAt: liveStream.startedAt,
+    };
+  }
+
+  private formatDuration(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
