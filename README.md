@@ -16,11 +16,7 @@
 - **State Management**: Zustand 5.0
 - **Server State**: TanStack Query v5
 - **Real-time**: Socket.IO Client 4.8
-
-### Frontend (Admin App)
-- **Framework**: Next.js 16.1+ with Turbopack
-- **React**: 19.0.0
-- **Admin Tools**: React Datepicker, ExcelJS
+- **Admin Tools**: React Datepicker, ExcelJS (for `/admin` routes)
 
 ### Backend API
 - **Framework**: NestJS 11.1.12+
@@ -41,8 +37,9 @@
 live-commerce-platform/
 ├── packages/
 │   └── shared-types/         # 공유 타입 정의
-├── client-app/               # 사용자 클라이언트 앱 (port 3000)
-├── admin-app/                # 관리자 대시보드 (port 3002)
+├── client-app/               # Next.js 클라이언트 앱 (port 3000)
+│   ├── src/app/              # 일반 사용자 페이지 (라이브 쇼핑, 구매)
+│   └── src/app/admin/        # 관리자 대시보드 (/admin 라우트)
 ├── backend/                  # NestJS API 서버 (port 3001)
 ├── docs/                     # 프로젝트 문서
 ├── docker-compose.yml        # Docker 서비스 구성
@@ -69,7 +66,6 @@ npm install
 
 # 3. 환경 변수 설정
 cp client-app/.env.example client-app/.env.local
-cp admin-app/.env.example admin-app/.env.local
 cp backend/.env.example backend/.env
 
 # 4. Docker 서비스 시작 (PostgreSQL, Redis)
@@ -87,10 +83,9 @@ npm run dev:all
 
 ```bash
 # 클라이언트 앱만 실행 (http://localhost:3000)
+# 일반 사용자: http://localhost:3000
+# 관리자 대시보드: http://localhost:3000/admin
 npm run dev:client
-
-# 관리자 앱만 실행 (http://localhost:3002)
-npm run dev:admin
 
 # 백엔드 API만 실행 (http://localhost:3001)
 npm run dev:backend
@@ -100,21 +95,18 @@ npm run dev:backend
 
 ### 개발
 - `npm run dev:all` - 모든 앱 동시 실행 (concurrently)
-- `npm run dev:client` - 클라이언트 앱 실행
-- `npm run dev:admin` - 관리자 앱 실행
+- `npm run dev:client` - 클라이언트 앱 실행 (일반 사용자 + 관리자 대시보드)
 - `npm run dev:backend` - 백엔드 API 실행
 
 ### 빌드
 - `npm run build:all` - 모든 워크스페이스 빌드
 - `npm run build:client` - 클라이언트 앱 빌드
-- `npm run build:admin` - 관리자 앱 빌드
 - `npm run build:backend` - 백엔드 API 빌드
 - `npm run build:shared` - 공유 타입 빌드
 
 ### 타입 체크
 - `npm run type-check:all` - 모든 워크스페이스 타입 체크
 - `npm run type-check:client` - 클라이언트 타입 체크
-- `npm run type-check:admin` - 관리자 타입 체크
 - `npm run type-check:backend` - 백엔드 타입 체크
 - `npm run type-check:shared` - 공유 타입 체크
 
@@ -126,7 +118,6 @@ npm run dev:backend
 ### Lint
 - `npm run lint:all` - 모든 워크스페이스 린트
 - `npm run lint:client` - 클라이언트 린트
-- `npm run lint:admin` - 관리자 린트
 - `npm run lint:backend` - 백엔드 린트
 
 ### Docker
@@ -144,8 +135,7 @@ npm run dev:backend
 
 ## 포트 구성
 
-- **Client App**: 3000
-- **Admin App**: 3002
+- **Client App**: 3000 (일반 사용자 + 관리자 대시보드 `/admin`)
 - **Backend API**: 3001
 - **PostgreSQL**: 5432
 - **Redis**: 6379
