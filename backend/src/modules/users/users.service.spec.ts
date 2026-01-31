@@ -318,4 +318,116 @@ describe('UsersService - Profile Completion', () => {
       await expect(service.getShippingAddress(userId)).rejects.toThrow('Decryption failed');
     });
   });
+
+  describe('updateAddress', () => {
+    const userId = 'user-123';
+    const mockEncryptedAddress = 'new-iv:new-authTag:new-ciphertext';
+    const updateAddressDto = {
+      fullName: 'Updated Name',
+      address1: '456 New St',
+      address2: 'Suite 100',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94102',
+      phone: '(415) 555-9999',
+    };
+
+    it('should update shipping address successfully', async () => {
+      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
+      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockPrismaService.user.update.mockResolvedValue({
+        id: userId,
+        email: 'user@test.com',
+        kakaoId: 'kakao-123',
+        name: 'Test User',
+        role: 'USER',
+        status: 'ACTIVE',
+        depositorName: 'Test',
+        instagramId: '@test',
+        shippingAddress: mockEncryptedAddress,
+        profileCompletedAt: new Date(),
+        createdAt: new Date(),
+        lastLoginAt: null,
+        updatedAt: new Date(),
+      });
+
+      const result = await service.updateAddress(userId, updateAddressDto as any);
+
+      // Verify encryption was called with new address
+      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
+        fullName: 'Updated Name',
+        address1: '456 New St',
+        address2: 'Suite 100',
+        city: 'San Francisco',
+        state: 'CA',
+        zip: '94102',
+        phone: '(415) 555-9999',
+      });
+
+      // Verify user was updated with encrypted address
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          shippingAddress: mockEncryptedAddress,
+        },
+      });
+
+      expect(result).toHaveProperty('id', userId);
+    });
+
+    it('should handle address without optional address2 field', async () => {
+      const dtoWithoutAddress2 = {
+        ...updateAddressDto,
+        address2: undefined,
+      };
+
+      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
+      mockEncryptionService.decryptAddress.mockReturnValue(dtoWithoutAddress2);
+      mockPrismaService.user.update.mockResolvedValue({
+        id: userId,
+        shippingAddress: mockEncryptedAddress,
+      } as any);
+
+      await service.updateAddress(userId, dtoWithoutAddress2 as any);
+
+      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
+        fullName: 'Updated Name',
+        address1: '456 New St',
+        address2: undefined,
+        city: 'San Francisco',
+        state: 'CA',
+        zip: '94102',
+        phone: '(415) 555-9999',
+      });
+    });
+
+    it('should encrypt address before storing', async () => {
+      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
+      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockPrismaService.user.update.mockResolvedValue({
+        id: userId,
+      } as any);
+
+      await service.updateAddress(userId, updateAddressDto as any);
+
+      // Verify encrypted address was stored, not plain text
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shippingAddress: mockEncryptedAddress,
+          }),
+        }),
+      );
+    });
+
+    it('should throw error if user not found', async () => {
+      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
+      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockPrismaService.user.update.mockRejectedValue(new Error('Record not found'));
+
+      await expect(
+        service.updateAddress('non-existent-user', updateAddressDto as any),
+      ).rejects.toThrow('Record not found');
+    });
+  });
 });
