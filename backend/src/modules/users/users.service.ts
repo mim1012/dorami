@@ -99,6 +99,7 @@ export class UsersService {
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
         shippingAddress: encryptedAddress as any, // Store encrypted string as Json
+        profileCompletedAt: new Date(), // Mark profile as completed
       },
     });
 

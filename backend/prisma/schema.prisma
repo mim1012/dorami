@@ -13,18 +13,19 @@ datasource db {
 
 // Epic 2: User Authentication & Profile Management
 model User {
-  id              String     @id @default(uuid())
-  email           String?    @unique
-  kakaoId         String     @unique
-  name            String
-  role            Role       @default(USER)
-  status          UserStatus @default(ACTIVE)
-  depositorName   String? // for bank transfer identification
-  instagramId     String?    @unique
-  shippingAddress Json? // encrypted US-format address
-  createdAt       DateTime   @default(now()) @map("created_at")
-  lastLoginAt     DateTime?  @map("last_login_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  id                  String     @id @default(uuid())
+  email               String?    @unique
+  kakaoId             String     @unique
+  name                String
+  role                Role       @default(USER)
+  status              UserStatus @default(ACTIVE)
+  depositorName       String? // for bank transfer identification
+  instagramId         String?    @unique
+  shippingAddress     Json? // encrypted US-format address
+  profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed
+  createdAt           DateTime   @default(now()) @map("created_at")
+  lastLoginAt         DateTime?  @map("last_login_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
 
   // Relations
   liveStreams    LiveStream[]
