@@ -69,6 +69,202 @@ describe('AdminService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('getUserList', () => {
+    const mockUsers = [
+      {
+        id: 'user-1',
+        email: 'user1@test.com',
+        name: 'User One',
+        instagramId: '@user_one',
+        createdAt: new Date('2026-01-15'),
+        lastLoginAt: new Date('2026-01-30'),
+        status: 'ACTIVE',
+        role: 'USER',
+      },
+      {
+        id: 'user-2',
+        email: 'user2@test.com',
+        name: 'User Two',
+        instagramId: '@user_two',
+        createdAt: new Date('2026-01-20'),
+        lastLoginAt: null,
+        status: 'ACTIVE',
+        role: 'USER',
+      },
+    ];
+
+    it('should return paginated users with default parameters', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(47);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      const result = await service.getUserList({
+        page: 1,
+        limit: 20,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+
+      expect(result.users).toHaveLength(2);
+      expect(result.total).toBe(47);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
+      expect(result.totalPages).toBe(3); // 47 / 20 = 2.35 → 3 pages
+      expect(result.users[0].totalOrders).toBe(0); // Epic 8 placeholder
+      expect(result.users[0].totalPurchaseAmount).toBe(0); // Epic 8 placeholder
+    });
+
+    it('should apply pagination correctly', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(100);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      await service.getUserList({ page: 3, limit: 10 });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 20, // (3 - 1) * 10 = 20
+          take: 10,
+        }),
+      );
+    });
+
+    it('should sort users by specified field and order', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      await service.getUserList({
+        page: 1,
+        limit: 20,
+        sortBy: 'email',
+        sortOrder: 'asc',
+      });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: {
+            email: 'asc',
+          },
+        }),
+      );
+    });
+
+    it('should filter users by search query', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(1);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([mockUsers[0]] as any);
+
+      await service.getUserList({
+        page: 1,
+        limit: 20,
+        search: 'user_one',
+      });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { name: { contains: 'user_one', mode: 'insensitive' } },
+              { email: { contains: 'user_one', mode: 'insensitive' } },
+              { instagramId: { contains: 'user_one', mode: 'insensitive' } },
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('should filter users by date range', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(5);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      const dateFrom = '2026-01-01';
+      const dateTo = '2026-01-31';
+
+      await service.getUserList({
+        page: 1,
+        limit: 20,
+        dateFrom,
+        dateTo,
+      });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: new Date(dateFrom),
+              lte: expect.any(Date), // End of day
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('should filter users by status', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      await service.getUserList({
+        page: 1,
+        limit: 20,
+        status: ['ACTIVE', 'SUSPENDED'],
+      });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ['ACTIVE', 'SUSPENDED'] },
+          }),
+        }),
+      );
+    });
+
+    it('should return correct total pages for exact division', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(60);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      const result = await service.getUserList({ page: 1, limit: 20 });
+
+      expect(result.totalPages).toBe(3); // 60 / 20 = 3 exactly
+    });
+
+    it('should handle empty results', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(0);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
+
+      const result = await service.getUserList({ page: 1, limit: 20 });
+
+      expect(result.users).toHaveLength(0);
+      expect(result.total).toBe(0);
+      expect(result.totalPages).toBe(0);
+    });
+
+    it('should map user data correctly to DTOs', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(2);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue(mockUsers as any);
+
+      const result = await service.getUserList({ page: 1, limit: 20 });
+
+      expect(result.users[0]).toEqual({
+        id: 'user-1',
+        email: 'user1@test.com',
+        name: 'User One',
+        instagramId: '@user_one',
+        createdAt: expect.any(Date),
+        lastLoginAt: expect.any(Date),
+        status: 'ACTIVE',
+        role: 'USER',
+        totalOrders: 0,
+        totalPurchaseAmount: 0,
+      });
+    });
+
+    it('should handle users with null lastLoginAt', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(1);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([mockUsers[1]] as any);
+
+      const result = await service.getUserList({ page: 1, limit: 20 });
+
+      expect(result.users[0].lastLoginAt).toBeNull();
+    });
+  });
+
   describe('confirmOrderPayment', () => {
     const orderId = 'ORD-20260131-00001';
     const mockOrder = {
