@@ -4,8 +4,9 @@ import * as winston from 'winston';
 @Injectable()
 export class LoggerService implements NestLoggerService {
   private logger: winston.Logger;
+  private context?: string;
 
-  constructor(private context?: string) {
+  constructor() {
     this.logger = winston.createLogger({
       level: process.env.LOG_LEVEL || 'info',
       format: winston.format.combine(
@@ -28,8 +29,9 @@ export class LoggerService implements NestLoggerService {
             }),
           ),
         }),
-        new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-        new winston.transports.File({ filename: 'logs/combined.log' }),
+        // Temporarily disabled file logging to prevent startup hang
+        // new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+        // new winston.transports.File({ filename: 'logs/combined.log' }),
       ],
     });
   }
@@ -52,5 +54,9 @@ export class LoggerService implements NestLoggerService {
 
   verbose(message: string, context?: string) {
     this.logger.verbose(message, { context: context || this.context });
+  }
+
+  setContext(context: string) {
+    this.context = context;
   }
 }

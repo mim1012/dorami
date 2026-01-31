@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, IsString, IsEnum, IsArray } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class GetUsersQueryDto {
@@ -127,4 +127,123 @@ export class ActivityLogDto {
 export class RecentActivitiesDto {
   activities: ActivityLogDto[];
   total: number;
+}
+
+// Notice Configuration DTOs
+export class UpdateNoticeDto {
+  @IsOptional()
+  @IsString()
+  noticeText?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(24)
+  noticeFontSize?: number;
+
+  @IsOptional()
+  @IsString()
+  noticeFontFamily?: string;
+}
+
+export class NoticeDto {
+  text: string | null;
+  fontSize: number;
+  fontFamily: string;
+}
+
+// Order Management DTOs
+export class GetOrdersQueryDto {
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  @IsInt()
+  @Min(1)
+  limit?: number = 20;
+
+  @IsOptional()
+  @IsString()
+  @IsEnum(['createdAt', 'paidAt', 'total', 'status'])
+  sortBy?: string = 'createdAt';
+
+  @IsOptional()
+  @IsString()
+  @IsEnum(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc' = 'desc';
+
+  // Search by order ID, user email, depositor name, instagram ID
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  // Date range filter (for createdAt)
+  @IsOptional()
+  @IsString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
+
+  // Order status filter (array)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  orderStatus?: string[];
+
+  // Payment status filter (array)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  paymentStatus?: string[];
+
+  // Shipping status filter (array)
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  shippingStatus?: string[];
+
+  // Amount range filter
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
+  minAmount?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
+  maxAmount?: number;
+}
+
+export class OrderListItemDto {
+  id: string;
+  userId: string;
+  userEmail: string;
+  depositorName: string;
+  instagramId: string;
+  status: string;
+  paymentStatus: string;
+  shippingStatus: string;
+  subtotal: number;
+  shippingFee: number;
+  total: number;
+  itemCount: number;
+  createdAt: Date;
+  paidAt: Date | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+}
+
+export class OrderListResponseDto {
+  orders: OrderListItemDto[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

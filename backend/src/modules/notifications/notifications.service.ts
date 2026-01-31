@@ -7,7 +7,8 @@ export class NotificationsService {
   private logger: LoggerService;
 
   constructor(private kakaoTalkClient: KakaoTalkClient) {
-    this.logger = new LoggerService('NotificationsService');
+    this.logger = new LoggerService();
+    this.logger.setContext('NotificationsService');
   }
 
   async sendOrderCreatedNotification(userId: string, orderId: string): Promise<void> {

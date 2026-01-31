@@ -8,7 +8,8 @@ export class OrderEventsListener {
   private logger: LoggerService;
 
   constructor(private reservationService: ReservationService) {
-    this.logger = new LoggerService('OrderEventsListener');
+    this.logger = new LoggerService();
+    this.logger.setContext('OrderEventsListener');
   }
 
   @OnEvent('cart:expired')

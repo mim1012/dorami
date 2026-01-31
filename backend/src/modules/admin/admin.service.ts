@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   GetUsersQueryDto,
@@ -7,12 +7,21 @@ import {
   DashboardStatsDto,
   StatItemDto,
   RecentActivitiesDto,
-  ActivityLogDto
+  ActivityLogDto,
+  UpdateNoticeDto,
+  NoticeDto,
+  GetOrdersQueryDto,
+  OrderListResponseDto,
+  OrderListItemDto,
 } from './dto/admin.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => 'WEBSOCKET_GATEWAY'))
+    private websocketGateway: any,
+  ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
     const {
@@ -106,6 +115,127 @@ export class AdminService {
 
     return {
       users: userDtos,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  async getOrderList(query: GetOrdersQueryDto): Promise<OrderListResponseDto> {
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      search,
+      dateFrom,
+      dateTo,
+      orderStatus,
+      paymentStatus,
+      shippingStatus,
+      minAmount,
+      maxAmount,
+    } = query;
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause for filters
+    const where: any = {};
+
+    // Search filter (order ID, user email, depositor name, instagram ID)
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { userEmail: { contains: search, mode: 'insensitive' } },
+        { depositorName: { contains: search, mode: 'insensitive' } },
+        { instagramId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Date range filter (for createdAt)
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) {
+        where.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        where.createdAt.lte = endDate;
+      }
+    }
+
+    // Order status filter
+    if (orderStatus && orderStatus.length > 0) {
+      where.status = { in: orderStatus };
+    }
+
+    // Payment status filter
+    if (paymentStatus && paymentStatus.length > 0) {
+      where.paymentStatus = { in: paymentStatus };
+    }
+
+    // Shipping status filter
+    if (shippingStatus && shippingStatus.length > 0) {
+      where.shippingStatus = { in: shippingStatus };
+    }
+
+    // Amount range filter
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.total = {};
+      if (minAmount !== undefined) {
+        where.total.gte = minAmount;
+      }
+      if (maxAmount !== undefined) {
+        where.total.lte = maxAmount;
+      }
+    }
+
+    // Get total count with filters
+    const total = await this.prisma.order.count({ where });
+
+    // Get paginated orders with sorting and filters
+    const orders = await this.prisma.order.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      include: {
+        orderItems: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    // Map orders to DTOs
+    const orderDtos: OrderListItemDto[] = orders.map((order) => ({
+      id: order.id,
+      userId: order.userId,
+      userEmail: order.userEmail,
+      depositorName: order.depositorName,
+      instagramId: order.instagramId,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      shippingStatus: order.shippingStatus,
+      subtotal: Number(order.subtotal),
+      shippingFee: Number(order.shippingFee),
+      total: Number(order.total),
+      itemCount: order.orderItems.length,
+      createdAt: order.createdAt,
+      paidAt: order.paidAt,
+      shippedAt: order.shippedAt,
+      deliveredAt: order.deliveredAt,
+    }));
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      orders: orderDtos,
       total,
       page,
       limit,
@@ -250,5 +380,75 @@ export class AdminService {
 
     const verb = actionMap[action] || action.toLowerCase();
     return `${entity} ${verb}`;
+  }
+
+  /**
+   * Get current system configuration (notice settings)
+   */
+  async getSystemConfig(): Promise<NoticeDto> {
+    // Get or create the single system config entry
+    let config = await this.prisma.systemConfig.findFirst({
+      where: { id: 'system' },
+    });
+
+    // If no config exists, create one with defaults
+    if (!config) {
+      config = await this.prisma.systemConfig.create({
+        data: {
+          id: 'system',
+          noticeText: null,
+          noticeFontSize: 14,
+          noticeFontFamily: 'Pretendard',
+        },
+      });
+    }
+
+    return {
+      text: config.noticeText,
+      fontSize: config.noticeFontSize,
+      fontFamily: config.noticeFontFamily,
+    };
+  }
+
+  /**
+   * Update system configuration (notice settings)
+   */
+  async updateSystemConfig(dto: UpdateNoticeDto): Promise<NoticeDto> {
+    // Prepare update data
+    const updateData: any = {};
+    if (dto.noticeText !== undefined) {
+      updateData.noticeText = dto.noticeText;
+    }
+    if (dto.noticeFontSize !== undefined) {
+      updateData.noticeFontSize = dto.noticeFontSize;
+    }
+    if (dto.noticeFontFamily !== undefined) {
+      updateData.noticeFontFamily = dto.noticeFontFamily;
+    }
+
+    // Update or create the system config
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: updateData,
+      create: {
+        id: 'system',
+        noticeText: dto.noticeText ?? null,
+        noticeFontSize: dto.noticeFontSize ?? 14,
+        noticeFontFamily: dto.noticeFontFamily ?? 'Pretendard',
+      },
+    });
+
+    const result = {
+      text: config.noticeText,
+      fontSize: config.noticeFontSize,
+      fontFamily: config.noticeFontFamily,
+    };
+
+    // Broadcast notice update via WebSocket
+    if (this.websocketGateway && this.websocketGateway.server) {
+      this.websocketGateway.server.emit('notice:updated', result);
+    }
+
+    return result;
   }
 }

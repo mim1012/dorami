@@ -170,14 +170,14 @@ export default function ProfileRegisterPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
+    <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">Complete Your Profile</Display>

@@ -1,20 +1,25 @@
 @import "tailwindcss";
 
-/* Pretendard Font via CDN */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+/* Pretendard Font */
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
+}
 
 /* CSS Variables for Theme Tokens */
 :root {
-  /* Colors */
-  --primary-black: #121212;
-  --content-bg: #1E1E1E;
-  --hot-pink: #FF007A;
-  --primary-text: #FFFFFF;
-  --secondary-text: #A0A0A0;
-  --success: #34C759;
-  --error: #FF3B30;
-  --warning: #FF9500;
-  --info: #5AC8FA;
+  /* Light Mode Colors */
+  --primary-black: #FFFFFF;
+  --content-bg: #F7F7F7;
+  --hot-pink: #E6006E;
+  --primary-text: #1A1A1A;
+  --secondary-text: #555555;
+  --success: #16A34A;
+  --error: #DC2626;
+  --warning: #EA580C;
+  --info: #0284C7;
 
   /* Border Radius */
   --radius-card: 12px;
@@ -23,6 +28,19 @@
 
   /* Spacing */
   --spacing-unit: 8px;
+}
+
+/* Dark Mode Colors */
+.dark {
+  --primary-black: #0A0A0A;
+  --content-bg: #141414;
+  --hot-pink: #FF007A;
+  --primary-text: #FFFFFF;
+  --secondary-text: #A0A0A0;
+  --success: #34C759;
+  --error: #FF3B30;
+  --warning: #FF9500;
+  --info: #5AC8FA;
 }
 
 /* Dark Mode Base Styles */
@@ -52,11 +70,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--primary-black);
+  background: var(--content-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--content-bg);
+  background: #CCCCCC;
   border-radius: 4px;
 }
 

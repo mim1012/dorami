@@ -51,8 +51,15 @@ async function request<T>(
     throw new Error(error.message || `HTTP ${response.status}`);
   }
 
-  const data = await response.json();
-  return { data };
+  const result = await response.json();
+
+  // Backend wraps responses in { data: ..., success: true, timestamp: "..." }
+  // Extract the actual data from the wrapper
+  if (result && typeof result === 'object' && 'data' in result) {
+    return { data: result.data };
+  }
+
+  return { data: result };
 }
 
 export const apiClient = {

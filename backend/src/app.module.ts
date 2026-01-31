@@ -18,7 +18,8 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
 import { StoreModule } from './modules/store/store.module';
-import { ConfigSystemModule } from './modules/config-system/config-system.module';
+import { NoticesModule } from './modules/notices/notices.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -57,7 +58,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     NotificationsModule,
     SettlementModule,
     StoreModule,
-    ConfigSystemModule,
+    NoticesModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [
@@ -68,4 +70,4 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

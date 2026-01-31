@@ -12,17 +12,23 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    // Always apply dark mode
-    document.documentElement.classList.add('dark');
+    // Remove dark class if present (ensure light mode default)
+    document.documentElement.classList.remove('dark');
   }, []);
 
   const toggleTheme = () => {
-    // Currently locked to dark mode
-    // Future: implement light mode toggle
-    console.log('Theme toggle not implemented - dark mode only');
+    setTheme((prev) => {
+      const newTheme = prev === 'dark' ? 'light' : 'dark';
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return newTheme;
+    });
   };
 
   return (

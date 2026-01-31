@@ -14,7 +14,8 @@ export class ProductEventsListener {
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
   ) {
-    this.logger = new LoggerService('ProductEventsListener');
+    this.logger = new LoggerService();
+    this.logger.setContext('ProductEventsListener');
   }
 
   @OnEvent('order.created')
@@ -50,7 +51,7 @@ export class ProductEventsListener {
         ),
       );
 
-      this.logger.log(`Product ${item.productId} stock: ${product.quantity} → ${newQuantity}`);
+      this.logger.log(`Product ${item.productId} stock: ${product.quantity} ??${newQuantity}`);
     }
   }
 

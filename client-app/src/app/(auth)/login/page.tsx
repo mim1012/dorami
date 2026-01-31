@@ -27,14 +27,14 @@ function LoginContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Display className="text-hot-pink mb-2">Live Commerce</Display>
@@ -77,7 +77,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+        <div className="min-h-screen bg-white flex items-center justify-center">
           <Body>Loading...</Body>
         </div>
       }

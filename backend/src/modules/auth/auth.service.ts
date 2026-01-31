@@ -29,32 +29,43 @@ export class AuthService {
       where: { kakaoId: profile.kakaoId },
     });
 
+    // Check if user email is in admin whitelist
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
+    const adminEmailList = adminEmails
+      .split(',')
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
+
+    const isAdmin = profile.email && adminEmailList.includes(profile.email);
+    const assignedRole = isAdmin ? 'ADMIN' : 'USER';
+
     if (!user) {
       // Auto-registration for new Kakao users
       user = await this.prisma.user.create({
         data: {
           kakaoId: profile.kakaoId,
-          email: profile.email,
+          email: profile.email || null, // Set to null if undefined (user denied email permission)
           name: profile.nickname,
-          role: 'USER', // Default role
+          role: assignedRole, // Assign role based on whitelist
           status: 'ACTIVE', // Set status to ACTIVE
           lastLoginAt: new Date(), // Set lastLoginAt
         },
       });
 
-      console.log(`✅ New user created: ${user.email}`);
+      console.log(`✅ New user created: ${user.email} (role: ${assignedRole})`);
     } else {
-      // Update user profile and lastLoginAt for returning users
+      // Update user profile, lastLoginAt, and role (in case whitelist changed)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           name: profile.nickname,
           email: profile.email || user.email,
+          role: assignedRole, // Update role based on current whitelist
           lastLoginAt: new Date(), // Update lastLoginAt
         },
       });
 
-      console.log(`✅ Returning user: ${user.email}`);
+      console.log(`✅ Returning user: ${user.email} (role: ${assignedRole})`);
     }
 
     return user;

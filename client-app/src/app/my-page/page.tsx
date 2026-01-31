@@ -9,6 +9,7 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
+import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { US_STATES } from '@/lib/constants/us-states';
 import { formatPhoneNumber, formatZipCode } from '@/lib/utils/format';
 
@@ -62,9 +63,12 @@ export default function MyPagePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   const [formData, setFormData] = useState<AddressFormData>({
     fullName: '',
@@ -78,12 +82,10 @@ export default function MyPagePage() {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // Redirect if not authenticated
+  // [DEV] Redirect all users to admin page
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
+    router.push('/admin');
+  }, [router]);
 
   // Load profile
   useEffect(() => {
@@ -173,6 +175,17 @@ export default function MyPagePage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleKakaoLogin = () => {
+    if (!agreedToTerms || !agreedToPrivacy) {
+      alert('이용약관과 개인정보처리방침에 동의해주세요.');
+      return;
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const baseUrl = apiUrl.replace('/api', '');
+    window.location.href = `${baseUrl}/auth/kakao`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -199,25 +212,112 @@ export default function MyPagePage() {
     }
   };
 
-  if (authLoading || isLoadingProfile) {
+  if (authLoading || (user && isLoadingProfile)) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
   }
 
+  // If not logged in, show a basic page with login modal
+  if (!user) {
+    return (
+      <>
+        <div className="min-h-screen bg-white py-12 px-4 pb-24">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <Display className="text-hot-pink mb-2">My Page</Display>
+              <Body className="text-secondary-text">로그인하여 프로필을 확인하세요</Body>
+            </div>
+          </div>
+        </div>
+
+        {/* Login Modal */}
+        <Modal
+          isOpen={isLoginModalOpen}
+          onClose={() => router.push('/')}
+          title="로그인이 필요합니다"
+          maxWidth="md"
+        >
+          <div className="space-y-6">
+            <div className="text-center">
+              <Body className="text-secondary-text">
+                카카오 계정으로 간편하게 시작하세요
+              </Body>
+            </div>
+
+            {/* 약관 동의 */}
+            <div className="space-y-3 bg-content-bg rounded-button p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-white checked:bg-hot-pink focus:ring-hot-pink focus:ring-2 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <Body className="text-primary-text">
+                    <span className="text-hot-pink font-bold">[필수]</span> 이용약관 동의
+                  </Body>
+                  <Body className="text-caption text-secondary-text mt-1">
+                    서비스 이용을 위한 기본 약관에 동의합니다.
+                  </Body>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedToPrivacy}
+                  onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-white checked:bg-hot-pink focus:ring-hot-pink focus:ring-2 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <Body className="text-primary-text">
+                    <span className="text-hot-pink font-bold">[필수]</span> 개인정보처리방침 동의
+                  </Body>
+                  <Body className="text-caption text-secondary-text mt-1">
+                    개인정보 수집 및 이용에 동의합니다.
+                  </Body>
+                </div>
+              </label>
+            </div>
+
+            {/* 카카오 로그인 버튼 - 타원형 */}
+            <button
+              onClick={handleKakaoLogin}
+              className="w-full bg-[#FEE500] text-[#000000] hover:bg-[#FEE500]/90 font-bold py-4 rounded-full text-body transition-opacity"
+            >
+              💬 3초만에 로그인
+            </button>
+
+            <Body className="text-center text-secondary-text text-caption">
+              로그인하면 위 약관에 동의하는 것으로 간주됩니다
+            </Body>
+          </div>
+        </Modal>
+
+        <BottomTabBar />
+      </>
+    );
+  }
+
   if (!profile) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
-        <Body className="text-error">Failed to load profile</Body>
-      </div>
+      <>
+        <div className="min-h-screen bg-white flex items-center justify-center pb-24">
+          <Body className="text-error">Failed to load profile</Body>
+        </div>
+        <BottomTabBar />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <>
+      <div className="min-h-screen bg-white py-12 px-4 pb-24">
+        <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">My Page</Display>
           <Body className="text-secondary-text">Manage your profile and view orders</Body>
@@ -287,12 +387,46 @@ export default function MyPagePage() {
           )}
         </div>
 
+        {/* Admin Dashboard Access - Only visible for ADMIN role */}
+        {profile.role === 'ADMIN' && (
+          <div className="bg-content-bg rounded-button p-6 mb-6 border-2 border-hot-pink">
+            <div className="flex items-center justify-between mb-4">
+              <Heading2 className="text-hot-pink">판매자 전용</Heading2>
+              <div className="bg-hot-pink text-primary-text px-3 py-1 rounded-button text-caption font-bold">
+                ADMIN
+              </div>
+            </div>
+            <Body className="text-secondary-text mb-4">
+              라이브 방송 관리, 주문 처리, 채팅 모더레이션 등 판매자 전용 기능에 접근할 수 있습니다.
+            </Body>
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => router.push('/admin')}
+            >
+              🎯 판매자 대시보드 시작하기 →
+            </Button>
+          </div>
+        )}
+
         {/* Order History Summary */}
         <div className="bg-content-bg rounded-button p-6">
-          <Heading2 className="text-hot-pink mb-4">Recent Orders</Heading2>
-          <Body className="text-secondary-text">
-            Order history will be available after Epic 8 implementation
+          <div className="flex items-center justify-between mb-4">
+            <Heading2 className="text-hot-pink">주문 내역</Heading2>
+            <Button variant="outline" size="sm" onClick={() => router.push('/orders')}>
+              전체 보기
+            </Button>
+          </div>
+          <Body className="text-secondary-text mb-4">
+            주문하신 상품의 배송 상태를 확인하세요
           </Body>
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={() => router.push('/orders')}
+          >
+            📦 내 주문 확인하기 →
+          </Button>
         </div>
       </div>
 
@@ -416,6 +550,9 @@ export default function MyPagePage() {
           </div>
         </form>
       </Modal>
-    </div>
+      </div>
+
+      <BottomTabBar />
+    </>
   );
 }

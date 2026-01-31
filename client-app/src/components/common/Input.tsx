@@ -25,7 +25,7 @@ export function Input({
 
   const errorStyles = hasError
     ? 'border-2 border-error focus:ring-error'
-    : 'border-2 border-transparent';
+    : 'border border-gray-300 focus:border-hot-pink';
 
   const widthStyles = fullWidth ? 'w-full' : '';
 

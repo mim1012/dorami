@@ -14,7 +14,8 @@ export class ReservationService {
     private redisService: RedisService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.logger = new LoggerService('ReservationService');
+    this.logger = new LoggerService();
+    this.logger.setContext('ReservationService');
   }
 
   /**

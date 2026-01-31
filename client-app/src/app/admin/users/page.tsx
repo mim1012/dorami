@@ -241,14 +241,14 @@ function AdminUsersContent() {
 
   if (authLoading || (user && user.role !== 'ADMIN')) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
+    <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">User Management</Display>
@@ -325,7 +325,7 @@ function AdminUsersContent() {
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
                         statusFilter.includes(status)
                           ? 'bg-hot-pink text-primary-text'
-                          : 'bg-primary-black text-secondary-text hover:bg-primary-black/50'
+                          : 'bg-white text-secondary-text hover:bg-white/50'
                       }`}
                     >
                       {status}
@@ -375,7 +375,7 @@ export default function AdminUsersPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+        <div className="min-h-screen bg-white flex items-center justify-center">
           <Body>Loading...</Body>
         </div>
       }

@@ -9,7 +9,8 @@ export class KakaoTalkClient {
   private logger: LoggerService;
 
   constructor(private configService: ConfigService) {
-    this.logger = new LoggerService('KakaoTalkClient');
+    this.logger = new LoggerService();
+    this.logger.setContext('KakaoTalkClient');
 
     this.client = axios.create({
       baseURL: 'https://kapi.kakao.com',

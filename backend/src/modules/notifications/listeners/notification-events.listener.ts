@@ -8,7 +8,8 @@ export class NotificationEventsListener {
   private logger: LoggerService;
 
   constructor(private notificationsService: NotificationsService) {
-    this.logger = new LoggerService('NotificationEventsListener');
+    this.logger = new LoggerService();
+    this.logger.setContext('NotificationEventsListener');
   }
 
   @OnEvent('order:created')

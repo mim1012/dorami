@@ -19,9 +19,9 @@ export function Button({
   const baseStyles = 'rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-hot-pink text-primary-text hover:bg-hot-pink/90 active:scale-95',
-    secondary: 'bg-content-bg text-primary-text hover:bg-content-bg/80 active:scale-95',
-    outline: 'border-2 border-hot-pink text-hot-pink hover:bg-hot-pink hover:text-primary-text active:scale-95',
+    primary: 'bg-hot-pink text-white hover:bg-hot-pink/90 active:scale-95',
+    secondary: 'bg-content-bg text-primary-text hover:bg-content-bg/80 active:scale-95 border border-gray-300',
+    outline: 'border-2 border-hot-pink text-hot-pink hover:bg-hot-pink hover:text-white active:scale-95',
     ghost: 'text-hot-pink hover:bg-hot-pink/10 active:scale-95',
   };
 

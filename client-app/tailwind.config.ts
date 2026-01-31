@@ -9,17 +9,17 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
-      // Custom Color Palette
+      // Custom Color Palette (Light Mode)
       colors: {
-        'primary-black': '#121212',
-        'content-bg': '#1E1E1E',
-        'hot-pink': '#FF007A',
-        'primary-text': '#FFFFFF',
-        'secondary-text': '#A0A0A0',
-        'success': '#34C759',
-        'error': '#FF3B30',
-        'warning': '#FF9500',
-        'info': '#5AC8FA',
+        'primary-black': 'var(--primary-black)',
+        'content-bg': 'var(--content-bg)',
+        'hot-pink': 'var(--hot-pink)',
+        'primary-text': 'var(--primary-text)',
+        'secondary-text': 'var(--secondary-text)',
+        'success': 'var(--success)',
+        'error': 'var(--error)',
+        'warning': 'var(--warning)',
+        'info': 'var(--info)',
       },
 
       // Typography
@@ -85,11 +85,11 @@ const config: Config = {
         },
       },
 
-      // Box Shadow
+      // Box Shadow (Light Mode)
       boxShadow: {
         'hot-pink': '0 0 20px rgba(255, 0, 122, 0.3)',
-        'card': '0 4px 6px rgba(0, 0, 0, 0.3)',
-        'card-hover': '0 8px 12px rgba(0, 0, 0, 0.4)',
+        'card': '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'card-hover': '0 4px 12px rgba(0, 0, 0, 0.12)',
       },
     },
   },

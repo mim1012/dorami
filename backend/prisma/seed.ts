@@ -71,22 +71,19 @@ async function main() {
   });
   console.log(`✅ Test user created: ${testUser.email}`);
 
-  // Create system configs
-  console.log('⚙️  Creating system configurations...');
-  await prisma.systemConfig.createMany({
-    data: [
-      {
-        key: 'CART_TIMER_MINUTES',
-        value: { minutes: 10 },
-      },
-      {
-        key: 'PROMOTED_RESERVATION_TIMER_MINUTES',
-        value: { minutes: 5 },
-      },
-    ],
-    skipDuplicates: true,
+  // Create system config (single-row configuration)
+  console.log('⚙️  Creating system configuration...');
+  await prisma.systemConfig.upsert({
+    where: { id: 'system' },
+    update: {},
+    create: {
+      id: 'system',
+      noticeText: null, // No notice by default
+      noticeFontSize: 14,
+      noticeFontFamily: 'Pretendard',
+    },
   });
-  console.log('✅ System configs created');
+  console.log('✅ System config created');
 
   // Create notification templates
   console.log('📧 Creating notification templates...');

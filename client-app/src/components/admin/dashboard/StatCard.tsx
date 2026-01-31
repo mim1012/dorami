@@ -26,7 +26,7 @@ export default function StatCard({
     };
 
     return (
-        <div className="bg-content-bg border border-white/5 rounded-card p-6 hover:border-hot-pink/30 hover:shadow-[0_0_20px_rgba(0,0,0,0.2)] transition-all duration-300 group">
+        <div className="bg-content-bg border border-gray-200 rounded-card p-6 hover:border-hot-pink/30 hover:shadow-card-hover transition-all duration-300 group">
             <div className="flex justify-between items-start mb-4">
                 <div className={`p-3 rounded-lg ${colorMap[color]} transition-transform group-hover:scale-110 duration-300`}>
                     <Icon className="w-6 h-6" />
@@ -39,7 +39,7 @@ export default function StatCard({
 
             <div>
                 <p className="text-secondary-text text-sm font-medium mb-1">{title}</p>
-                <h3 className="text-display text-white font-bold tracking-tight">{value}</h3>
+                <h3 className="text-display text-primary-text font-bold tracking-tight">{value}</h3>
             </div>
         </div>
     );

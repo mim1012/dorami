@@ -14,7 +14,7 @@ datasource db {
 // Epic 2: User Authentication & Profile Management
 model User {
   id              String     @id @default(uuid())
-  email           String     @unique
+  email           String?    @unique
   kakaoId         String     @unique
   name            String
   role            Role       @default(USER)
@@ -296,12 +296,16 @@ model NotificationTemplate {
 // Epic 12: System Configuration & Administration
 model SystemConfig {
   id        String   @id @default(uuid())
-  key       String   @unique
-  value     Json
+
+  // Notice Configuration (Simple Text Box)
+  noticeText       String?  @db.Text @map("notice_text")
+  noticeFontSize   Int      @default(14) @map("notice_font_size") // Range: 10-24px
+  noticeFontFamily String   @default("Pretendard") @map("notice_font_family")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("system_configs")
+  @@map("system_config")
 }
 
 model AuditLog {
@@ -338,4 +342,15 @@ enum SettlementStatus {
   PENDING
   APPROVED
   PAID
+}
+
+model Notice {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notices")
 }

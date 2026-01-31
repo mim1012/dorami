@@ -4,7 +4,7 @@ import { Display, Heading1, Heading2, Body, Caption, Small } from '@/components/
 
 export default function DesignSystemDemo() {
   return (
-    <div className="min-h-screen bg-primary-black p-8">
+    <div className="min-h-screen bg-white p-8">
       <div className="max-w-4xl mx-auto space-y-12">
         {/* Header */}
         <div>
@@ -17,7 +17,7 @@ export default function DesignSystemDemo() {
           <Heading1 className="mb-4">Color Palette</Heading1>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="w-full h-20 bg-primary-black rounded-button border border-primary-text/20 mb-2"></div>
+              <div className="w-full h-20 bg-white rounded-button border border-primary-text/20 mb-2"></div>
               <Caption>Primary Black</Caption>
               <Small>#121212</Small>
             </div>

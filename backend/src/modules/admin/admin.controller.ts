@@ -1,6 +1,6 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { GetUsersQueryDto } from './dto/admin.dto';
+import { GetUsersQueryDto, UpdateNoticeDto, GetOrdersQueryDto } from './dto/admin.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -16,6 +16,11 @@ export class AdminController {
     return this.adminService.getUserList(query);
   }
 
+  @Get('orders')
+  async getOrderList(@Query() query: GetOrdersQueryDto) {
+    return this.adminService.getOrderList(query);
+  }
+
   @Get('dashboard/stats')
   async getDashboardStats() {
     return this.adminService.getDashboardStats();
@@ -24,5 +29,15 @@ export class AdminController {
   @Get('activities/recent')
   async getRecentActivities(@Query('limit') limit?: number) {
     return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
+  }
+
+  @Get('config')
+  async getSystemConfig() {
+    return this.adminService.getSystemConfig();
+  }
+
+  @Put('config')
+  async updateSystemConfig(@Body() dto: UpdateNoticeDto) {
+    return this.adminService.updateSystemConfig(dto);
   }
 }

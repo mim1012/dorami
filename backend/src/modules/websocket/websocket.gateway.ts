@@ -34,17 +34,18 @@ export class WebsocketGateway
     private redisService: RedisService,
     private jwtService: JwtService,
   ) {
-    this.logger = new LoggerService('WebSocketGateway');
+    this.logger = new LoggerService();
+    this.logger.setContext('WebSocketGateway');
   }
 
   afterInit(server: Server) {
-    // Setup Redis Adapter for horizontal scaling
-    const pubClient = this.redisService.getPubClient();
-    const subClient = this.redisService.getSubClient();
+    // Temporarily disabled Redis Adapter to allow server to start
+    // TODO: Fix Redis adapter connection hanging issue
+    // const pubClient = this.redisService.getPubClient();
+    // const subClient = this.redisService.getSubClient();
+    // server.adapter(createAdapter(pubClient, subClient));
 
-    server.adapter(createAdapter(pubClient, subClient));
-
-    this.logger.log('WebSocket Gateway initialized with Redis Adapter');
+    this.logger.log('WebSocket Gateway initialized (Redis Adapter disabled)');
   }
 
   async handleConnection(client: Socket) {

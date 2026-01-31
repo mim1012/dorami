@@ -95,7 +95,7 @@ export default function LivePage() {
                 {liveStreams.map((stream) => (
                   <div
                     key={stream.id}
-                    className="relative aspect-video bg-primary-black rounded-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
+                    className="relative aspect-video bg-white rounded-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
                   >
                     {/* 비디오 플레이스홀더 */}
                     <div className="absolute inset-0 bg-gradient-to-br from-hot-pink/30 to-purple-600/30" />

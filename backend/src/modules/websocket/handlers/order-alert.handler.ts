@@ -8,7 +8,8 @@ export class OrderAlertHandler {
   private logger: LoggerService;
 
   constructor(private websocketGateway: WebsocketGateway) {
-    this.logger = new LoggerService('OrderAlertHandler');
+    this.logger = new LoggerService();
+    this.logger.setContext('OrderAlertHandler');
   }
 
   @OnEvent('order:created')

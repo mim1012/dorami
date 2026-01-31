@@ -17,8 +17,11 @@ export function useAuth() {
       setLoading(true);
       const response = await apiClient.get<any>('/auth/me');
       setUser(response.data);
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
+    } catch (error: any) {
+      // 401 Unauthorized는 정상적인 상태 (로그인 안 됨)이므로 조용히 처리
+      if (error?.message !== 'Unauthorized') {
+        console.error('Failed to fetch profile:', error);
+      }
       setUser(null);
     } finally {
       setLoading(false);

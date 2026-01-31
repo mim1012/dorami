@@ -8,7 +8,8 @@ export class ProductAlertHandler {
   private logger: LoggerService;
 
   constructor(private websocketGateway: WebsocketGateway) {
-    this.logger = new LoggerService('ProductAlertHandler');
+    this.logger = new LoggerService();
+    this.logger.setContext('ProductAlertHandler');
   }
 
   @OnEvent('product:stock:updated')
