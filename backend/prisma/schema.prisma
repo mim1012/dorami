@@ -237,6 +237,7 @@ model Order {
   @@index([userId])
   @@index([paymentStatus])
   @@index([status])
+  @@index([paymentStatus, paidAt])
   @@map("orders")
 }
 

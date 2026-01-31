@@ -1,39 +1,37 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Response } from '@nestjs/common';
 import { SettlementService } from './settlement.service';
-import { GenerateSettlementDto } from './dto/settlement.dto';
+import { GetSettlementQueryDto } from './dto/settlement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Response as ExpressResponse } from 'express';
 
-@Controller('settlement')
-@UseGuards(JwtAuthGuard)
+@Controller('admin/settlement')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class SettlementController {
   constructor(private settlementService: SettlementService) {}
 
-  @Post('generate')
-  async generateReport(@Body() generateDto: GenerateSettlementDto) {
-    return this.settlementService.generateReport(generateDto);
+  @Get()
+  async getSettlementReport(@Query() query: GetSettlementQueryDto) {
+    return this.settlementService.getSettlementReport(query);
   }
 
-  @Get('seller/:sellerId')
-  async getSettlementsBySeller(@Param('sellerId') sellerId: string) {
-    return this.settlementService.getSettlementsBySeller(sellerId);
-  }
+  @Get('download')
+  async downloadExcel(
+    @Query() query: GetSettlementQueryDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const buffer = await this.settlementService.generateExcelReport(query);
 
-  @Get(':id')
-  async getSettlementById(@Param('id') id: string) {
-    return this.settlementService.getSettlementById(id);
-  }
+    const filename = `settlement_${query.from}_${query.to}.xlsx`;
 
-  @Patch(':id/approve')
-  async approveSettlement(@Param('id') id: string) {
-    return this.settlementService.approveSettlement(id);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
   }
 }
