@@ -155,7 +155,7 @@ export default function BroadcastsPage() {
     );
   };
 
-  if (false && (authLoading || (user && user.role !== 'ADMIN'))) { // [DEV] disabled
+  if (false && (authLoading || (user && user?.role !== 'ADMIN'))) { // [DEV] disabled
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-secondary-text">Loading...</div>

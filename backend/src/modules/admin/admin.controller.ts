@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Patch, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { GetUsersQueryDto, UpdateNoticeDto, GetOrdersQueryDto } from './dto/admin.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -39,5 +39,10 @@ export class AdminController {
   @Put('config')
   async updateSystemConfig(@Body() dto: UpdateNoticeDto) {
     return this.adminService.updateSystemConfig(dto);
+  }
+
+  @Patch('orders/:id/confirm-payment')
+  async confirmPayment(@Param('id') orderId: string) {
+    return this.adminService.confirmOrderPayment(orderId);
   }
 }

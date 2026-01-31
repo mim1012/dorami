@@ -239,7 +239,7 @@ function AdminUsersContent() {
   const hasActiveFilters =
     debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
 
-  if (false && (authLoading || (user && user.role !== 'ADMIN'))) { // [DEV] disabled
+  if (false && (authLoading || (user && user?.role !== 'ADMIN'))) { // [DEV] disabled
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <Body>Loading...</Body>

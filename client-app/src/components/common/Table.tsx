@@ -17,6 +17,7 @@ interface TableProps<T> {
   sortOrder?: 'asc' | 'desc';
   onSort?: (key: string) => void;
   emptyMessage?: string;
+  getRowClassName?: (item: T) => string;
 }
 
 export function Table<T extends { id: string }>({
@@ -26,6 +27,7 @@ export function Table<T extends { id: string }>({
   sortOrder,
   onSort,
   emptyMessage = 'No data available',
+  getRowClassName,
 }: TableProps<T>) {
   const handleSort = (key: string, sortable: boolean = true) => {
     if (sortable && onSort) {
@@ -76,19 +78,25 @@ export function Table<T extends { id: string }>({
               </td>
             </tr>
           ) : (
-            data.map((item) => (
-              <tr key={item.id} className="hover:bg-content-bg/50 transition-colors">
-                {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 whitespace-nowrap">
-                    <Body className="text-primary-text">
-                      {column.render
-                        ? column.render(item)
-                        : (item as any)[column.key]?.toString() || '-'}
-                    </Body>
-                  </td>
-                ))}
-              </tr>
-            ))
+            data.map((item) => {
+              const customRowClass = getRowClassName ? getRowClassName(item) : '';
+              return (
+                <tr
+                  key={item.id}
+                  className={`hover:bg-content-bg/50 transition-colors ${customRowClass}`}
+                >
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                      <Body className="text-primary-text">
+                        {column.render
+                          ? column.render(item)
+                          : (item as any)[column.key]?.toString() || '-'}
+                      </Body>
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

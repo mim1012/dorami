@@ -1,4 +1,5 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   GetUsersQueryDto,
@@ -19,6 +20,7 @@ import {
 export class AdminService {
   constructor(
     private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => 'WEBSOCKET_GATEWAY'))
     private websocketGateway: any,
   ) {}
@@ -450,5 +452,63 @@ export class AdminService {
     }
 
     return result;
+  }
+
+  /**
+   * Confirm order payment (admin only)
+   * Updates payment status from PENDING to CONFIRMED
+   */
+  async confirmOrderPayment(orderId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Find order with user info
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+            }
+          }
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      // 2. Check if already confirmed
+      if (order.paymentStatus === 'CONFIRMED') {
+        throw new BadRequestException('Payment already confirmed');
+      }
+
+      // 3. Update order status
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: 'CONFIRMED',
+          status: 'PAYMENT_CONFIRMED',
+          paidAt: new Date(),
+        },
+      });
+
+      // 4. Emit domain event for notifications
+      this.eventEmitter.emit('order:payment:confirmed', {
+        orderId: updatedOrder.id,
+        userId: order.userId,
+        userEmail: order.user.email,
+        total: order.total,
+      });
+
+      return {
+        success: true,
+        data: {
+          orderId: updatedOrder.id,
+          paymentStatus: updatedOrder.paymentStatus,
+          status: updatedOrder.status,
+          paidAt: updatedOrder.paidAt,
+        },
+      };
+    });
   }
 }
