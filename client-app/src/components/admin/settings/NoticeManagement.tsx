@@ -146,7 +146,7 @@ export function NoticeManagement() {
             <textarea
               value={formData.text || ''}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
-              className="w-full h-48 px-4 py-3 bg-primary-black border border-white/10 rounded-lg text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink resize-none"
+              className="w-full h-48 px-4 py-3 bg-white border border-gray-200 rounded-lg text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink resize-none"
               placeholder="공지 내용을 입력하세요&#10;&#10;여러 줄 입력 가능합니다."
               style={{
                 fontSize: `${formData.fontSize}px`,
@@ -166,7 +166,7 @@ export function NoticeManagement() {
             <select
               value={formData.fontFamily}
               onChange={(e) => setFormData({ ...formData, fontFamily: e.target.value })}
-              className="w-full px-4 py-3 bg-primary-black border border-white/10 rounded-lg text-primary-text focus:outline-none focus:border-hot-pink appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-primary-text focus:outline-none focus:border-hot-pink appearance-none cursor-pointer"
             >
               {FONT_FAMILIES.map((font) => (
                 <option key={font.value} value={font.value}>
@@ -190,9 +190,9 @@ export function NoticeManagement() {
               onChange={(e) =>
                 setFormData({ ...formData, fontSize: parseInt(e.target.value) })
               }
-              className="w-full h-2 bg-primary-black rounded-lg appearance-none cursor-pointer slider"
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
               style={{
-                background: `linear-gradient(to right, #ff007a 0%, #ff007a ${((formData.fontSize - 10) / 14) * 100}%, #1a1a1a ${((formData.fontSize - 10) / 14) * 100}%, #1a1a1a 100%)`,
+                background: `linear-gradient(to right, #ff007a 0%, #ff007a ${((formData.fontSize - 10) / 14) * 100}%, #e5e7eb ${((formData.fontSize - 10) / 14) * 100}%, #e5e7eb 100%)`,
               }}
             />
             <div className="flex justify-between text-xs text-secondary-text mt-1">
@@ -206,14 +206,14 @@ export function NoticeManagement() {
             <button
               onClick={handleSave}
               disabled={saveMutation.isPending}
-              className="flex-1 px-6 py-3 bg-hot-pink hover:bg-hot-pink/90 text-primary-text rounded-lg font-medium shadow-[0_0_15px_rgba(255,0,122,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-hot-pink hover:bg-hot-pink/90 text-white rounded-lg font-medium shadow-[0_0_15px_rgba(255,0,122,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saveMutation.isPending ? '저장 중...' : '저장'}
             </button>
             <button
               onClick={handleReset}
               disabled={resetMutation.isPending}
-              className="px-6 py-3 bg-content-bg border border-white/10 text-primary-text rounded-lg font-medium hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-content-bg border border-gray-200 text-primary-text rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {resetMutation.isPending ? '초기화 중...' : '초기화'}
             </button>
@@ -228,7 +228,7 @@ export function NoticeManagement() {
           </p>
 
           {/* Preview Box */}
-          <div className="bg-primary-black border border-white/10 rounded-2xl p-6 min-h-[400px] flex flex-col">
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 min-h-[400px] flex flex-col">
             {/* Header */}
             <div className="mb-4 flex-shrink-0">
               <h3 className="text-lg font-semibold text-hot-pink flex items-center gap-2">

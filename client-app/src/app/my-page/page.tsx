@@ -82,10 +82,10 @@ export default function MyPagePage() {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // [DEV] Redirect all users to admin page
-  useEffect(() => {
-    router.push('/admin');
-  }, [router]);
+  // [DEV] Admin redirect disabled
+  // useEffect(() => {
+  //   router.push('/admin');
+  // }, [router]);
 
   // Load profile
   useEffect(() => {
@@ -214,7 +214,7 @@ export default function MyPagePage() {
 
   if (authLoading || (user && isLoadingProfile)) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
@@ -224,8 +224,8 @@ export default function MyPagePage() {
   if (!user) {
     return (
       <>
-        <div className="min-h-screen bg-white py-12 px-4 pb-24">
-          <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+          <div className="w-full md:max-w-4xl md:mx-auto">
             <div className="text-center mb-8">
               <Display className="text-hot-pink mb-2">My Page</Display>
               <Body className="text-secondary-text">로그인하여 프로필을 확인하세요</Body>
@@ -306,7 +306,7 @@ export default function MyPagePage() {
   if (!profile) {
     return (
       <>
-        <div className="min-h-screen bg-white flex items-center justify-center pb-24">
+        <div className="min-h-screen bg-[#121212] flex items-center justify-center pb-28">
           <Body className="text-error">Failed to load profile</Body>
         </div>
         <BottomTabBar />
@@ -316,8 +316,8 @@ export default function MyPagePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white py-12 px-4 pb-24">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+        <div className="w-full md:max-w-4xl md:mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">My Page</Display>
           <Body className="text-secondary-text">Manage your profile and view orders</Body>

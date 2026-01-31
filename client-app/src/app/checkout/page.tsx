@@ -71,8 +71,8 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-[#121212] py-12 px-4 pb-24">
+      <div className="w-full md:max-w-3xl md:mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">주문하기</Display>

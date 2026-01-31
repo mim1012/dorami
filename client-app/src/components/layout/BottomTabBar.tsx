@@ -17,7 +17,7 @@ const KAKAO_INQUIRY_URL = 'https://pf.kakao.com/_your_kakao_channel'; // 실제 
 
 const tabs: TabItem[] = [
   { id: 'home', label: 'Home', icon: Home, path: '/' },
-  { id: 'cart', label: 'Cart', icon: ShoppingCart, path: '/cart' },
+  { id: 'shop', label: 'Shop', icon: ShoppingCart, path: '/shop' },
   { id: 'live', label: 'Live', icon: Video, path: '/live' },
   {
     id: 'inquiry',
@@ -27,7 +27,7 @@ const tabs: TabItem[] = [
       window.open(KAKAO_INQUIRY_URL, '_blank');
     }
   },
-  { id: 'mypage', label: 'My', icon: User, path: '/my-page' },
+  { id: 'mypage', label: 'My Page', icon: User, path: '/my-page' },
 ];
 
 export function BottomTabBar() {
@@ -45,7 +45,7 @@ export function BottomTabBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 z-50 shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#1E1E1E]/95 backdrop-blur-sm border-t border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-around h-16 px-2">
           {tabs.map((tab) => {
@@ -57,7 +57,7 @@ export function BottomTabBar() {
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab)}
-                className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors relative"
+                className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors relative min-h-[44px] min-w-[44px]"
               >
                 {Icon ? (
                   <div className="relative">

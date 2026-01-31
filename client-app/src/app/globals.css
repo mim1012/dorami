@@ -10,12 +10,12 @@
 
 /* CSS Variables for Theme Tokens */
 :root {
-  /* Light Mode Colors */
-  --primary-black: #FFFFFF;
-  --content-bg: #F7F7F7;
-  --hot-pink: #E6006E;
-  --primary-text: #1A1A1A;
-  --secondary-text: #555555;
+  /* Dark Mode Colors (default) */
+  --primary-black: #121212;
+  --content-bg: #1E1E1E;
+  --hot-pink: #FF007A;
+  --primary-text: #FFFFFF;
+  --secondary-text: #A0A0A0;
   --success: #16A34A;
   --error: #DC2626;
   --warning: #EA580C;

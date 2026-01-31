@@ -5,6 +5,7 @@ import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
+import { SearchBar } from '@/components/common/SearchBar';
 import { useRouter } from 'next/navigation';
 
 // Mock data - 추후 API로 대체
@@ -105,7 +106,7 @@ export default function Home() {
   return (
     <>
       <main className="min-h-screen pb-20">
-        <div className="max-w-screen-xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
           {/* 상단 헤더 */}
           <div className="mb-8">
             <h1 className="text-h1 text-primary-text font-bold mb-2">
@@ -114,6 +115,12 @@ export default function Home() {
             <p className="text-body text-secondary-text">
               실시간 쇼핑의 새로운 경험
             </p>
+            <div className="mt-4">
+              <SearchBar
+                placeholder="상품 검색..."
+                onSubmit={(query) => router.push(`/shop?q=${encodeURIComponent(query)}`)}
+              />
+            </div>
           </div>
 
           {/* 라이브 카운트다운 배너 */}

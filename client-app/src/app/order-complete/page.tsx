@@ -84,7 +84,7 @@ function OrderCompleteContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <Body className="text-secondary-text">주문 정보를 불러오는 중...</Body>
       </div>
     );
@@ -92,7 +92,7 @@ function OrderCompleteContent() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
         <div className="text-center">
           <Display className="text-error mb-4">오류</Display>
           <Body className="text-secondary-text mb-6">
@@ -107,12 +107,12 @@ function OrderCompleteContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-[#121212] py-12 px-4 pb-24">
+      <div className="w-full md:max-w-3xl md:mx-auto">
         {/* Success Icon */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-12 h-12 text-success" />
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-12 h-12 text-hot-pink" />
           </div>
           <Display className="text-hot-pink mb-2">주문이 완료되었습니다!</Display>
           <Body className="text-secondary-text">
@@ -127,7 +127,7 @@ function OrderCompleteContent() {
         </div>
 
         {/* Bank Transfer Info */}
-        <div className="bg-gradient-to-br from-hot-pink/20 to-error/10 border-2 border-hot-pink/50 rounded-2xl p-6 mb-6">
+        <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-5 h-5 text-hot-pink" />
             <Heading2 className="text-hot-pink">입금 정보</Heading2>
@@ -211,22 +211,24 @@ function OrderCompleteContent() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={() => router.push('/my-page')}
-          >
-            주문 내역 확인
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            fullWidth
-            onClick={() => router.push('/')}
-          >
-            홈으로 이동
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              onClick={() => router.push('/')}
+            >
+              홈으로 이동
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={() => router.push('/my-page')}
+            >
+              주문 내역 확인
+            </Button>
+          </div>
 
           {/* KakaoTalk Share Button */}
           <button
@@ -246,7 +248,7 @@ export default function OrderCompletePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="min-h-screen bg-[#121212] flex items-center justify-center">
           <Body>Loading...</Body>
         </div>
       }

@@ -1,14 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { ProductCard } from '@/components/home/ProductCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
+import { SearchBar } from '@/components/common/SearchBar';
 import { getProducts, type Product } from '@/lib/api/products';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ShopPage() {
+  return (
+    <Suspense>
+      <ShopPageContent />
+    </Suspense>
+  );
+}
+
+function ShopPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
   const [products, setProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +40,14 @@ export default function ShopPage() {
     fetchProducts();
   }, []);
 
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+  }, []);
+
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleProductClick = (productId: string) => {
     router.push(`/products/${productId}`);
   };
@@ -36,7 +56,7 @@ export default function ShopPage() {
     return (
       <>
         <main className="min-h-screen pb-20">
-          <div className="max-w-screen-xl mx-auto px-4 py-6">
+          <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
             <h1 className="text-h1 text-primary-text font-bold mb-8">Shop</h1>
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -55,7 +75,7 @@ export default function ShopPage() {
     return (
       <>
         <main className="min-h-screen pb-20">
-          <div className="max-w-screen-xl mx-auto px-4 py-6">
+          <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
             <h1 className="text-h1 text-primary-text font-bold mb-8">Shop</h1>
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -79,7 +99,7 @@ export default function ShopPage() {
   return (
     <>
       <main className="min-h-screen pb-20">
-        <div className="max-w-screen-xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
           {/* 헤더 */}
           <div className="mb-8">
             <h1 className="text-h1 text-primary-text font-bold mb-2">Shop</h1>
@@ -88,10 +108,19 @@ export default function ShopPage() {
             </p>
           </div>
 
+          {/* 검색바 */}
+          <div className="mb-6">
+            <SearchBar
+              defaultValue={initialQuery}
+              onChange={handleSearchChange}
+              placeholder="상품 검색..."
+            />
+          </div>
+
           {/* 상품 그리드 */}
-          {products.length > 0 ? (
+          {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   id={product.id}
@@ -105,8 +134,17 @@ export default function ShopPage() {
           ) : (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <p className="text-h2 text-primary-text mb-2">등록된 상품이 없습니다</p>
-                <p className="text-body text-secondary-text">곧 새로운 상품이 등록됩니다</p>
+                {searchQuery ? (
+                  <>
+                    <p className="text-h2 text-primary-text mb-2">검색 결과 없음</p>
+                    <p className="text-body text-secondary-text">&apos;{searchQuery}&apos;에 대한 결과가 없습니다</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-h2 text-primary-text mb-2">등록된 상품이 없습니다</p>
+                    <p className="text-body text-secondary-text">곧 새로운 상품이 등록됩니다</p>
+                  </>
+                )}
               </div>
             </div>
           )}

@@ -16,7 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="bg-white" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
+      <body className="bg-[#121212]" suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
             <CartProvider>

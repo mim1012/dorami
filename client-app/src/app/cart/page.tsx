@@ -54,8 +54,8 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <>
-        <div className="min-h-screen bg-white py-12 px-4 pb-24">
-          <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+          <div className="w-full md:max-w-4xl md:mx-auto">
             <div className="text-center py-16">
               <ShoppingBag className="w-24 h-24 text-secondary-text mx-auto mb-6 opacity-30" />
               <Display className="text-hot-pink mb-4">장바구니가 비어있습니다</Display>
@@ -75,8 +75,8 @@ export default function CartPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white py-6 px-4 pb-24">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-[#121212] py-6 px-4 pb-28">
+        <div className="w-full md:max-w-4xl md:mx-auto">
           {/* Header */}
           <div className="mb-6">
             <Display className="text-hot-pink mb-2">장바구니</Display>

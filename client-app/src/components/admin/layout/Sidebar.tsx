@@ -93,7 +93,7 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Footer / User Profile */}
-                <div className="p-4 border-t border-white/10">
+                <div className="p-4 border-t border-gray-200">
                     <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-secondary-text hover:bg-gray-100 hover:text-primary-text transition-colors">
                         <LogOut className="w-5 h-5" />
                         <span className="font-medium">로그아웃</span>

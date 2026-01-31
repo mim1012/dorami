@@ -118,7 +118,7 @@ export default function LiveStreamPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <Body className="text-secondary-text">Loading stream...</Body>
       </div>
     );
@@ -126,7 +126,7 @@ export default function LiveStreamPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
         <div className="text-center">
           <Display className="text-error mb-4">Error</Display>
           <Body className="text-secondary-text mb-6">{error}</Body>
@@ -140,7 +140,7 @@ export default function LiveStreamPage() {
 
   if (streamEnded) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
         <div className="text-center">
           <Display className="text-hot-pink mb-4">Stream has ended</Display>
           <Body className="text-secondary-text mb-6">Thank you for watching!</Body>
@@ -154,7 +154,7 @@ export default function LiveStreamPage() {
 
   if (!isLive || !streamStatus) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
         <div className="text-center">
           <Display className="text-hot-pink mb-4">Stream Not Available</Display>
           <Body className="text-secondary-text mb-6">
@@ -175,7 +175,7 @@ export default function LiveStreamPage() {
     : `https://cdn.example.com/hls/${streamKey}/index.m3u8`;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#121212] pb-20 lg:pb-0">
       {/* Desktop: 70/30 Layout | Mobile: Stacked */}
       <div className="w-full h-screen flex flex-col lg:flex-row">
         {/* Main Content Area (70% on desktop) */}
@@ -229,12 +229,12 @@ export default function LiveStreamPage() {
       {/* Mobile: Chat + Notice at bottom */}
       <div className="lg:hidden">
         {/* Mobile Chat */}
-        <div className="h-[400px] border-t border-gray-200">
+        <div className="h-[300px] border-t border-white/10">
           <LiveChat liveId={streamKey} streamKey={streamKey} />
         </div>
 
         {/* Mobile Notice */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-white/10">
           <NoticeBox />
         </div>
       </div>

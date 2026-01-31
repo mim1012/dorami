@@ -51,21 +51,21 @@ export default function BroadcastsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if not admin
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login');
-      } else if (user.role !== 'ADMIN') {
-        router.push('/');
-      }
-    }
-  }, [user, authLoading, router]);
+  // [DEV] Auth check disabled for development
+  // useEffect(() => {
+  //   if (!authLoading) {
+  //     if (!user) {
+  //       router.push('/login');
+  //     } else if (user.role !== 'ADMIN') {
+  //       router.push('/');
+  //     }
+  //   }
+  // }, [user, authLoading, router]);
 
   // Fetch live status
   useEffect(() => {
     const fetchLiveStatus = async () => {
-      if (!user || user.role !== 'ADMIN') return;
+      // [DEV] if (!user || user.role !== 'ADMIN') return;
 
       try {
         const response = await apiClient.get<LiveStatusResponse>('/streaming/live-status');
@@ -85,7 +85,7 @@ export default function BroadcastsPage() {
   // Fetch stream history
   useEffect(() => {
     const fetchHistory = async () => {
-      if (!user || user.role !== 'ADMIN') return;
+      // [DEV] if (!user || user.role !== 'ADMIN') return;
 
       setIsLoading(true);
       setError(null);
@@ -155,7 +155,7 @@ export default function BroadcastsPage() {
     );
   };
 
-  if (authLoading || (user && user.role !== 'ADMIN')) {
+  if (false && (authLoading || (user && user.role !== 'ADMIN'))) { // [DEV] disabled
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-secondary-text">Loading...</div>

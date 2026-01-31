@@ -387,7 +387,7 @@ function AdminOrdersContent() {
 
           {/* Filter Panel */}
           {isFilterOpen && (
-            <div className="pt-4 border-t border-primary-black space-y-4">
+            <div className="pt-4 border-t border-gray-200 space-y-4">
               <Heading2 className="text-hot-pink text-body">Filters</Heading2>
 
               {/* Date Range */}
@@ -424,8 +424,8 @@ function AdminOrdersContent() {
                       onClick={() => handleStatusToggle(status, 'order')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
                         orderStatusFilter.includes(status)
-                          ? 'bg-hot-pink text-primary-text'
-                          : 'bg-white text-secondary-text hover:bg-white/50'
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
                       {status.replace(/_/g, ' ')}
@@ -444,8 +444,8 @@ function AdminOrdersContent() {
                       onClick={() => handleStatusToggle(status, 'payment')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
                         paymentStatusFilter.includes(status)
-                          ? 'bg-hot-pink text-primary-text'
-                          : 'bg-white text-secondary-text hover:bg-white/50'
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
                       {status}
@@ -464,8 +464,8 @@ function AdminOrdersContent() {
                       onClick={() => handleStatusToggle(status, 'shipping')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
                         shippingStatusFilter.includes(status)
-                          ? 'bg-hot-pink text-primary-text'
-                          : 'bg-white text-secondary-text hover:bg-white/50'
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
                       {status}

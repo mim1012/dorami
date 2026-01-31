@@ -203,7 +203,7 @@ export default function AdminProductsPage() {
       case 'SOLD_OUT':
         return { text: '품절', color: 'bg-error/20 text-error' };
       default:
-        return { text: status, color: 'bg-white/10 text-secondary-text' };
+        return { text: status, color: 'bg-gray-100 text-secondary-text' };
     }
   };
 
@@ -244,7 +244,7 @@ export default function AdminProductsPage() {
       )}
 
       {/* Products Table */}
-      <div className="bg-content-bg border border-white/5 rounded-card overflow-hidden">
+      <div className="bg-content-bg border border-gray-200 rounded-card overflow-hidden">
         {products.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-secondary-text mx-auto mb-4 opacity-30" />
@@ -275,11 +275,11 @@ export default function AdminProductsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-gray-200">
                 {products.map((product) => {
                   const statusBadge = getStatusBadge(product.status);
                   return (
-                    <tr key={product.id} className="hover:bg-white/5 transition-colors">
+                    <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {product.imageUrl ? (
@@ -328,13 +328,13 @@ export default function AdminProductsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleOpenModal(product)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-hot-pink"
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-hot-pink"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-error"
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-error"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
