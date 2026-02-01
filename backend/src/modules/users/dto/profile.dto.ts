@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
-import { IsUSState } from '../../common/validators/us-state.validator';
+import { IsUSState } from '../../../common/validators/us-state.validator';
 
 export class UpdateAddressDto {
   @IsString()

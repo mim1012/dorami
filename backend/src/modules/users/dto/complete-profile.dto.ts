@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { IsUSState } from '../../common/validators/us-state.validator';
+import { IsUSState } from '../../../common/validators/us-state.validator';
 
 export class CompleteProfileDto {
   @IsString()
