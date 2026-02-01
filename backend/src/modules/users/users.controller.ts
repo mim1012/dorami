@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
@@ -49,6 +50,7 @@ export class UsersController {
   }
 
   @Post('complete-profile')
+  @HttpCode(200)
   async completeProfile(
     @CurrentUser('userId') userId: string,
     @Body() dto: CompleteProfileDto,

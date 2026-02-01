@@ -911,10 +911,20 @@ export class AdminService {
    * Generate settlement report with daily aggregation
    */
   async getSettlementReport(fromDate: string, toDate: string) {
-    const from = new Date(fromDate);
-    from.setHours(0, 0, 0, 0);
+    // Validate date parameters
+    if (!fromDate || !toDate) {
+      throw new BadRequestException('fromDate and toDate are required');
+    }
 
+    const from = new Date(fromDate);
     const to = new Date(toDate);
+
+    // Check if dates are valid
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      throw new BadRequestException('Invalid date format. Please use YYYY-MM-DD format');
+    }
+
+    from.setHours(0, 0, 0, 0);
     to.setHours(23, 59, 59, 999);
 
     // Get all confirmed payment orders in date range
