@@ -916,17 +916,14 @@ export class AdminService {
       throw new BadRequestException('fromDate and toDate are required');
     }
 
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
+    // Parse dates as UTC to avoid timezone issues
+    const from = new Date(fromDate + 'T00:00:00.000Z');
+    const to = new Date(toDate + 'T23:59:59.999Z');
 
     // Check if dates are valid
     if (isNaN(from.getTime()) || isNaN(to.getTime())) {
       throw new BadRequestException('Invalid date format. Please use YYYY-MM-DD format');
     }
-
-    // Use UTC to avoid timezone issues
-    from.setUTCHours(0, 0, 0, 0);
-    to.setUTCHours(23, 59, 59, 999);
 
     // Get all confirmed payment orders in date range
     const orders = await this.prisma.order.findMany({

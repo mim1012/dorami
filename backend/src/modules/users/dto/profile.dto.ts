@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
+import { IsUSState } from '../../common/validators/us-state.validator';
 
 export class UpdateAddressDto {
   @IsString()
@@ -23,8 +24,8 @@ export class UpdateAddressDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[A-Z]{2}$/, {
-    message: 'State must be a 2-letter US state code (e.g., CA, NY, TX)',
+  @IsUSState({
+    message: 'State must be a 2-letter US state code',
   })
   state: string;
 

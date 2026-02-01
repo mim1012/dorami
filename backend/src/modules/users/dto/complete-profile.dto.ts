@@ -1,5 +1,6 @@
 import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { IsUSState } from '../../common/validators/us-state.validator';
 
 export class CompleteProfileDto {
   @IsString()
@@ -41,8 +42,8 @@ export class CompleteProfileDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[A-Z]{2}$/, {
-    message: 'State must be a 2-letter US state code (e.g., CA, NY, TX)',
+  @IsUSState({
+    message: 'State must be a 2-letter US state code',
   })
   state: string;
 
