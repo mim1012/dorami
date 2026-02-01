@@ -58,6 +58,11 @@ export class UsersService {
    * Check if Instagram ID is available (not taken by another user)
    */
   async isInstagramIdAvailable(instagramId: string, excludeUserId?: string): Promise<boolean> {
+    // Return false if instagramId is null/undefined/empty
+    if (!instagramId || instagramId.trim() === '') {
+      return false;
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { instagramId },
       select: { id: true },
