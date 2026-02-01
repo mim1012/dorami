@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { TransformInterceptor } from './../src/common/interceptors/transform.interceptor';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -22,6 +23,8 @@ describe('AppController (e2e)', () => {
         transform: true,
       }),
     );
+
+    app.useGlobalInterceptors(new TransformInterceptor());
 
     await app.init();
   });

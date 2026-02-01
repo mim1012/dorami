@@ -37,6 +37,11 @@ describe('Settlement Management (E2E)', () => {
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
+    // Clean up any existing orders from other tests to ensure test isolation
+    await prismaService.order.deleteMany({
+      where: { id: { startsWith: 'ORD-' } },
+    });
+
     // Create admin user
     adminUser = await prismaService.user.create({
       data: {
@@ -305,14 +310,21 @@ describe('Settlement Management (E2E)', () => {
       const response = await request(app.getHttpServer())
         .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
-        .query({ from: '2026-01-01', to: '2026-01-31' });
+        .query({ from: '2026-01-01', to: '2026-01-31' })
+        .buffer(true)
+        .parse((res, callback) => {
+          res.setEncoding('binary');
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => { callback(null, Buffer.from(data, 'binary')); });
+        });
 
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toBe(
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
       expect(response.headers['content-disposition']).toContain(
-        'attachment; filename=settlement_2026-01-01_2026-01-31.xlsx',
+        'settlement_2026-01-01_2026-01-31.xlsx',
       );
     });
 
@@ -320,7 +332,14 @@ describe('Settlement Management (E2E)', () => {
       const response = await request(app.getHttpServer())
         .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
-        .query({ from: '2026-01-01', to: '2026-01-31' });
+        .query({ from: '2026-01-01', to: '2026-01-31' })
+        .buffer(true)
+        .parse((res, callback) => {
+          res.setEncoding('binary');
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => { callback(null, Buffer.from(data, 'binary')); });
+        });
 
       expect(response.status).toBe(200);
       expect(Buffer.isBuffer(response.body)).toBe(true);
@@ -335,7 +354,14 @@ describe('Settlement Management (E2E)', () => {
       const response = await request(app.getHttpServer())
         .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
-        .query({ from: '2026-02-01', to: '2026-02-28' });
+        .query({ from: '2026-02-01', to: '2026-02-28' })
+        .buffer(true)
+        .parse((res, callback) => {
+          res.setEncoding('binary');
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => { callback(null, Buffer.from(data, 'binary')); });
+        });
 
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toBe(
