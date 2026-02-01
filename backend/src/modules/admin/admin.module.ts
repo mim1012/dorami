@@ -4,9 +4,10 @@ import { AdminService } from './admin.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 import { EncryptionService } from '../../common/services/encryption.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [forwardRef(() => WebsocketModule)],
+  imports: [forwardRef(() => WebsocketModule), NotificationsModule],
   controllers: [AdminController],
   providers: [
     AdminService,

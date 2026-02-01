@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { SettlementService } from './settlement.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -41,6 +42,15 @@ describe('SettlementService', () => {
             order: {
               findMany: jest.fn(),
             },
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, defaultValue?: any) => {
+              if (key === 'EXCEL_HEADER_COLOR') return 'FFE91E63';
+              return defaultValue;
+            }),
           },
         },
       ],
@@ -88,7 +98,15 @@ describe('SettlementService', () => {
             lte: expect.any(Date),
           },
         },
-        include: {
+        select: {
+          id: true,
+          createdAt: true,
+          subtotal: true,
+          shippingFee: true,
+          total: true,
+          paidAt: true,
+          depositorName: true,
+          instagramId: true,
           user: {
             select: {
               instagramId: true,

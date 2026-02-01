@@ -9,7 +9,7 @@ import {
   Max,
   MaxLength,
   IsUrl,
-  IsNotEmpty,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -22,13 +22,11 @@ export enum ProductStatus {
 export class CreateProductDto {
   @ApiProperty({ description: 'Stream key to associate product with', example: 'abc123def456' })
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
   streamKey: string;
 
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt', maxLength: 100 })
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
   name: string;
 
@@ -38,12 +36,12 @@ export class CreateProductDto {
   @Type(() => Number)
   price: number;
 
-  @ApiProperty({ description: 'Available quantity (stock)', example: 50, minimum: 1, maximum: 9999 })
+  @ApiProperty({ description: 'Available quantity', example: 50, minimum: 1, maximum: 9999 })
   @IsNumber()
   @Min(1)
   @Max(9999)
   @Type(() => Number)
-  stock: number; // Maps to quantity in database
+  quantity: number;
 
   @ApiPropertyOptional({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
   @IsOptional()
@@ -87,16 +85,6 @@ export class CreateProductDto {
   @IsOptional()
   @IsUrl()
   imageUrl?: string;
-
-  // Legacy field support (for backward compatibility)
-  @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
-  @IsOptional()
-  metadata?: any;
 }
 
 export class UpdateProductDto {
@@ -113,13 +101,13 @@ export class UpdateProductDto {
   @Type(() => Number)
   price?: number;
 
-  @ApiPropertyOptional({ description: 'Available quantity (stock)', example: 50, minimum: 1, maximum: 9999 })
+  @ApiPropertyOptional({ description: 'Available quantity', example: 50, minimum: 1, maximum: 9999 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(9999)
   @Type(() => Number)
-  stock?: number; // Maps to quantity in database
+  quantity?: number;
 
   @ApiPropertyOptional({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
   @IsOptional()
@@ -168,22 +156,6 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
-
-  // Legacy field support (for backward compatibility)
-  @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
-  @IsOptional()
-  metadata?: any;
-}
-
-export class UpdateStockDto {
-  @ApiProperty({ description: 'Quantity to add/subtract (positive for increase, negative for decrease)', example: -5 })
-  @IsNumber()
-  quantity: number;
 }
 
 export class ProductResponseDto {
@@ -199,8 +171,8 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Product price in KRW', example: 29000 })
   price: number;
 
-  @ApiProperty({ description: 'Available quantity (stock)', example: 50 })
-  stock: number; // Maps from quantity in database
+  @ApiProperty({ description: 'Available quantity', example: 50 })
+  quantity: number;
 
   @ApiProperty({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
   colorOptions: string[];
@@ -231,13 +203,6 @@ export class ProductResponseDto {
 
   @ApiProperty({ description: 'Updated timestamp', example: '2024-01-15T10:30:00.000Z' })
   updatedAt: Date;
-
-  // Legacy fields (for backward compatibility)
-  @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
-  description?: string;
-
-  @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
-  metadata?: any;
 }
 
 export class GetProductsQueryDto {

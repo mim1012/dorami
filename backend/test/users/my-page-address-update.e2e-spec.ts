@@ -20,6 +20,7 @@ describe('My Page - Address Update (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -60,10 +61,32 @@ describe('My Page - Address Update (E2E)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    await prismaService.user.deleteMany({
+    // Cleanup (외래 키 순서 고려)
+    const testUserIds = (await prismaService.user.findMany({
       where: { id: { startsWith: 'user-mypage' } },
-    });
+      select: { id: true },
+    })).map(u => u.id);
+
+    if (testUserIds.length > 0) {
+      await prismaService.cart.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.reservation.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.orderItem.deleteMany({
+        where: { order: { userId: { in: testUserIds } } },
+      });
+      await prismaService.order.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.auditLog.deleteMany({
+        where: { entityId: { in: testUserIds } },
+      });
+      await prismaService.user.deleteMany({
+        where: { id: { in: testUserIds } },
+      });
+    }
 
     await app.close();
   });
@@ -71,7 +94,7 @@ describe('My Page - Address Update (E2E)', () => {
   describe('GET /users/profile/me', () => {
     it('should return user profile with decrypted address', async () => {
       const response = await request(app.getHttpServer())
-        .get('/users/profile/me')
+        .get('/api/users/profile/me')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
 
@@ -92,7 +115,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .get('/users/profile/me')
+        .get('/api/users/profile/me')
         .expect(401);
     });
   });
@@ -100,7 +123,7 @@ describe('My Page - Address Update (E2E)', () => {
   describe('PATCH /users/profile/address', () => {
     it('should update shipping address successfully', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Updated User',
@@ -136,7 +159,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .send({
           fullName: 'Test',
           address1: '123 Test St',
@@ -150,7 +173,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 400 with missing required fields', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test',
@@ -163,7 +186,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 400 with invalid ZIP code format', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test',
@@ -180,7 +203,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 400 with invalid phone format', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test',
@@ -197,7 +220,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should return 400 with invalid state code', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test',
@@ -214,7 +237,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should handle address without optional address2 field', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test User',
@@ -242,7 +265,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should accept extended ZIP code format', async () => {
       await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Test User',
@@ -264,7 +287,7 @@ describe('My Page - Address Update (E2E)', () => {
 
     it('should encrypt address before storing', async () => {
       await request(app.getHttpServer())
-        .patch('/users/profile/address')
+        .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           fullName: 'Security Test',

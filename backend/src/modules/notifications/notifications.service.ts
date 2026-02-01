@@ -1,73 +1,148 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { KakaoTalkClient } from './clients/kakao-talk.client';
 import { LoggerService } from '../../common/logger/logger.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
 export class NotificationsService {
   private logger: LoggerService;
+  private readonly maxRetries: number;
+  private readonly retryDelayMs: number;
 
-  constructor(private kakaoTalkClient: KakaoTalkClient) {
+  constructor(
+    private kakaoTalkClient: KakaoTalkClient,
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     this.logger = new LoggerService();
     this.logger.setContext('NotificationsService');
+    this.maxRetries = this.configService.get<number>('NOTIFICATION_MAX_RETRIES', 3);
+    this.retryDelayMs = this.configService.get<number>('NOTIFICATION_RETRY_DELAY_MS', 1000);
   }
 
   async sendOrderCreatedNotification(userId: string, orderId: string): Promise<void> {
+    const template = await this.getTemplate('ORDER_CREATED');
+    const message = this.replaceVariables(template, { orderId });
+
     await this.retryableNotification(async () => {
-      await this.kakaoTalkClient.sendCustomMessage(
-        userId,
-        '주문 완료',
-        `주문이 생성되었습니다. 주문번호: ${orderId}\n10분 이내에 결제를 완료해주세요.`,
-      );
+      await this.kakaoTalkClient.sendCustomMessage(userId, '주문 완료', message);
     });
   }
 
   async sendReservationPromotedNotification(userId: string, productId: string): Promise<void> {
+    const template = await this.getTemplate('RESERVATION_PROMOTED');
+    const message = this.replaceVariables(template, { productId });
+
     await this.retryableNotification(async () => {
-      await this.kakaoTalkClient.sendCustomMessage(
-        userId,
-        '예비번호 승급',
-        `축하합니다! 예비번호가 승급되었습니다.\n상품: ${productId}\n10분 이내에 주문을 완료해주세요.`,
-      );
+      await this.kakaoTalkClient.sendCustomMessage(userId, '예비번호 승급', message);
     });
   }
 
   async sendCartExpiredNotification(userId: string): Promise<void> {
+    const template = await this.getTemplate('CART_EXPIRED');
+    const message = this.replaceVariables(template, {});
+
     await this.retryableNotification(async () => {
-      await this.kakaoTalkClient.sendCustomMessage(
-        userId,
-        '장바구니 만료',
-        '장바구니가 만료되어 주문이 자동 취소되었습니다.',
-      );
+      await this.kakaoTalkClient.sendCustomMessage(userId, '장바구니 만료', message);
+    });
+  }
+
+  async sendPaymentConfirmedNotification(userId: string, orderId: string): Promise<void> {
+    const template = await this.getTemplate('PAYMENT_CONFIRMED');
+    const message = this.replaceVariables(template, { orderId });
+
+    await this.retryableNotification(async () => {
+      await this.kakaoTalkClient.sendCustomMessage(userId, '결제 확인 완료', message);
+    });
+  }
+
+  async sendPaymentReminderNotification(
+    userId: string,
+    orderId: string,
+    amount: number,
+    depositorName: string,
+  ): Promise<void> {
+    const template = await this.getTemplate('PAYMENT_REMINDER');
+    const message = this.replaceVariables(template, {
+      orderId,
+      amount: amount.toLocaleString('ko-KR'),
+      depositorName,
+    });
+
+    await this.retryableNotification(async () => {
+      await this.kakaoTalkClient.sendCustomMessage(userId, '결제 알림', message);
+    });
+  }
+
+  async sendShippingNotification(
+    userId: string,
+    orderId: string,
+    trackingNumber: string,
+  ): Promise<void> {
+    const template = await this.getTemplate('SHIPPING_STARTED');
+    const message = this.replaceVariables(template, { orderId, trackingNumber });
+
+    await this.retryableNotification(async () => {
+      await this.kakaoTalkClient.sendCustomMessage(userId, '배송 시작', message);
     });
   }
 
   /**
-   * Retry notification up to 3 times (95% SLA requirement)
+   * Retry notification (95% SLA requirement)
+   * Uses NOTIFICATION_MAX_RETRIES and NOTIFICATION_RETRY_DELAY_MS from environment
    */
-  private async retryableNotification(
-    fn: () => Promise<void>,
-    maxRetries: number = 3,
-  ): Promise<void> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  private async retryableNotification(fn: () => Promise<void>): Promise<void> {
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         await fn();
         return;
       } catch (error) {
         this.logger.warn(`Notification attempt ${attempt} failed: ${error.message}`);
 
-        if (attempt === maxRetries) {
+        if (attempt === this.maxRetries) {
           this.logger.error('Notification failed after max retries');
           // In production, you'd send this to a dead-letter queue or monitoring system
           throw error;
         }
 
-        // Exponential backoff
-        await this.delay(Math.pow(2, attempt) * 1000);
+        // Exponential backoff using configured base delay
+        await this.delay(Math.pow(2, attempt) * this.retryDelayMs);
       }
     }
   }
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Get notification template from database by type
+   */
+  private async getTemplate(type: string): Promise<string> {
+    const template = await this.prisma.notificationTemplate.findFirst({
+      where: { type },
+    });
+
+    if (!template) {
+      this.logger.warn(`Notification template not found for type: ${type}`);
+      // Fallback to generic message
+      return '알림이 도착했습니다.';
+    }
+
+    return template.template;
+  }
+
+  /**
+   * Replace variables in template
+   * Example: "주문번호: {{orderId}}" with {orderId: "ORD-123"} -> "주문번호: ORD-123"
+   */
+  private replaceVariables(template: string, variables: Record<string, any>): string {
+    let result = template;
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      result = result.replace(regex, String(value));
+    }
+    return result;
   }
 }

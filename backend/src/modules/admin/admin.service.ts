@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   GetUsersQueryDto,
   UserListResponseDto,
@@ -27,6 +28,7 @@ export class AdminService {
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
     private encryptionService: EncryptionService,
+    private notificationsService: NotificationsService,
     @Inject(forwardRef(() => 'WEBSOCKET_GATEWAY'))
     private websocketGateway: any,
   ) {}
@@ -165,7 +167,9 @@ export class AdminService {
     if (dateFrom || dateTo) {
       where.createdAt = {};
       if (dateFrom) {
-        where.createdAt.gte = new Date(dateFrom);
+        const startDate = new Date(dateFrom);
+        startDate.setHours(0, 0, 0, 0); // Start of day
+        where.createdAt.gte = startDate;
       }
       if (dateTo) {
         const endDate = new Date(dateTo);
@@ -253,88 +257,120 @@ export class AdminService {
 
   async getDashboardStats(): Promise<DashboardStatsDto> {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
-    // Revenue Stats
-    const todayRevenue = await this.prisma.order.aggregate({
+    // Epic 12 Story 12.1: Last 7 days vs previous 7 days
+    const last7DaysStart = new Date(now);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    last7DaysStart.setHours(0, 0, 0, 0);
+
+    const previous7DaysStart = new Date(last7DaysStart);
+    previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
+
+    // 1. Total Orders (last 7 days vs previous 7 days)
+    const last7DaysOrders = await this.prisma.order.count({
+      where: { createdAt: { gte: last7DaysStart } },
+    });
+
+    const previous7DaysOrders = await this.prisma.order.count({
+      where: { createdAt: { gte: previous7DaysStart, lt: last7DaysStart } },
+    });
+
+    const ordersTrend = this.calculateTrend(last7DaysOrders, previous7DaysOrders);
+
+    // 2. Total Revenue (last 7 days)
+    const last7DaysRevenue = await this.prisma.order.aggregate({
       where: {
-        createdAt: { gte: todayStart },
+        createdAt: { gte: last7DaysStart },
         paymentStatus: 'CONFIRMED',
       },
       _sum: { total: true },
     });
 
-    const yesterdayRevenue = await this.prisma.order.aggregate({
+    const previous7DaysRevenue = await this.prisma.order.aggregate({
       where: {
-        createdAt: { gte: yesterdayStart, lt: todayStart },
+        createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
         paymentStatus: 'CONFIRMED',
       },
       _sum: { total: true },
     });
 
-    const revenueToday = Number(todayRevenue._sum.total || 0);
-    const revenueYesterday = Number(yesterdayRevenue._sum.total || 0);
-    const revenueTrend = this.calculateTrend(revenueToday, revenueYesterday);
+    const revenueLast7Days = Number(last7DaysRevenue._sum.total || 0);
+    const revenuePrevious7Days = Number(previous7DaysRevenue._sum.total || 0);
+    const revenueTrend = this.calculateTrend(revenueLast7Days, revenuePrevious7Days);
 
-    // Orders Stats
-    const todayOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: todayStart } },
+    // 3. Pending Payments count
+    const pendingPayments = await this.prisma.order.count({
+      where: { paymentStatus: 'PENDING' },
     });
 
-    const yesterdayOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: yesterdayStart, lt: todayStart } },
+    // 4. Active Live Streams count
+    const activeLiveStreams = await this.prisma.liveStream.count({
+      where: { status: 'LIVE' },
     });
 
-    const ordersTrend = this.calculateTrend(todayOrders, yesterdayOrders);
+    // 5. Top 5 Selling Products
+    const topProducts = await this.prisma.orderItem.groupBy({
+      by: ['productId', 'productName'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 5,
+    });
 
-    // Chat Messages Stats
-    const todayMessages = await this.prisma.chatMessage.count({
+    // Chat Messages Stats (kept for compatibility)
+    const last7DaysMessages = await this.prisma.chatMessage.count({
       where: {
-        timestamp: { gte: todayStart },
+        timestamp: { gte: last7DaysStart },
         isDeleted: false,
       },
     });
 
-    const yesterdayMessages = await this.prisma.chatMessage.count({
+    const previous7DaysMessages = await this.prisma.chatMessage.count({
       where: {
-        timestamp: { gte: yesterdayStart, lt: todayStart },
+        timestamp: { gte: previous7DaysStart, lt: last7DaysStart },
         isDeleted: false,
       },
     });
 
-    const messagesTrend = this.calculateTrend(todayMessages, yesterdayMessages);
-
-    // Active Viewers - Get current live stream viewer count
-    // For now, return 0 since WebSocket tracking isn't implemented
-    const viewerCount = 0;
-    const viewersTrend = '+0%';
+    const messagesTrend = this.calculateTrend(last7DaysMessages, previous7DaysMessages);
 
     return {
       revenue: {
-        value: revenueToday,
-        formatted: `$${this.formatNumber(revenueToday)}`,
+        value: revenueLast7Days,
+        formatted: `$${this.formatNumber(revenueLast7Days)}`,
         trend: revenueTrend.formatted,
         trendUp: revenueTrend.isUp,
       },
-      viewers: {
-        value: viewerCount,
-        formatted: this.formatNumber(viewerCount),
-        trend: viewersTrend,
-        trendUp: true,
-      },
       orders: {
-        value: todayOrders,
-        formatted: this.formatNumber(todayOrders),
+        value: last7DaysOrders,
+        formatted: this.formatNumber(last7DaysOrders),
         trend: ordersTrend.formatted,
         trendUp: ordersTrend.isUp,
       },
+      pendingPayments: {
+        value: pendingPayments,
+        formatted: this.formatNumber(pendingPayments),
+      },
+      activeLiveStreams: {
+        value: activeLiveStreams,
+        formatted: this.formatNumber(activeLiveStreams),
+      },
+      topProducts: topProducts.map((p) => ({
+        productId: p.productId,
+        productName: p.productName,
+        totalSold: p._sum.quantity || 0,
+      })),
       messages: {
-        value: todayMessages,
-        formatted: this.formatNumber(todayMessages),
+        value: last7DaysMessages,
+        formatted: this.formatNumber(last7DaysMessages),
         trend: messagesTrend.formatted,
         trendUp: messagesTrend.isUp,
+      },
+      // Legacy field for backward compatibility
+      viewers: {
+        value: 0,
+        formatted: '0',
+        trend: '+0%',
+        trendUp: true,
       },
     };
   }
@@ -461,6 +497,92 @@ export class AdminService {
   }
 
   /**
+   * Epic 8 Story 8.4: Get order detail (admin only)
+   */
+  async getOrderDetail(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        orderItems: {
+          include: {
+            Product: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            instagramId: true,
+            depositorName: true,
+            shippingAddress: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Decrypt shipping address
+    let shippingAddress: ShippingAddressDto | null = null;
+    if (order.user.shippingAddress) {
+      try {
+        shippingAddress = this.encryptionService.decryptAddress(order.user.shippingAddress as any);
+      } catch (error) {
+        console.error('Failed to decrypt shipping address:', error);
+        shippingAddress = null;
+      }
+    }
+
+    return {
+      id: order.id,
+      userId: order.userId,
+      userEmail: order.userEmail,
+      depositorName: order.depositorName,
+      instagramId: order.instagramId,
+      shippingAddress,
+      status: order.status,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      shippingStatus: order.shippingStatus,
+      subtotal: Number(order.subtotal),
+      shippingFee: Number(order.shippingFee),
+      total: Number(order.total),
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      paidAt: order.paidAt,
+      shippedAt: order.shippedAt,
+      deliveredAt: order.deliveredAt,
+      items: order.orderItems.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.Product?.imageUrl,
+        quantity: item.quantity,
+        price: Number(item.price),
+        shippingFee: Number(item.shippingFee),
+        color: item.color,
+        size: item.size,
+      })),
+      customer: {
+        id: order.user.id,
+        email: order.user.email,
+        name: order.user.name,
+        instagramId: order.user.instagramId,
+        depositorName: order.user.depositorName,
+      },
+    };
+  }
+
+  /**
    * Confirm order payment (admin only)
    * Updates payment status from PENDING to CONFIRMED
    */
@@ -516,6 +638,112 @@ export class AdminService {
         },
       };
     });
+  }
+
+  /**
+   * Send payment reminder notification to customer
+   */
+  async sendPaymentReminder(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        userId: true,
+        total: true,
+        depositorName: true,
+        paymentStatus: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.paymentStatus !== 'PENDING') {
+      throw new BadRequestException('Payment reminder can only be sent for pending payments');
+    }
+
+    await this.notificationsService.sendPaymentReminderNotification(
+      order.userId,
+      order.id,
+      Number(order.total),
+      order.depositorName,
+    );
+
+    return {
+      success: true,
+      message: 'Payment reminder sent successfully',
+    };
+  }
+
+  /**
+   * Send bulk shipping notifications from CSV data
+   */
+  async sendBulkShippingNotifications(
+    items: Array<{ orderId: string; trackingNumber: string }>,
+  ) {
+    const results = [];
+    let successful = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      try {
+        const order = await this.prisma.order.findUnique({
+          where: { id: item.orderId },
+          select: {
+            id: true,
+            userId: true,
+            paymentStatus: true,
+          },
+        });
+
+        if (!order) {
+          results.push({
+            orderId: item.orderId,
+            success: false,
+            error: 'Order not found',
+          });
+          failed++;
+          continue;
+        }
+
+        if (order.paymentStatus !== 'CONFIRMED') {
+          results.push({
+            orderId: item.orderId,
+            success: false,
+            error: 'Payment not confirmed',
+          });
+          failed++;
+          continue;
+        }
+
+        await this.notificationsService.sendShippingNotification(
+          order.userId,
+          order.id,
+          item.trackingNumber,
+        );
+
+        results.push({
+          orderId: item.orderId,
+          success: true,
+        });
+        successful++;
+      } catch (error) {
+        results.push({
+          orderId: item.orderId,
+          success: false,
+          error: error.message || 'Failed to send notification',
+        });
+        failed++;
+      }
+    }
+
+    return {
+      total: items.length,
+      successful,
+      failed,
+      results,
+    };
   }
 
   /**
@@ -641,6 +869,197 @@ export class AdminService {
         id: updatedUser.id,
         status: updatedUser.status,
         suspendedAt: updatedUser.suspendedAt,
+      },
+    };
+  }
+
+  /**
+   * Get all notification templates
+   */
+  async getNotificationTemplates() {
+    const templates = await this.prisma.notificationTemplate.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    return templates;
+  }
+
+  /**
+   * Update notification template
+   */
+  async updateNotificationTemplate(id: string, template: string) {
+    const existingTemplate = await this.prisma.notificationTemplate.findUnique({
+      where: { id },
+    });
+
+    if (!existingTemplate) {
+      throw new NotFoundException('Notification template not found');
+    }
+
+    const updated = await this.prisma.notificationTemplate.update({
+      where: { id },
+      data: { template },
+    });
+
+    return {
+      success: true,
+      data: updated,
+    };
+  }
+
+  /**
+   * Generate settlement report with daily aggregation
+   */
+  async getSettlementReport(fromDate: string, toDate: string) {
+    const from = new Date(fromDate);
+    from.setHours(0, 0, 0, 0);
+
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+
+    // Get all confirmed payment orders in date range
+    const orders = await this.prisma.order.findMany({
+      where: {
+        paymentStatus: 'CONFIRMED',
+        paidAt: {
+          gte: from,
+          lte: to,
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        userEmail: true,
+        instagramId: true,
+        total: true,
+        shippingFee: true,
+        createdAt: true,
+        paidAt: true,
+      },
+      orderBy: {
+        paidAt: 'desc',
+      },
+    });
+
+    // Calculate summary
+    const summary = {
+      totalOrders: orders.length,
+      totalRevenue: orders.reduce((sum, order) => sum + Number(order.total), 0),
+      avgOrderValue: orders.length > 0
+        ? orders.reduce((sum, order) => sum + Number(order.total), 0) / orders.length
+        : 0,
+      totalShippingFee: orders.reduce((sum, order) => sum + Number(order.shippingFee), 0),
+    };
+
+    // Daily aggregation for chart
+    const dailyRevenue = new Map<string, { date: string; revenue: number; orderCount: number }>();
+
+    orders.forEach((order) => {
+      const dateKey = order.paidAt.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      if (!dailyRevenue.has(dateKey)) {
+        dailyRevenue.set(dateKey, {
+          date: dateKey,
+          revenue: 0,
+          orderCount: 0,
+        });
+      }
+
+      const day = dailyRevenue.get(dateKey)!;
+      day.revenue += Number(order.total);
+      day.orderCount += 1;
+    });
+
+    // Convert map to sorted array
+    const dailyData = Array.from(dailyRevenue.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+
+    return {
+      summary,
+      orders: orders.map((order) => ({
+        orderId: order.id,
+        orderDate: order.createdAt.toISOString(),
+        customerId: order.instagramId || order.userEmail,
+        total: Number(order.total),
+        paidAt: order.paidAt.toISOString(),
+      })),
+      dailyRevenue: dailyData,
+      dateRange: {
+        from: fromDate,
+        to: toDate,
+      },
+    };
+  }
+
+  /**
+   * Get audit logs with filters
+   * Epic 12 Story 12.3
+   */
+  async getAuditLogs(
+    fromDate?: string,
+    toDate?: string,
+    action?: string,
+    page: number = 1,
+    limit: number = 50,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) {
+        const fromDateObj = new Date(fromDate);
+        if (isNaN(fromDateObj.getTime())) {
+          throw new BadRequestException('Invalid from date format');
+        }
+        where.createdAt.gte = fromDateObj;
+      }
+      if (toDate) {
+        const toDateObj = new Date(toDate);
+        if (isNaN(toDateObj.getTime())) {
+          throw new BadRequestException('Invalid to date format');
+        }
+        toDateObj.setHours(23, 59, 59, 999);
+        where.createdAt.lte = toDateObj;
+      }
+    }
+
+    if (action) {
+      where.action = action;
+    }
+
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        include: {
+          admin: {
+            select: { email: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      data: logs.map((log) => ({
+        id: log.id,
+        timestamp: log.createdAt.toISOString(),
+        adminEmail: log.admin?.email || 'Unknown',
+        action: log.action,
+        entity: log.entity,
+        entityId: log.entityId,
+        changes: log.changes,
+      })),
+      meta: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        limit,
       },
     };
   }

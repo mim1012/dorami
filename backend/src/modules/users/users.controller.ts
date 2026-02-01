@@ -21,6 +21,9 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  /**
+   * Get basic user info (no sensitive data like shipping address)
+   */
   @Get('me')
   async getMyProfile(@CurrentUser('userId') userId: string) {
     return this.usersService.findById(userId);
@@ -62,6 +65,10 @@ export class UsersController {
     return { data: { available: isAvailable } };
   }
 
+  /**
+   * Get full profile including decrypted shipping address
+   * Use this for "My Page" where address is needed
+   */
   @Get('profile/me')
   async getMyFullProfile(@CurrentUser('userId') userId: string) {
     return this.usersService.getProfile(userId);

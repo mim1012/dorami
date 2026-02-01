@@ -22,6 +22,7 @@ describe('Settlement Management (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -160,7 +161,7 @@ describe('Settlement Management (E2E)', () => {
   describe('GET /admin/settlement', () => {
     it('should return 401 without authentication', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
       expect(response.status).toBe(401);
@@ -168,7 +169,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return 403 for non-admin users', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${regularUserToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -177,7 +178,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return 400 without required query parameters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(400);
@@ -185,7 +186,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return settlement report with correct summary for date range', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -214,7 +215,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should exclude PENDING orders from settlement report', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -226,7 +227,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return empty report for date range with no CONFIRMED orders', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-02-01', to: '2026-02-28' });
 
@@ -241,7 +242,7 @@ describe('Settlement Management (E2E)', () => {
     it('should filter orders by paidAt date range correctly', async () => {
       // Query only for orders paid in January 15-19
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-15', to: '2026-01-19' });
 
@@ -252,7 +253,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return orders with correct DTO structure', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement')
+        .get('/api/admin/settlement')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -276,7 +277,7 @@ describe('Settlement Management (E2E)', () => {
   describe('GET /admin/settlement/download', () => {
     it('should return 401 without authentication', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement/download')
+        .get('/api/admin/settlement/download')
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
       expect(response.status).toBe(401);
@@ -284,7 +285,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return 403 for non-admin users', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement/download')
+        .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${regularUserToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -293,7 +294,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return Excel file with correct headers', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement/download')
+        .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -308,7 +309,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should return valid Excel file buffer', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement/download')
+        .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-01-01', to: '2026-01-31' });
 
@@ -323,7 +324,7 @@ describe('Settlement Management (E2E)', () => {
 
     it('should generate Excel file for empty date range', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/settlement/download')
+        .get('/api/admin/settlement/download')
         .set('Authorization', `Bearer ${adminToken}`)
         .query({ from: '2026-02-01', to: '2026-02-28' });
 

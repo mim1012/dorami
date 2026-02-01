@@ -39,6 +39,7 @@ describe('Kakao OAuth 2.0 인증 (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     authService = moduleFixture.get<AuthService>(AuthService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
@@ -51,21 +52,48 @@ describe('Kakao OAuth 2.0 인증 (E2E)', () => {
   });
 
   beforeEach(async () => {
-    // 테스트 데이터 초기화
-    await prismaService.user.deleteMany({
+    // 테스트 데이터 초기화 (외래 키 순서 고려)
+    const testUsers = await prismaService.user.findMany({
       where: {
         email: {
           contains: 'test',
         },
       },
+      select: { id: true },
     });
+
+    const testUserIds = testUsers.map(u => u.id);
+
+    if (testUserIds.length > 0) {
+      // Delete related data first (foreign key constraints)
+      await prismaService.cart.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.reservation.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.orderItem.deleteMany({
+        where: { order: { userId: { in: testUserIds } } },
+      });
+      await prismaService.order.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.auditLog.deleteMany({
+        where: { entityId: { in: testUserIds } },
+      });
+
+      // Finally delete users
+      await prismaService.user.deleteMany({
+        where: { id: { in: testUserIds } },
+      });
+    }
   });
 
   describe('카카오 OAuth 흐름 테스트', () => {
     describe('GET /auth/kakao', () => {
       it('카카오 인증 페이지로 리다이렉트해야 한다', async () => {
         const response = await request(app.getHttpServer())
-          .get('/auth/kakao')
+          .get('/api/auth/kakao')
           .expect(302);
 
         // 리다이렉트 URL에 카카오 인증 서버 포함 확인
@@ -75,7 +103,7 @@ describe('Kakao OAuth 2.0 인증 (E2E)', () => {
 
       it('리다이렉트 URL에 필수 파라미터가 포함되어야 한다', async () => {
         const response = await request(app.getHttpServer())
-          .get('/auth/kakao')
+          .get('/api/auth/kakao')
           .expect(302);
 
         const location = response.headers.location;
@@ -89,7 +117,7 @@ describe('Kakao OAuth 2.0 인증 (E2E)', () => {
       it('인증 코드 없이 요청하면 카카오 인증 페이지로 리다이렉트해야 한다', async () => {
         // Passport는 인증 코드가 없으면 새 인증 시도로 간주하고 카카오로 리다이렉트
         const response = await request(app.getHttpServer())
-          .get('/auth/kakao/callback')
+          .get('/api/auth/kakao/callback')
           .expect(302);
 
         // 카카오 인증 서버로 리다이렉트 (Passport의 정상 동작)

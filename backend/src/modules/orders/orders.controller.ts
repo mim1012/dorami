@@ -21,6 +21,14 @@ export class OrdersController {
     private reservationService: ReservationService,
   ) {}
 
+  /**
+   * Epic 8 Story 8.1: Create order from cart
+   */
+  @Post('from-cart')
+  async createOrderFromCart(@CurrentUser('userId') userId: string) {
+    return this.ordersService.createOrderFromCart(userId);
+  }
+
   @Post()
   async createOrder(
     @CurrentUser('userId') userId: string,

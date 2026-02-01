@@ -82,4 +82,8 @@ export class RedisService implements OnModuleInit {
   async zcard(key: string): Promise<number> {
     return this.client.zcard(key);
   }
+
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
 }

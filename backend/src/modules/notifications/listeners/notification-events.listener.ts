@@ -12,7 +12,7 @@ export class NotificationEventsListener {
     this.logger.setContext('NotificationEventsListener');
   }
 
-  @OnEvent('order:created')
+  @OnEvent('order.created')
   async handleOrderCreated(payload: { orderId: string; userId: string }) {
     this.logger.log(`Sending order created notification to user ${payload.userId}`);
 
@@ -23,6 +23,20 @@ export class NotificationEventsListener {
       );
     } catch (error) {
       this.logger.error('Failed to send order created notification', error.message);
+    }
+  }
+
+  @OnEvent('order.paid')
+  async handleOrderPaid(payload: { orderId: string; userId: string }) {
+    this.logger.log(`Sending payment confirmed notification to user ${payload.userId}`);
+
+    try {
+      await this.notificationsService.sendPaymentConfirmedNotification(
+        payload.userId,
+        payload.orderId,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send payment confirmed notification', error.message);
     }
   }
 
@@ -40,7 +54,7 @@ export class NotificationEventsListener {
     }
   }
 
-  @OnEvent('cart:expired')
+  @OnEvent('cart.expired')
   async handleCartExpired(payload: { userId?: string }) {
     if (!payload.userId) return;
 

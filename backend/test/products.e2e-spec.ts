@@ -13,6 +13,8 @@ describe('Products API (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
+    app.setGlobalPrefix('api');
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,7 +30,7 @@ describe('Products API (e2e)', () => {
     await app.close();
   });
 
-  it('/api/products (GET) - should return products list', () => {
+  it('/products (GET) - should return products list', () => {
     return request(app.getHttpServer())
       .get('/api/products')
       .expect(200)
@@ -38,7 +40,7 @@ describe('Products API (e2e)', () => {
       });
   });
 
-  it('/api/products (POST) - should fail without authentication', () => {
+  it('/products (POST) - should fail without authentication', () => {
     return request(app.getHttpServer())
       .post('/api/products')
       .send({

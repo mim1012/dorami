@@ -13,6 +13,8 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
+    app.setGlobalPrefix('api');
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -37,7 +39,7 @@ describe('AppController (e2e)', () => {
       });
   });
 
-  it('/api/health (GET)', () => {
+  it('/health (GET)', () => {
     return request(app.getHttpServer())
       .get('/api/health')
       .expect(200)

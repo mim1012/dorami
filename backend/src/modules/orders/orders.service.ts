@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
@@ -13,12 +15,146 @@ import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.eve
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+  private readonly orderExpirationMinutes: number;
+
   constructor(
     private prisma: PrismaService,
     private redisService: RedisService,
     private inventoryService: InventoryService,
     private eventEmitter: EventEmitter2,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.orderExpirationMinutes = this.configService.get<number>(
+      'ORDER_EXPIRATION_MINUTES',
+      10,
+    );
+  }
+
+  /**
+   * Epic 8 Story 8.1: Create order from active cart items
+   */
+  async createOrderFromCart(userId: string): Promise<OrderResponseDto> {
+    return await this.prisma.$transaction(async (tx) => {
+      // Fetch user data
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new BusinessException('USER_NOT_FOUND', { userId });
+      }
+
+      // Get active cart items
+      const cartItems = await tx.cart.findMany({
+        where: {
+          userId,
+          status: 'ACTIVE',
+        },
+        include: {
+          product: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      if (cartItems.length === 0) {
+        throw new BusinessException('CART_EMPTY', { userId });
+      }
+
+      // Validate cart items not expired
+      const now = new Date();
+      const expiredItems = cartItems.filter(
+        (item) => item.timerEnabled && item.expiresAt && item.expiresAt < now,
+      );
+
+      if (expiredItems.length > 0) {
+        throw new BusinessException('CART_ITEMS_EXPIRED', {
+          expiredCount: expiredItems.length,
+        });
+      }
+
+      // Calculate totals and prepare order items
+      let subtotal = 0;
+      let totalShippingFee = 0;
+      const orderItemsData = cartItems.map((item) => {
+        const itemSubtotal = Number(item.price) * item.quantity;
+        subtotal += itemSubtotal;
+        totalShippingFee += Number(item.shippingFee);
+
+        return {
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          shippingFee: item.shippingFee,
+          color: item.color,
+          size: item.size,
+          Product: {
+            connect: { id: item.productId },
+          },
+        };
+      });
+
+      const total = subtotal + totalShippingFee;
+
+      // Generate unique order ID
+      const orderId = await this.generateOrderId();
+
+      // Create order
+      const order = await tx.order.create({
+        data: {
+          id: orderId,
+          userId,
+          userEmail: user.email,
+          depositorName: user.depositorName || user.name,
+          instagramId: user.instagramId || '',
+          shippingAddress: user.shippingAddress || {},
+          status: 'PENDING_PAYMENT',
+          paymentMethod: 'BANK_TRANSFER',
+          paymentStatus: 'PENDING',
+          shippingStatus: 'PENDING',
+          subtotal: new Decimal(subtotal),
+          shippingFee: new Decimal(totalShippingFee),
+          total: new Decimal(total),
+          orderItems: {
+            create: orderItemsData,
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      });
+
+      // Mark cart items as COMPLETED
+      await tx.cart.updateMany({
+        where: {
+          userId,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'COMPLETED',
+        },
+      });
+
+      // Emit domain event
+      const event = new OrderCreatedEvent(
+        order.id,
+        order.userId,
+        Number(order.total),
+        order.orderItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          priceAtPurchase: Number(item.price),
+        })),
+      );
+
+      this.eventEmitter.emit('order.created', event);
+
+      return this.mapToResponseDto(order);
+    });
+  }
 
   async createOrder(
     userId: string,
@@ -74,9 +210,12 @@ export class OrdersService {
 
     const total = subtotal + totalShippingFee;
 
+    // Generate unique order ID
+    const orderId = await this.generateOrderId();
+
     const order = await this.prisma.order.create({
       data: {
-        id: this.generateOrderId(), // Generate ORD-YYYYMMDD-XXXXX format
+        id: orderId, // Generate ORD-YYYYMMDD-XXXXX format
         userId,
         userEmail: user.email,
         depositorName: user.depositorName || user.name,
@@ -95,17 +234,13 @@ export class OrdersService {
       },
     });
 
-    // Set expiration timer in Redis
+    // Set expiration timer in Redis (handled by cron job)
+    const expirationSeconds = this.orderExpirationMinutes * 60;
     await this.redisService.set(
       `order:timer:${order.id}`,
-      'PENDING_PAYMENT',
-      10 * 60, // 10 minutes
+      order.createdAt.toISOString(),
+      expirationSeconds,
     );
-
-    // Schedule automatic cancellation (you'd use a job queue in production)
-    setTimeout(() => {
-      this.handleOrderExpiration(order.id);
-    }, 10 * 60 * 1000);
 
     // Emit domain event
     const event = new OrderCreatedEvent(
@@ -124,11 +259,21 @@ export class OrdersService {
     return this.mapToResponseDto(order);
   }
 
-  private generateOrderId(): string {
+  private async generateOrderId(): Promise<string> {
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
-    return `ORD-${dateStr}-${random}`;
+
+    // Use Redis INCR for collision-free sequential numbering per day
+    const key = `order:sequence:${dateStr}`;
+    const sequence = await this.redisService.incr(key);
+
+    // Set expiration to 2 days (cleanup old counters)
+    if (sequence === 1) {
+      await this.redisService.expire(key, 60 * 60 * 24 * 2);
+    }
+
+    const sequenceStr = sequence.toString().padStart(5, '0');
+    return `ORD-${dateStr}-${sequenceStr}`;
   }
 
   async confirmOrder(orderId: string, userId: string): Promise<OrderResponseDto> {
@@ -190,7 +335,10 @@ export class OrdersService {
     this.eventEmitter.emit('order.cancelled', { orderId });
   }
 
-  async findById(orderId: string): Promise<OrderResponseDto> {
+  /**
+   * Epic 8 Story 8.2: Get order with bank transfer info
+   */
+  async findById(orderId: string): Promise<any> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { orderItems: true },
@@ -200,7 +348,23 @@ export class OrdersService {
       throw new OrderNotFoundException(orderId);
     }
 
-    return this.mapToResponseDto(order);
+    const responseDto = this.mapToResponseDto(order);
+
+    // Include bank transfer info if payment is pending
+    if (order.paymentStatus === 'PENDING') {
+      return {
+        ...responseDto,
+        bankTransferInfo: {
+          bankName: this.configService.get<string>('BANK_NAME'),
+          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER'),
+          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER'),
+          amount: responseDto.total,
+          depositorName: order.depositorName,
+        },
+      };
+    }
+
+    return responseDto;
   }
 
   async findByUserId(userId: string): Promise<OrderResponseDto[]> {
@@ -213,34 +377,59 @@ export class OrdersService {
     return orders.map((o) => this.mapToResponseDto(o));
   }
 
-  private async handleOrderExpiration(orderId: string) {
-    const timerExists = await this.redisService.exists(`order:timer:${orderId}`);
+  /**
+   * Cron job: Check for expired orders and auto-cancel them
+   * Runs every minute
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async cancelExpiredOrders() {
+    try {
+      const now = new Date();
+      const expirationTime = new Date(now.getTime() - this.orderExpirationMinutes * 60 * 1000);
 
-    if (!timerExists) {
-      return; // Already confirmed or cancelled
+      // Find orders that should be expired
+      const expiredOrders = await this.prisma.order.findMany({
+        where: {
+          status: 'PENDING_PAYMENT',
+          createdAt: {
+            lte: expirationTime,
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      });
+
+      if (expiredOrders.length === 0) {
+        return;
+      }
+
+      this.logger.log(`Found ${expiredOrders.length} expired orders to cancel`);
+
+      for (const order of expiredOrders) {
+        // Double-check Redis timer doesn't exist (payment confirmed)
+        const timerExists = await this.redisService.exists(`order:timer:${order.id}`);
+        if (timerExists) {
+          continue; // Still active
+        }
+
+        // Restore stock
+        for (const item of order.orderItems) {
+          await this.inventoryService.restoreStock(item.productId, item.quantity);
+        }
+
+        // Cancel order
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'CANCELLED' },
+        });
+
+        this.logger.log(`Auto-cancelled expired order: ${order.id}`);
+        this.eventEmitter.emit('order.cancelled', { orderId: order.id });
+      }
+    } catch (error) {
+      this.logger.error('Failed to cancel expired orders', error.stack);
     }
-
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { orderItems: true },
-    });
-
-    if (!order || order.status !== 'PENDING_PAYMENT') {
-      return;
-    }
-
-    // Auto-cancel expired order
-    for (const item of order.orderItems) {
-      await this.inventoryService.restoreStock(item.productId, item.quantity);
-    }
-
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'CANCELLED' },
-    });
-
-    this.eventEmitter.emit('cart.expired', { orderId });
-    this.eventEmitter.emit('order.cancelled', { orderId });
   }
 
   private mapToResponseDto(order: any): OrderResponseDto {

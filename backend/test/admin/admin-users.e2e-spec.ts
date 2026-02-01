@@ -20,6 +20,7 @@ describe('Admin Users (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -117,7 +118,7 @@ describe('Admin Users (E2E)', () => {
   describe('GET /admin/users', () => {
     it('should return user list for admin', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?page=1&limit=20')
+        .get('/api/admin/users?page=1&limit=20')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -131,20 +132,20 @@ describe('Admin Users (E2E)', () => {
 
     it('should return 403 for regular user', async () => {
       await request(app.getHttpServer())
-        .get('/admin/users')
+        .get('/api/admin/users')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(403);
     });
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .get('/admin/users')
+        .get('/api/admin/users')
         .expect(401);
     });
 
     it('should respect pagination parameters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?page=2&limit=10')
+        .get('/api/admin/users?page=2&limit=10')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -154,7 +155,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should sort by instagramId ascending', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?sortBy=instagramId&sortOrder=asc')
+        .get('/api/admin/users?sortBy=instagramId&sortOrder=asc')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -172,7 +173,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should filter by search query', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?search=alice')
+        .get('/api/admin/users?search=alice')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -189,7 +190,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should filter by status', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?status=ACTIVE')
+        .get('/api/admin/users?status=ACTIVE')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -206,7 +207,7 @@ describe('Admin Users (E2E)', () => {
       const dateTo = '2026-02-01';
 
       const response = await request(app.getHttpServer())
-        .get(`/admin/users?dateFrom=${dateFrom}&dateTo=${dateTo}`)
+        .get(`/api/admin/users?dateFrom=${dateFrom}&dateTo=${dateTo}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -223,7 +224,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should return users with totalOrders and totalPurchaseAmount as 0 (Epic 8 placeholder)', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?page=1&limit=5')
+        .get('/api/admin/users?page=1&limit=5')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -235,7 +236,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should return correct user data structure', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?page=1&limit=5')
+        .get('/api/admin/users?page=1&limit=5')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -256,7 +257,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should handle combined filters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?search=test&status=ACTIVE&page=1&limit=10&sortBy=createdAt&sortOrder=desc')
+        .get('/api/admin/users?search=test&status=ACTIVE&page=1&limit=10&sortBy=createdAt&sortOrder=desc')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -267,7 +268,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should return empty array when no users match filters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?search=nonexistentuser123456')
+        .get('/api/admin/users?search=nonexistentuser123456')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -278,7 +279,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should handle default parameters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users')
+        .get('/api/admin/users')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -289,7 +290,7 @@ describe('Admin Users (E2E)', () => {
 
     it('should calculate total pages correctly', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/users?page=1&limit=2')
+        .get('/api/admin/users?page=1&limit=2')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 

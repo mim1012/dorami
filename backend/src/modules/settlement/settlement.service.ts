@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   GetSettlementQueryDto,
@@ -10,17 +11,20 @@ import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class SettlementService {
-  constructor(private prisma: PrismaService) {}
+  private readonly excelHeaderColor: string;
 
-  async getSettlementReport(query: GetSettlementQueryDto): Promise<SettlementReportDto> {
-    const fromDate = new Date(query.from);
-    fromDate.setHours(0, 0, 0, 0);
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) {
+    this.excelHeaderColor = this.configService.get<string>('EXCEL_HEADER_COLOR', 'FFE91E63');
+  }
 
-    const toDate = new Date(query.to);
-    toDate.setHours(23, 59, 59, 999);
-
-    // Get all confirmed orders within date range
-    const orders = await this.prisma.order.findMany({
+  /**
+   * Internal method: Fetch orders for settlement (prevent duplicate queries)
+   */
+  private async fetchSettlementOrders(fromDate: Date, toDate: Date) {
+    return await this.prisma.order.findMany({
       where: {
         paymentStatus: 'CONFIRMED',
         paidAt: {
@@ -28,7 +32,15 @@ export class SettlementService {
           lte: toDate,
         },
       },
-      include: {
+      select: {
+        id: true,
+        createdAt: true,
+        subtotal: true,
+        shippingFee: true,
+        total: true,
+        paidAt: true,
+        depositorName: true,
+        instagramId: true,
         user: {
           select: {
             instagramId: true,
@@ -39,6 +51,17 @@ export class SettlementService {
         paidAt: 'desc',
       },
     });
+  }
+
+  async getSettlementReport(query: GetSettlementQueryDto): Promise<SettlementReportDto> {
+    const fromDate = new Date(query.from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const toDate = new Date(query.to);
+    toDate.setHours(23, 59, 59, 999);
+
+    // Get all confirmed orders within date range
+    const orders = await this.fetchSettlementOrders(fromDate, toDate);
 
     // Calculate summary
     const totalOrders = orders.length;
@@ -73,13 +96,26 @@ export class SettlementService {
   }
 
   async generateExcelReport(query: GetSettlementQueryDto): Promise<Buffer> {
-    const report = await this.getSettlementReport(query);
+    const fromDate = new Date(query.from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const toDate = new Date(query.to);
+    toDate.setHours(23, 59, 59, 999);
+
+    // Fetch orders once (avoid duplicate query)
+    const orders = await this.fetchSettlementOrders(fromDate, toDate);
+
+    // Calculate summary
+    const totalOrders = orders.length;
+    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
+    const totalShippingFee = orders.reduce((sum, order) => sum + Number(order.shippingFee), 0);
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     const workbook = new ExcelJS.Workbook();
 
     // Sheet 1: Order Details
     const ordersSheet = workbook.addWorksheet('주문 내역');
-    
+
     ordersSheet.columns = [
       { header: '주문일', key: 'orderDate', width: 15 },
       { header: '주문번호', key: 'orderId', width: 25 },
@@ -96,31 +132,12 @@ export class SettlementService {
     ordersSheet.getRow(1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFE91E63' }, // Hot Pink
+      fgColor: { argb: this.excelHeaderColor },
     };
     ordersSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-    // Add order data
-    const ordersWithDetails = await this.prisma.order.findMany({
-      where: {
-        id: { in: report.orders.map((o) => o.orderId) },
-      },
-      select: {
-        id: true,
-        createdAt: true,
-        subtotal: true,
-        shippingFee: true,
-        total: true,
-        paidAt: true,
-        depositorName: true,
-        instagramId: true,
-      },
-      orderBy: {
-        paidAt: 'desc',
-      },
-    });
-
-    ordersWithDetails.forEach((order) => {
+    // Add order data (reuse fetched orders)
+    orders.forEach((order) => {
       ordersSheet.addRow({
         orderDate: this.formatDate(order.createdAt),
         orderId: order.id,
@@ -133,10 +150,11 @@ export class SettlementService {
       });
     });
 
-    // Format currency columns
-    ordersSheet.getColumn('subtotal').numFmt = '$#,##0.00';
-    ordersSheet.getColumn('shippingFee').numFmt = '$#,##0.00';
-    ordersSheet.getColumn('total').numFmt = '$#,##0.00';
+    // Format currency columns (KRW)
+    const currencyFormat = '[$₩-ko-KR] #,##0';
+    ordersSheet.getColumn('subtotal').numFmt = currencyFormat;
+    ordersSheet.getColumn('shippingFee').numFmt = currencyFormat;
+    ordersSheet.getColumn('total').numFmt = currencyFormat;
 
     // Sheet 2: Summary
     const summarySheet = workbook.addWorksheet('요약');
@@ -150,17 +168,17 @@ export class SettlementService {
     summarySheet.getRow(1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFE91E63' },
+      fgColor: { argb: this.excelHeaderColor },
     };
     summarySheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
     summarySheet.addRow({ label: '조회 기간', value: `${query.from} ~ ${query.to}` });
-    summarySheet.addRow({ label: '총 주문 건수', value: report.summary.totalOrders });
-    summarySheet.addRow({ label: '총 매출액', value: report.summary.totalRevenue });
-    summarySheet.addRow({ label: '평균 주문액', value: report.summary.avgOrderValue });
-    summarySheet.addRow({ label: '배송비 총액', value: report.summary.totalShippingFee });
+    summarySheet.addRow({ label: '총 주문 건수', value: totalOrders });
+    summarySheet.addRow({ label: '총 매출액', value: totalRevenue });
+    summarySheet.addRow({ label: '평균 주문액', value: avgOrderValue });
+    summarySheet.addRow({ label: '배송비 총액', value: totalShippingFee });
 
-    summarySheet.getColumn('value').numFmt = '$#,##0.00';
+    summarySheet.getColumn('value').numFmt = currencyFormat;
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);

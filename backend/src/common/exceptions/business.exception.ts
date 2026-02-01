@@ -72,3 +72,36 @@ export class ProductNotFoundException extends BusinessException {
     );
   }
 }
+
+export class UserNotFoundException extends BusinessException {
+  constructor(userId: string) {
+    super(
+      'USER_NOT_FOUND',
+      { userId },
+      `User ${userId} not found`,
+      HttpStatus.NOT_FOUND,
+    );
+  }
+}
+
+export class ReservationNotFoundException extends BusinessException {
+  constructor(reservationId: string) {
+    super(
+      'RESERVATION_NOT_FOUND',
+      { reservationId },
+      `Reservation ${reservationId} not found`,
+      HttpStatus.NOT_FOUND,
+    );
+  }
+}
+
+export class InvalidPaymentStatusException extends BusinessException {
+  constructor(orderId: string, currentStatus: string) {
+    super(
+      'INVALID_PAYMENT_STATUS',
+      { orderId, currentStatus },
+      `Cannot confirm payment for order ${orderId}. Current status: ${currentStatus}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}

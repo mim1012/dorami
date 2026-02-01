@@ -6,7 +6,7 @@ import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto, ProfileResponseDto } from './dto/profile.dto';
 import {
   UnauthorizedException,
-  ProductNotFoundException,
+  UserNotFoundException,
 } from '../../common/exceptions/business.exception';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ProductNotFoundException(id);
+      throw new UserNotFoundException(id);
     }
 
     return this.mapToResponseDto(user);
@@ -133,7 +133,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new ProductNotFoundException(userId);
+      throw new UserNotFoundException(userId);
     }
 
     // Decrypt shipping address if exists

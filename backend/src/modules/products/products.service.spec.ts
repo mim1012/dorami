@@ -21,6 +21,9 @@ describe('ProductsService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+            liveStream: {
+              findUnique: jest.fn(),
+            },
           },
         },
         {
@@ -50,16 +53,32 @@ describe('ProductsService', () => {
         stock: 100,
       };
 
+      const mockStream = {
+        id: 'stream-123',
+        streamKey: 'test-stream-key',
+        status: 'ACTIVE',
+      };
+
       const mockProduct = {
         id: '123',
-        ...createDto,
+        streamKey: createDto.streamKey,
+        name: createDto.name,
+        description: createDto.description,
         price: { toNumber: () => 10000 },
+        quantity: createDto.stock,
         status: 'ACTIVE',
+        shippingFee: { toString: () => '3000' },
+        timerEnabled: false,
+        timerDuration: 10,
+        colorOptions: null,
+        sizeOptions: null,
+        freeShippingMessage: null,
         metadata: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
       jest.spyOn(prisma.product, 'create').mockResolvedValue(mockProduct as any);
 
       const result = await service.create(createDto);

@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray, IsNotEmpty } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class GetUsersQueryDto {
@@ -97,11 +97,21 @@ export class StatItemDto {
   trendUp: boolean;
 }
 
+export class TopProductDto {
+  productId: string;
+  productName: string;
+  totalSold: number;
+}
+
 export class DashboardStatsDto {
   revenue: StatItemDto;
   viewers: StatItemDto;
   orders: StatItemDto;
   messages: StatItemDto;
+  // Epic 12 Story 12.1: Additional dashboard metrics
+  pendingPayments: { value: number; formatted: string };
+  activeLiveStreams: { value: number; formatted: string };
+  topProducts: TopProductDto[];
 }
 
 // Live Status DTOs
@@ -289,4 +299,20 @@ export class UpdateUserStatusDto {
   @IsOptional()
   @IsString()
   suspensionReason?: string;
+}
+
+export interface BulkShippingNotificationItem {
+  orderId: string;
+  trackingNumber: string;
+}
+
+export interface BulkShippingNotificationResult {
+  total: number;
+  successful: number;
+  failed: number;
+  results: Array<{
+    orderId: string;
+    success: boolean;
+    error?: string;
+  }>;
 }

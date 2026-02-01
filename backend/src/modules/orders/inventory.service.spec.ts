@@ -36,16 +36,16 @@ describe('InventoryService', () => {
     it('should decrease stock successfully', async () => {
       const mockProduct = {
         id: '123',
-        stock: 10,
+        quantity: 10,
         status: 'ACTIVE',
       };
 
       const updatedProduct = {
         ...mockProduct,
-        stock: 5,
+        quantity: 5,
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
         return callback({
           product: {
             findUnique: jest.fn().mockResolvedValue(mockProduct),
@@ -63,14 +63,15 @@ describe('InventoryService', () => {
     it('should throw InsufficientStockException when stock is insufficient', async () => {
       const mockProduct = {
         id: '123',
-        stock: 3,
+        quantity: 3,
         status: 'ACTIVE',
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
         return callback({
           product: {
             findUnique: jest.fn().mockResolvedValue(mockProduct),
+            update: jest.fn(),
           },
         });
       });

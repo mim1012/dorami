@@ -23,6 +23,7 @@ describe('Admin User Detail (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -111,7 +112,7 @@ describe('Admin User Detail (E2E)', () => {
   describe('GET /admin/users/:id', () => {
     it('should return user detail for admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/users/${testTargetUser.id}`)
+        .get(`/api/admin/users/${testTargetUser.id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -126,7 +127,7 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should return decrypted shipping address', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/users/${testTargetUser.id}`)
+        .get(`/api/admin/users/${testTargetUser.id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -143,7 +144,7 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should return Epic 8 placeholder statistics', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/users/${testTargetUser.id}`)
+        .get(`/api/admin/users/${testTargetUser.id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -157,27 +158,27 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should return 403 for regular user', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/users/${testTargetUser.id}`)
+        .get(`/api/admin/users/${testTargetUser.id}`)
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(403);
     });
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/users/${testTargetUser.id}`)
+        .get(`/api/admin/users/${testTargetUser.id}`)
         .expect(401);
     });
 
     it('should return 404 for non-existent user', async () => {
       await request(app.getHttpServer())
-        .get('/admin/users/non-existent-id')
+        .get('/api/admin/users/non-existent-id')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(404);
     });
 
     it('should handle user without shipping address', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/users/${testRegularUser.id}`)
+        .get(`/api/admin/users/${testRegularUser.id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -188,7 +189,7 @@ describe('Admin User Detail (E2E)', () => {
   describe('PATCH /admin/users/:id/status', () => {
     it('should update user status to SUSPENDED', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ status: 'SUSPENDED' })
         .expect(200);
@@ -208,14 +209,14 @@ describe('Admin User Detail (E2E)', () => {
     it('should update user status back to ACTIVE', async () => {
       // First suspend
       await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ status: 'SUSPENDED' })
         .expect(200);
 
       // Then reactivate
       const response = await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ status: 'ACTIVE' })
         .expect(200);
@@ -234,7 +235,7 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should return 403 for regular user', async () => {
       await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({ status: 'SUSPENDED' })
         .expect(403);
@@ -242,14 +243,14 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .send({ status: 'SUSPENDED' })
         .expect(401);
     });
 
     it('should return 404 for non-existent user', async () => {
       await request(app.getHttpServer())
-        .patch('/admin/users/non-existent-id/status')
+        .patch('/api/admin/users/non-existent-id/status')
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ status: 'SUSPENDED' })
         .expect(404);
@@ -257,7 +258,7 @@ describe('Admin User Detail (E2E)', () => {
 
     it('should validate status enum', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/admin/users/${testTargetUser.id}/status`)
+        .patch(`/api/admin/users/${testTargetUser.id}/status`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send({ status: 'INVALID_STATUS' })
         .expect(400);

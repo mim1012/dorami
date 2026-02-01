@@ -46,6 +46,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     authService = moduleFixture.get<AuthService>(AuthService);
 
@@ -132,7 +133,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
   describe('PATCH /admin/orders/:id/confirm-payment', () => {
     it('should confirm payment successfully as admin', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
@@ -154,7 +155,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
 
     it('should return 404 when order not found', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/admin/orders/NON_EXISTENT_ORDER/confirm-payment')
+        .patch('/api/admin/orders/NON_EXISTENT_ORDER/confirm-payment')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
 
@@ -164,13 +165,13 @@ describe('Admin Payment Confirmation (E2E)', () => {
     it('should return 400 when payment already confirmed', async () => {
       // First confirmation
       await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
       // Second confirmation attempt
       const response = await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(400);
 
@@ -179,16 +180,16 @@ describe('Admin Payment Confirmation (E2E)', () => {
 
     it('should return 403 when non-admin user tries to confirm payment', async () => {
       const response = await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
 
-      expect(response.body.message).toContain('Forbidden');
+      expect(response.body.message).toContain('Insufficient permissions');
     });
 
     it('should return 401 when unauthenticated', async () => {
       await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .expect(401);
     });
 
@@ -196,7 +197,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
       // This test verifies the domain event is emitted
       // In a real system, you'd verify the event listener receives the event
       const response = await request(app.getHttpServer())
-        .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+        .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
@@ -214,10 +215,10 @@ describe('Admin Payment Confirmation (E2E)', () => {
       // Send two concurrent confirmation requests
       const promises = [
         request(app.getHttpServer())
-          .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+          .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
           .set('Authorization', `Bearer ${adminToken}`),
         request(app.getHttpServer())
-          .patch(`/admin/orders/${testOrder.id}/confirm-payment`)
+          .patch(`/api/admin/orders/${testOrder.id}/confirm-payment`)
           .set('Authorization', `Bearer ${adminToken}`),
       ];
 
@@ -297,7 +298,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
 
     it('should filter orders by payment status PENDING', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/orders')
+        .get('/api/admin/orders')
         .query({ paymentStatus: 'PENDING' })
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
@@ -311,7 +312,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
 
     it('should filter orders by payment status CONFIRMED', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/orders')
+        .get('/api/admin/orders')
         .query({ paymentStatus: 'CONFIRMED' })
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);

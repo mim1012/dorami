@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -16,12 +16,24 @@ interface KakaoUserProfile {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly adminEmailSet: Set<string>;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
-  ) {}
+  ) {
+    // Cache admin whitelist at startup to avoid parsing on every login
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
+    this.adminEmailSet = new Set(
+      adminEmails
+        .split(',')
+        .map((email) => email.trim())
+        .filter((email) => email.length > 0),
+    );
+  }
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
     // Find existing user or create new one
@@ -29,14 +41,8 @@ export class AuthService {
       where: { kakaoId: profile.kakaoId },
     });
 
-    // Check if user email is in admin whitelist
-    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
-    const adminEmailList = adminEmails
-      .split(',')
-      .map((email) => email.trim())
-      .filter((email) => email.length > 0);
-
-    const isAdmin = profile.email && adminEmailList.includes(profile.email);
+    // Check if user email is in cached admin whitelist
+    const isAdmin = profile.email && this.adminEmailSet.has(profile.email);
     const assignedRole = isAdmin ? 'ADMIN' : 'USER';
 
     if (!user) {
@@ -52,7 +58,7 @@ export class AuthService {
         },
       });
 
-      console.log(`✅ New user created: ${user.email} (role: ${assignedRole})`);
+      this.logger.log(`New user created: ${user.email} (role: ${assignedRole})`);
     } else {
       // Update user profile, lastLoginAt, and role (in case whitelist changed)
       user = await this.prisma.user.update({
@@ -65,7 +71,7 @@ export class AuthService {
         },
       });
 
-      console.log(`✅ Returning user: ${user.email} (role: ${assignedRole})`);
+      this.logger.log(`Returning user: ${user.email} (role: ${assignedRole})`);
     }
 
     return user;
@@ -140,7 +146,8 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     // Add user to blacklist (prevent token reuse)
-    const blacklistTTL = 60 * 60; // 1 hour (match access token expiry)
+    // TTL should match access token expiration time
+    const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900); // Default: 900s = 15min
     await this.redisService.set(
       `blacklist:${userId}`,
       'true',

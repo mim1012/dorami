@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -14,6 +15,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { CartModule } from './modules/cart/cart.module';
+import { ReservationModule } from './modules/reservation/reservation.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
@@ -44,6 +47,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       // Disable throwing uncaughtException if an error event is emitted and it has no listeners
       ignoreErrors: false,
     }),
+    ScheduleModule.forRoot(),
     LoggerModule,
     PrismaModule,
     RedisModule,
@@ -54,6 +58,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     StreamingModule,
     WebsocketModule,
     ChatModule,
+    CartModule,
+    ReservationModule,
     OrdersModule,
     NotificationsModule,
     SettlementModule,

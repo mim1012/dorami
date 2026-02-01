@@ -18,6 +18,7 @@ describe('Profile Completion (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -43,10 +44,32 @@ describe('Profile Completion (E2E)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    await prismaService.user.deleteMany({
+    // Cleanup (외래 키 순서 고려)
+    const testUserIds = (await prismaService.user.findMany({
       where: { id: { startsWith: 'user-profile' } },
-    });
+      select: { id: true },
+    })).map(u => u.id);
+
+    if (testUserIds.length > 0) {
+      await prismaService.cart.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.reservation.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.orderItem.deleteMany({
+        where: { order: { userId: { in: testUserIds } } },
+      });
+      await prismaService.order.deleteMany({
+        where: { userId: { in: testUserIds } },
+      });
+      await prismaService.auditLog.deleteMany({
+        where: { entityId: { in: testUserIds } },
+      });
+      await prismaService.user.deleteMany({
+        where: { id: { in: testUserIds } },
+      });
+    }
 
     await app.close();
   });
@@ -54,7 +77,7 @@ describe('Profile Completion (E2E)', () => {
   describe('POST /users/complete-profile', () => {
     it('should complete profile successfully with valid data', async () => {
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Kim MinJi',
@@ -91,7 +114,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .send({
           depositorName: 'Test',
           instagramId: '@test',
@@ -107,7 +130,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 400 with missing required fields', async () => {
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Test',
@@ -120,7 +143,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 400 with invalid phone format', async () => {
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Test',
@@ -139,7 +162,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 400 with invalid ZIP code format', async () => {
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Test',
@@ -158,7 +181,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 400 with invalid state code', async () => {
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Test',
@@ -190,7 +213,7 @@ describe('Profile Completion (E2E)', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
           depositorName: 'Test',
@@ -230,7 +253,7 @@ describe('Profile Completion (E2E)', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${freshToken}`)
         .send({
           depositorName: 'Test',
@@ -270,7 +293,7 @@ describe('Profile Completion (E2E)', () => {
       });
 
       await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${freshToken}`)
         .send({
           depositorName: 'Test',
@@ -308,7 +331,7 @@ describe('Profile Completion (E2E)', () => {
       });
 
       await request(app.getHttpServer())
-        .post('/users/complete-profile')
+        .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${freshToken}`)
         .send({
           depositorName: 'Test',
@@ -331,7 +354,7 @@ describe('Profile Completion (E2E)', () => {
   describe('GET /users/check-instagram', () => {
     it('should return available: true for available Instagram ID', async () => {
       const response = await request(app.getHttpServer())
-        .get('/users/check-instagram')
+        .get('/api/users/check-instagram')
         .query({ instagramId: '@available_instagram_e2e' })
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
@@ -354,7 +377,7 @@ describe('Profile Completion (E2E)', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .get('/users/check-instagram')
+        .get('/api/users/check-instagram')
         .query({ instagramId: '@already_taken_e2e' })
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
@@ -367,7 +390,7 @@ describe('Profile Completion (E2E)', () => {
 
     it('should return 401 without authentication', async () => {
       await request(app.getHttpServer())
-        .get('/users/check-instagram')
+        .get('/api/users/check-instagram')
         .query({ instagramId: '@test' })
         .expect(401);
     });
