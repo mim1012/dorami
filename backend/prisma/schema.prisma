@@ -23,6 +23,8 @@ model User {
   instagramId         String?    @unique
   shippingAddress     Json? // encrypted US-format address
   profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed
+  suspendedAt         DateTime?  @map("suspended_at") // timestamp when user was suspended
+  suspensionReason    String?    @map("suspension_reason") // reason for suspension
   createdAt           DateTime   @default(now()) @map("created_at")
   lastLoginAt         DateTime?  @map("last_login_at")
   updatedAt           DateTime   @updatedAt @map("updated_at")

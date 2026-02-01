@@ -3,11 +3,13 @@ import { AdminService } from './admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { EncryptionService } from '../../common/services/encryption.service';
 
 describe('AdminService', () => {
   let service: AdminService;
   let prisma: PrismaService;
   let eventEmitter: EventEmitter2;
+  let encryptionService: EncryptionService;
 
   const mockWebsocketGateway = {
     server: {
@@ -33,6 +35,8 @@ describe('AdminService', () => {
             user: {
               findMany: jest.fn(),
               count: jest.fn(),
+              findUnique: jest.fn(),
+              update: jest.fn(),
             },
             chatMessage: {
               count: jest.fn(),
@@ -45,6 +49,13 @@ describe('AdminService', () => {
               create: jest.fn(),
               upsert: jest.fn(),
             },
+          },
+        },
+        {
+          provide: EncryptionService,
+          useValue: {
+            decryptAddress: jest.fn(),
+            encryptAddress: jest.fn(),
           },
         },
         {
@@ -63,6 +74,7 @@ describe('AdminService', () => {
     service = module.get<AdminService>(AdminService);
     prisma = module.get<PrismaService>(PrismaService);
     eventEmitter = module.get<EventEmitter2>(EventEmitter2);
+    encryptionService = module.get<EncryptionService>(EncryptionService);
   });
 
   it('should be defined', () => {
@@ -262,6 +274,129 @@ describe('AdminService', () => {
       const result = await service.getUserList({ page: 1, limit: 20 });
 
       expect(result.users[0].lastLoginAt).toBeNull();
+    });
+  });
+
+  describe('getUserDetail', () => {
+    const userId = 'user-123';
+    const mockUser = {
+      id: userId,
+      email: 'test@example.com',
+      name: 'Test User',
+      instagramId: '@testuser',
+      depositorName: 'Test Depositor',
+      shippingAddress: 'encrypted-address',
+      createdAt: new Date('2026-01-15'),
+      lastLoginAt: new Date('2026-01-30'),
+      status: 'ACTIVE',
+      role: 'USER',
+      suspendedAt: null,
+    };
+
+    const mockDecryptedAddress = {
+      fullName: 'John Doe',
+      address1: '123 Main St',
+      address2: 'Apt 4B',
+      city: 'Los Angeles',
+      state: 'CA',
+      zip: '90001',
+      phone: '(310) 555-0123',
+    };
+
+    it('should return user detail with decrypted address', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+      jest.spyOn(encryptionService, 'decryptAddress').mockReturnValue(mockDecryptedAddress);
+
+      const result = await service.getUserDetail(userId);
+
+      expect(result.id).toBe(userId);
+      expect(result.email).toBe('test@example.com');
+      expect(result.shippingAddress).toEqual(mockDecryptedAddress);
+      expect(result.statistics.totalOrders).toBe(0);
+      expect(encryptionService.decryptAddress).toHaveBeenCalledWith('encrypted-address');
+    });
+
+    it('should throw NotFoundException when user not found', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.getUserDetail(userId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should handle null shipping address', async () => {
+      const userWithoutAddress = { ...mockUser, shippingAddress: null };
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(userWithoutAddress as any);
+
+      const result = await service.getUserDetail(userId);
+
+      expect(result.shippingAddress).toBeNull();
+    });
+
+    it('should handle decryption error gracefully', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
+        throw new Error('Decryption failed');
+      });
+
+      const result = await service.getUserDetail(userId);
+
+      expect(result.shippingAddress).toBeNull();
+    });
+  });
+
+  describe('updateUserStatus', () => {
+    const userId = 'user-123';
+    const mockUser = {
+      id: userId,
+      status: 'ACTIVE',
+    };
+
+    it('should update user status to SUSPENDED', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+      jest.spyOn(prisma.user, 'update').mockResolvedValue({
+        ...mockUser,
+        status: 'SUSPENDED',
+        suspendedAt: new Date(),
+      } as any);
+
+      const result = await service.updateUserStatus(userId, {
+        status: 'SUSPENDED',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.status).toBe('SUSPENDED');
+      expect(result.data.suspendedAt).toBeDefined();
+    });
+
+    it('should update user status to ACTIVE and clear suspension', async () => {
+      const suspendedUser = {
+        ...mockUser,
+        status: 'SUSPENDED',
+        suspendedAt: new Date(),
+      };
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(suspendedUser as any);
+      jest.spyOn(prisma.user, 'update').mockResolvedValue({
+        ...mockUser,
+        status: 'ACTIVE',
+        suspendedAt: null,
+      } as any);
+
+      const result = await service.updateUserStatus(userId, {
+        status: 'ACTIVE',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.status).toBe('ACTIVE');
+      expect(result.data.suspendedAt).toBeNull();
+    });
+
+    it('should throw NotFoundException when user not found', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.updateUserStatus(userId, { status: 'SUSPENDED' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

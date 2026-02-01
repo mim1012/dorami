@@ -1,6 +1,7 @@
 import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import {
   GetUsersQueryDto,
   UserListResponseDto,
@@ -14,6 +15,10 @@ import {
   GetOrdersQueryDto,
   OrderListResponseDto,
   OrderListItemDto,
+  UserDetailDto,
+  UpdateUserStatusDto,
+  ShippingAddressDto,
+  UserStatisticsDto,
 } from './dto/admin.dto';
 
 @Injectable()
@@ -21,6 +26,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
+    private encryptionService: EncryptionService,
     @Inject(forwardRef(() => 'WEBSOCKET_GATEWAY'))
     private websocketGateway: any,
   ) {}
@@ -510,5 +516,132 @@ export class AdminService {
         },
       };
     });
+  }
+
+  /**
+   * Get user detail with decrypted shipping address and statistics
+   */
+  async getUserDetail(userId: string): Promise<UserDetailDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        instagramId: true,
+        depositorName: true,
+        shippingAddress: true,
+        createdAt: true,
+        lastLoginAt: true,
+        status: true,
+        role: true,
+        suspendedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Decrypt shipping address if exists
+    let shippingAddress: ShippingAddressDto | null = null;
+    if (user.shippingAddress) {
+      try {
+        shippingAddress = this.encryptionService.decryptAddress(user.shippingAddress as any);
+      } catch (error) {
+        console.error('Failed to decrypt shipping address:', error);
+        // Return null if decryption fails
+        shippingAddress = null;
+      }
+    }
+
+    // Calculate user statistics (Epic 8 dependency - placeholder for now)
+    const statistics: UserStatisticsDto = {
+      totalOrders: 0,
+      totalPurchaseAmount: 0,
+      averageOrderValue: 0,
+      orderFrequency: 0,
+    };
+
+    // TODO: Epic 8 - Calculate real statistics from orders
+    // const orders = await this.prisma.order.findMany({
+    //   where: { userId },
+    //   select: { total: true, createdAt: true }
+    // });
+    // statistics.totalOrders = orders.length;
+    // statistics.totalPurchaseAmount = orders.reduce((sum, o) => sum + Number(o.total), 0);
+    // statistics.averageOrderValue = statistics.totalOrders > 0
+    //   ? statistics.totalPurchaseAmount / statistics.totalOrders
+    //   : 0;
+    // const monthsSinceRegistration = differenceInMonths(new Date(), user.createdAt);
+    // statistics.orderFrequency = monthsSinceRegistration > 0
+    //   ? statistics.totalOrders / monthsSinceRegistration
+    //   : 0;
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      instagramId: user.instagramId,
+      depositorName: user.depositorName,
+      shippingAddress,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+      status: user.status,
+      role: user.role,
+      suspendedAt: user.suspendedAt,
+      statistics,
+    };
+  }
+
+  /**
+   * Update user status (Active/Inactive/Suspended)
+   */
+  async updateUserStatus(userId: string, dto: UpdateUserStatusDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updateData: any = {
+      status: dto.status,
+    };
+
+    // If setting to SUSPENDED, set suspendedAt timestamp
+    if (dto.status === 'SUSPENDED') {
+      updateData.suspendedAt = new Date();
+      if (dto.suspensionReason) {
+        updateData.suspensionReason = dto.suspensionReason;
+      }
+    } else {
+      // Clear suspension fields if changing from SUSPENDED
+      updateData.suspendedAt = null;
+      updateData.suspensionReason = null;
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    // TODO: Epic 12 - Emit audit log event
+    // this.eventEmitter.emit('admin:user:status-updated', {
+    //   userId,
+    //   oldStatus: user.status,
+    //   newStatus: dto.status,
+    //   adminId: currentAdminId,
+    // });
+
+    return {
+      success: true,
+      data: {
+        id: updatedUser.id,
+        status: updatedUser.status,
+        suspendedAt: updatedUser.suspendedAt,
+      },
+    };
   }
 }

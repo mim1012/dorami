@@ -1,6 +1,6 @@
 import { Controller, Get, Put, Patch, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { GetUsersQueryDto, UpdateNoticeDto, GetOrdersQueryDto } from './dto/admin.dto';
+import { GetUsersQueryDto, UpdateNoticeDto, GetOrdersQueryDto, UpdateUserStatusDto } from './dto/admin.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -44,5 +44,15 @@ export class AdminController {
   @Patch('orders/:id/confirm-payment')
   async confirmPayment(@Param('id') orderId: string) {
     return this.adminService.confirmOrderPayment(orderId);
+  }
+
+  @Get('users/:id')
+  async getUserDetail(@Param('id') userId: string) {
+    return this.adminService.getUserDetail(userId);
+  }
+
+  @Patch('users/:id/status')
+  async updateUserStatus(@Param('id') userId: string, @Body() dto: UpdateUserStatusDto) {
+    return this.adminService.updateUserStatus(userId, dto);
   }
 }

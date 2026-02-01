@@ -247,3 +247,46 @@ export class OrderListResponseDto {
   limit: number;
   totalPages: number;
 }
+
+// User Detail DTOs
+export class ShippingAddressDto {
+  fullName: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+}
+
+export class UserStatisticsDto {
+  totalOrders: number;
+  totalPurchaseAmount: number;
+  averageOrderValue: number;
+  orderFrequency: number; // orders per month
+}
+
+export class UserDetailDto {
+  id: string;
+  email: string;
+  name: string;
+  instagramId: string | null;
+  depositorName: string | null;
+  shippingAddress: ShippingAddressDto | null;
+  createdAt: Date;
+  lastLoginAt: Date | null;
+  status: string;
+  role: string;
+  suspendedAt: Date | null;
+  statistics: UserStatisticsDto;
+}
+
+export class UpdateUserStatusDto {
+  @IsString()
+  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
+  status: string;
+
+  @IsOptional()
+  @IsString()
+  suspensionReason?: string;
+}
