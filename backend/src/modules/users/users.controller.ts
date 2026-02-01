@@ -30,6 +30,15 @@ export class UsersController {
     return this.usersService.findById(userId);
   }
 
+  @Get('check-instagram')
+  async checkInstagramAvailability(
+    @Query('instagramId') instagramId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const isAvailable = await this.usersService.isInstagramIdAvailable(instagramId, userId);
+    return { data: { available: isAvailable } };
+  }
+
   @Get(':id')
   async getUserById(@Param('id') id: string) {
     return this.usersService.findById(id);
@@ -56,15 +65,6 @@ export class UsersController {
     @Body() dto: CompleteProfileDto,
   ) {
     return this.usersService.completeProfile(userId, dto);
-  }
-
-  @Get('check-instagram')
-  async checkInstagramAvailability(
-    @Query('instagramId') instagramId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
-    const isAvailable = await this.usersService.isInstagramIdAvailable(instagramId, userId);
-    return { data: { available: isAvailable } };
   }
 
   /**

@@ -924,8 +924,9 @@ export class AdminService {
       throw new BadRequestException('Invalid date format. Please use YYYY-MM-DD format');
     }
 
-    from.setHours(0, 0, 0, 0);
-    to.setHours(23, 59, 59, 999);
+    // Use UTC to avoid timezone issues
+    from.setUTCHours(0, 0, 0, 0);
+    to.setUTCHours(23, 59, 59, 999);
 
     // Get all confirmed payment orders in date range
     const orders = await this.prisma.order.findMany({
