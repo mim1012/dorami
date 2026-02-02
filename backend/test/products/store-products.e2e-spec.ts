@@ -42,7 +42,8 @@ describe('Store Products API (Epic 11) - E2E', () => {
   });
 
   afterAll(async () => {
-    // Clean up test user
+    // Clean up test data (delete live streams first due to foreign key)
+    await prisma.liveStream.deleteMany({});
     await prisma.user.deleteMany({ where: { id: testUser.id } });
   });
 
@@ -58,9 +59,9 @@ describe('Store Products API (Epic 11) - E2E', () => {
         .get('/products/store')
         .expect(200);
 
-      expect(response.body.data).toEqual([]);
-      expect(response.body.meta.total).toBe(0);
-      expect(response.body.meta.totalPages).toBe(0);
+      expect(response.body.data.data).toEqual([]);
+      expect(response.body.data.meta.total).toBe(0);
+      expect(response.body.data.meta.totalPages).toBe(0);
     });
 
     it('should return products from ended live streams only', async () => {
@@ -124,10 +125,10 @@ describe('Store Products API (Epic 11) - E2E', () => {
         .get('/products/store')
         .expect(200);
 
-      expect(response.body.data).toHaveLength(2);
-      expect(response.body.meta.total).toBe(2);
-      expect(response.body.data[0].name).toContain('Past Product');
-      expect(response.body.data[1].name).toContain('Past Product');
+      expect(response.body.data.data).toHaveLength(2);
+      expect(response.body.data.meta.total).toBe(2);
+      expect(response.body.data.data[0].name).toContain('Past Product');
+      expect(response.body.data.data[1].name).toContain('Past Product');
     });
 
     it('should handle pagination correctly', async () => {
@@ -159,18 +160,18 @@ describe('Store Products API (Epic 11) - E2E', () => {
         .get('/products/store?page=1&limit=24')
         .expect(200);
 
-      expect(page1.body.data).toHaveLength(24);
-      expect(page1.body.meta.page).toBe(1);
-      expect(page1.body.meta.totalPages).toBe(2);
-      expect(page1.body.meta.total).toBe(30);
+      expect(page1.body.data.data).toHaveLength(24);
+      expect(page1.body.data.meta.page).toBe(1);
+      expect(page1.body.data.meta.totalPages).toBe(2);
+      expect(page1.body.data.meta.total).toBe(30);
 
       // Get page 2
       const page2 = await request(app.getHttpServer())
         .get('/products/store?page=2&limit=24')
         .expect(200);
 
-      expect(page2.body.data).toHaveLength(6);
-      expect(page2.body.meta.page).toBe(2);
+      expect(page2.body.data.data).toHaveLength(6);
+      expect(page2.body.data.meta.page).toBe(2);
     });
 
     it('should not return sold out products', async () => {
@@ -209,8 +210,8 @@ describe('Store Products API (Epic 11) - E2E', () => {
         .get('/products/store')
         .expect(200);
 
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].name).toBe('Available Product');
+      expect(response.body.data.data).toHaveLength(1);
+      expect(response.body.data.data[0].name).toBe('Available Product');
     });
   });
 });
