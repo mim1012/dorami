@@ -103,16 +103,14 @@ export class ProductsController {
   async findAll(
     @Query('streamKey') streamKey?: string,
     @Query('status') status?: ProductStatus,
-  ): Promise<{ data: ProductResponseDto[] }> {
+  ): Promise<ProductResponseDto[]> {
     // If streamKey is provided, filter by stream
     if (streamKey) {
-      const products = await this.productsService.findByStreamKey(streamKey, status);
-      return { data: products };
+      return await this.productsService.findByStreamKey(streamKey, status);
     }
 
     // Otherwise return all products (legacy behavior)
-    const products = await this.productsService.findAll(status);
-    return { data: products };
+    return await this.productsService.findAll(status);
   }
 
   /**
