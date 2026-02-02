@@ -57,6 +57,23 @@ export class ProductsController {
   }
 
   /**
+   * Get featured products for homepage (Public)
+   * Note: This route must be before GET :id to avoid 'featured' being treated as an ID
+   */
+  @Public()
+  @Get('featured')
+  @ApiOperation({ summary: 'Get featured products for homepage (Public)' })
+  @ApiQuery({ name: 'limit', description: 'Number of products to return', required: false, example: 6 })
+  @ApiResponse({ status: 200, description: 'Featured products retrieved successfully', type: [ProductResponseDto] })
+  async getFeaturedProducts(
+    @Query('limit') limit?: string,
+  ): Promise<{ data: ProductResponseDto[] }> {
+    const limitNum = Math.min(20, Math.max(1, parseInt(limit, 10) || 6));
+    const products = await this.productsService.getFeaturedProducts(limitNum);
+    return { data: products };
+  }
+
+  /**
    * Epic 11 Story 11.1: Get store products from ended live streams (Public)
    * Note: This route must be before GET :id to avoid 'store' being treated as an ID
    */

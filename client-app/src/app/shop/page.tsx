@@ -28,7 +28,7 @@ function ShopPageContent() {
     async function fetchProducts() {
       try {
         setLoading(true);
-        const data = await getProducts('ACTIVE');
+        const data = await getProducts('AVAILABLE');
         setProducts(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : '상품을 불러오는데 실패했습니다');

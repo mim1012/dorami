@@ -23,6 +23,30 @@ async function bootstrap() {
   app.use(cookieParser());
   console.log('>>> Cookie parser registered');
 
+  // Manual CORS middleware (in case NestJS CORS doesn't work with proxy)
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'https://3000-ips79gbcsoq9l43s8qngg-d0b7df16.sg1.manus.computer',
+    ];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept');
+    }
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    
+    next();
+  });
+  console.log('>>> Manual CORS middleware registered');
+
   // Global Validation Pipe
   // Temporarily disabled due to class-validator package issues
   // app.useGlobalPipes(
@@ -41,13 +65,21 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   // CORS
+  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'https://3000-ips79gbcsoq9l43s8qngg-d0b7df16.sg1.manus.computer',
+  ];
+  
+  // CORS - Allow all origins for development
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3002',
-    ],
+    origin: true, // Allow all origins
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Type'],
   });
+  console.log('>>> CORS enabled for all origins (development mode)');
 
   // Setup Redis Adapter for Socket.IO
   // Temporarily disabled to allow server to start

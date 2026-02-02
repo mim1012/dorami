@@ -7,56 +7,19 @@ import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
 import { useRouter } from 'next/navigation';
-
-// Mock data - 추후 API로 대체
-const mockProducts = [
-  {
-    id: '1',
-    name: '프리미엄 무선 이어폰',
-    price: 89000,
-    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&q=80',
-    isNew: true,
-    discount: 20,
-  },
-  {
-    id: '2',
-    name: '스마트 워치 프로',
-    price: 450000,
-    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-    isNew: false,
-  },
-  {
-    id: '3',
-    name: '휴대용 블루투스 스피커',
-    price: 129000,
-    imageUrl: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500&q=80',
-    discount: 15,
-  },
-  {
-    id: '4',
-    name: '고급 백팩',
-    price: 198000,
-    imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&q=80',
-    isNew: true,
-  },
-  {
-    id: '5',
-    name: '디자이너 선글라스',
-    price: 320000,
-    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500&q=80',
-    discount: 30,
-  },
-  {
-    id: '6',
-    name: '프리미엄 향수',
-    price: 150000,
-    imageUrl: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=500&q=80',
-    isNew: true,
-  },
-];
+import { getFeaturedProducts } from '@/lib/api/products';
+import { getUpcomingStreams } from '@/lib/api/streaming';
 
 export default function Home() {
   const router = useRouter();
+  const [featuredProducts, setFeaturedProducts] = useState<Array<{
+    id: string;
+    name: string;
+    price: number;
+    imageUrl?: string;
+    isNew?: boolean;
+    discount?: number;
+  }>>([]);
   const [upcomingLives, setUpcomingLives] = useState<Array<{
     id: string;
     title: string;
@@ -65,109 +28,151 @@ export default function Home() {
     isLive: boolean;
   }>>([]);
   const [nextLiveTime, setNextLiveTime] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 클라이언트 사이드에서만 동적 시간 생성 (Hydration 오류 방지)
+  // Fetch data from API
   useEffect(() => {
-    const now = Date.now();
-    setUpcomingLives([
-      {
-        id: '1',
-        title: '신상 뷰티 제품 특집 라이브',
-        scheduledTime: new Date(now + 2 * 60 * 60 * 1000), // 2시간 후
-        thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
-        isLive: false,
-      },
-      {
-        id: '2',
-        title: '겨울 패션 아이템 특가 방송',
-        scheduledTime: new Date(now + 5 * 60 * 60 * 1000), // 5시간 후
-        thumbnailUrl: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&q=80',
-        isLive: false,
-      },
-      {
-        id: '3',
-        title: '프리미엄 전자기기 특별 할인',
-        scheduledTime: new Date(now + 24 * 60 * 60 * 1000), // 내일
-        thumbnailUrl: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=800&q=80',
-        isLive: false,
-      },
-    ]);
-    setNextLiveTime(new Date(now + 2 * 60 * 60 * 1000));
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch featured products
+        const products = await getFeaturedProducts(6);
+        setFeaturedProducts(products.map(p => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+          isNew: true, // TODO: Add isNew field to backend
+          discount: undefined, // TODO: Add discount field to backend
+        })));
+
+        // Fetch upcoming live streams
+        const streams = await getUpcomingStreams(3);
+        if (streams.length > 0) {
+          setUpcomingLives(streams.map(s => ({
+            id: s.id,
+            title: s.title,
+            scheduledTime: new Date(s.scheduledTime),
+            thumbnailUrl: s.thumbnailUrl || 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
+            isLive: s.isLive,
+          })));
+          setNextLiveTime(new Date(streams[0].scheduledTime));
+        } else {
+          // Fallback to mock data if no upcoming streams
+          const now = Date.now();
+          setUpcomingLives([
+            {
+              id: '1',
+              title: '신상 뷰티 제품 특집 라이브',
+              scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
+              thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
+              isLive: false,
+            },
+            {
+              id: '2',
+              title: '겨울 패션 아이템 특가 방송',
+              scheduledTime: new Date(now + 5 * 60 * 60 * 1000),
+              thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+              isLive: false,
+            },
+            {
+              id: '3',
+              title: '프리미엄 전자기기 특별 할인',
+              scheduledTime: new Date(now + 24 * 60 * 60 * 1000),
+              thumbnailUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800&q=80',
+              isLive: false,
+            },
+          ]);
+          setNextLiveTime(new Date(now + 2 * 60 * 60 * 1000));
+        }
+      } catch (err) {
+        console.error('Failed to fetch homepage data:', err);
+        setError('데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
   }, []);
 
-  const handleProductClick = (productId: string) => {
-    router.push(`/products/${productId}`);
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      router.push(`/shop?search=${encodeURIComponent(query)}`);
+    }
   };
 
-  const handleLiveClick = () => {
-    router.push('/live');
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p>로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-pink-500 rounded-lg hover:bg-pink-600"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <main className="min-h-screen pb-20">
-        <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
-          {/* 상단 헤더 */}
-          <div className="mb-8">
-            <h1 className="text-h1 text-primary-text font-bold mb-2">
-              Live Commerce
-            </h1>
-            <p className="text-body text-secondary-text">
-              실시간 쇼핑의 새로운 경험
-            </p>
-            <div className="mt-4">
-              <SearchBar
-                placeholder="상품 검색..."
-                onSubmit={(query) => router.push(`/shop?q=${encodeURIComponent(query)}`)}
-              />
-            </div>
-          </div>
-
-          {/* 라이브 카운트다운 배너 */}
-          <div className="mb-8">
-            <LiveCountdownBanner
-              liveStartTime={nextLiveTime}
-              isLive={false}
-              onLiveClick={handleLiveClick}
-            />
-          </div>
-
-          {/* 예정된 라이브 섹션 */}
-          <div className="mb-8">
-            <h2 className="text-h2 text-primary-text font-semibold mb-4">
-              예정된 라이브
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingLives.map((live) => (
-                <UpcomingLiveCard
-                  key={live.id}
-                  {...live}
-                  onClick={handleLiveClick}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* 이전 추천 상품 섹션 */}
-          <div className="mb-6">
-            <h2 className="text-h2 text-primary-text font-semibold mb-4">
-              이전 추천 상품
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {mockProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  {...product}
-                  onClick={() => handleProductClick(product.id)}
-                />
-              ))}
-            </div>
-          </div>
+    <div className="min-h-screen bg-black text-white pb-20">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-black border-b border-gray-800">
+        <div className="p-4">
+          <h1 className="text-2xl font-bold mb-3">Live Commerce</h1>
+          <SearchBar onSearch={handleSearch} />
         </div>
-      </main>
+      </header>
 
-      {/* 하단 탭 바 */}
+      {/* Live Countdown Banner */}
+      <LiveCountdownBanner nextLiveTime={nextLiveTime} />
+
+      {/* Upcoming Lives Section */}
+      <section className="p-4">
+        <h2 className="text-xl font-bold mb-4">예정된 라이브</h2>
+        <div className="space-y-3">
+          {upcomingLives.map((live) => (
+            <UpcomingLiveCard key={live.id} live={live} />
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Products Section */}
+      <section className="p-4">
+        <h2 className="text-xl font-bold mb-4">이번 주 추천 상품</h2>
+        {featuredProducts.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            등록된 상품이 없습니다
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Bottom Navigation */}
       <BottomTabBar />
-    </>
+    </div>
   );
 }

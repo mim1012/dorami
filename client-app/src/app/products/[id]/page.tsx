@@ -17,7 +17,7 @@ const MOCK_PRODUCT: Product = {
   price: 29900,
   stockQuantity: 10,
   imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
-  status: 'ACTIVE',
+  status: 'AVAILABLE',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
