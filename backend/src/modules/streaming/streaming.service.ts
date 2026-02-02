@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -18,6 +18,8 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class StreamingService {
+  private readonly logger = new Logger(StreamingService.name);
+
   constructor(
     private prisma: PrismaService,
     private redisService: RedisService,
@@ -64,7 +66,15 @@ export class StreamingService {
         },
       }));
     } catch (error) {
-      throw new BusinessException('FAILED_TO_GET_UPCOMING_STREAMS', {}, error.message);
+      this.logger.error(`Failed to get upcoming streams: ${error.message}`, error.stack);
+      throw new BusinessException(
+        'FAILED_TO_GET_UPCOMING_STREAMS',
+        { 
+          statusCode: 500,
+          error: 'Internal Server Error'
+        },
+        `Failed to retrieve upcoming streams: ${error.message}`
+      );
     }
   }
 
