@@ -29,21 +29,25 @@ describe('Store Products API (Epic 11) - E2E', () => {
   let testUser: any;
 
   beforeAll(async () => {
-    // Create test user for live streams
-    testUser = await prisma.user.create({
-      data: {
-        id: 'test-user-store-products',
-        kakaoId: 'kakao-test-store',
-        name: 'Store Test User',
-        email: 'store@example.com',
-        role: 'USER',
-      },
-    });
+    // Find or create test user for live streams
+    testUser = await prisma.user.findUnique({ where: { id: 'test-user-store-products' } }) ||
+      await prisma.user.create({
+        data: {
+          id: 'test-user-store-products',
+          kakaoId: 'kakao-test-store',
+          name: 'Store Test User',
+          email: 'store@example.com',
+          role: 'USER',
+        },
+      });
   });
 
   afterAll(async () => {
-    // Clean up test data (delete live streams first due to foreign key)
-    await prisma.liveStream.deleteMany({});
+    // Clean up test data (delete in correct order due to foreign keys)
+    await prisma.product.deleteMany({ where: { streamKey: { startsWith: 'ended-stream' } } });
+    await prisma.product.deleteMany({ where: { streamKey: { startsWith: 'live-stream' } } });
+    await prisma.product.deleteMany({ where: { streamKey: { startsWith: 'store-stream' } } });
+    await prisma.liveStream.deleteMany({ where: { userId: testUser.id } });
     await prisma.user.deleteMany({ where: { id: testUser.id } });
   });
 
