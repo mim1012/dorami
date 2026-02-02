@@ -7,28 +7,38 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
-import { Plus, Edit, Trash2, Package, AlertCircle, Upload, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertCircle, Upload, X, CheckCircle } from 'lucide-react';
 
 interface Product {
   id: string;
+  streamKey: string;
   name: string;
-  description?: string;
   price: number;
   stock: number;
-  status: 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
+  colorOptions: string[];
+  sizeOptions: string[];
+  shippingFee: number;
+  freeShippingMessage?: string;
+  timerEnabled: boolean;
+  timerDuration: number;
   imageUrl?: string;
-  metadata?: any;
+  status: 'AVAILABLE' | 'SOLD_OUT';
   createdAt: string;
   updatedAt: string;
 }
 
 interface ProductFormData {
+  streamKey: string;
   name: string;
-  description: string;
   price: string;
   stock: string;
+  colorOptions: string;
+  sizeOptions: string;
+  shippingFee: string;
+  freeShippingMessage: string;
+  timerEnabled: boolean;
+  timerDuration: string;
   imageUrl: string;
-  streamKey: string;
 }
 
 export default function AdminProductsPage() {
@@ -37,6 +47,7 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterStreamKey, setFilterStreamKey] = useState<string>('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -46,22 +57,28 @@ export default function AdminProductsPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
+    streamKey: '',
     name: '',
-    description: '',
     price: '',
     stock: '',
+    colorOptions: '',
+    sizeOptions: '',
+    shippingFee: '3000',
+    freeShippingMessage: '',
+    timerEnabled: false,
+    timerDuration: '10',
     imageUrl: '',
-    streamKey: 'default-stream',
   });
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [filterStreamKey]);
 
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get<Product[]>('/products');
+      const params = filterStreamKey ? { streamKey: filterStreamKey } : {};
+      const response = await apiClient.get<Product[]>('/products', { params });
       setProducts(response.data);
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
@@ -82,7 +99,6 @@ export default function AdminProductsPage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      // Create preview URL
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
     }
@@ -129,23 +145,33 @@ export default function AdminProductsPage() {
     if (product) {
       setEditingProduct(product);
       setFormData({
+        streamKey: product.streamKey,
         name: product.name,
-        description: product.description || '',
         price: product.price.toString(),
         stock: product.stock.toString(),
+        colorOptions: product.colorOptions.join(', '),
+        sizeOptions: product.sizeOptions.join(', '),
+        shippingFee: product.shippingFee.toString(),
+        freeShippingMessage: product.freeShippingMessage || '',
+        timerEnabled: product.timerEnabled,
+        timerDuration: product.timerDuration.toString(),
         imageUrl: product.imageUrl || '',
-        streamKey: 'default-stream',
       });
       setPreviewUrl(product.imageUrl || '');
     } else {
       setEditingProduct(null);
       setFormData({
+        streamKey: '',
         name: '',
-        description: '',
         price: '',
         stock: '',
+        colorOptions: '',
+        sizeOptions: '',
+        shippingFee: '3000',
+        freeShippingMessage: '',
+        timerEnabled: false,
+        timerDuration: '10',
         imageUrl: '',
-        streamKey: 'default-stream',
       });
       setPreviewUrl('');
     }
@@ -159,51 +185,70 @@ export default function AdminProductsPage() {
 
     try {
       const payload = {
-        ...formData,
+        streamKey: formData.streamKey,
+        name: formData.name,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
+        colorOptions: formData.colorOptions.split(',').map(s => s.trim()).filter(Boolean),
+        sizeOptions: formData.sizeOptions.split(',').map(s => s.trim()).filter(Boolean),
+        shippingFee: parseFloat(formData.shippingFee),
+        freeShippingMessage: formData.freeShippingMessage || undefined,
+        timerEnabled: formData.timerEnabled,
+        timerDuration: parseInt(formData.timerDuration),
+        imageUrl: formData.imageUrl || undefined,
       };
 
       if (editingProduct) {
-        // Update
         await apiClient.patch(`/products/${editingProduct.id}`, payload);
       } else {
-        // Create
         await apiClient.post('/products', payload);
       }
 
       fetchProducts();
       setIsModalOpen(false);
+      alert(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!');
     } catch (err: any) {
       console.error('Failed to save product:', err);
-      alert('상품 저장에 실패했습니다.');
+      alert(`상품 저장에 실패했습니다: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleMarkAsSoldOut = async (productId: string) => {
+    if (!confirm('이 상품을 품절 처리하시겠습니까?')) return;
+
+    try {
+      await apiClient.patch(`/products/${productId}/sold-out`, {});
+      fetchProducts();
+      alert('상품이 품절 처리되었습니다.');
+    } catch (err: any) {
+      console.error('Failed to mark as sold out:', err);
+      alert('품절 처리에 실패했습니다.');
+    }
+  };
+
   const handleDelete = async (productId: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+    if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
       await apiClient.delete(`/products/${productId}`);
       fetchProducts();
+      alert('상품이 삭제되었습니다.');
     } catch (err: any) {
       console.error('Failed to delete product:', err);
-      alert('상품 삭제에 실패했습니다.');
+      alert(`상품 삭제에 실패했습니다: ${err.message}`);
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return { text: '활성', color: 'bg-success/20 text-success' };
-      case 'INACTIVE':
-        return { text: '비활성', color: 'bg-secondary-text/20 text-secondary-text' };
+      case 'AVAILABLE':
+        return { text: '판매중', color: 'bg-green-500/20 text-green-500' };
       case 'SOLD_OUT':
-        return { text: '품절', color: 'bg-error/20 text-error' };
+        return { text: '품절', color: 'bg-red-500/20 text-red-500' };
       default:
-        return { text: status, color: 'bg-gray-100 text-secondary-text' };
+        return { text: status, color: 'bg-gray-500/20 text-gray-500' };
     }
   };
 
@@ -235,6 +280,16 @@ export default function AdminProductsPage() {
         </Button>
       </div>
 
+      {/* Filter */}
+      <div className="flex gap-4">
+        <Input
+          label="Stream Key로 필터"
+          value={filterStreamKey}
+          onChange={(e) => setFilterStreamKey(e.target.value)}
+          placeholder="stream key 입력 (비우면 전체 조회)"
+        />
+      </div>
+
       {/* Error Alert */}
       {error && (
         <div className="bg-error/10 border border-error rounded-xl p-4 flex items-start gap-3">
@@ -260,6 +315,9 @@ export default function AdminProductsPage() {
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-text">
                     상품명
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-secondary-text">
+                    Stream Key
                   </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-secondary-text">
                     가격
@@ -297,18 +355,40 @@ export default function AdminProductsPage() {
                             <Body className="text-primary-text font-semibold">
                               {product.name}
                             </Body>
-                            {product.description && (
-                              <Body className="text-secondary-text text-xs line-clamp-1">
-                                {product.description}
-                              </Body>
-                            )}
+                            <div className="flex gap-2 mt-1">
+                              {product.colorOptions.length > 0 && (
+                                <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-0.5 rounded">
+                                  {product.colorOptions.length} 색상
+                                </span>
+                              )}
+                              {product.sizeOptions.length > 0 && (
+                                <span className="text-xs bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded">
+                                  {product.sizeOptions.length} 사이즈
+                                </span>
+                              )}
+                              {product.timerEnabled && (
+                                <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
+                                  ⏱️ {product.timerDuration}분
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {product.streamKey}
+                        </code>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Body className="text-primary-text font-bold">
                           {formatPrice(product.price)}
                         </Body>
+                        {product.shippingFee > 0 && (
+                          <Body className="text-xs text-secondary-text">
+                            +배송비 {formatPrice(product.shippingFee)}
+                          </Body>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <Body
@@ -329,12 +409,23 @@ export default function AdminProductsPage() {
                           <button
                             onClick={() => handleOpenModal(product)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-hot-pink"
+                            title="수정"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
+                          {product.status === 'AVAILABLE' && (
+                            <button
+                              onClick={() => handleMarkAsSoldOut(product.id)}
+                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-orange-500"
+                              title="품절 처리"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDelete(product.id)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-error"
+                            title="삭제"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -354,9 +445,20 @@ export default function AdminProductsPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingProduct ? '상품 수정' : '상품 등록'}
-        maxWidth="lg"
+        maxWidth="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-2">
+          <Input
+            label="Stream Key"
+            name="streamKey"
+            value={formData.streamKey}
+            onChange={(e) => setFormData({ ...formData, streamKey: e.target.value })}
+            placeholder="예: abc123def456"
+            required
+            fullWidth
+            helperText="라이브 방송의 Stream Key를 입력하세요"
+          />
+
           <Input
             label="상품명"
             name="name"
@@ -367,27 +469,14 @@ export default function AdminProductsPage() {
             fullWidth
           />
 
-          <div>
-            <label className="block text-sm font-medium text-secondary-text mb-2">
-              상품 설명
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="상품에 대한 상세 설명을 입력하세요"
-              rows={4}
-              className="w-full bg-content-bg border border-gray-200 rounded-lg px-4 py-3 text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink transition-colors"
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격"
+              label="가격 (원)"
               name="price"
               type="number"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="89000"
+              placeholder="29000"
               required
               fullWidth
             />
@@ -397,10 +486,73 @@ export default function AdminProductsPage() {
               type="number"
               value={formData.stock}
               onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-              placeholder="100"
+              placeholder="50"
               required
               fullWidth
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="색상 옵션 (쉼표로 구분)"
+              name="colorOptions"
+              value={formData.colorOptions}
+              onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
+              placeholder="예: Red, Blue, Black"
+              fullWidth
+            />
+            <Input
+              label="사이즈 옵션 (쉼표로 구분)"
+              name="sizeOptions"
+              value={formData.sizeOptions}
+              onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
+              placeholder="예: S, M, L, XL"
+              fullWidth
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="배송비 (원)"
+              name="shippingFee"
+              type="number"
+              value={formData.shippingFee}
+              onChange={(e) => setFormData({ ...formData, shippingFee: e.target.value })}
+              placeholder="3000"
+              fullWidth
+            />
+            <Input
+              label="무료 배송 안내 문구"
+              name="freeShippingMessage"
+              value={formData.freeShippingMessage}
+              onChange={(e) => setFormData({ ...formData, freeShippingMessage: e.target.value })}
+              placeholder="예: 5만원 이상 무료배송"
+              fullWidth
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.timerEnabled}
+                onChange={(e) => setFormData({ ...formData, timerEnabled: e.target.checked })}
+                className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+              />
+              <span className="text-sm font-medium text-primary-text">장바구니 예약 타이머 활성화</span>
+            </label>
+            {formData.timerEnabled && (
+              <Input
+                label="타이머 시간 (분)"
+                name="timerDuration"
+                type="number"
+                value={formData.timerDuration}
+                onChange={(e) => setFormData({ ...formData, timerDuration: e.target.value })}
+                placeholder="10"
+                min="1"
+                max="60"
+              />
+            )}
           </div>
 
           {/* Image Upload Section */}
@@ -409,7 +561,6 @@ export default function AdminProductsPage() {
               상품 이미지
             </label>
 
-            {/* Image Preview */}
             {(previewUrl || formData.imageUrl) && (
               <div className="relative mb-4">
                 <img
@@ -427,7 +578,6 @@ export default function AdminProductsPage() {
               </div>
             )}
 
-            {/* File Input */}
             <div className="flex gap-2">
               <label className="flex-1 cursor-pointer">
                 <input

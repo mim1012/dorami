@@ -87,10 +87,10 @@ export default function OrdersPage() {
     switch (status) {
       case 'PENDING':
         return { text: '입금 대기', color: 'text-yellow-500', icon: Clock, bgColor: 'bg-yellow-500/20' };
-      case 'PAID':
-        return { text: '결제 완료', color: 'text-success', icon: CheckCircle, bgColor: 'bg-success/20' };
-      case 'CANCELLED':
-        return { text: '취소됨', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
+      case 'CONFIRMED':
+        return { text: '결제 확인', color: 'text-green-600', icon: CheckCircle, bgColor: 'bg-green-100' };
+      case 'FAILED':
+        return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
       default:
         return { text: status, color: 'text-secondary-text', icon: Package, bgColor: 'bg-white/10' };
     }
@@ -98,14 +98,31 @@ export default function OrdersPage() {
 
   const getShippingStatusInfo = (status: string) => {
     switch (status) {
-      case 'PREPARING':
-        return { text: '배송 준비 중', color: 'text-secondary-text' };
+      case 'PENDING':
+        return { text: '배송 대기', color: 'text-gray-500' };
       case 'SHIPPED':
-        return { text: '배송 중', color: 'text-hot-pink' };
+        return { text: '배송 중', color: 'text-blue-600' };
       case 'DELIVERED':
-        return { text: '배송 완료', color: 'text-success' };
+        return { text: '배송 완료', color: 'text-green-600' };
       default:
         return { text: '대기 중', color: 'text-secondary-text' };
+    }
+  };
+
+  const getOrderStatusInfo = (status: string) => {
+    switch (status) {
+      case 'PENDING_PAYMENT':
+        return { text: '입금 대기 중', color: 'text-yellow-600', icon: Clock };
+      case 'PAYMENT_CONFIRMED':
+        return { text: '결제 완료', color: 'text-green-600', icon: CheckCircle };
+      case 'SHIPPED':
+        return { text: '배송 중', color: 'text-blue-600', icon: Truck };
+      case 'DELIVERED':
+        return { text: '배송 완료', color: 'text-green-700', icon: CheckCircle };
+      case 'CANCELLED':
+        return { text: '취소됨', color: 'text-red-600', icon: XCircle };
+      default:
+        return { text: status, color: 'text-gray-500', icon: Package };
     }
   };
 

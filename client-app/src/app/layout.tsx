@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/lib/theme/theme-context';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { CartProvider } from '@/lib/contexts/CartContext';
+import { ToastProvider } from '@/components/common/Toast';
 
 export const metadata: Metadata = {
   title: 'Live Commerce',
@@ -22,9 +23,11 @@ export default function RootLayout({
       <body className="bg-[#121212]" suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
-            <CartProvider>
-              {children}
-            </CartProvider>
+            <ToastProvider>
+              <CartProvider>
+                {children}
+              </CartProvider>
+            </ToastProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

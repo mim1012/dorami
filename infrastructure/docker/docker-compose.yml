@@ -1,0 +1,95 @@
+# Docker Compose for Local Live Streaming Development
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # Nginx RTMP Server
+  nginx-rtmp:
+    build:
+      context: ./nginx-rtmp
+      dockerfile: Dockerfile
+    container_name: live-commerce-rtmp
+    ports:
+      - "1935:1935"   # RTMP port for OBS
+      - "8080:8080"   # HTTP port for HLS delivery
+    environment:
+      - BACKEND_URL=http://backend:3000
+      - MAX_CONNECTIONS=1000
+      - HLS_FRAGMENT_LENGTH=2s
+    volumes:
+      - hls-data:/tmp/hls
+      - ./nginx-rtmp/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-rtmp/rtmp.conf:/etc/nginx/rtmp.conf:ro
+    networks:
+      - live-streaming
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - backend
+
+  # Backend API (placeholder - assumes backend is running separately)
+  backend:
+    image: live-commerce-backend:latest
+    container_name: live-commerce-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - RTMP_SERVER_URL=rtmp://nginx-rtmp:1935/live
+      - HLS_SERVER_URL=http://localhost:8080/hls
+    networks:
+      - live-streaming
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: live-commerce-postgres
+    environment:
+      - POSTGRES_USER=livecommerce
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=livecommerce
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - live-streaming
+    restart: unless-stopped
+
+  # Redis for viewer counting and caching
+  redis:
+    image: redis:7-alpine
+    container_name: live-commerce-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - live-streaming
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  hls-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  live-streaming:
+    driver: bridge

@@ -36,6 +36,7 @@ model User {
   reservations   Reservation[]
   orders         Order[]
   moderationLogs ModerationLog[]
+  auditLogs      AuditLog[]    @relation("AdminAuditLogs")
 
   @@index([email])
   @@index([kakaoId])
@@ -201,6 +202,7 @@ model Reservation {
   @@unique([productId, reservationNumber])
   @@index([productId, reservationNumber])
   @@index([userId, status])
+  @@index([status, expiresAt]) // For cron job: expirePromotedReservations
   @@map("reservations")
 }
 
@@ -315,6 +317,7 @@ model SystemConfig {
 model AuditLog {
   id        String   @id @default(uuid())
   adminId   String   @map("admin_id")
+  admin     User     @relation(fields: [adminId], references: [id], name: "AdminAuditLogs")
   action    String
   entity    String // User, Product, Order, etc.
   entityId  String   @map("entity_id")

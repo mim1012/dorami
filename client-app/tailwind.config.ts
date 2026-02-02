@@ -14,6 +14,7 @@ const config: Config = {
         'primary-black': 'var(--primary-black)',
         'content-bg': 'var(--content-bg)',
         'hot-pink': 'var(--hot-pink)',
+        'hot-pink-dark': '#CC0062',
         'primary-text': 'var(--primary-text)',
         'secondary-text': 'var(--secondary-text)',
         'success': 'var(--success)',
@@ -64,6 +65,7 @@ const config: Config = {
         'fade-in': 'fadeIn 0.2s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
+        'slide-in': 'slideIn 0.3s ease-out',
         'pulse-hot-pink': 'pulseHotPink 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
@@ -79,6 +81,10 @@ const config: Config = {
           '0%': { transform: 'translateY(-10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
+        slideIn: {
+          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
         pulseHotPink: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.7' },
@@ -93,7 +99,9 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar')({ nocompatible: true }),
+  ],
 };
 
 export default config;

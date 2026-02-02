@@ -1,0 +1,533 @@
+
+> backend@1.0.0 test:e2e
+> jest --config ./test/jest-e2e.json
+
+FAIL test/auth/kakao-auth.e2e-spec.ts (46.228 s)
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao › 카카오 인증 페이지로 리다이렉트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao › 리다이렉트 URL에 필수 파라미터가 포함되어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao/callback › 인증 코드 없이 요청하면 카카오 인증 페이지로 리다이렉트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 신규 사용자를 생성하고 반환해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 기존 사용자를 조회하고 lastLoginAt을 업데이트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 이메일이 없어도 사용자를 생성할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 특수 문자가 포함된 이메일을 정상 처리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 한글과 이모지가 포함된 닉네임을 정상 처리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › login (JWT 토큰 발급) 테스트 › JWT 토큰을 발급하고 반환해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › login (JWT 토큰 발급) 테스트 › JWT 토큰에 만료 시간이 설정되어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 토큰 갱신 테스트 › 유효한 Refresh Token으로 Access Token을 갱신할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 토큰 갱신 테스트 › 잘못된 Refresh Token으로 갱신 시 에러를 던져야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 프로필 완성 확인 테스트 › instagramId와 depositorName이 없으면 프로필 완성이 필요하다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 프로필 완성 확인 테스트 › instagramId와 depositorName이 있으면 프로필이 완성되었다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 성능 및 동시성 테스트 › 동시 다중 로그인 요청을 처리할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 로그아웃 테스트 › 로그아웃 시 세션을 정리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+PASS test/admin/payment-confirmation.e2e-spec.ts (64.534 s)
+FAIL test/app.e2e-spec.ts (65.375 s)
+  ● AppController (e2e) › / (GET)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Live Commerce Backend API is running!"
+    Received: undefined
+
+    [0m [90m 35 |[39m       [33m.[39m[36mget[39m([32m'/api'[39m)
+     [90m 36 |[39m       [33m.[39mexpect([35m200[39m)
+    [31m[1m>[22m[39m[90m 37 |[39m       [33m.[39mexpect((res) [33m=>[39m {
+     [90m    |[39m        [31m[1m^[22m[39m
+     [90m 38 |[39m         expect(res[33m.[39mbody[33m.[39mdata)[33m.[39mtoBe([32m'Live Commerce Backend API is running!'[39m)[33m;[39m
+     [90m 39 |[39m       })[33m;[39m
+     [90m 40 |[39m   })[33m;[39m[0m
+
+      at Object.<anonymous> (app.e2e-spec.ts:37:8)
+      ----
+      at app.e2e-spec.ts:38:31
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+  ● AppController (e2e) › /health (GET)
+
+    TypeError: Cannot read properties of undefined (reading 'status')
+
+    [0m [90m 44 |[39m       [33m.[39m[36mget[39m([32m'/api/health'[39m)
+     [90m 45 |[39m       [33m.[39mexpect([35m200[39m)
+    [31m[1m>[22m[39m[90m 46 |[39m       [33m.[39mexpect((res) [33m=>[39m {
+     [90m    |[39m        [31m[1m^[22m[39m
+     [90m 47 |[39m         expect(res[33m.[39mbody[33m.[39mdata[33m.[39mstatus)[33m.[39mtoBe([32m'ok'[39m)[33m;[39m
+     [90m 48 |[39m         expect(res[33m.[39mbody[33m.[39mdata[33m.[39mtimestamp)[33m.[39mtoBeDefined()[33m;[39m
+     [90m 49 |[39m       })[33m;[39m[0m
+
+      at Object.<anonymous> (app.e2e-spec.ts:46:8)
+      ----
+      at app.e2e-spec.ts:47:30
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+FAIL test/products.e2e-spec.ts (65.801 s)
+  ● Products API (e2e) › /products (GET) - should return products list
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: undefined
+
+    [0m [90m 35 |[39m       [33m.[39m[36mget[39m([32m'/api/products'[39m)
+     [90m 36 |[39m       [33m.[39mexpect([35m200[39m)
+    [31m[1m>[22m[39m[90m 37 |[39m       [33m.[39mexpect((res) [33m=>[39m {
+     [90m    |[39m        [31m[1m^[22m[39m
+     [90m 38 |[39m         expect(res[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 39 |[39m         expect([33mArray[39m[33m.[39misArray(res[33m.[39mbody[33m.[39mdata))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 40 |[39m       })[33m;[39m[0m
+
+      at Object.<anonymous> (products.e2e-spec.ts:37:8)
+      ----
+      at products.e2e-spec.ts:38:34
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+PASS test/admin/admin-orders.e2e-spec.ts (66.245 s)
+FAIL test/admin/admin-user-detail.e2e-spec.ts (66.271 s)
+  ● Admin User Detail (E2E) › PATCH /admin/users/:id/status › should validate status enum
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "status"
+    Received array: ["status must be one of the following values: "]
+
+    [0m [90m 273 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m 274 |[39m
+    [31m[1m>[22m[39m[90m 275 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'status'[39m)[33m;[39m
+     [90m     |[39m                                     [31m[1m^[22m[39m
+     [90m 276 |[39m     })[33m;[39m
+     [90m 277 |[39m   })[33m;[39m
+     [90m 278 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-user-detail.e2e-spec.ts:275:37)
+
+FAIL test/users/profile-completion.e2e-spec.ts (66.252 s)
+  ● Profile Completion (E2E) › POST /users/complete-profile › should return 400 with invalid state code
+
+    expected 400 "Bad Request", got 200 "OK"
+
+    [0m [90m 203 |[39m           phone[33m:[39m [32m'(123) 456-7890'[39m[33m,[39m
+     [90m 204 |[39m         })
+    [31m[1m>[22m[39m[90m 205 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 206 |[39m
+     [90m 207 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'State must be a 2-letter US state code'[39m)[33m;[39m
+     [90m 208 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (users/profile-completion.e2e-spec.ts:205:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+FAIL test/admin/admin-users.e2e-spec.ts (66.454 s)
+  ● Admin Users (E2E) › GET /admin/users › should filter by date range
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 228 |[39m         [36mconst[39m createdAt [33m=[39m [36mnew[39m [33mDate[39m(user[33m.[39mcreatedAt)[33m;[39m
+     [90m 229 |[39m         expect(createdAt [33m>=[39m [36mnew[39m [33mDate[39m(dateFrom))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 230 |[39m         expect(createdAt [33m<=[39m [36mnew[39m [33mDate[39m(dateTo))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m     |[39m                                               [31m[1m^[22m[39m
+     [90m 231 |[39m       })[33m;[39m
+     [90m 232 |[39m     })[33m;[39m
+     [90m 233 |[39m[0m
+
+      at admin/admin-users.e2e-spec.ts:230:47
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (admin/admin-users.e2e-spec.ts:227:27)
+
+FAIL test/users/my-page-address-update.e2e-spec.ts (66.446 s)
+  ● My Page - Address Update (E2E) › PATCH /users/profile/address › should return 400 with invalid state code
+
+    expected 400 "Bad Request", got 200 "OK"
+
+    [0m [90m 240 |[39m           phone[33m:[39m [32m'(123) 456-7890'[39m[33m,[39m
+     [90m 241 |[39m         })
+    [31m[1m>[22m[39m[90m 242 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 243 |[39m
+     [90m 244 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'State must be a 2-letter US state code'[39m)[33m;[39m
+     [90m 245 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (users/my-page-address-update.e2e-spec.ts:242:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+FAIL test/admin/settlement.e2e-spec.ts (66.788 s)
+  ● Settlement Management (E2E) › GET /admin/settlement › should return settlement report with correct summary for date range
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 3
+
+    [0m [90m 208 |[39m
+     [90m 209 |[39m       [90m// Verify summary calculations[39m
+    [31m[1m>[22m[39m[90m 210 |[39m       expect(summary[33m.[39mtotalOrders)[33m.[39mtoBe([35m2[39m)[33m;[39m [90m// Only CONFIRMED orders[39m
+     [90m     |[39m                                   [31m[1m^[22m[39m
+     [90m 211 |[39m       expect(summary[33m.[39mtotalRevenue)[33m.[39mtoBe([35m326.25[39m)[33m;[39m [90m// 110.5 + 215.75[39m
+     [90m 212 |[39m       expect(summary[33m.[39mavgOrderValue)[33m.[39mtoBe([35m163.125[39m)[33m;[39m [90m// 326.25 / 2[39m
+     [90m 213 |[39m       expect(summary[33m.[39mtotalShippingFee)[33m.[39mtoBe([35m25[39m)[33m;[39m [90m// 10 + 15[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:210:35)
+
+  ● Settlement Management (E2E) › GET /admin/settlement › should filter orders by paidAt date range correctly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+    [0m [90m 257 |[39m
+     [90m 258 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 259 |[39m       expect(response[33m.[39mbody[33m.[39msummary[33m.[39mtotalOrders)[33m.[39mtoBe([35m1[39m)[33m;[39m [90m// Only first order[39m
+     [90m     |[39m                                                 [31m[1m^[22m[39m
+     [90m 260 |[39m       expect(response[33m.[39mbody[33m.[39morders[[35m0[39m][33m.[39morderId)[33m.[39mtoBe([32m'ORD-20260115-SET001'[39m)[33m;[39m
+     [90m 261 |[39m     })[33m;[39m
+     [90m 262 |[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:259:49)
+
+  ● Settlement Management (E2E) › GET /admin/settlement › should return orders with correct DTO structure
+
+    expect(received).toHaveProperty(path)
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+    [0m [90m 270 |[39m       [36mconst[39m order [33m=[39m response[33m.[39mbody[33m.[39morders[[35m0[39m][33m;[39m
+     [90m 271 |[39m
+    [31m[1m>[22m[39m[90m 272 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'orderId'[39m)[33m;[39m
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 273 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'orderDate'[39m)[33m;[39m
+     [90m 274 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'customerId'[39m)[33m;[39m
+     [90m 275 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'total'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:272:21)
+
+  ● Settlement Management (E2E) › GET /admin/settlement/download › should return Excel file with correct headers
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "attachment; filename=settlement_2026-01-01_2026-01-31.xlsx"
+    Received string:    "attachment; filename=\"settlement_2026-01-01_2026-01-31.xlsx\""
+
+    [0m [90m 312 |[39m         [32m'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'[39m[33m,[39m
+     [90m 313 |[39m       )[33m;[39m
+    [31m[1m>[22m[39m[90m 314 |[39m       expect(response[33m.[39mheaders[[32m'content-disposition'[39m])[33m.[39mtoContain(
+     [90m     |[39m                                                       [31m[1m^[22m[39m
+     [90m 315 |[39m         [32m'attachment; filename=settlement_2026-01-01_2026-01-31.xlsx'[39m[33m,[39m
+     [90m 316 |[39m       )[33m;[39m
+     [90m 317 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:314:55)
+
+  ● Settlement Management (E2E) › GET /admin/settlement/download › should return valid Excel file buffer
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 324 |[39m
+     [90m 325 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 326 |[39m       expect([33mBuffer[39m[33m.[39misBuffer(response[33m.[39mbody))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m     |[39m                                              [31m[1m^[22m[39m
+     [90m 327 |[39m       expect(response[33m.[39mbody[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 328 |[39m
+     [90m 329 |[39m       [90m// Excel files start with PK (zip signature)[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:326:46)
+
+  ● Settlement Management (E2E) › GET /admin/settlement/download › should generate Excel file for empty date range
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 342 |[39m         [32m'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'[39m[33m,[39m
+     [90m 343 |[39m       )[33m;[39m
+    [31m[1m>[22m[39m[90m 344 |[39m       expect([33mBuffer[39m[33m.[39misBuffer(response[33m.[39mbody))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m     |[39m                                              [31m[1m^[22m[39m
+     [90m 345 |[39m     })[33m;[39m
+     [90m 346 |[39m   })[33m;[39m
+     [90m 347 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/settlement.e2e-spec.ts:344:46)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 8 failed, 2 passed, 10 total
+Tests:       29 failed, 82 passed, 111 total
+Snapshots:   0 total
+Time:        69.368 s
+Ran all test suites.
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path D:\Project\dorami\backend
+npm error workspace backend@1.0.0
+npm error location D:\Project\dorami\backend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest --config ./test/jest-e2e.json

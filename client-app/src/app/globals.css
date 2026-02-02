@@ -100,3 +100,28 @@ body {
 .border-hot-pink {
   border-color: var(--hot-pink);
 }
+
+/* Hot Pink slider styling for video player */
+.slider-hot-pink::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--hot-pink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-hot-pink::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--hot-pink);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.slider-hot-pink::-webkit-slider-runnable-track {
+  background: #374151;
+  height: 4px;
+  border-radius: 2px;
+}

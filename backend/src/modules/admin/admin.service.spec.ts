@@ -44,11 +44,18 @@ describe('AdminService', () => {
             },
             auditLog: {
               findMany: jest.fn(),
+              count: jest.fn(),
             },
             systemConfig: {
               findFirst: jest.fn(),
               create: jest.fn(),
               upsert: jest.fn(),
+            },
+            orderItem: {
+              groupBy: jest.fn(),
+            },
+            liveStream: {
+              count: jest.fn(),
             },
           },
         },
@@ -574,6 +581,166 @@ describe('AdminService', () => {
 
       // Event should not be emitted on error
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getDashboardStats - Epic 12 Story 12.1', () => {
+    it('should return dashboard statistics for last 7 days', async () => {
+      const now = new Date();
+      const last7DaysStart = new Date(now);
+      last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+      last7DaysStart.setHours(0, 0, 0, 0);
+
+      // Mock order counts (last 7 days, previous 7 days, pending payments)
+      jest.spyOn(prisma.order, 'count')
+        .mockResolvedValueOnce(25) // last 7 days
+        .mockResolvedValueOnce(20) // previous 7 days
+        .mockResolvedValueOnce(5); // pending payments
+
+      // Mock revenue aggregates
+      jest.spyOn(prisma.order, 'aggregate')
+        .mockResolvedValueOnce({ _sum: { total: 500000 } } as any) // last 7 days
+        .mockResolvedValueOnce({ _sum: { total: 400000 } } as any); // previous 7 days
+
+      // Mock active live streams count
+      jest.spyOn(prisma.liveStream, 'count').mockResolvedValue(2);
+
+      // Mock top products
+      // @ts-expect-error - Complex Prisma groupBy type
+      jest.spyOn(prisma.orderItem, 'groupBy').mockResolvedValue([
+        { productId: 'p1', productName: 'Product 1', _sum: { quantity: 50 } },
+        { productId: 'p2', productName: 'Product 2', _sum: { quantity: 40 } },
+        { productId: 'p3', productName: 'Product 3', _sum: { quantity: 30 } },
+      ]);
+
+      // Mock chat message counts
+      jest.spyOn(prisma.chatMessage, 'count')
+        .mockResolvedValueOnce(150) // last 7 days
+        .mockResolvedValueOnce(120); // previous 7 days
+
+      const result = await service.getDashboardStats();
+
+      expect(result).toBeDefined();
+      expect(result.orders.value).toBe(25);
+      expect(result.revenue.value).toBe(500000);
+      expect(result.pendingPayments.value).toBe(5);
+      expect(result.activeLiveStreams.value).toBe(2);
+      expect(result.topProducts).toHaveLength(3);
+      expect(result.topProducts[0].productName).toBe('Product 1');
+      expect(result.topProducts[0].totalSold).toBe(50);
+    });
+
+    it('should calculate trends correctly', async () => {
+      // More orders in last 7 days than previous
+      jest.spyOn(prisma.order, 'count')
+        .mockResolvedValueOnce(30) // last 7 days
+        .mockResolvedValueOnce(20); // previous 7 days
+
+      jest.spyOn(prisma.order, 'aggregate')
+        .mockResolvedValueOnce({ _sum: { total: 600000 } } as any)
+        .mockResolvedValueOnce({ _sum: { total: 400000 } } as any);
+
+      jest.spyOn(prisma.order, 'count').mockResolvedValueOnce(30).mockResolvedValueOnce(20).mockResolvedValueOnce(0);
+      jest.spyOn(prisma.liveStream, 'count').mockResolvedValue(0);
+      jest.spyOn(prisma.orderItem, 'groupBy').mockResolvedValue([] as any);
+      jest.spyOn(prisma.chatMessage, 'count').mockResolvedValueOnce(100).mockResolvedValueOnce(100);
+
+      const result = await service.getDashboardStats();
+
+      expect(result.orders.trendUp).toBe(true);
+      expect(result.revenue.trendUp).toBe(true);
+    });
+  });
+
+  describe('getAuditLogs - Epic 12 Story 12.3', () => {
+    it('should return paginated audit logs', async () => {
+      const mockLogs = [
+        {
+          id: 'log-1',
+          adminId: 'admin-1',
+          admin: { email: 'admin1@example.com' },
+          action: 'CONFIRM_PAYMENT',
+          entity: 'Order',
+          entityId: 'order-1',
+          changes: { status: 'CONFIRMED' },
+          createdAt: new Date('2024-01-15'),
+        },
+        {
+          id: 'log-2',
+          adminId: 'admin-2',
+          admin: { email: 'admin2@example.com' },
+          action: 'UPDATE',
+          entity: 'Product',
+          entityId: 'product-1',
+          changes: { price: 25000 },
+          createdAt: new Date('2024-01-14'),
+        },
+      ];
+
+      jest.spyOn(prisma.auditLog, 'findMany').mockResolvedValue(mockLogs as any);
+      jest.spyOn(prisma.auditLog, 'count').mockResolvedValue(25);
+
+      const result = await service.getAuditLogs(undefined, undefined, undefined, 1, 50);
+
+      expect(result).toBeDefined();
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].adminEmail).toBe('admin1@example.com');
+      expect(result.data[0].action).toBe('CONFIRM_PAYMENT');
+      expect(result.data[1].adminEmail).toBe('admin2@example.com');
+      expect(result.meta.total).toBe(25);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.totalPages).toBe(1);
+    });
+
+    it('should filter audit logs by date range', async () => {
+      jest.spyOn(prisma.auditLog, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.auditLog, 'count').mockResolvedValue(0);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
+
+      await service.getAuditLogs('2024-01-01', '2024-01-31', undefined, 1, 50);
+
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('should filter audit logs by action type', async () => {
+      jest.spyOn(prisma.auditLog, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.auditLog, 'count').mockResolvedValue(0);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
+
+      await service.getAuditLogs(undefined, undefined, 'CONFIRM_PAYMENT', 1, 50);
+
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            action: 'CONFIRM_PAYMENT',
+          }),
+        }),
+      );
+    });
+
+    it('should handle pagination correctly', async () => {
+      jest.spyOn(prisma.auditLog, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.auditLog, 'count').mockResolvedValue(150);
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
+
+      const result = await service.getAuditLogs(undefined, undefined, undefined, 2, 50);
+
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 50, // (page 2 - 1) * 50
+          take: 50,
+        }),
+      );
+      expect(result.meta.totalPages).toBe(3); // 150 / 50
     });
   });
 });

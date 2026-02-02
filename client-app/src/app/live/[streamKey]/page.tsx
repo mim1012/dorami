@@ -1,18 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { VideoPlayer } from '@/components/video/VideoPlayer';
-import { useStreamViewer } from '@/lib/hooks/use-stream-viewer';
-import { getStreamStatusByKey, StreamStatus } from '@/lib/api/streaming';
-import { Display, Body } from '@/components/common/Typography';
-import { Button } from '@/components/common/Button';
-import { NoticeBox } from '@/components/notices/NoticeBox';
-import { LiveChat } from '@/components/live/LiveChat';
-import { ProductCarousel, LiveProduct } from '@/components/live/ProductCarousel';
-import { ProductOptionModal } from '@/components/live/ProductOptionModal';
 import { apiClient } from '@/lib/api/client';
-import { useCart } from '@/lib/contexts/CartContext';
+import VideoPlayer from '@/components/stream/VideoPlayer';
+import ChatOverlay from '@/components/chat/ChatOverlay';
+import ProductList from '@/components/product/ProductList';
+import ProductDetailModal from '@/components/product/ProductDetailModal';
+import { Body, Heading2 } from '@/components/common/Typography';
+
+interface StreamStatus {
+  status: 'PENDING' | 'LIVE' | 'OFFLINE';
+  viewerCount: number;
+  startedAt: Date | null;
+  title: string;
+}
+
+interface Product {
+  id: string;
+  streamKey: string;
+  name: string;
+  price: number;
+  stock: number;
+  colorOptions: string[];
+  sizeOptions: string[];
+  shippingFee: number;
+  freeShippingMessage?: string;
+  timerEnabled: boolean;
+  timerDuration: number;
+  imageUrl?: string;
+  status: 'AVAILABLE' | 'SOLD_OUT';
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function LiveStreamPage() {
   const params = useParams();
@@ -22,230 +42,134 @@ export default function LiveStreamPage() {
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [streamEnded, setStreamEnded] = useState(false);
-  const [products, setProducts] = useState<LiveProduct[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<LiveProduct | null>(null);
-  const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isLive = streamStatus?.status === 'LIVE';
-  const { viewerCount } = useStreamViewer(streamKey, isLive);
-
-  // Fetch initial stream status
   useEffect(() => {
-    const fetchStreamStatus = async () => {
-      try {
-        const status = await getStreamStatusByKey(streamKey);
-        setStreamStatus(status);
-      } catch (err: any) {
-        console.error('Failed to fetch stream status:', err);
-        setError('Failed to load stream information');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchStreamStatus();
   }, [streamKey]);
 
-  // Poll for stream status updates every 30 seconds
-  useEffect(() => {
-    if (!isLive) return;
+  const fetchStreamStatus = async () => {
+    try {
+      const response = await apiClient.get<StreamStatus>(
+        `/streaming/key/${streamKey}/status`,
+      );
+      setStreamStatus(response.data);
 
-    const interval = setInterval(async () => {
-      try {
-        const status = await getStreamStatusByKey(streamKey);
-        setStreamStatus(status);
-
-        // If stream went offline, show end message
-        if (status.status === 'OFFLINE') {
-          setStreamEnded(true);
-        }
-      } catch (err) {
-        console.error('Failed to poll stream status:', err);
+      if (response.data.status === 'OFFLINE') {
+        setError('This stream is not currently live');
       }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [streamKey, isLive]);
-
-  const handleStreamEnded = () => {
-    setStreamEnded(true);
-  };
-
-  const handleBackToHome = () => {
-    router.push('/');
-  };
-
-  // Fetch products for this stream
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        // TODO: Add API endpoint to get products by streamKey
-        // For now, fetch all ACTIVE products
-        const response = await apiClient.get<LiveProduct[]>('/products?status=ACTIVE');
-        setProducts(response.data);
-      } catch (err) {
-        console.error('Failed to fetch products:', err);
-      }
-    };
-
-    if (isLive) {
-      fetchProducts();
+    } catch (err: any) {
+      console.error('Failed to fetch stream status:', err);
+      setError('Stream not found');
+    } finally {
+      setIsLoading(false);
     }
-  }, [isLive, streamKey]);
-
-  const handleProductClick = (product: LiveProduct) => {
-    setSelectedProduct(product);
-    setIsOptionModalOpen(true);
-  };
-
-  const { addItem } = useCart();
-
-  const handleAddToCart = (product: LiveProduct, quantity: number, options?: any) => {
-    // Add to cart with 10-minute timer
-    addItem({
-      productId: product.id,
-      productName: product.name,
-      price: product.price,
-      quantity,
-      imageUrl: product.imageUrl,
-      stock: product.stock,
-    });
-
-    // Navigate to cart page
-    router.push('/cart');
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
-        <Body className="text-secondary-text">Loading stream...</Body>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Body className="text-white">Loading stream...</Body>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !streamStatus) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <Display className="text-error mb-4">Error</Display>
-          <Body className="text-secondary-text mb-6">{error}</Body>
-          <Button variant="primary" onClick={handleBackToHome}>
+          <Heading2 className="text-white mb-4">{error || 'Stream not found'}</Heading2>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-hot-pink text-white rounded-button hover:bg-hot-pink-dark transition-colors"
+          >
             Back to Home
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
-  if (streamEnded) {
+  if (streamStatus.status !== 'LIVE') {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <Display className="text-hot-pink mb-4">Stream has ended</Display>
-          <Body className="text-secondary-text mb-6">Thank you for watching!</Body>
-          <Button variant="primary" onClick={handleBackToHome}>
-            Back to Store
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLive || !streamStatus) {
-    return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
-        <div className="text-center">
-          <Display className="text-hot-pink mb-4">Stream Not Available</Display>
-          <Body className="text-secondary-text mb-6">
-            This stream is not currently live. Check back soon!
+          <Heading2 className="text-white mb-4">
+            This stream is not currently live
+          </Heading2>
+          <Body className="text-gray-400 mb-6">
+            Stream will start soon. Check back later!
           </Body>
-          <Button variant="primary" onClick={handleBackToHome}>
-            Back to Store
-          </Button>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-hot-pink text-white rounded-button hover:bg-hot-pink-dark transition-colors"
+          >
+            Back to Home
+          </button>
         </div>
       </div>
     );
   }
 
-  // Construct HLS URL from stream key
-  // In production, this would come from environment variables
-  const hlsUrl = process.env.NEXT_PUBLIC_HLS_SERVER_URL
-    ? `${process.env.NEXT_PUBLIC_HLS_SERVER_URL}/${streamKey}/index.m3u8`
-    : `https://cdn.example.com/hls/${streamKey}/index.m3u8`;
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleAddToCart = async (productId: string, selectedColor?: string, selectedSize?: string) => {
+    try {
+      await apiClient.post('/cart', {
+        productId,
+        quantity: 1,
+        color: selectedColor,
+        size: selectedSize,
+      });
+      alert('장바구니에 담았습니다!');
+      router.push('/cart');
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      alert(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#121212] pb-20 lg:pb-0">
-      {/* Desktop: 70/30 Layout | Mobile: Stacked */}
-      <div className="w-full h-screen flex flex-col lg:flex-row">
-        {/* Main Content Area (70% on desktop) */}
-        <div className="flex-1 lg:w-[70%] flex flex-col overflow-hidden">
-          {/* Video Player */}
-          <div className="relative w-full aspect-video bg-black">
-            <VideoPlayer
-              streamKey={streamKey}
-              hlsUrl={hlsUrl}
-              isLive={isLive}
-              viewerCount={viewerCount}
-              onStreamEnded={handleStreamEnded}
-            />
+    <div className="w-full h-screen flex bg-black">
+      {/* Left: Product List - Desktop Only */}
+      <aside className="hidden lg:block w-[280px] h-full overflow-y-auto bg-content-bg border-r border-gray-800">
+        <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
+      </aside>
+
+      {/* Center: Video Container (with Chat Overlay) */}
+      <div className="flex-1 relative flex items-center justify-center">
+        {/* Video Player - Portrait 9:16 */}
+        <div className="relative w-full max-w-[720px] aspect-[9/16] bg-black">
+          <VideoPlayer streamKey={streamKey} title={streamStatus.title} />
+
+          {/* Chat Overlay - Desktop (Right Side) */}
+          <div className="hidden lg:block">
+            <ChatOverlay streamKey={streamKey} position="right" />
           </div>
 
-          {/* Stream Info + Products */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
-            <div className="max-w-4xl mx-auto">
-              {/* Stream Title */}
-              <div className="mb-4">
-                <Display className="text-hot-pink mb-2">{streamStatus.title}</Display>
-                <Body className="text-secondary-text">
-                  Started {streamStatus.startedAt ? new Date(streamStatus.startedAt).toLocaleString() : 'recently'}
-                </Body>
-              </div>
-
-              {/* Product Carousel */}
-              <ProductCarousel
-                streamKey={streamKey}
-                products={products}
-                onProductClick={handleProductClick}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right Sidebar (Desktop) - Chat + Notice */}
-        <div className="hidden lg:flex lg:flex-col lg:w-[30%] border-l border-content-bg overflow-hidden">
-          {/* Chat (60% height) */}
-          <div className="flex-[3] border-b border-gray-200 overflow-hidden">
-            <LiveChat liveId={streamKey} streamKey={streamKey} />
-          </div>
-
-          {/* Notice (40% height) */}
-          <div className="flex-[2] p-4 overflow-hidden">
-            <NoticeBox />
+          {/* Chat Overlay - Mobile (Bottom) */}
+          <div className="lg:hidden">
+            <ChatOverlay streamKey={streamKey} position="bottom" />
           </div>
         </div>
       </div>
 
-      {/* Mobile: Chat + Notice at bottom */}
-      <div className="lg:hidden">
-        {/* Mobile Chat */}
-        <div className="h-[300px] border-t border-white/10">
-          <LiveChat liveId={streamKey} streamKey={streamKey} />
-        </div>
+      {/* Bottom: Featured Product Bar (currently hidden - Epic 5) */}
+      {/* <FeaturedProductBar streamKey={streamKey} /> */}
 
-        {/* Mobile Notice */}
-        <div className="p-4 border-t border-white/10">
-          <NoticeBox />
-        </div>
-      </div>
-
-      {/* Product Option Modal */}
-      <ProductOptionModal
-        isOpen={isOptionModalOpen}
-        product={selectedProduct}
-        onClose={() => setIsOptionModalOpen(false)}
-        onAddToCart={handleAddToCart}
-      />
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onAddToCart={handleAddToCart}
+        />
+      )}
     </div>
   );
 }

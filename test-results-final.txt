@@ -1,0 +1,332 @@
+
+> backend@1.0.0 test:e2e
+> jest --config ./test/jest-e2e.json
+
+FAIL test/admin/payment-confirmation.e2e-spec.ts (26.827 s)
+  ● Admin Payment Confirmation (E2E) › PATCH /admin/orders/:id/confirm-payment › should confirm payment successfully as admin
+
+    expected 200 "OK", got 404 "Not Found"
+
+    [0m [90m 145 |[39m         [33m.[39mpatch([32m`/api/admin/orders/${testOrder.id}/confirm-payment`[39m)
+     [90m 146 |[39m         [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${adminToken}`[39m)
+    [31m[1m>[22m[39m[90m 147 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 148 |[39m
+     [90m 149 |[39m       expect(response[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 150 |[39m       expect(response[33m.[39mbody[33m.[39mdata[33m.[39morderId)[33m.[39mtoBe(testOrder[33m.[39mid)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/payment-confirmation.e2e-spec.ts:147:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+  ● Admin Payment Confirmation (E2E) › GET /admin/orders (with payment status filter) › should filter orders by payment status PENDING
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+    [0m [90m 314 |[39m
+     [90m 315 |[39m       expect(response[33m.[39mbody[33m.[39morders)[33m.[39mtoBeDefined()[33m;[39m
+    [31m[1m>[22m[39m[90m 316 |[39m       expect(response[33m.[39mbody[33m.[39morders[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m     |[39m                                           [31m[1m^[22m[39m
+     [90m 317 |[39m       response[33m.[39mbody[33m.[39morders[33m.[39mforEach((order[33m:[39m any) [33m=>[39m {
+     [90m 318 |[39m         expect(order[33m.[39mpaymentStatus)[33m.[39mtoBe([32m'PENDING'[39m)[33m;[39m
+     [90m 319 |[39m       })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/payment-confirmation.e2e-spec.ts:316:43)
+
+PASS test/app.e2e-spec.ts (27.479 s)
+PASS test/products.e2e-spec.ts (27.688 s)
+FAIL test/admin/admin-user-detail.e2e-spec.ts (28.385 s)
+  ● Admin User Detail (E2E) › PATCH /admin/users/:id/status › should validate status enum
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "status"
+    Received array: ["status must be one of the following values: "]
+
+    [0m [90m 273 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m 274 |[39m
+    [31m[1m>[22m[39m[90m 275 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'status'[39m)[33m;[39m
+     [90m     |[39m                                     [31m[1m^[22m[39m
+     [90m 276 |[39m     })[33m;[39m
+     [90m 277 |[39m   })[33m;[39m
+     [90m 278 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-user-detail.e2e-spec.ts:275:37)
+
+PASS test/users/my-page-address-update.e2e-spec.ts (28.398 s)
+FAIL test/admin/admin-users.e2e-spec.ts (28.468 s)
+  ● Admin Users (E2E) › GET /admin/users › should filter by date range
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 228 |[39m         [36mconst[39m createdAt [33m=[39m [36mnew[39m [33mDate[39m(user[33m.[39mcreatedAt)[33m;[39m
+     [90m 229 |[39m         expect(createdAt [33m>=[39m [36mnew[39m [33mDate[39m(dateFrom))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 230 |[39m         expect(createdAt [33m<=[39m [36mnew[39m [33mDate[39m(dateTo))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m     |[39m                                               [31m[1m^[22m[39m
+     [90m 231 |[39m       })[33m;[39m
+     [90m 232 |[39m     })[33m;[39m
+     [90m 233 |[39m[0m
+
+      at admin/admin-users.e2e-spec.ts:230:47
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (admin/admin-users.e2e-spec.ts:227:27)
+
+PASS test/admin/settlement.e2e-spec.ts (28.496 s)
+PASS test/users/profile-completion.e2e-spec.ts (28.504 s)
+FAIL test/admin/admin-orders.e2e-spec.ts (28.628 s)
+  ● Admin Order Management (E2E) › GET /admin/orders › should filter by search query
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "ORD-20260201-001"
+    Received: "ORD-20260115-SET001"
+
+    [0m [90m 214 |[39m       )[33m;[39m
+     [90m 215 |[39m       expect(johnOrder)[33m.[39mtoBeDefined()[33m;[39m
+    [31m[1m>[22m[39m[90m 216 |[39m       expect(johnOrder[33m.[39mid)[33m.[39mtoBe([32m'ORD-20260201-001'[39m)[33m;[39m
+     [90m     |[39m                            [31m[1m^[22m[39m
+     [90m 217 |[39m     })[33m;[39m
+     [90m 218 |[39m
+     [90m 219 |[39m     it([32m'should filter by date range'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:216:28)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should filter by date range
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "ORD-20260201-001"
+    Received array: []
+
+    [0m [90m 226 |[39m
+     [90m 227 |[39m       [36mconst[39m orderIds [33m=[39m response[33m.[39mbody[33m.[39morders[33m.[39mmap((o[33m:[39m any) [33m=>[39m o[33m.[39mid)[33m;[39m
+    [31m[1m>[22m[39m[90m 228 |[39m       expect(orderIds)[33m.[39mtoContain([32m'ORD-20260201-001'[39m)[33m;[39m
+     [90m     |[39m                        [31m[1m^[22m[39m
+     [90m 229 |[39m       expect(orderIds)[33m.[39mtoContain([32m'ORD-20260201-002'[39m)[33m;[39m
+     [90m 230 |[39m       expect(orderIds)[33m.[39mnot[33m.[39mtoContain([32m'ORD-20260131-003'[39m)[33m;[39m [90m// Outside date range[39m
+     [90m 231 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:228:24)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should combine multiple filters
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1
+    Received:    0
+
+    [0m [90m 301 |[39m
+     [90m 302 |[39m       [36mconst[39m orders [33m=[39m response[33m.[39mbody[33m.[39morders[33m;[39m
+    [31m[1m>[22m[39m[90m 303 |[39m       expect(orders[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m1[39m)[33m;[39m
+     [90m     |[39m                             [31m[1m^[22m[39m
+     [90m 304 |[39m
+     [90m 305 |[39m       [36mconst[39m allMatch [33m=[39m orders[33m.[39mevery((o[33m:[39m any) [33m=>[39m {
+     [90m 306 |[39m         [36mconst[39m orderDate [33m=[39m [36mnew[39m [33mDate[39m(o[33m.[39mcreatedAt)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:303:29)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should confirm payment successfully
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+    [0m [90m 379 |[39m         [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${adminToken}`[39m)[33m;[39m
+     [90m 380 |[39m
+    [31m[1m>[22m[39m[90m 381 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 382 |[39m       expect(response[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 383 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveProperty([32m'orderId'[39m)[33m;[39m
+     [90m 384 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveProperty([32m'paymentStatus'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:381:31)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should return 400 if already confirmed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+    [0m [90m 405 |[39m         [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${adminToken}`[39m)[33m;[39m
+     [90m 406 |[39m
+    [31m[1m>[22m[39m[90m 407 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m400[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 408 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'already confirmed'[39m)[33m;[39m
+     [90m 409 |[39m     })[33m;[39m
+     [90m 410 |[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:407:31)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should update paidAt timestamp
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+    [0m [90m 414 |[39m       })[33m;[39m
+     [90m 415 |[39m
+    [31m[1m>[22m[39m[90m 416 |[39m       expect(beforeConfirm[33m?[39m[33m.[39mpaidAt)[33m.[39mtoBeDefined()[33m;[39m
+     [90m     |[39m                                     [31m[1m^[22m[39m
+     [90m 417 |[39m
+     [90m 418 |[39m       [36mconst[39m paidAtTime [33m=[39m beforeConfirm[33m![39m[33m.[39mpaidAt[33m![39m[33m.[39mgetTime()[33m;[39m
+     [90m 419 |[39m       [36mconst[39m now [33m=[39m [36mnew[39m [33mDate[39m()[33m.[39mgetTime()[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:416:37)
+
+PASS test/auth/kakao-auth.e2e-spec.ts (28.759 s)
+FAIL test/admin/dashboard-and-audit.e2e-spec.ts
+  ● Test suite failed to run
+
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m150[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }[]' is not assignable to type 'OrderCreateManyInput | OrderCreateManyInput[]'.
+      Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }[]' is not assignable to type 'OrderCreateManyInput[]'.
+        Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is missing the following properties from type 'OrderCreateManyInput': userEmail, depositorName, shippingAddress, instagramId, and 2 more.
+
+    [7m150[0m         data: Array.from({ length: 3 }, (_, i) => ({
+    [7m   [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m11949[0m:[93m5[0m
+        [7m11949[0m     data: OrderCreateManyInput | OrderCreateManyInput[]
+        [7m     [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ data: OrderCreateManyInput | OrderCreateManyInput[]; skipDuplicates?: boolean; }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m163[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type '(Without<OrderCreateInput, OrderUncheckedCreateInput> & OrderUncheckedCreateInput) | (Without<...> & OrderCreateInput)'.
+      Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type 'Without<OrderUncheckedCreateInput, OrderCreateInput> & OrderCreateInput'.
+        Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type 'Without<OrderUncheckedCreateInput, OrderCreateInput>'.
+          Types of property 'userId' are incompatible.
+            Type 'string' is not assignable to type 'never'.
+
+    [7m163[0m         data: {
+    [7m   [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m11939[0m:[93m5[0m
+        [7m11939[0m     data: XOR<OrderCreateInput, OrderUncheckedCreateInput>
+        [7m     [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: OrderSelect<DefaultArgs>; omit?: OrderOmit<DefaultArgs>; include?: OrderInclude<DefaultArgs>; data: (Without<...> & OrderUncheckedCreateInput) | (Without<...> & OrderCreateInput); }'
+
+FAIL test/products/store-products.e2e-spec.ts (33.366 s)
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should return empty array when no store products exist
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: []
+    Received: {"data": [], "meta": {"page": 1, "total": 0, "totalPages": 0}}
+
+    [0m [90m 59 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 60 |[39m
+    [31m[1m>[22m[39m[90m 61 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoEqual([])[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 62 |[39m       expect(response[33m.[39mbody[33m.[39mmeta[33m.[39mtotal)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 63 |[39m       expect(response[33m.[39mbody[33m.[39mmeta[33m.[39mtotalPages)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 64 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:61:34)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should return products from ended live streams only
+
+    TypeError: expect(received).toHaveLength(expected)
+
+    Matcher error: received value must have a length property whose value must be a number
+
+    Received has type:  object
+    Received has value: {"data": [{"colorOptions": [], "createdAt": "2026-02-02T03:21:08.747Z", "freeShippingMessage": null, "id": "6d59654e-b6b3-46d7-9bc1-29c352c74684", "imageUrl": null, "name": "Past Product 1", "price": 25000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 10, "streamKey": "ended-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.747Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.812Z", "freeShippingMessage": null, "id": "b5b9ff2e-cf39-4f30-a1f0-4f6ba0633fdd", "imageUrl": null, "name": "Past Product 2", "price": 35000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "ended-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.812Z"}], "meta": {"page": 1, "total": 2, "totalPages": 1}}
+
+    [0m [90m 125 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 126 |[39m
+    [31m[1m>[22m[39m[90m 127 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveLength([35m2[39m)[33m;[39m
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 128 |[39m       expect(response[33m.[39mbody[33m.[39mmeta[33m.[39mtotal)[33m.[39mtoBe([35m2[39m)[33m;[39m
+     [90m 129 |[39m       expect(response[33m.[39mbody[33m.[39mdata[[35m0[39m][33m.[39mname)[33m.[39mtoContain([32m'Past Product'[39m)[33m;[39m
+     [90m 130 |[39m       expect(response[33m.[39mbody[33m.[39mdata[[35m1[39m][33m.[39mname)[33m.[39mtoContain([32m'Past Product'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:127:34)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should handle pagination correctly
+
+    TypeError: expect(received).toHaveLength(expected)
+
+    Matcher error: received value must have a length property whose value must be a number
+
+    Received has type:  object
+    Received has value: {"data": [{"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "860eb8c2-a3aa-4dd6-a695-0b93f152782c", "imageUrl": null, "name": "Product 1", "price": 10000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "d9d398e6-d321-4480-8f35-e90783aad7b5", "imageUrl": null, "name": "Product 2", "price": 11000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "ddee76cb-1276-46ed-b86a-eaa67c6a9c1d", "imageUrl": null, "name": "Product 3", "price": 12000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "8b3a800f-8716-40fd-8ff1-e1a7c48e8d40", "imageUrl": null, "name": "Product 4", "price": 13000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "e5e531d6-a838-44b0-aa0f-e7b48a5f8933", "imageUrl": null, "name": "Product 5", "price": 14000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "3835f2ca-af4c-48a2-90ea-e963e7ae853d", "imageUrl": null, "name": "Product 6", "price": 15000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "c6a5aeef-242e-4500-a655-7d9e9a47e32f", "imageUrl": null, "name": "Product 7", "price": 16000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "2414e996-763f-4bf5-b3f7-b59acc8ca37a", "imageUrl": null, "name": "Product 8", "price": 17000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "af83f92d-ae09-4e39-8235-49720877a9ae", "imageUrl": null, "name": "Product 9", "price": 18000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, {"colorOptions": [], "createdAt": "2026-02-02T03:21:08.875Z", "freeShippingMessage": null, "id": "7020e384-dd0f-4683-a248-03e3c3535b2c", "imageUrl": null, "name": "Product 10", "price": 19000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 5, "streamKey": "store-stream", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.875Z"}, …], "meta": {"page": 1, "total": 30, "totalPages": 2}}
+
+    [0m [90m 160 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 161 |[39m
+    [31m[1m>[22m[39m[90m 162 |[39m       expect(page1[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveLength([35m24[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 163 |[39m       expect(page1[33m.[39mbody[33m.[39mmeta[33m.[39mpage)[33m.[39mtoBe([35m1[39m)[33m;[39m
+     [90m 164 |[39m       expect(page1[33m.[39mbody[33m.[39mmeta[33m.[39mtotalPages)[33m.[39mtoBe([35m2[39m)[33m;[39m
+     [90m 165 |[39m       expect(page1[33m.[39mbody[33m.[39mmeta[33m.[39mtotal)[33m.[39mtoBe([35m30[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:162:31)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should not return sold out products
+
+    TypeError: expect(received).toHaveLength(expected)
+
+    Matcher error: received value must have a length property whose value must be a number
+
+    Received has type:  object
+    Received has value: {"data": [{"colorOptions": [], "createdAt": "2026-02-02T03:21:08.942Z", "freeShippingMessage": null, "id": "d12fb3f9-6d33-4082-bf4a-39f0fe80676d", "imageUrl": null, "name": "Available Product", "price": 25000, "shippingFee": 0, "sizeOptions": [], "status": "AVAILABLE", "stock": 10, "streamKey": "store-stream-2", "timerDuration": 10, "timerEnabled": false, "updatedAt": "2026-02-02T03:21:08.942Z"}], "meta": {"page": 1, "total": 1, "totalPages": 1}}
+
+    [0m [90m 210 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 211 |[39m
+    [31m[1m>[22m[39m[90m 212 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 213 |[39m       expect(response[33m.[39mbody[33m.[39mdata[[35m0[39m][33m.[39mname)[33m.[39mtoBe([32m'Available Product'[39m)[33m;[39m
+     [90m 214 |[39m     })[33m;[39m
+     [90m 215 |[39m   })[33m;[39m[0m
+
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:212:34)
+
+
+  ● Test suite failed to run
+
+    PrismaClientKnownRequestError: 
+    Invalid `prisma.user.deleteMany()` invocation in
+    D:\Project\dorami\backend\test\products\store-products.e2e-spec.ts:46:23
+
+      43 
+      44 afterAll(async () => {
+      45   // Clean up test user
+    → 46   await prisma.user.deleteMany(
+    Foreign key constraint violated on the constraint: `live_streams_user_id_fkey`
+
+    [0m [90m 44 |[39m   afterAll([36masync[39m () [33m=>[39m {
+     [90m 45 |[39m     [90m// Clean up test user[39m
+    [31m[1m>[22m[39m[90m 46 |[39m     [36mawait[39m prisma[33m.[39muser[33m.[39mdeleteMany({ where[33m:[39m { id[33m:[39m testUser[33m.[39mid } })[33m;[39m
+     [90m    |[39m     [31m[1m^[22m[39m
+     [90m 47 |[39m   })[33m;[39m
+     [90m 48 |[39m
+     [90m 49 |[39m   beforeEach([36masync[39m () [33m=>[39m {[0m
+
+      at ei.handleRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13)
+      at ei.handleAndLogRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at a (../../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:46:5)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 6 failed, 6 passed, 12 total
+Tests:       14 failed, 101 passed, 115 total
+Snapshots:   0 total
+Time:        35.487 s, estimated 46 s
+Ran all test suites.
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path D:\Project\dorami\backend
+npm error workspace backend@1.0.0
+npm error location D:\Project\dorami\backend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest --config ./test/jest-e2e.json

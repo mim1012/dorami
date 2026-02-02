@@ -73,6 +73,7 @@ function AdminOrdersContent() {
     searchParams.get('shippingStatus')?.split(',').filter(Boolean) || [],
   );
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   // Redirect if not admin
   // TEMPORARILY DISABLED FOR TESTING
@@ -264,6 +265,31 @@ function AdminOrdersContent() {
     }
   };
 
+  const handleSendReminder = async (order: OrderListItem) => {
+    const confirmed = window.confirm(
+      `결제 알림 전송\n\n` +
+      `주문번호: ${order.id}\n` +
+      `고객: @${order.instagramId}\n` +
+      `입금자명: ${order.depositorName}\n` +
+      `금액: ${formatCurrency(order.total)}\n\n` +
+      `고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`
+    );
+
+    if (!confirmed) return;
+
+    setSendingReminderId(order.id);
+    try {
+      await apiClient.patch(`/admin/orders/${order.id}/send-reminder`);
+      alert(`주문 ${order.id} 결제 알림이 전송되었습니다`);
+    } catch (err: any) {
+      console.error('Failed to send reminder:', err);
+      const errorMessage = err.message || '알림 전송 중 오류가 발생했습니다. 다시 시도해주세요';
+      alert(errorMessage);
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -380,15 +406,26 @@ function AdminOrdersContent() {
       render: (order) => (
         <div className="flex gap-2 items-center justify-end">
           {order.paymentStatus === 'PENDING' && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleConfirmPayment(order)}
-              disabled={confirmingOrderId === order.id}
-              className="bg-green-600 hover:bg-green-700 text-white border-green-600"
-            >
-              {confirmingOrderId === order.id ? '처리중...' : '입금확인'}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSendReminder(order)}
+                disabled={sendingReminderId === order.id}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                {sendingReminderId === order.id ? '전송중...' : '알림전송'}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleConfirmPayment(order)}
+                disabled={confirmingOrderId === order.id}
+                className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+              >
+                {confirmingOrderId === order.id ? '처리중...' : '입금확인'}
+              </Button>
+            </>
           )}
           {order.paymentStatus === 'CONFIRMED' && (
             <span className="text-green-600 font-medium text-caption">✓ 확인완료</span>

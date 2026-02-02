@@ -5,6 +5,8 @@ import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 interface SettlementSummary {
   totalOrders: number;
@@ -21,14 +23,24 @@ interface SettlementOrder {
   paidAt: string;
 }
 
+interface DailyRevenue {
+  date: string;
+  revenue: number;
+  orderCount: number;
+}
+
 interface SettlementReport {
   summary: SettlementSummary;
   orders: SettlementOrder[];
+  dailyRevenue: DailyRevenue[];
   dateRange: {
     from: string;
     to: string;
   };
 }
+
+type SortField = 'orderDate' | 'total' | 'paidAt';
+type SortOrder = 'asc' | 'desc';
 
 export default function SettlementPage() {
   const getCurrentMonthStart = () => {
@@ -47,7 +59,14 @@ export default function SettlementPage() {
   const [report, setReport] = useState<SettlementReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('paidAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const validateDateRange = (): string | null => {
     const from = new Date(fromDate);
@@ -74,6 +93,7 @@ export default function SettlementPage() {
 
     setIsLoading(true);
     setError(null);
+    setCurrentPage(1);
 
     try {
       const response = await apiClient.get<SettlementReport>('/admin/settlement', {
@@ -89,39 +109,58 @@ export default function SettlementPage() {
     }
   };
 
-  const handleDownloadExcel = async () => {
-    if (!report) return;
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+    setCurrentPage(1);
+  };
 
-    setIsDownloading(true);
+  const getSortedOrders = () => {
+    if (!report) return [];
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/admin/settlement/download?from=${fromDate}&to=${toDate}`,
-        {
-          method: 'GET',
-          credentials: 'include',
-        }
-      );
+    return [...report.orders].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
 
-      if (!response.ok) {
-        throw new Error('Excel download failed');
+      switch (sortField) {
+        case 'orderDate':
+          aValue = new Date(a.orderDate).getTime();
+          bValue = new Date(b.orderDate).getTime();
+          break;
+        case 'total':
+          aValue = a.total;
+          bValue = b.total;
+          break;
+        case 'paidAt':
+          aValue = new Date(a.paidAt).getTime();
+          bValue = new Date(b.paidAt).getTime();
+          break;
+        default:
+          return 0;
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `settlement_${fromDate}_${toDate}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err: any) {
-      console.error('Failed to download Excel:', err);
-      alert('Excel 다운로드 중 오류가 발생했습니다');
-    } finally {
-      setIsDownloading(false);
-    }
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  };
+
+  const getPaginatedOrders = () => {
+    const sorted = getSortedOrders();
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return sorted.slice(start, end);
+  };
+
+  const getTotalPages = () => {
+    if (!report) return 1;
+    return Math.ceil(report.orders.length / pageSize);
   };
 
   const formatCurrency = (amount: number) => {
@@ -134,6 +173,16 @@ export default function SettlementPage() {
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
     return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  const formatChartDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>;
   };
 
   return (
@@ -213,65 +262,152 @@ export default function SettlementPage() {
               <Caption className="text-info">💡 입금 확인된 주문만 포함됩니다</Caption>
             </div>
 
-            <div className="mb-6 flex justify-end">
-              <Button
-                variant="primary"
-                onClick={handleDownloadExcel}
-                disabled={isDownloading}
-              >
-                {isDownloading ? 'Excel 다운로드 중...' : '📥 Excel 다운로드'}
-              </Button>
-            </div>
+            {report.dailyRevenue && report.dailyRevenue.length > 0 && (
+              <div className="bg-content-bg rounded-button p-6 mb-6">
+                <Heading2 className="text-hot-pink mb-4">📈 일별 매출 추이</Heading2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={report.dailyRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatChartDate}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `$${value}`}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <Tooltip
+                      formatter={(value: number | undefined) => value !== undefined ? [formatCurrency(value), '매출액'] : ['-', '매출액']}
+                      labelFormatter={(label) => `날짜: ${label}`}
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #FF1B8D',
+                        borderRadius: '8px',
+                        padding: '8px',
+                      }}
+                    />
+                    <Bar dataKey="revenue" fill="#FF1B8D" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <Caption className="text-secondary-text text-center mt-2">
+                  🖱️ 막대에 마우스를 올리면 상세 정보를 확인할 수 있습니다
+                </Caption>
+              </div>
+            )}
 
             {report.orders.length > 0 ? (
-              <div className="bg-white rounded-button border border-content-bg overflow-x-auto">
-                <table className="min-w-full">
-                  <thead className="bg-content-bg">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
-                        주문일
-                      </th>
-                      <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
-                        주문번호
-                      </th>
-                      <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
-                        고객
-                      </th>
-                      <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
-                        금액
-                      </th>
-                      <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
-                        입금일
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-content-bg">
-                    {report.orders.map((order) => (
-                      <tr key={order.orderId} className="hover:bg-content-bg/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Body className="text-primary-text">{formatDate(order.orderDate)}</Body>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Body className="text-primary-text font-mono text-caption">{order.orderId}</Body>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Body className="text-primary-text">{order.customerId}</Body>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Body className="text-primary-text font-medium">{formatCurrency(order.total)}</Body>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Body className="text-primary-text">{formatDate(order.paidAt)}</Body>
-                        </td>
+              <>
+                <div className="bg-white rounded-button border border-content-bg overflow-x-auto mb-4">
+                  <table className="min-w-full">
+                    <thead className="bg-content-bg">
+                      <tr>
+                        <th
+                          className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider cursor-pointer hover:bg-white/50"
+                          onClick={() => handleSort('orderDate')}
+                        >
+                          주문일 <SortIcon field="orderDate" />
+                        </th>
+                        <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
+                          주문번호
+                        </th>
+                        <th className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider">
+                          고객
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider cursor-pointer hover:bg-white/50"
+                          onClick={() => handleSort('total')}
+                        >
+                          금액 <SortIcon field="total" />
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider cursor-pointer hover:bg-white/50"
+                          onClick={() => handleSort('paidAt')}
+                        >
+                          입금일 <SortIcon field="paidAt" />
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div className="px-6 py-4 bg-content-bg border-t border-gray-200">
-                  <Caption className="text-secondary-text">총 {report.orders.length}건</Caption>
+                    </thead>
+                    <tbody className="divide-y divide-content-bg">
+                      {getPaginatedOrders().map((order) => (
+                        <tr key={order.orderId} className="hover:bg-content-bg/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Body className="text-primary-text">{formatDate(order.orderDate)}</Body>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Body className="text-primary-text font-mono text-caption">{order.orderId}</Body>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Body className="text-primary-text">{order.customerId}</Body>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Body className="text-primary-text font-medium">{formatCurrency(order.total)}</Body>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Body className="text-primary-text">{formatDate(order.paidAt)}</Body>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+
+                {/* Pagination */}
+                {getTotalPages() > 1 && (
+                  <div className="flex items-center justify-between bg-content-bg rounded-button px-6 py-4">
+                    <Caption className="text-secondary-text">
+                      총 {report.orders.length}건 중 {(currentPage - 1) * pageSize + 1}-
+                      {Math.min(currentPage * pageSize, report.orders.length)}건 표시
+                    </Caption>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+
+                      {Array.from({ length: getTotalPages() }, (_, i) => i + 1)
+                        .filter((page) => {
+                          if (getTotalPages() <= 7) return true;
+                          if (page === 1 || page === getTotalPages()) return true;
+                          return Math.abs(page - currentPage) <= 1;
+                        })
+                        .map((page, idx, arr) => {
+                          if (idx > 0 && page - arr[idx - 1] > 1) {
+                            return (
+                              <span key={`ellipsis-${page}`} className="px-2">
+                                ...
+                              </span>
+                            );
+                          }
+                          return (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? 'primary' : 'outline'}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </Button>
+                          );
+                        })}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(getTotalPages(), p + 1))}
+                        disabled={currentPage === getTotalPages()}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="bg-content-bg rounded-button p-12 text-center">
                 <div className="text-6xl mb-4">📭</div>

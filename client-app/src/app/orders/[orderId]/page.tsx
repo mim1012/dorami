@@ -2,60 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Display, Heading2, Body } from '@/components/common/Typography';
-import { Button } from '@/components/common/Button';
-import { apiClient } from '@/lib/api/client';
-import { ArrowLeft, Package, Truck, CheckCircle, Clock, Copy } from 'lucide-react';
+import { getOrderById } from '@/lib/api/orders';
+import { Order, OrderStatus } from '@/lib/types/order';
+import { CheckCircle, Clock, Package, Truck, Home, Copy, Check } from 'lucide-react';
 
-interface OrderDetail {
-  id: string;
-  userId: string;
-  userEmail: string;
-  depositorName: string;
-  instagramId: string;
-  status: string;
-  subtotal: number;
-  shippingFee: number;
-  total: number;
-  paymentStatus: string;
-  shippingStatus: string;
-  createdAt: string;
-  updatedAt: string;
-  items: {
-    id: string;
-    productId: string;
-    productName: string;
-    quantity: number;
-    price: number;
-    shippingFee: number;
-  }[];
-}
-
-export default function OrderDetailPage() {
+export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const response = await apiClient.get<OrderDetail>(`/orders/${orderId}`);
-        setOrder(response.data);
-      } catch (err: any) {
-        console.error('Failed to fetch order:', err);
-        setError('주문 정보를 불러오는데 실패했습니다.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchOrder();
+    if (orderId) {
+      fetchOrder();
+    }
   }, [orderId]);
+
+  const fetchOrder = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getOrderById(orderId);
+      setOrder(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load order');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyAccountNumber = async () => {
+    if (order?.bankTransferInfo) {
+      await navigator.clipboard.writeText(order.bankTransferInfo.accountNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const formatAccountNumber = (accountNumber: string) => {
+    return accountNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -64,220 +53,230 @@ export default function OrderDetailPage() {
     }).format(price);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const getStatusSteps = () => {
+    const steps = [
+      { label: 'Order Created', icon: CheckCircle, status: 'ORDER_CREATED' },
+      { label: 'Payment Pending', icon: Clock, status: 'PENDING_PAYMENT' },
+      { label: 'Payment Confirmed', icon: CheckCircle, status: 'PAYMENT_CONFIRMED' },
+      { label: 'Shipped', icon: Truck, status: 'SHIPPED' },
+      { label: 'Delivered', icon: Home, status: 'DELIVERED' },
+    ];
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const statusOrder: OrderStatus[] = [
+      'PENDING_PAYMENT',
+      'PAYMENT_CONFIRMED',
+      'SHIPPED',
+      'DELIVERED',
+    ];
+
+    const currentIndex = statusOrder.indexOf(order!.status);
+
+    return steps.map((step, index) => {
+      if (index === 0) return { ...step, completed: true, current: false };
+      if (index === 1) return { ...step, completed: currentIndex >= 0, current: currentIndex === 0 };
+      if (index === 2) return { ...step, completed: currentIndex >= 1, current: currentIndex === 1 };
+      if (index === 3) return { ...step, completed: currentIndex >= 2, current: currentIndex === 2 };
+      if (index === 4) return { ...step, completed: currentIndex >= 3, current: currentIndex === 3 };
+      return { ...step, completed: false, current: false };
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Body className="text-secondary-text">주문 정보를 불러오는 중...</Body>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-white py-12 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <Display className="text-error mb-4">오류</Display>
-          <Body className="text-secondary-text mb-6">
-            {error || '주문 정보를 찾을 수 없습니다.'}
-          </Body>
-          <Button variant="primary" onClick={() => router.push('/orders')}>
-            주문 내역으로 이동
-          </Button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
+            <p className="text-gray-600 mb-6">{error || 'Unable to load order details'}</p>
+            <button
+              onClick={() => router.push('/orders')}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              View All Orders
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const statusSteps = getStatusSteps();
+
   return (
-    <div className="min-h-screen bg-white py-6 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-secondary-text hover:text-primary-text transition-colors mb-6"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <Body>돌아가기</Body>
-        </button>
-
-        {/* Header */}
-        <div className="mb-6">
-          <Display className="text-hot-pink mb-2">주문 상세</Display>
-          <Body className="text-secondary-text text-sm font-mono">
-            주문번호: {order.id}
-          </Body>
-        </div>
-
-        {/* Order Status */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <Heading2 className="text-primary-text">주문 상태</Heading2>
-            {order.paymentStatus === 'PENDING' && (
-              <div className="bg-yellow-500/20 text-yellow-500 px-4 py-2 rounded-full flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                <Body className="font-semibold">입금 대기</Body>
-              </div>
-            )}
-            {order.paymentStatus === 'PAID' && (
-              <div className="bg-success/20 text-success px-4 py-2 rounded-full flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                <Body className="font-semibold">결제 완료</Body>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Body className="text-secondary-text">주문일시</Body>
-              <Body className="text-primary-text">{formatDate(order.createdAt)}</Body>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Success Message */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+          <div className="flex items-center">
+            <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+            <div>
+              <h1 className="text-2xl font-bold text-green-900">Order Placed Successfully!</h1>
+              <p className="text-green-700 mt-1">
+                Order ID: {order.id} • {new Date(order.createdAt).toLocaleString('ko-KR')}
+              </p>
             </div>
-            {order.shippingStatus && (
-              <div className="flex justify-between items-center">
-                <Body className="text-secondary-text">배송 상태</Body>
-                <div className="flex items-center gap-1.5">
-                  <Truck className="w-4 h-4 text-hot-pink" />
-                  <Body className="text-primary-text">{order.shippingStatus}</Body>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Payment Info (if pending) */}
-        {order.paymentStatus === 'PENDING' && (
-          <div className="bg-gradient-to-br from-hot-pink/20 to-error/10 border-2 border-hot-pink/50 rounded-2xl p-6 mb-6">
-            <Heading2 className="text-hot-pink mb-4">입금 정보</Heading2>
-
-            <div className="space-y-3">
-              <div className="bg-white/80 rounded-xl p-4">
-                <Body className="text-secondary-text text-sm mb-1">은행</Body>
-                <Heading2 className="text-primary-text">국민은행</Heading2>
-              </div>
-
-              <div className="bg-white/80 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <Body className="text-secondary-text text-sm">계좌번호</Body>
-                  <button
-                    onClick={() => copyToClipboard('123-456-789012')}
-                    className="flex items-center gap-1 text-hot-pink hover:text-hot-pink/80 transition-colors"
+        {/* Status Timeline */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Status</h2>
+          <div className="relative">
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200"></div>
+            <div className="relative flex justify-between">
+              {statusSteps.map((step, index) => (
+                <div key={index} className="flex flex-col items-center" style={{ flex: 1 }}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                      step.completed
+                        ? 'bg-green-600 border-green-600'
+                        : step.current
+                        ? 'bg-pink-500 border-pink-500 animate-pulse'
+                        : 'bg-white border-gray-300'
+                    }`}
                   >
-                    <Copy className="w-4 h-4" />
-                    <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
+                    <step.icon
+                      className={`w-5 h-5 ${
+                        step.completed || step.current ? 'text-white' : 'text-gray-400'
+                      }`}
+                    />
+                  </div>
+                  <p
+                    className={`text-xs mt-2 text-center ${
+                      step.completed || step.current ? 'text-gray-900 font-medium' : 'text-gray-500'
+                    }`}
+                  >
+                    {step.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bank Transfer Instructions */}
+        {order.bankTransferInfo && (
+          <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-lg shadow-md p-6 mb-6 border-2 border-pink-200">
+            <h2 className="text-xl font-semibold text-pink-900 mb-4">
+              💳 Bank Transfer Instructions
+            </h2>
+            <div className="bg-white rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Bank Name</span>
+                <span className="font-semibold text-gray-900">
+                  {order.bankTransferInfo.bankName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Account Number</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-gray-900">
+                    {formatAccountNumber(order.bankTransferInfo.accountNumber)}
+                  </span>
+                  <button
+                    onClick={copyAccountNumber}
+                    className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-gray-600" />
+                    )}
                   </button>
                 </div>
-                <Heading2 className="text-primary-text font-mono">123-456-789012</Heading2>
               </div>
-
-              <div className="bg-white/80 rounded-xl p-4">
-                <Body className="text-secondary-text text-sm mb-1">예금주</Body>
-                <Heading2 className="text-primary-text">라이브커머스(주)</Heading2>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Account Holder</span>
+                <span className="font-semibold text-gray-900">
+                  {order.bankTransferInfo.accountHolder}
+                </span>
               </div>
-
-              <div className="bg-white/80 rounded-xl p-4">
-                <Body className="text-secondary-text text-sm mb-1">입금 금액</Body>
-                <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
+              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                <span className="text-gray-900 font-semibold">Transfer Amount</span>
+                <span className="text-2xl font-bold text-pink-600">
+                  {formatPrice(order.bankTransferInfo.amount)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Depositor Name</span>
+                <span className="font-semibold text-gray-900">
+                  {order.bankTransferInfo.depositorName}
+                </span>
               </div>
             </div>
+            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-900">
+                ⚠️ <strong>Important:</strong> Please use your registered depositor name (
+                {order.bankTransferInfo.depositorName}) for transfer verification.
+              </p>
+            </div>
+            {copied && (
+              <div className="mt-3 text-center text-sm text-green-600 font-medium">
+                ✓ Account number copied to clipboard!
+              </div>
+            )}
           </div>
         )}
 
         {/* Order Items */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
-          <Heading2 className="text-hot-pink mb-4">주문 상품</Heading2>
-          <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Items</h2>
+          <div className="space-y-3">
             {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-start">
+              <div
+                key={item.id}
+                className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+              >
                 <div className="flex-1">
-                  <Body className="text-primary-text font-semibold mb-1">
-                    {item.productName}
-                  </Body>
-                  <Body className="text-secondary-text text-sm">
-                    {formatPrice(item.price)} × {item.quantity}개
-                  </Body>
+                  <p className="font-medium text-gray-900">{item.productName}</p>
+                  <p className="text-sm text-gray-600">
+                    Quantity: {item.quantity} × {formatPrice(item.price)}
+                  </p>
                 </div>
-                <Body className="text-primary-text font-bold">
+                <p className="font-semibold text-gray-900">
                   {formatPrice(item.price * item.quantity)}
-                </Body>
+                </p>
               </div>
             ))}
-
-            <div className="h-px bg-white/10 my-4" />
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Body className="text-secondary-text">상품 금액</Body>
-                <Body className="text-primary-text">{formatPrice(order.subtotal)}</Body>
-              </div>
-              <div className="flex justify-between items-center">
-                <Body className="text-secondary-text">배송비</Body>
-                <Body className="text-primary-text">
-                  {order.shippingFee > 0 ? formatPrice(order.shippingFee) : '무료'}
-                </Body>
-              </div>
-              <div className="h-px bg-white/10 my-3" />
-              <div className="flex justify-between items-center">
-                <Heading2 className="text-primary-text">총 결제 금액</Heading2>
-                <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
-              </div>
-            </div>
           </div>
-        </div>
-
-        {/* Customer Info */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
-          <Heading2 className="text-hot-pink mb-4">주문자 정보</Heading2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Body className="text-secondary-text">이름</Body>
-              <Body className="text-primary-text">{order.depositorName || '-'}</Body>
+          <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>{formatPrice(order.subtotal)}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <Body className="text-secondary-text">이메일</Body>
-              <Body className="text-primary-text">{order.userEmail}</Body>
+            <div className="flex justify-between text-gray-600">
+              <span>Shipping Fee</span>
+              <span>{formatPrice(order.shippingFee)}</span>
             </div>
-            {order.instagramId && (
-              <div className="flex justify-between items-center">
-                <Body className="text-secondary-text">인스타그램</Body>
-                <Body className="text-primary-text">@{order.instagramId}</Body>
-              </div>
-            )}
+            <div className="flex justify-between text-xl font-bold text-gray-900 pt-2">
+              <span>Total</span>
+              <span>{formatPrice(order.total)}</span>
+            </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="space-y-3">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
+        <div className="flex justify-center gap-4">
+          <button
             onClick={() => router.push('/orders')}
+            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors"
           >
-            주문 내역으로 이동
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            fullWidth
+            View My Orders
+          </button>
+          <button
             onClick={() => router.push('/')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
           >
-            홈으로 이동
-          </Button>
+            Continue Shopping
+          </button>
         </div>
       </div>
     </div>

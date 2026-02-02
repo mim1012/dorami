@@ -1,0 +1,667 @@
+
+> backend@1.0.0 test:e2e
+> jest --config ./test/jest-e2e.json
+
+FAIL test/auth/kakao-auth.e2e-spec.ts (32.388 s)
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao › 카카오 인증 페이지로 리다이렉트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao › 리다이렉트 URL에 필수 파라미터가 포함되어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 카카오 OAuth 흐름 테스트 › GET /auth/kakao/callback › 인증 코드 없이 요청하면 카카오 인증 페이지로 리다이렉트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 신규 사용자를 생성하고 반환해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 기존 사용자를 조회하고 lastLoginAt을 업데이트해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 이메일이 없어도 사용자를 생성할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 특수 문자가 포함된 이메일을 정상 처리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › validateKakaoUser 테스트 › 한글과 이모지가 포함된 닉네임을 정상 처리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › login (JWT 토큰 발급) 테스트 › JWT 토큰을 발급하고 반환해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › login (JWT 토큰 발급) 테스트 › JWT 토큰에 만료 시간이 설정되어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 토큰 갱신 테스트 › 유효한 Refresh Token으로 Access Token을 갱신할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 토큰 갱신 테스트 › 잘못된 Refresh Token으로 갱신 시 에러를 던져야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 프로필 완성 확인 테스트 › instagramId와 depositorName이 없으면 프로필 완성이 필요하다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 프로필 완성 확인 테스트 › instagramId와 depositorName이 있으면 프로필이 완성되었다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 성능 및 동시성 테스트 › 동시 다중 로그인 요청을 처리할 수 있어야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+  ● Kakao OAuth 2.0 인증 (E2E) › 로그아웃 테스트 › 로그아웃 시 세션을 정리해야 한다
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+    [0m [90m 26 |[39m   [36mlet[39m jwtService[33m:[39m [33mJwtService[39m[33m;[39m
+     [90m 27 |[39m
+    [31m[1m>[22m[39m[90m 28 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m    |[39m   [31m[1m^[22m[39m
+     [90m 29 |[39m     [36mconst[39m moduleFixture[33m:[39m [33mTestingModule[39m [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+     [90m 30 |[39m       imports[33m:[39m [
+     [90m 31 |[39m         [33mConfigModule[39m[33m.[39mforRoot({[0m
+
+      at auth/kakao-auth.e2e-spec.ts:28:3
+      at Object.<anonymous> (auth/kakao-auth.e2e-spec.ts:22:1)
+
+FAIL test/admin/dashboard-and-audit.e2e-spec.ts
+  ● Test suite failed to run
+
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m48[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "USER"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "USER"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "USER"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m48[0m         data: {
+    [7m  [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m57[0m:[93m11[0m - [91merror[0m[90m TS2740: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is missing the following properties from type 'OrderCreateManyInput': userEmail, depositorName, shippingAddress, instagramId, and 2 more.
+
+    [7m 57[0m           {
+    [7m   [0m [91m          ~[0m
+    [7m 58[0m             id: 'order-1',
+    [7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [7m...[0m 
+    [7m 64[0m             createdAt: last7Days,
+    [7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [7m 65[0m           },
+    [7m   [0m [91m~~~~~~~~~~~[0m
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m66[0m:[93m11[0m - [91merror[0m[90m TS2740: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "PENDING"; total: number; createdAt: Date; }' is missing the following properties from type 'OrderCreateManyInput': userEmail, depositorName, shippingAddress, instagramId, and 2 more.
+
+    [7m 66[0m           {
+    [7m   [0m [91m          ~[0m
+    [7m 67[0m             id: 'order-2',
+    [7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [7m...[0m 
+    [7m 73[0m             createdAt: last7Days,
+    [7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    [7m 74[0m           },
+    [7m   [0m [91m~~~~~~~~~~~[0m
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m107[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "USER"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "USER"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "USER"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m107[0m         data: {
+    [7m   [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m122[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }[]' is not assignable to type 'OrderCreateManyInput | OrderCreateManyInput[]'.
+      Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }[]' is not assignable to type 'OrderCreateManyInput[]'.
+        Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is missing the following properties from type 'OrderCreateManyInput': userEmail, depositorName, shippingAddress, instagramId, and 2 more.
+
+    [7m122[0m         data: Array.from({ length: 3 }, (_, i) => ({
+    [7m   [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m11949[0m:[93m5[0m
+        [7m11949[0m     data: OrderCreateManyInput | OrderCreateManyInput[]
+        [7m     [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ data: OrderCreateManyInput | OrderCreateManyInput[]; skipDuplicates?: boolean; }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m135[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type '(Without<OrderCreateInput, OrderUncheckedCreateInput> & OrderUncheckedCreateInput) | (Without<...> & OrderCreateInput)'.
+      Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type 'Without<OrderUncheckedCreateInput, OrderCreateInput> & OrderCreateInput'.
+        Type '{ id: string; userId: string; status: "PENDING_PAYMENT"; paymentMethod: "BANK_TRANSFER"; paymentStatus: "CONFIRMED"; total: number; createdAt: Date; }' is not assignable to type 'Without<OrderUncheckedCreateInput, OrderCreateInput>'.
+          Types of property 'userId' are incompatible.
+            Type 'string' is not assignable to type 'never'.
+
+    [7m135[0m         data: {
+    [7m   [0m [91m        ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m11939[0m:[93m5[0m
+        [7m11939[0m     data: XOR<OrderCreateInput, OrderUncheckedCreateInput>
+        [7m     [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: OrderSelect<DefaultArgs>; omit?: OrderOmit<DefaultArgs>; include?: OrderInclude<DefaultArgs>; data: (Without<...> & OrderUncheckedCreateInput) | (Without<...> & OrderCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m159[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "ADMIN"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "ADMIN"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "ADMIN"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m159[0m           data: {
+    [7m   [0m [91m          ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m198[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "ADMIN"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "ADMIN"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "ADMIN"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m198[0m           data: {
+    [7m   [0m [91m          ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m241[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "ADMIN"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "ADMIN"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "ADMIN"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m241[0m           data: {
+    [7m   [0m [91m          ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+    [96mtest/admin/dashboard-and-audit.e2e-spec.ts[0m:[93m286[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ email: string; role: "ADMIN"; }' is not assignable to type '(Without<UserCreateInput, UserUncheckedCreateInput> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput)'.
+      Type '{ email: string; role: "ADMIN"; }' is not assignable to type 'Without<UserUncheckedCreateInput, UserCreateInput> & UserCreateInput'.
+        Type '{ email: string; role: "ADMIN"; }' is missing the following properties from type 'UserCreateInput': kakaoId, name
+
+    [7m286[0m           data: {
+    [7m   [0m [91m          ~~~~[0m
+
+      [96m../node_modules/.prisma/client/index.d.ts[0m:[93m3420[0m:[93m5[0m
+        [7m3420[0m     data: XOR<UserCreateInput, UserUncheckedCreateInput>
+        [7m    [0m [96m    ~~~~[0m
+        The expected type comes from property 'data' which is declared here on type '{ select?: UserSelect<DefaultArgs>; omit?: UserOmit<DefaultArgs>; include?: UserInclude<DefaultArgs>; data: (Without<...> & UserUncheckedCreateInput) | (Without<...> & UserCreateInput); }'
+
+PASS test/admin/payment-confirmation.e2e-spec.ts (41.119 s)
+PASS test/app.e2e-spec.ts (43.517 s)
+PASS test/products.e2e-spec.ts (43.703 s)
+FAIL test/admin/admin-user-detail.e2e-spec.ts (44.149 s)
+  ● Admin User Detail (E2E) › PATCH /admin/users/:id/status › should validate status enum
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "status"
+    Received array: ["status must be one of the following values: "]
+
+    [0m [90m 273 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+     [90m 274 |[39m
+    [31m[1m>[22m[39m[90m 275 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'status'[39m)[33m;[39m
+     [90m     |[39m                                     [31m[1m^[22m[39m
+     [90m 276 |[39m     })[33m;[39m
+     [90m 277 |[39m   })[33m;[39m
+     [90m 278 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-user-detail.e2e-spec.ts:275:37)
+
+PASS test/admin/settlement.e2e-spec.ts (44.159 s)
+FAIL test/admin/admin-users.e2e-spec.ts (44.284 s)
+  ● Admin Users (E2E) › GET /admin/users › should filter by date range
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 228 |[39m         [36mconst[39m createdAt [33m=[39m [36mnew[39m [33mDate[39m(user[33m.[39mcreatedAt)[33m;[39m
+     [90m 229 |[39m         expect(createdAt [33m>=[39m [36mnew[39m [33mDate[39m(dateFrom))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 230 |[39m         expect(createdAt [33m<=[39m [36mnew[39m [33mDate[39m(dateTo))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m     |[39m                                               [31m[1m^[22m[39m
+     [90m 231 |[39m       })[33m;[39m
+     [90m 232 |[39m     })[33m;[39m
+     [90m 233 |[39m[0m
+
+      at admin/admin-users.e2e-spec.ts:230:47
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (admin/admin-users.e2e-spec.ts:227:27)
+
+PASS test/users/profile-completion.e2e-spec.ts (44.325 s)
+PASS test/users/my-page-address-update.e2e-spec.ts (44.419 s)
+FAIL test/admin/admin-orders.e2e-spec.ts (44.543 s)
+  ● Admin Order Management (E2E) › GET /admin/orders › should filter by date range
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "ORD-20260201-001"
+    Received array: []
+
+    [0m [90m 226 |[39m
+     [90m 227 |[39m       [36mconst[39m orderIds [33m=[39m response[33m.[39mbody[33m.[39morders[33m.[39mmap((o[33m:[39m any) [33m=>[39m o[33m.[39mid)[33m;[39m
+    [31m[1m>[22m[39m[90m 228 |[39m       expect(orderIds)[33m.[39mtoContain([32m'ORD-20260201-001'[39m)[33m;[39m
+     [90m     |[39m                        [31m[1m^[22m[39m
+     [90m 229 |[39m       expect(orderIds)[33m.[39mtoContain([32m'ORD-20260201-002'[39m)[33m;[39m
+     [90m 230 |[39m       expect(orderIds)[33m.[39mnot[33m.[39mtoContain([32m'ORD-20260131-003'[39m)[33m;[39m [90m// Outside date range[39m
+     [90m 231 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:228:24)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should filter by order status
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1
+    Received:    0
+
+    [0m [90m 256 |[39m         (o[33m:[39m any) [33m=>[39m o[33m.[39mstatus [33m===[39m [32m'SHIPPED'[39m
+     [90m 257 |[39m       )[33m;[39m
+    [31m[1m>[22m[39m[90m 258 |[39m       expect(shippedOrders[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m1[39m)[33m;[39m
+     [90m     |[39m                                    [31m[1m^[22m[39m
+     [90m 259 |[39m     })[33m;[39m
+     [90m 260 |[39m
+     [90m 261 |[39m     it([32m'should filter by shipping status'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:258:36)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should filter by shipping status
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1
+    Received:    0
+
+    [0m [90m 270 |[39m         (o[33m:[39m any) [33m=>[39m o[33m.[39mshippingStatus [33m===[39m [32m'SHIPPED'[39m
+     [90m 271 |[39m       )[33m;[39m
+    [31m[1m>[22m[39m[90m 272 |[39m       expect(shippedOrders[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m1[39m)[33m;[39m
+     [90m     |[39m                                    [31m[1m^[22m[39m
+     [90m 273 |[39m       expect(shippedOrders[[35m0[39m][33m.[39mshippedAt)[33m.[39mtoBeDefined()[33m;[39m
+     [90m 274 |[39m     })[33m;[39m
+     [90m 275 |[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:272:36)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should combine multiple filters
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1
+    Received:    0
+
+    [0m [90m 301 |[39m
+     [90m 302 |[39m       [36mconst[39m orders [33m=[39m response[33m.[39mbody[33m.[39morders[33m;[39m
+    [31m[1m>[22m[39m[90m 303 |[39m       expect(orders[33m.[39mlength)[33m.[39mtoBeGreaterThanOrEqual([35m1[39m)[33m;[39m
+     [90m     |[39m                             [31m[1m^[22m[39m
+     [90m 304 |[39m
+     [90m 305 |[39m       [36mconst[39m allMatch [33m=[39m orders[33m.[39mevery((o[33m:[39m any) [33m=>[39m {
+     [90m 306 |[39m         [36mconst[39m orderDate [33m=[39m [36mnew[39m [33mDate[39m(o[33m.[39mcreatedAt)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:303:29)
+
+  ● Admin Order Management (E2E) › GET /admin/orders › should return orders with correct DTO structure
+
+    expect(received).toHaveProperty(path)
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+    [0m [90m 336 |[39m
+     [90m 337 |[39m       [90m// Verify all required fields[39m
+    [31m[1m>[22m[39m[90m 338 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'id'[39m)[33m;[39m
+     [90m     |[39m                     [31m[1m^[22m[39m
+     [90m 339 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'userId'[39m)[33m;[39m
+     [90m 340 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'userEmail'[39m)[33m;[39m
+     [90m 341 |[39m       expect(order)[33m.[39mtoHaveProperty([32m'depositorName'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:338:21)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should confirm payment successfully
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+    [0m [90m 379 |[39m         [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${adminToken}`[39m)[33m;[39m
+     [90m 380 |[39m
+    [31m[1m>[22m[39m[90m 381 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 382 |[39m       expect(response[33m.[39mbody[33m.[39msuccess)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 383 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveProperty([32m'orderId'[39m)[33m;[39m
+     [90m 384 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoHaveProperty([32m'paymentStatus'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:381:31)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should return 400 if already confirmed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+    [0m [90m 405 |[39m         [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${adminToken}`[39m)[33m;[39m
+     [90m 406 |[39m
+    [31m[1m>[22m[39m[90m 407 |[39m       expect(response[33m.[39mstatus)[33m.[39mtoBe([35m400[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 408 |[39m       expect(response[33m.[39mbody[33m.[39mmessage)[33m.[39mtoContain([32m'already confirmed'[39m)[33m;[39m
+     [90m 409 |[39m     })[33m;[39m
+     [90m 410 |[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:407:31)
+
+  ● Admin Order Management (E2E) › PATCH /admin/orders/:id/confirm-payment › should update paidAt timestamp
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+    [0m [90m 414 |[39m       })[33m;[39m
+     [90m 415 |[39m
+    [31m[1m>[22m[39m[90m 416 |[39m       expect(beforeConfirm[33m?[39m[33m.[39mpaidAt)[33m.[39mtoBeDefined()[33m;[39m
+     [90m     |[39m                                     [31m[1m^[22m[39m
+     [90m 417 |[39m
+     [90m 418 |[39m       [36mconst[39m paidAtTime [33m=[39m beforeConfirm[33m![39m[33m.[39mpaidAt[33m![39m[33m.[39mgetTime()[33m;[39m
+     [90m 419 |[39m       [36mconst[39m now [33m=[39m [36mnew[39m [33mDate[39m()[33m.[39mgetTime()[33m;[39m[0m
+
+      at Object.<anonymous> (admin/admin-orders.e2e-spec.ts:416:37)
+
+FAIL test/products/store-products.e2e-spec.ts (45.72 s)
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should return empty array when no store products exist
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: []
+    Received: {"data": [], "meta": {"page": 1, "total": 0, "totalPages": 0}}
+
+    [0m [90m 39 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 40 |[39m
+    [31m[1m>[22m[39m[90m 41 |[39m       expect(response[33m.[39mbody[33m.[39mdata)[33m.[39mtoEqual([])[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 42 |[39m       expect(response[33m.[39mbody[33m.[39mmeta[33m.[39mtotal)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 43 |[39m       expect(response[33m.[39mbody[33m.[39mmeta[33m.[39mtotalPages)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m 44 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:41:34)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should return products from ended live streams only
+
+    PrismaClientKnownRequestError: 
+    Invalid `prisma.liveStream.create()` invocation in
+    D:\Project\dorami\backend\test\products\store-products.e2e-spec.ts:48:51
+
+      45 
+      46 it('should return products from ended live streams only', async () => {
+      47   // Create a live stream that ended
+    → 48   const endedStream = await prisma.liveStream.create(
+    Foreign key constraint violated on the constraint: `live_streams_user_id_fkey`
+
+    [0m [90m 46 |[39m     it([32m'should return products from ended live streams only'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 47 |[39m       [90m// Create a live stream that ended[39m
+    [31m[1m>[22m[39m[90m 48 |[39m       [36mconst[39m endedStream [33m=[39m [36mawait[39m prisma[33m.[39mliveStream[33m.[39mcreate({
+     [90m    |[39m                           [31m[1m^[22m[39m
+     [90m 49 |[39m         data[33m:[39m {
+     [90m 50 |[39m           streamKey[33m:[39m [32m'ended-stream'[39m[33m,[39m
+     [90m 51 |[39m           userId[33m:[39m [32m'test-user'[39m[33m,[39m[0m
+
+      at ei.handleRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13)
+      at ei.handleAndLogRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at a (../../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:48:27)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should handle pagination correctly
+
+    PrismaClientKnownRequestError: 
+    Invalid `prisma.liveStream.create()` invocation in
+    D:\Project\dorami\backend\test\products\store-products.e2e-spec.ts:115:51
+
+      112 
+      113 it('should handle pagination correctly', async () => {
+      114   // Create ended stream
+    → 115   const endedStream = await prisma.liveStream.create(
+    Foreign key constraint violated on the constraint: `live_streams_user_id_fkey`
+
+    [0m [90m 113 |[39m     it([32m'should handle pagination correctly'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 114 |[39m       [90m// Create ended stream[39m
+    [31m[1m>[22m[39m[90m 115 |[39m       [36mconst[39m endedStream [33m=[39m [36mawait[39m prisma[33m.[39mliveStream[33m.[39mcreate({
+     [90m     |[39m                           [31m[1m^[22m[39m
+     [90m 116 |[39m         data[33m:[39m {
+     [90m 117 |[39m           streamKey[33m:[39m [32m'store-stream'[39m[33m,[39m
+     [90m 118 |[39m           userId[33m:[39m [32m'test-user'[39m[33m,[39m[0m
+
+      at ei.handleRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13)
+      at ei.handleAndLogRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at a (../../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:115:27)
+
+  ● Store Products API (Epic 11) - E2E › GET /products/store › should not return sold out products
+
+    PrismaClientKnownRequestError: 
+    Invalid `prisma.liveStream.create()` invocation in
+    D:\Project\dorami\backend\test\products\store-products.e2e-spec.ts:157:51
+
+      154 });
+      155 
+      156 it('should not return sold out products', async () => {
+    → 157   const endedStream = await prisma.liveStream.create(
+    Foreign key constraint violated on the constraint: `live_streams_user_id_fkey`
+
+    [0m [90m 155 |[39m
+     [90m 156 |[39m     it([32m'should not return sold out products'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 157 |[39m       [36mconst[39m endedStream [33m=[39m [36mawait[39m prisma[33m.[39mliveStream[33m.[39mcreate({
+     [90m     |[39m                           [31m[1m^[22m[39m
+     [90m 158 |[39m         data[33m:[39m {
+     [90m 159 |[39m           streamKey[33m:[39m [32m'store-stream-2'[39m[33m,[39m
+     [90m 160 |[39m           userId[33m:[39m [32m'test-user'[39m[33m,[39m[0m
+
+      at ei.handleRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13)
+      at ei.handleAndLogRequestError (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at a (../../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (products/store-products.e2e-spec.ts:157:27)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 6 failed, 6 passed, 12 total
+Tests:       30 failed, 85 passed, 115 total
+Snapshots:   0 total
+Time:        48.02 s
+Ran all test suites.
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path D:\Project\dorami\backend
+npm error workspace backend@1.0.0
+npm error location D:\Project\dorami\backend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest --config ./test/jest-e2e.json

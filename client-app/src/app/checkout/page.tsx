@@ -40,22 +40,14 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      // Create order
-      const orderData = {
-        items: items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        })),
-        streamId: 'live-stream-1', // TODO: Get actual streamId
-      };
+      // Epic 8 Story 8.1: Create order from cart
+      const response = await apiClient.post<{ id: string }>('/orders/from-cart');
 
-      const response = await apiClient.post<{ id: string }>('/orders', orderData);
-
-      // Clear cart
+      // Clear cart (cart items marked as COMPLETED on server)
       clearCart();
 
-      // Navigate to order complete page
-      router.push(`/order-complete?orderId=${response.data.id}`);
+      // Navigate to order confirmation page
+      router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
       console.error('Order creation failed:', err);
       setError(
