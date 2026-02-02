@@ -1,40 +1,18 @@
 import { apiClient } from './client';
 
-export interface Stream {
+export interface LiveStream {
   id: string;
   title: string;
-  description?: string;
-  status: 'SCHEDULED' | 'LIVE' | 'ENDED' | 'PENDING' | 'OFFLINE';
-  streamKey?: string;
-  rtmpUrl?: string;
-  hlsUrl?: string;
-  scheduledStartTime?: string;
-  actualStartTime?: string;
-  startedAt?: string;
-  endTime?: string;
-  viewerCount?: number;
-  createdAt: string;
-  updatedAt: string;
+  scheduledTime: string;
+  thumbnailUrl?: string | null;
+  isLive: boolean;
+  streamer?: {
+    id: string;
+    name: string;
+  };
 }
 
-export interface StreamStatus {
-  status: string;
-  viewerCount: number;
-  startedAt?: string;
-  title: string;
-}
-
-export async function getActiveStreams(): Promise<Stream[]> {
-  const response = await apiClient.get<Stream[]>('/streaming/active');
-  return response.data;
-}
-
-export async function getStreamStatus(streamId: string): Promise<Stream> {
-  const response = await apiClient.get<Stream>(`/streaming/${streamId}/status`);
-  return response.data;
-}
-
-export async function getStreamStatusByKey(streamKey: string): Promise<StreamStatus> {
-  const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
+export async function getUpcomingStreams(limit: number = 3): Promise<LiveStream[]> {
+  const response = await apiClient.get<LiveStream[]>(`/streaming/upcoming?limit=${limit}`);
   return response.data;
 }

@@ -102,6 +102,29 @@ export class ProductsService {
   }
 
   /**
+   * Get featured products for homepage
+   * Returns latest available products with limit
+   */
+  async getFeaturedProducts(limit: number = 6): Promise<ProductResponseDto[]> {
+    try {
+      const products = await this.prisma.product.findMany({
+        where: {
+          status: 'AVAILABLE',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+      });
+
+      return products.map((p) => this.mapToResponseDto(p));
+    } catch (error) {
+      this.logger.error(`Failed to get featured products: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
    * Get all products (legacy method)
    */
   async findAll(status?: string): Promise<ProductResponseDto[]> {

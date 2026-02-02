@@ -64,6 +64,14 @@ export class StreamingController {
     return this.streamingService.getActiveStreams();
   }
 
+  @Public()
+  @Get('upcoming')
+  async getUpcomingStreams(@Query('limit') limit?: string) {
+    const limitNum = Math.min(10, Math.max(1, parseInt(limit, 10) || 3));
+    const streams = await this.streamingService.getUpcomingStreams(limitNum);
+    return { data: streams };
+  }
+
   @Post('generate-key')
   @UseGuards(JwtAuthGuard)
   async generateKey(

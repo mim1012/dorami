@@ -25,6 +25,49 @@ export class StreamingService {
     private eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * Get upcoming live streams for homepage
+   * Returns streams with PENDING status ordered by scheduled time
+   */
+  async getUpcomingStreams(limit: number = 3): Promise<any[]> {
+    try {
+      const streams = await this.prisma.liveStream.findMany({
+        where: {
+          status: 'PENDING',
+          expiresAt: {
+            gte: new Date(), // Only future streams
+          },
+        },
+        orderBy: {
+          expiresAt: 'asc',
+        },
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      return streams.map((stream) => ({
+        id: stream.id,
+        title: stream.title,
+        scheduledTime: stream.expiresAt,
+        thumbnailUrl: null, // TODO: Add thumbnail support
+        isLive: false,
+        streamer: {
+          id: stream.user.id,
+          name: stream.user.name,
+        },
+      }));
+    } catch (error) {
+      throw new BusinessException('FAILED_TO_GET_UPCOMING_STREAMS', {}, error.message);
+    }
+  }
+
   async startStream(
     userId: string,
     startStreamDto: StartStreamDto,
