@@ -26,6 +26,26 @@ describe('Store Products API (Epic 11) - E2E', () => {
     await app.close();
   });
 
+  let testUser: any;
+
+  beforeAll(async () => {
+    // Create test user for live streams
+    testUser = await prisma.user.create({
+      data: {
+        id: 'test-user-store-products',
+        kakaoId: 'kakao-test-store',
+        name: 'Store Test User',
+        email: 'store@example.com',
+        role: 'USER',
+      },
+    });
+  });
+
+  afterAll(async () => {
+    // Clean up test user
+    await prisma.user.deleteMany({ where: { id: testUser.id } });
+  });
+
   beforeEach(async () => {
     // Clean up test data
     await prisma.product.deleteMany({});
@@ -48,7 +68,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
       const endedStream = await prisma.liveStream.create({
         data: {
           streamKey: 'ended-stream',
-          userId: 'test-user',
+          userId: testUser.id,
           title: 'Past Live Stream',
           status: 'OFFLINE',
           startedAt: new Date('2024-01-01'),
@@ -61,7 +81,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
       const liveStream = await prisma.liveStream.create({
         data: {
           streamKey: 'live-stream',
-          userId: 'test-user',
+          userId: testUser.id,
           title: 'Current Live Stream',
           status: 'LIVE',
           startedAt: new Date(),
@@ -115,7 +135,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
       const endedStream = await prisma.liveStream.create({
         data: {
           streamKey: 'store-stream',
-          userId: 'test-user',
+          userId: testUser.id,
           title: 'Store Stream',
           status: 'OFFLINE',
           endedAt: new Date('2024-01-01'),
@@ -157,7 +177,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
       const endedStream = await prisma.liveStream.create({
         data: {
           streamKey: 'store-stream-2',
-          userId: 'test-user',
+          userId: testUser.id,
           title: 'Store Stream 2',
           status: 'OFFLINE',
           endedAt: new Date('2024-01-01'),

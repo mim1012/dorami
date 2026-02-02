@@ -46,6 +46,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
       const testUser = await prisma.user.findFirst() || await prisma.user.create({
         data: {
+          kakaoId: 'kakao-test-dashboard',
+          name: 'Test User Dashboard',
           email: 'test@example.com',
           role: 'USER',
         },
@@ -57,6 +59,18 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-1',
             userId: testUser.id,
+            userEmail: testUser.email!,
+            depositorName: 'Test Depositor 1',
+            shippingAddress: {
+              street: '123 Test St',
+              city: 'Test City',
+              state: 'CA',
+              zipCode: '12345',
+              country: 'USA',
+            },
+            instagramId: '@testuser',
+            subtotal: 45000,
+            shippingFee: 5000,
             status: 'PENDING_PAYMENT',
             paymentMethod: 'BANK_TRANSFER',
             paymentStatus: 'CONFIRMED',
@@ -66,6 +80,18 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-2',
             userId: testUser.id,
+            userEmail: testUser.email!,
+            depositorName: 'Test Depositor 2',
+            shippingAddress: {
+              street: '456 Test Ave',
+              city: 'Test City',
+              state: 'NY',
+              zipCode: '67890',
+              country: 'USA',
+            },
+            instagramId: '@testuser',
+            subtotal: 27000,
+            shippingFee: 3000,
             status: 'PENDING_PAYMENT',
             paymentMethod: 'BANK_TRANSFER',
             paymentStatus: 'PENDING',
@@ -105,6 +131,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
     it('should calculate trends correctly', async () => {
       const testUser = await prisma.user.findFirst() || await prisma.user.create({
         data: {
+          kakaoId: 'kakao-trend-test',
+          name: 'Trend Test User',
           email: 'trend-test@example.com',
           role: 'USER',
         },
@@ -157,6 +185,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
         await prisma.user.create({
           data: {
+            kakaoId: 'kakao-admin-audit',
+            name: 'Admin Audit',
             email: 'admin@example.com',
             role: 'ADMIN',
           },
@@ -196,6 +226,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
         await prisma.user.create({
           data: {
+            kakaoId: 'kakao-filter-admin',
+            name: 'Filter Admin',
             email: 'filter-admin@example.com',
             role: 'ADMIN',
           },
@@ -239,6 +271,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
         await prisma.user.create({
           data: {
+            kakaoId: 'kakao-date-admin',
+            name: 'Date Admin',
             email: 'date-admin@example.com',
             role: 'ADMIN',
           },
@@ -284,6 +318,8 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
       const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
         await prisma.user.create({
           data: {
+            kakaoId: 'kakao-pagination-admin',
+            name: 'Pagination Admin',
             email: 'pagination-admin@example.com',
             role: 'ADMIN',
           },
