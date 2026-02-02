@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
+import { TransformInterceptor } from '../../src/common/interceptors/transform.interceptor';
 
 describe('Store Products API (Epic 11) - E2E', () => {
   let app: INestApplication;
@@ -15,6 +16,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalInterceptors(new TransformInterceptor());
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);

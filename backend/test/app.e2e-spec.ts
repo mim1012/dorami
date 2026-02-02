@@ -38,6 +38,7 @@ describe('AppController (e2e)', () => {
       .get('/api')
       .expect(200)
       .expect((res) => {
+        expect(res.body).toHaveProperty('success', true);
         expect(res.body.data).toBe('Live Commerce Backend API is running!');
       });
   });
@@ -47,6 +48,7 @@ describe('AppController (e2e)', () => {
       .get('/api/health')
       .expect(200)
       .expect((res) => {
+        expect(res.body).toHaveProperty('success', true);
         expect(res.body.data.status).toBe('ok');
         expect(res.body.data.timestamp).toBeDefined();
       });
