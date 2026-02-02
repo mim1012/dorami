@@ -28,6 +28,7 @@ export default function Home() {
     isLive: boolean;
   }>>([]);
   const [nextLiveTime, setNextLiveTime] = useState<Date>(new Date());
+  const [isNextLiveActive, setIsNextLiveActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +106,28 @@ export default function Home() {
     }
   };
 
+  const handleLiveClick = (liveId: string) => {
+    console.log('Live clicked:', liveId);
+    // TODO: Implement live detail navigation
+    router.push(`/live/${liveId}`);
+  };
+
+  const handleProductClick = (productId: string) => {
+    console.log('Product clicked:', productId);
+    // TODO: Implement product detail navigation
+    router.push(`/product/${productId}`);
+  };
+
+  const handleLiveBannerClick = () => {
+    if (isNextLiveActive && upcomingLives.length > 0) {
+      // If live is active, navigate to the first live
+      router.push(`/live/${upcomingLives[0].id}`);
+    } else if (upcomingLives.length > 0) {
+      // If live is upcoming, show notification setup
+      alert('라이브 알림이 설정되었습니다!');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -138,19 +161,31 @@ export default function Home() {
       <header className="sticky top-0 z-50 bg-black border-b border-gray-800">
         <div className="p-4">
           <h1 className="text-2xl font-bold mb-3">Live Commerce</h1>
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar onSubmit={handleSearch} />
         </div>
       </header>
 
       {/* Live Countdown Banner */}
-      <LiveCountdownBanner nextLiveTime={nextLiveTime} />
+      <LiveCountdownBanner 
+        liveStartTime={nextLiveTime}
+        isLive={isNextLiveActive}
+        onLiveClick={handleLiveBannerClick}
+      />
 
       {/* Upcoming Lives Section */}
       <section className="p-4">
         <h2 className="text-xl font-bold mb-4">예정된 라이브</h2>
         <div className="space-y-3">
           {upcomingLives.map((live) => (
-            <UpcomingLiveCard key={live.id} live={live} />
+            <UpcomingLiveCard
+              key={live.id}
+              id={live.id}
+              title={live.title}
+              scheduledTime={new Date(live.scheduledTime)}
+              thumbnailUrl={live.thumbnailUrl}
+              isLive={live.isLive}
+              onClick={() => handleLiveClick(live.id)}
+            />
           ))}
         </div>
       </section>
@@ -165,7 +200,16 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price}
+                imageUrl={product.imageUrl}
+                isNew={product.isNew}
+                discount={product.discount}
+                onClick={() => handleProductClick(product.id)}
+              />
             ))}
           </div>
         )}
