@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { BusinessExceptionFilter } from './common/filters/business-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -121,6 +122,90 @@ async function bootstrap() {
 
   // API Prefix
   app.setGlobalPrefix('api');
+
+  // API Versioning
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+    prefix: 'v',
+  });
+  logger.log('API versioning enabled (v1)');
+
+  // Swagger/OpenAPI Documentation (non-production only)
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('도라미 Live Commerce API')
+      .setDescription(
+        `
+## 도라미 라이브 커머스 플랫폼 API 문서
+
+### 인증
+- Kakao OAuth 2.0 기반 로그인
+- JWT Access Token (15분) + Refresh Token (7일)
+- HTTP-only 쿠키 저장
+
+### 주요 기능
+- 🔐 **Auth**: 카카오 로그인, 토큰 갱신, 로그아웃
+- 👤 **Users**: 프로필 조회/수정
+- 📦 **Products**: 상품 CRUD, 재고 관리
+- 🛒 **Cart**: 장바구니 관리 (10분 타이머)
+- 📋 **Orders**: 주문 생성/조회
+- 🎥 **Streaming**: 라이브 스트림 관리
+- 💬 **Chat**: 실시간 채팅 (WebSocket)
+- 🔔 **Notifications**: 푸시 알림
+- ⚙️ **Admin**: 관리자 대시보드
+
+### 에러 응답 형식
+\`\`\`json
+{
+  "statusCode": 400,
+  "errorCode": "ERROR_CODE",
+  "message": "에러 메시지",
+  "timestamp": "2026-02-03T00:00:00.000Z"
+}
+\`\`\`
+        `,
+      )
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT Access Token',
+        },
+        'access-token',
+      )
+      .addCookieAuth('accessToken', {
+        type: 'apiKey',
+        in: 'cookie',
+        description: 'HTTP-only cookie containing JWT',
+      })
+      .addTag('Auth', '인증 관련 API')
+      .addTag('Users', '사용자 관련 API')
+      .addTag('Products', '상품 관련 API')
+      .addTag('Cart', '장바구니 관련 API')
+      .addTag('Orders', '주문 관련 API')
+      .addTag('Streaming', '라이브 스트리밍 API')
+      .addTag('Chat', '채팅 API')
+      .addTag('Notifications', '알림 API')
+      .addTag('Admin', '관리자 API')
+      .addTag('Health', '서버 상태 확인')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        docExpansion: 'none',
+        filter: true,
+        showRequestDuration: true,
+      },
+      customSiteTitle: '도라미 API 문서',
+    });
+
+    logger.log('Swagger documentation available at /api/docs');
+  }
 
   const port = process.env.PORT || 3001;
   logger.log(`Starting server on port ${port}...`);

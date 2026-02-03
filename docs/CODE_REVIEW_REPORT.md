@@ -1334,12 +1334,12 @@ export class OrdersController { }
 - [ ] 통합 테스트 작성
 - [ ] E2E 테스트 확대
 - [ ] 성능 모니터링 구성
-- [ ] API 문서화 개선
-- [ ] 환경별 설정 파일 분리
+- [x] API 문서화 개선 (Swagger/OpenAPI) ✅ 2026-02-03
+- [x] 환경별 설정 파일 분리 ✅ 2026-02-03
 - [ ] **Sentry 에러 트래킹 연동** (신규)
-- [ ] **Pre-commit hooks 설정** (신규)
-- [ ] **API 버전관리 적용** (신규)
-- [ ] **ESLint strict 규칙 적용** (신규)
+- [x] **Pre-commit hooks 설정** (Husky + lint-staged) ✅ 2026-02-03
+- [x] **API 버전관리 적용** (v1) ✅ 2026-02-03
+- [x] **ESLint strict 규칙 적용** ✅ 2026-02-03
 
 ---
 
@@ -1375,3 +1375,4 @@ export class OrdersController { }
 - 2026-02-03: Developer Agent 리뷰 반영 (우선순위 조정, 누락 항목 추가)
 - 2026-02-03: Critical/High 이슈 수정 완료
 - 2026-02-03: Medium 이슈 수정 (보안 헤더, 압축, 로깅, 이벤트명, 순환 의존성 등)
+- 2026-02-03: Low 이슈 수정 (Swagger, API 버전관리, ESLint, Pre-commit hooks, 환경 설정)
