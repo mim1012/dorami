@@ -24,6 +24,8 @@ export async function getProductById(id: string): Promise<Product> {
 }
 
 export async function getFeaturedProducts(limit: number = 6): Promise<Product[]> {
-  const response = await apiClient.get<Product[]>(`/products/featured?limit=${limit}`);
-  return response.data;
+  const response = await apiClient.get<any>(`/products/featured?limit=${limit}`);
+  // Backend returns { data: [...] } wrapped in another { data: ... }
+  // apiClient extracts first layer, so response.data is { data: [...] }
+  return response.data.data || response.data;
 }

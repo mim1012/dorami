@@ -42,48 +42,16 @@ async function bootstrap() {
   // Global Response Transformer
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // CORS Configuration
-  const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  // Development: Allow localhost origins
-  // Production: Strict origin validation
+  // CORS Configuration - Allow all origins for testing
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // Development environment: allow localhost and common dev origins
-      if (isDevelopment) {
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-          return callback(null, true);
-        }
-      }
-      
-      // Check against allowed origins list
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn(`CORS blocked: ${origin} not in allowed origins`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: true, // Allow all origins
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
     exposedHeaders: ['Content-Type'],
   });
   
-  if (isDevelopment) {
-    console.log('>>> CORS enabled for development (localhost allowed)');
-  } else {
-    console.log(`>>> CORS enabled with ${allowedOrigins.length} allowed origins`);
-    if (allowedOrigins.length === 0) {
-      console.warn('⚠️  WARNING: No CORS origins configured for production!');
-    }
-  }
+  console.log('>>> CORS enabled for all origins (testing mode)');
 
   // Setup Redis Adapter for Socket.IO
   // Temporarily disabled to allow server to start
