@@ -1,0 +1,416 @@
+# Production Deployment Workflow
+# REQUIRES manual approval before deployment
+# Only triggered manually or via release tags
+
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v1.0.0)'
+        required: true
+        type: string
+      skip_tests:
+        description: 'Skip tests before deployment'
+        required: false
+        default: 'false'
+        type: boolean
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/dorami
+
+jobs:
+  # ===========================================
+  # Validate Release
+  # ===========================================
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_rollback: ${{ steps.check.outputs.is_rollback }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Check Rollback
+        id: check
+        run: |
+          if [ "${{ inputs.rollback }}" == "true" ]; then
+            echo "is_rollback=true" >> $GITHUB_OUTPUT
+            echo "⚠️ ROLLBACK MODE ENABLED"
+          else
+            echo "is_rollback=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ===========================================
+  # Run Tests (unless skipped)
+  # ===========================================
+  test:
+    name: Pre-deployment Tests
+    needs: [validate]
+    if: inputs.skip_tests != 'true' && inputs.rollback != 'true'
+    uses: ./.github/workflows/ci.yml
+
+  # ===========================================
+  # Build Production Images
+  # ===========================================
+  build:
+    name: Build Production Images
+    needs: [validate, test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.rollback != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      backend_image: ${{ steps.meta-backend.outputs.tags }}
+      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (Backend)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
+          tags: |
+            type=raw,value=${{ needs.validate.outputs.version }}
+            type=raw,value=production-latest
+
+      - name: Extract metadata (Frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+          tags: |
+            type=raw,value=${{ needs.validate.outputs.version }}
+            type=raw,value=production-latest
+
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client-app
+          file: ./client-app/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.PRODUCTION_API_URL }}
+            NEXT_PUBLIC_WS_URL=${{ secrets.PRODUCTION_WS_URL }}
+            NEXT_PUBLIC_CDN_URL=${{ secrets.PRODUCTION_CDN_URL }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            NEXT_PUBLIC_APP_VERSION=${{ needs.validate.outputs.version }}
+
+  # ===========================================
+  # Manual Approval Gate
+  # ===========================================
+  approval:
+    name: Production Approval
+    needs: [validate, build]
+    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true')
+    runs-on: ubuntu-latest
+    environment:
+      name: production-approval
+
+    steps:
+      - name: Approval Checkpoint
+        run: |
+          echo "=========================================="
+          echo "PRODUCTION DEPLOYMENT APPROVAL"
+          echo "=========================================="
+          echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "Rollback Mode: ${{ needs.validate.outputs.is_rollback }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "=========================================="
+          echo "Deployment approved. Proceeding..."
+
+  # ===========================================
+  # Pre-deployment Backup
+  # ===========================================
+  backup:
+    name: Pre-deployment Backup
+    needs: [approval]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create Database Backup
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST << 'ENDSSH'
+            set -e
+
+            BACKUP_DIR="/opt/dorami/backups"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+            mkdir -p $BACKUP_DIR
+
+            echo "=== Creating database backup ==="
+            docker compose -f /opt/dorami/docker-compose.prod.yml exec -T postgres \
+              pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > $BACKUP_DIR/db_backup_$TIMESTAMP.sql.gz
+
+            echo "=== Backup created: db_backup_$TIMESTAMP.sql.gz ==="
+
+            # Keep only last 5 backups
+            ls -t $BACKUP_DIR/db_backup_*.sql.gz | tail -n +6 | xargs -r rm
+
+            echo "=== Backup complete ==="
+          ENDSSH
+
+  # ===========================================
+  # Deploy to Production
+  # ===========================================
+  deploy:
+    name: Deploy to Production
+    needs: [validate, backup]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ secrets.PRODUCTION_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          IS_ROLLBACK: ${{ needs.validate.outputs.is_rollback }}
+        run: |
+          ssh $USER@$HOST << ENDSSH
+            set -e
+
+            cd /opt/dorami
+
+            echo "=========================================="
+            echo "PRODUCTION DEPLOYMENT"
+            echo "Version: $VERSION"
+            echo "Rollback: $IS_ROLLBACK"
+            echo "=========================================="
+
+            if [ "$IS_ROLLBACK" == "true" ]; then
+              echo "=== ROLLBACK MODE ==="
+              # Rollback to specified version
+              git fetch --tags
+              git checkout $VERSION
+            else
+              echo "=== Pulling latest code ==="
+              git fetch origin main --tags
+              git checkout $VERSION
+            fi
+
+            echo "=== Pulling images ==="
+            docker compose -f docker-compose.prod.yml pull
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+
+            echo "=== Blue-Green Deployment ==="
+            # Scale down gracefully
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans --scale backend=2
+
+            # Wait for new containers to be healthy
+            sleep 60
+
+            # Remove old containers
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "=== Cleaning up ==="
+            docker image prune -f
+            docker volume prune -f
+
+            echo "=== Health Checks ==="
+            for i in {1..5}; do
+              if curl -sf http://localhost:3001/api/health > /dev/null; then
+                echo "Backend healthy!"
+                break
+              fi
+              echo "Waiting for backend... (attempt \$i/5)"
+              sleep 10
+            done
+
+            for i in {1..5}; do
+              if curl -sf http://localhost:3000 > /dev/null; then
+                echo "Frontend healthy!"
+                break
+              fi
+              echo "Waiting for frontend... (attempt \$i/5)"
+              sleep 10
+            done
+
+            echo "=========================================="
+            echo "DEPLOYMENT COMPLETE"
+            echo "=========================================="
+          ENDSSH
+
+      - name: Create Sentry Release
+        if: success() && inputs.rollback != 'true'
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ needs.validate.outputs.version }}
+
+  # ===========================================
+  # Post-deployment Verification
+  # ===========================================
+  verify:
+    name: Post-deployment Verification
+    needs: [validate, deploy]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Health Check - Backend API
+        run: |
+          for i in {1..5}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.PRODUCTION_API_URL }}/health)
+            if [ "$response" == "200" ]; then
+              echo "Backend API healthy!"
+              exit 0
+            fi
+            echo "Attempt $i: Backend returned $response"
+            sleep 10
+          done
+          echo "Backend health check failed!"
+          exit 1
+
+      - name: Health Check - Frontend
+        run: |
+          for i in {1..5}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.PRODUCTION_URL }})
+            if [ "$response" == "200" ]; then
+              echo "Frontend healthy!"
+              exit 0
+            fi
+            echo "Attempt $i: Frontend returned $response"
+            sleep 10
+          done
+          echo "Frontend health check failed!"
+          exit 1
+
+      - name: Verify Version
+        run: |
+          version=$(curl -s ${{ secrets.PRODUCTION_API_URL }}/health | jq -r '.version // empty')
+          expected="${{ needs.validate.outputs.version }}"
+          if [ "$version" == "$expected" ]; then
+            echo "Version verified: $version"
+          else
+            echo "Version mismatch: expected $expected, got $version"
+          fi
+
+  # ===========================================
+  # Notify Completion
+  # ===========================================
+  notify:
+    name: Notify Deployment
+    needs: [validate, deploy, verify]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Success Notification
+        if: needs.deploy.result == 'success' && needs.verify.result == 'success'
+        run: |
+          echo "=========================================="
+          echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
+          echo "=========================================="
+          echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "URL: ${{ secrets.PRODUCTION_URL }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "=========================================="
+
+      - name: Send Failure Notification
+        if: needs.deploy.result == 'failure' || needs.verify.result == 'failure'
+        run: |
+          echo "=========================================="
+          echo "PRODUCTION DEPLOYMENT FAILED"
+          echo "=========================================="
+          echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "Deploy Result: ${{ needs.deploy.result }}"
+          echo "Verify Result: ${{ needs.verify.result }}"
+          echo "=========================================="
+          exit 1

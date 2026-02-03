@@ -45,3 +45,13 @@ export function formatInstagramId(value: string): string {
   if (withoutMiddleAt.length === 0) return '';
   return withoutMiddleAt.startsWith('@') ? withoutMiddleAt : `@${withoutMiddleAt}`;
 }
+
+/**
+ * Format price in KRW currency format
+ */
+export function formatPrice(price: number): string {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+  }).format(price);
+}

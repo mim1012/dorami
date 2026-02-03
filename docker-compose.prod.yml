@@ -1,0 +1,348 @@
+# Docker Compose for Production Environment
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   1. Copy .env.production.example to .env.production and configure ALL values
+#   2. Set up SSL certificates (Let's Encrypt or custom)
+#   3. Configure firewall rules
+#   4. Build images: docker-compose -f docker-compose.prod.yml build
+#   5. Run: docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# Security Notes:
+#   - All sensitive data MUST be in environment variables
+#   - Database ports are NOT exposed externally
+#   - Redis requires password authentication
+#   - HTTPS is enforced via nginx-proxy
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL Database (Production)
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: dorami-postgres-prod
+    restart: always
+    # Production: Do NOT expose port externally
+    # ports:
+    #   - '5432:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '5'
+
+  # ===========================================
+  # Redis Cache & Pub/Sub (Production)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: dorami-redis-prod
+    restart: always
+    # Production: Do NOT expose port externally
+    # ports:
+    #   - '6379:6379'
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '3'
+
+  # ===========================================
+  # NestJS Backend API (Production)
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: dorami-backend-prod
+    restart: always
+    # Production: Only internal network access
+    # External access via nginx-proxy
+    expose:
+      - '3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      LOG_LEVEL: warn
+
+      # Database (connection pooling configured in URL)
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=30
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      REDIS_ADAPTER_ENABLED: 'true'
+
+      # JWT & Auth (Production requires strong secrets)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (64+ chars)}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY is required}
+
+      # Kakao OAuth
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID is required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET is required}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL is required}
+
+      # RTMP/HLS
+      RTMP_SERVER_URL: rtmp://nginx-rtmp:1935/live
+      HLS_SERVER_URL: http://nginx-rtmp:8080/hls
+
+      # Frontend URLs
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+
+      # Security
+      CSRF_ENABLED: 'true'
+      DISABLE_CSRF: 'false'
+
+      # Error Tracking
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+
+      # Admin
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '10'
+
+  # ===========================================
+  # Next.js Frontend (Production)
+  # ===========================================
+  frontend:
+    build:
+      context: ./client-app
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:?NEXT_PUBLIC_WS_URL is required}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
+    container_name: dorami-frontend-prod
+    restart: always
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '5'
+
+  # ===========================================
+  # Nginx RTMP Server (Live Streaming)
+  # ===========================================
+  nginx-rtmp:
+    build:
+      context: ./infrastructure/docker/nginx-rtmp
+      dockerfile: Dockerfile
+    container_name: dorami-rtmp-prod
+    restart: always
+    ports:
+      - '1935:1935'   # RTMP (OBS) - Must be exposed for streamers
+    expose:
+      - '8080'        # HLS - Internal only, served via proxy
+    environment:
+      BACKEND_URL: http://backend:3001
+    volumes:
+      - hls_data:/tmp/hls
+      - ./infrastructure/docker/nginx-rtmp/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx-rtmp/rtmp.conf:/etc/nginx/rtmp.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '10'
+
+  # ===========================================
+  # Nginx Reverse Proxy with SSL (Required for Production)
+  # ===========================================
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: dorami-proxy-prod
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infrastructure/docker/nginx-proxy/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx-proxy/conf.d:/etc/nginx/conf.d:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - frontend
+      - backend
+      - nginx-rtmp
+    networks:
+      - dorami-internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '10'
+
+  # ===========================================
+  # Certbot (SSL Certificate Auto-renewal)
+  # ===========================================
+  certbot:
+    image: certbot/certbot
+    container_name: dorami-certbot-prod
+    restart: always
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx-proxy
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  hls_data:
+    driver: local
+  certbot_conf:
+    driver: local
+  certbot_www:
+    driver: local
+
+networks:
+  dorami-internal:
+    driver: bridge
+    internal: false  # Allow outbound internet (for Sentry, Kakao OAuth, etc.)

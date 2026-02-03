@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
-import { Radio, Eye, Clock, TrendingUp, Play, StopCircle } from 'lucide-react';
+import { Radio, Eye, Clock, TrendingUp, Play, StopCircle, Plus, X, Copy, Check } from 'lucide-react';
 
 interface LiveStream {
   id: string;
@@ -38,6 +38,15 @@ interface StreamHistoryResponse {
   totalPages: number;
 }
 
+interface GeneratedStreamKey {
+  id: string;
+  streamKey: string;
+  title: string;
+  rtmpUrl: string;
+  hlsUrl: string;
+  expiresAt: string;
+}
+
 export default function BroadcastsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -50,6 +59,13 @@ export default function BroadcastsPage() {
   const [pageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Stream key generation modal state
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [newStreamTitle, setNewStreamTitle] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // [DEV] Auth check disabled for development
   // useEffect(() => {
@@ -155,6 +171,39 @@ export default function BroadcastsPage() {
     );
   };
 
+  const handleGenerateStreamKey = async () => {
+    if (!newStreamTitle.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', {
+        title: newStreamTitle.trim(),
+      });
+      setGeneratedStream(response.data);
+      setNewStreamTitle('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || '스트림 키 발급에 실패했습니다.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowGenerateModal(false);
+    setGeneratedStream(null);
+    setNewStreamTitle('');
+  };
+
   if (false && (authLoading || (user && user?.role !== 'ADMIN'))) { // [DEV] disabled
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -173,6 +222,13 @@ export default function BroadcastsPage() {
           </h1>
           <p className="text-sm md:text-base text-secondary-text">실시간 방송 현황 및 기록을 관리하세요.</p>
         </div>
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          새 방송 시작
+        </button>
       </div>
 
       {/* Live Status Cards */}
@@ -362,6 +418,155 @@ export default function BroadcastsPage() {
           </>
         )}
       </div>
+
+      {/* Generate Stream Key Modal */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-primary-text">
+                {generatedStream ? '방송 설정 정보' : '새 방송 시작'}
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-secondary-text" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {!generatedStream ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 제목
+                    </label>
+                    <input
+                      type="text"
+                      value={newStreamTitle}
+                      onChange={(e) => setNewStreamTitle(e.target.value)}
+                      placeholder="예: 오늘의 라이브 방송"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={handleGenerateStreamKey}
+                    disabled={!newStreamTitle.trim() || isGenerating}
+                    className="w-full py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isGenerating ? '발급 중...' : '스트림 키 발급'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="p-4 bg-success/10 border border-success rounded-lg">
+                    <p className="text-success font-medium">스트림 키가 발급되었습니다!</p>
+                    <p className="text-sm text-secondary-text mt-1">아래 정보를 OBS에 입력하세요.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 제목
+                    </label>
+                    <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-primary-text">
+                      {generatedStream.title}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      RTMP 서버 URL
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, '')}
+                      </div>
+                      <button
+                        onClick={() => handleCopyToClipboard(generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, ''), 'rtmpUrl')}
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'rtmpUrl' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      스트림 키
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {generatedStream.streamKey}
+                      </div>
+                      <button
+                        onClick={() => handleCopyToClipboard(generatedStream.streamKey, 'streamKey')}
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'streamKey' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      시청 URL (HLS)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {generatedStream.hlsUrl}
+                      </div>
+                      <button
+                        onClick={() => handleCopyToClipboard(generatedStream.hlsUrl, 'hlsUrl')}
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'hlsUrl' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-warning/10 border border-warning rounded-lg">
+                    <p className="text-warning font-medium text-sm">유효 기간</p>
+                    <p className="text-sm text-secondary-text mt-1">
+                      {formatDate(generatedStream.expiresAt)}까지 유효합니다.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      닫기
+                    </button>
+                    <button
+                      onClick={() => setGeneratedStream(null)}
+                      className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
+                    >
+                      새 키 발급
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

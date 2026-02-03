@@ -1,5 +1,9 @@
 import { IsString, IsNotEmpty, IsArray, IsNumber, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
+
+// Re-export for backward compatibility
+export { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
 
 class OrderItemDto {
   @IsString()
@@ -28,12 +32,12 @@ export class OrderResponseDto {
   userEmail: string;
   depositorName: string;
   instagramId: string;
-  status: string;
+  status: OrderStatus;
   subtotal: number;
   shippingFee: number;
   total: number;
-  paymentStatus: string;
-  shippingStatus: string;
+  paymentStatus: PaymentStatus;
+  shippingStatus: ShippingStatus;
   createdAt: Date;
   updatedAt: Date;
   items: {

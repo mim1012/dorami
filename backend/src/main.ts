@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { BusinessExceptionFilter } from './common/filters/business-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+import { CsrfGuard } from './common/guards';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -85,6 +86,16 @@ async function bootstrap() {
   // Global Response Transformer
   app.useGlobalInterceptors(new TransformInterceptor());
 
+  // CSRF Protection Guard (Double Submit Cookie Pattern)
+  // Skip for development if CSRF_ENABLED=false
+  if (process.env.CSRF_ENABLED !== 'false') {
+    const reflector = app.get(Reflector);
+    app.useGlobalGuards(new CsrfGuard(reflector));
+    logger.log('CSRF protection enabled');
+  } else {
+    logger.warn('CSRF protection disabled (CSRF_ENABLED=false)');
+  }
+
   // CORS Configuration - Whitelist based
   const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
     .split(',')
@@ -106,19 +117,27 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-CSRF-Token'],
     exposedHeaders: ['Content-Type'],
     maxAge: 86400,  // 24 hours preflight cache
   });
 
   logger.log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 
-  // Setup Redis Adapter for Socket.IO
-  // Temporarily disabled to allow server to start
-  // TODO: Fix Redis adapter connection hanging issue
-  // const redisIoAdapter = new RedisIoAdapter(app);
-  // await redisIoAdapter.connectToRedis();
-  // app.useWebSocketAdapter(redisIoAdapter);
+  // Setup Redis Adapter for Socket.IO (horizontal scaling)
+  // Gracefully falls back to in-memory adapter if Redis is unavailable
+  if (process.env.REDIS_ADAPTER_ENABLED !== 'false') {
+    const redisIoAdapter = new RedisIoAdapter(app);
+    const connected = await redisIoAdapter.connectToRedis();
+    if (connected) {
+      app.useWebSocketAdapter(redisIoAdapter);
+      logger.log('Redis adapter enabled for WebSocket horizontal scaling');
+    } else {
+      logger.warn('Redis adapter disabled - running in single-server mode');
+    }
+  } else {
+    logger.log('Redis adapter disabled by configuration');
+  }
 
   // API Prefix
   app.setGlobalPrefix('api');

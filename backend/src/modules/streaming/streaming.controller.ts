@@ -7,12 +7,16 @@ import {
   Body,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { StreamingService } from './streaming.service';
 import {
   StartStreamDto,
   GenerateKeyDto,
   StreamHistoryQueryDto,
+  RtmpCallbackDto,
 } from './dto/streaming.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -99,5 +103,38 @@ export class StreamingController {
   @Roles('ADMIN')
   async getLiveStatus() {
     return this.streamingService.getLiveStatus();
+  }
+
+  /**
+   * nginx-rtmp on_publish callback
+   * Called when OBS starts streaming to validate stream key
+   * Returns 200 OK to allow, 403 Forbidden to reject
+   */
+  @Public()
+  @Post('auth')
+  @HttpCode(HttpStatus.OK)
+  async authenticateRtmpStream(@Body() dto: RtmpCallbackDto) {
+    const isAuthenticated = await this.streamingService.authenticateStream(
+      dto.name,
+      dto.addr,
+    );
+
+    if (!isAuthenticated) {
+      throw new ForbiddenException('Invalid or expired stream key');
+    }
+
+    return { status: 'ok' };
+  }
+
+  /**
+   * nginx-rtmp on_publish_done callback
+   * Called when OBS stops streaming
+   */
+  @Public()
+  @Post('done')
+  @HttpCode(HttpStatus.OK)
+  async handleRtmpStreamDone(@Body() dto: RtmpCallbackDto) {
+    await this.streamingService.handleStreamDone(dto.name);
+    return { status: 'ok' };
   }
 }

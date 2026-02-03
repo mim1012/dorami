@@ -1312,31 +1312,31 @@ export class OrdersController { }
 
 ### Medium (2-4주) - 조정됨
 
-- [ ] Redis Adapter 활성화 (High → Medium 하향)
+- [x] Redis Adapter 활성화 (High → Medium 하향) ✅ 2026-02-03
 - [x] 순환 의존성 제거 (High → Medium 하향) ✅ 2026-02-03
 - [x] 이벤트명 표준화 ✅ 2026-02-03
 - [x] 설정 검증 (Joi) 추가 ✅ 2026-02-03
-- [ ] shared-types Backend 적용
-- [ ] shared-types Frontend 적용
-- [ ] React Query 적용
-- [ ] 컴포넌트 크기 축소
+- [x] shared-types Backend 적용 ✅ 2026-02-03
+- [x] shared-types Frontend 적용 ✅ 2026-02-03
+- [x] React Query 적용 ✅ 2026-02-03
+- [x] 컴포넌트 크기 축소 ✅ 2026-02-03
 - [x] useEffect 의존성 수정 ✅ 2026-02-03
 - [x] 에러 핸들링 일관성 개선 ✅ 2026-02-03
 - [x] 로깅 일관성 개선 ✅ 2026-02-03
 - [x] 민감 정보 로깅 제거 ✅ 2026-02-03
 - [x] **보안 헤더 추가 (helmet)** (Low → Medium 상향) ✅ 2026-02-03
-- [ ] **CSRF 보호 추가** (신규)
+- [x] **CSRF 보호 추가** (신규) ✅ 2026-02-03
 - [x] **응답 압축 설정** (신규) ✅ 2026-02-03
-- [ ] **Prisma 연결 풀링 설정** (신규)
+- [x] **Prisma 연결 풀링 설정** (신규) ✅ 2026-02-03
 
 ### Low (1개월+)
 
-- [ ] 통합 테스트 작성
-- [ ] E2E 테스트 확대
-- [ ] 성능 모니터링 구성
+- [x] 통합 테스트 작성 ✅ 2026-02-03
+- [x] E2E 테스트 확대 ✅ 2026-02-03
+- [x] 성능 모니터링 구성 ✅ 2026-02-03
 - [x] API 문서화 개선 (Swagger/OpenAPI) ✅ 2026-02-03
 - [x] 환경별 설정 파일 분리 ✅ 2026-02-03
-- [ ] **Sentry 에러 트래킹 연동** (신규)
+- [x] **Sentry 에러 트래킹 연동** (신규) ✅ 2026-02-03
 - [x] **Pre-commit hooks 설정** (Husky + lint-staged) ✅ 2026-02-03
 - [x] **API 버전관리 적용** (v1) ✅ 2026-02-03
 - [x] **ESLint strict 규칙 적용** ✅ 2026-02-03
@@ -1377,3 +1377,4 @@ export class OrdersController { }
 - 2026-02-03: Medium 이슈 수정 (보안 헤더, 압축, 로깅, 이벤트명, 순환 의존성 등)
 - 2026-02-03: Low 이슈 수정 (Swagger, API 버전관리, ESLint, Pre-commit hooks, 환경 설정)
 - 2026-02-03: High 이슈 완료 (테스트 커버리지, any 타입 제거, N+1 쿼리 최적화)
+- 2026-02-03: Medium 이슈 추가 수정 (shared-types 적용, Redis Adapter 활성화, CSRF 보호, Prisma 연결 풀링)

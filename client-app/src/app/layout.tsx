@@ -20,7 +20,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
-      <body className="bg-[#121212]" suppressHydrationWarning>
+      <body className="bg-white text-gray-900 [--primary-black:#FFFFFF] [--primary-text:#111827] [--secondary-text:#6B7280] [--content-bg:#F9FAFB]" suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
             <ToastProvider>
