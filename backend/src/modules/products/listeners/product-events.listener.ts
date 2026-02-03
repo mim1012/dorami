@@ -21,10 +21,10 @@ export class ProductEventsListener {
   }
 
   /**
-   * Handle order.created event
+   * Handle order:created event
    * Decrease stock for all products in order
    */
-  @OnEvent('order.created')
+  @OnEvent('order:created')
   async handleOrderCreated(event: OrderCreatedEvent) {
     this.logger.log(`Order created: ${event.orderId}, processing stock updates...`);
 
@@ -48,7 +48,7 @@ export class ProductEventsListener {
 
       // Emit product stock updated event
       this.eventEmitter.emit(
-        'product.stock.updated',
+        'product:stock:updated',
         new ProductStockUpdatedEvent(
           item.productId,
           product.quantity,
@@ -165,22 +165,4 @@ export class ProductEventsListener {
     }
   }
 
-  /**
-   * Legacy event handler (for backward compatibility)
-   */
-  @OnEvent('product.created')
-  handleProductCreatedLegacy(event: ProductCreatedEvent) {
-    this.logger.log(`Product created (legacy): ${event.productId}`);
-    // Future: Trigger cache invalidation, analytics, etc.
-  }
-
-  /**
-   * Legacy stock update handler
-   */
-  @OnEvent('product.stock.updated')
-  async handleStockUpdatedLegacy(event: ProductStockUpdatedEvent) {
-    this.logger.log(
-      `Stock updated (legacy): Product ${event.productId} from ${event.oldStock} to ${event.newStock} (${event.reason})`,
-    );
-  }
 }

@@ -14,8 +14,9 @@ import { KakaoAuthGuard } from './guards/kakao-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { RefreshTokenDto } from './dto/auth.dto';
+import { RefreshTokenDto, TokenPayload } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
+import { User } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
@@ -101,7 +102,7 @@ export class AuthController {
   @UseGuards(KakaoAuthGuard)
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
     try {
-      const user = req.user as any;
+      const user = req.user as User;
       const loginResponse = await this.authService.login(user);
 
       // Set tokens in HTTP-only cookies per Story 2.1 AC1
@@ -119,7 +120,8 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch (error) {
-      this.logger.error('Kakao callback error:', error.stack);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Kakao callback error:', errorMessage);
       return res.redirect(`${this.frontendUrl}/login?error=auth_failed`);
     }
   }
@@ -150,7 +152,7 @@ export class AuthController {
       return res.status(401).json({
         statusCode: 401,
         errorCode: 'TOKEN_REFRESH_FAILED',
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -174,7 +176,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getProfile(@CurrentUser() user: any) {
+  async getProfile(@CurrentUser() user: TokenPayload) {
     return user;
   }
 }

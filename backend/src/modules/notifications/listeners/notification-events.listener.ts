@@ -12,7 +12,7 @@ export class NotificationEventsListener {
     this.logger.setContext('NotificationEventsListener');
   }
 
-  @OnEvent('order.created')
+  @OnEvent('order:created')
   async handleOrderCreated(payload: { orderId: string; userId: string }) {
     this.logger.log(`Sending order created notification to user ${payload.userId}`);
 
@@ -26,7 +26,7 @@ export class NotificationEventsListener {
     }
   }
 
-  @OnEvent('order.paid')
+  @OnEvent('order:paid')
   async handleOrderPaid(payload: { orderId: string; userId: string }) {
     this.logger.log(`Sending payment confirmed notification to user ${payload.userId}`);
 
@@ -54,7 +54,7 @@ export class NotificationEventsListener {
     }
   }
 
-  @OnEvent('cart.expired')
+  @OnEvent('cart:expired')
   async handleCartExpired(payload: { userId?: string }) {
     if (!payload.userId) return;
 

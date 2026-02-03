@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { configValidationSchema } from './common/config/config.validation';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -33,6 +34,11 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema: configValidationSchema,
+      validationOptions: {
+        abortEarly: false, // Show all validation errors
+        allowUnknown: true, // Allow unknown env vars
+      },
     }),
     // Rate Limiting
     ThrottlerModule.forRoot(throttlerConfig),

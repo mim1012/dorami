@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -22,15 +22,48 @@ import {
   UserStatisticsDto,
 } from './dto/admin.dto';
 
+// Type definitions for admin service
+interface WhereClause {
+  OR?: Array<{ [key: string]: { contains: string; mode: string } }>;
+  createdAt?: { gte?: Date; lte?: Date };
+  status?: { in: string[] };
+}
+
+interface OrderWhereClause {
+  OR?: Array<{ [key: string]: { contains: string; mode: string } }>;
+  createdAt?: { gte?: Date; lte?: Date };
+  status?: { in: string[] };
+  paymentStatus?: { in: string[] };
+  shippingStatus?: { in: string[] };
+  total?: { gte?: number; lte?: number };
+}
+
+interface SystemConfigUpdateData {
+  noticeText?: string | null;
+  noticeFontSize?: number;
+  noticeFontFamily?: string;
+}
+
+interface UserStatusUpdateData {
+  status: string;
+  suspendedAt?: Date | null;
+  suspensionReason?: string | null;
+}
+
+interface AuditLogWhereClause {
+  createdAt?: { gte?: Date; lte?: Date };
+  action?: string;
+}
+
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
     private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
-    @Inject(forwardRef(() => 'WEBSOCKET_GATEWAY'))
-    private websocketGateway: any,
   ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
@@ -52,7 +85,7 @@ export class AdminService {
     const skip = (page - 1) * limit;
 
     // Build where clause for filters
-    const where: any = {};
+    const where: WhereClause = {};
 
     // Search filter (name, email, instagramId)
     if (search) {
@@ -151,7 +184,7 @@ export class AdminService {
     const skip = (page - 1) * limit;
 
     // Build where clause for filters
-    const where: any = {};
+    const where: OrderWhereClause = {};
 
     // Search filter (order ID, user email, depositor name, instagram ID)
     if (search) {
@@ -459,7 +492,7 @@ export class AdminService {
    */
   async updateSystemConfig(dto: UpdateNoticeDto): Promise<NoticeDto> {
     // Prepare update data
-    const updateData: any = {};
+    const updateData: SystemConfigUpdateData = {};
     if (dto.noticeText !== undefined) {
       updateData.noticeText = dto.noticeText;
     }
@@ -488,10 +521,8 @@ export class AdminService {
       fontFamily: config.noticeFontFamily,
     };
 
-    // Broadcast notice update via WebSocket
-    if (this.websocketGateway && this.websocketGateway.server) {
-      this.websocketGateway.server.emit('notice:updated', result);
-    }
+    // Broadcast notice update via EventEmitter (handled by AdminNotificationHandler)
+    this.eventEmitter.emit('admin:notice:updated', result);
 
     return result;
   }
@@ -535,9 +566,9 @@ export class AdminService {
     let shippingAddress: ShippingAddressDto | null = null;
     if (order.user.shippingAddress) {
       try {
-        shippingAddress = this.encryptionService.decryptAddress(order.user.shippingAddress as any);
+        shippingAddress = this.encryptionService.decryptAddress(order.user.shippingAddress as string);
       } catch (error) {
-        console.error('Failed to decrypt shipping address:', error);
+        this.logger.error('Failed to decrypt shipping address', error instanceof Error ? error.stack : String(error));
         shippingAddress = null;
       }
     }
@@ -775,9 +806,9 @@ export class AdminService {
     let shippingAddress: ShippingAddressDto | null = null;
     if (user.shippingAddress) {
       try {
-        shippingAddress = this.encryptionService.decryptAddress(user.shippingAddress as any);
+        shippingAddress = this.encryptionService.decryptAddress(user.shippingAddress as string);
       } catch (error) {
-        console.error('Failed to decrypt shipping address:', error);
+        this.logger.error('Failed to decrypt shipping address', error instanceof Error ? error.stack : String(error));
         // Return null if decryption fails
         shippingAddress = null;
       }
@@ -834,7 +865,7 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    const updateData: any = {
+    const updateData: UserStatusUpdateData = {
       status: dto.status,
     };
 
@@ -1013,7 +1044,7 @@ export class AdminService {
   ) {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: AuditLogWhereClause = {};
 
     if (fromDate || toDate) {
       where.createdAt = {};

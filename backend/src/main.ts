@@ -6,6 +6,8 @@ import { BusinessExceptionFilter } from './common/filters/business-exception.fil
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import compression from 'compression';
 import { join } from 'path';
 
 async function bootstrap() {
@@ -23,6 +25,42 @@ async function bootstrap() {
   // Cookie Parser Middleware (for HTTP-only cookies)
   app.use(cookieParser());
   logger.log('Cookie parser registered');
+
+  // Security Headers (helmet)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'", 'wss:', 'ws:'],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'", 'https:'],
+          frameSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false, // Required for loading external resources
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+  logger.log('Security headers (helmet) enabled');
+
+  // Response Compression
+  app.use(
+    compression({
+      filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+      level: 6, // Compression level (1-9)
+    }),
+  );
+  logger.log('Response compression enabled');
 
   // Manual CORS middleware removed - using NestJS built-in CORS instead
 
