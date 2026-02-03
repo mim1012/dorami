@@ -1300,12 +1300,12 @@ export class OrdersController { }
 ### High (1-2주) - 조정됨
 
 - [x] **Rate Limiting 추가** (신규) ✅ 2026-02-03
-- [ ] **테스트 커버리지 개선** (Low → High 상향)
-- [ ] any 타입 제거 (admin.service.ts)
+- [x] **테스트 커버리지 개선** (Low → High 상향) ✅ 2026-02-03
+- [x] any 타입 제거 (admin.service.ts) ✅ 2026-02-03
 - [x] any 타입 제거 (cart.service.ts) ✅ 2026-02-03
-- [ ] any 타입 제거 (auth.controller.ts)
+- [x] any 타입 제거 (auth.controller.ts) ✅ 2026-02-03
 - [x] N+1 쿼리 최적화 (CartService) ✅ 2026-02-03
-- [ ] N+1 쿼리 최적화 (ProductsService)
+- [x] N+1 쿼리 최적화 (ProductsService) ✅ 2026-02-03
 - [x] 비즈니스 로직 중복 제거 ✅ 2026-02-03
 - [x] **Health Check 엔드포인트 추가** (신규) ✅ 2026-02-03
 - [x] **DB 인덱스 추가** (신규) ✅ 2026-02-03
@@ -1376,3 +1376,4 @@ export class OrdersController { }
 - 2026-02-03: Critical/High 이슈 수정 완료
 - 2026-02-03: Medium 이슈 수정 (보안 헤더, 압축, 로깅, 이벤트명, 순환 의존성 등)
 - 2026-02-03: Low 이슈 수정 (Swagger, API 버전관리, ESLint, Pre-commit hooks, 환경 설정)
+- 2026-02-03: High 이슈 완료 (테스트 커버리지, any 타입 제거, N+1 쿼리 최적화)

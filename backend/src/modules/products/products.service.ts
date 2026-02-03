@@ -18,6 +18,22 @@ import {
   InsufficientStockException,
 } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Product } from '@prisma/client';
+
+// Type for product update data
+interface ProductUpdateData {
+  name?: string;
+  price?: Decimal;
+  quantity?: number;
+  colorOptions?: string[];
+  sizeOptions?: string[];
+  shippingFee?: Decimal;
+  freeShippingMessage?: string | null;
+  timerEnabled?: boolean;
+  timerDuration?: number;
+  imageUrl?: string | null;
+  status?: string;
+}
 
 @Injectable()
 export class ProductsService {
@@ -70,7 +86,9 @@ export class ProductsService {
 
       return this.mapToResponseDto(product);
     } catch (error) {
-      this.logger.error(`Failed to create product: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to create product: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -96,7 +114,9 @@ export class ProductsService {
 
       return products.map((product) => this.mapToResponseDto(product));
     } catch (error) {
-      this.logger.error(`Failed to get products for stream ${streamKey}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get products for stream ${streamKey}: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -119,7 +139,9 @@ export class ProductsService {
 
       return products.map((p) => this.mapToResponseDto(p));
     } catch (error) {
-      this.logger.error(`Failed to get featured products: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get featured products: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -127,16 +149,18 @@ export class ProductsService {
   /**
    * Get all products (legacy method)
    */
-  async findAll(status?: string): Promise<ProductResponseDto[]> {
+  async findAll(status?: ProductStatus): Promise<ProductResponseDto[]> {
     try {
       const products = await this.prisma.product.findMany({
-        where: status ? { status: status as any } : undefined,
+        where: status ? { status } : undefined,
         orderBy: { createdAt: 'desc' },
       });
 
       return products.map((p) => this.mapToResponseDto(p));
     } catch (error) {
-      this.logger.error(`Failed to get all products: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get all products: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -157,7 +181,9 @@ export class ProductsService {
 
       return this.mapToResponseDto(product);
     } catch (error) {
-      this.logger.error(`Failed to get product ${id}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get product ${id}: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -178,22 +204,11 @@ export class ProductsService {
       }
 
       // Check if trying to reduce quantity below items in carts
-      if (updateDto.stock !== undefined) {
-        const itemsInCarts = await this.prisma.cart.count({
-          where: {
-            productId: id,
-            status: 'ACTIVE',
-          },
-        });
-
-        if (updateDto.stock < 0) {
-          throw new BadRequestException(
-            `Cannot reduce quantity below items in active carts (${itemsInCarts})`,
-          );
-        }
+      if (updateDto.stock !== undefined && updateDto.stock < 0) {
+        throw new BadRequestException('Stock cannot be negative');
       }
 
-      const updateData: any = {};
+      const updateData: ProductUpdateData = {};
 
       if (updateDto.name !== undefined) updateData.name = updateDto.name;
       if (updateDto.price !== undefined) updateData.price = new Decimal(updateDto.price);
@@ -223,7 +238,9 @@ export class ProductsService {
 
       return this.mapToResponseDto(product);
     } catch (error) {
-      this.logger.error(`Failed to update product ${id}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to update product ${id}: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -252,7 +269,9 @@ export class ProductsService {
       if (error.code === 'P2025') {
         throw new ProductNotFoundException(id);
       }
-      this.logger.error(`Failed to mark product ${id} as sold out: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to mark product ${id} as sold out: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -293,7 +312,9 @@ export class ProductsService {
       if (error.code === 'P2025') {
         throw new ProductNotFoundException(id);
       }
-      this.logger.error(`Failed to delete product ${id}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to delete product ${id}: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -343,7 +364,9 @@ export class ProductsService {
 
       return this.mapToResponseDto(updatedProduct);
     } catch (error) {
-      this.logger.error(`Failed to update stock for product ${id}: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to update stock for product ${id}: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -351,11 +374,24 @@ export class ProductsService {
   /**
    * Check if product has available stock
    * Epic 6: Used for cart reservation
+   * Optimized: Uses Promise.all to avoid N+1 query
    */
   async checkStock(productId: string, quantity: number): Promise<boolean> {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
+    // Execute both queries in parallel to avoid N+1
+    const [product, reservedQuantity] = await Promise.all([
+      this.prisma.product.findUnique({
+        where: { id: productId },
+      }),
+      this.prisma.cart.aggregate({
+        where: {
+          productId,
+          status: 'ACTIVE',
+        },
+        _sum: {
+          quantity: true,
+        },
+      }),
+    ]);
 
     if (!product) {
       throw new ProductNotFoundException(productId);
@@ -364,17 +400,6 @@ export class ProductsService {
     if (product.status !== 'AVAILABLE') {
       return false;
     }
-
-    // Count reserved items in active carts
-    const reservedQuantity = await this.prisma.cart.aggregate({
-      where: {
-        productId,
-        status: 'ACTIVE',
-      },
-      _sum: {
-        quantity: true,
-      },
-    });
 
     const reserved = reservedQuantity._sum.quantity || 0;
     const available = product.quantity - reserved;
@@ -441,7 +466,9 @@ export class ProductsService {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to get store products: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to get store products: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -449,20 +476,20 @@ export class ProductsService {
   /**
    * Map Prisma model to Response DTO
    */
-  private mapToResponseDto(product: any): ProductResponseDto {
+  private mapToResponseDto(product: Product): ProductResponseDto {
     return {
       id: product.id,
       streamKey: product.streamKey,
       name: product.name,
       price: parseFloat(product.price.toString()),
       stock: product.quantity, // Map quantity to stock
-      colorOptions: product.colorOptions,
-      sizeOptions: product.sizeOptions,
+      colorOptions: product.colorOptions as string[],
+      sizeOptions: product.sizeOptions as string[],
       shippingFee: parseFloat(product.shippingFee.toString()),
-      freeShippingMessage: product.freeShippingMessage,
+      freeShippingMessage: product.freeShippingMessage ?? undefined,
       timerEnabled: product.timerEnabled,
       timerDuration: product.timerDuration,
-      imageUrl: product.imageUrl,
+      imageUrl: product.imageUrl ?? undefined,
       status: product.status as ProductStatus,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
