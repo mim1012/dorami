@@ -8,6 +8,7 @@ import {
   Res,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { KakaoAuthGuard } from './guards/kakao-auth.guard';
@@ -18,6 +19,7 @@ import { RefreshTokenDto, TokenPayload } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
 import { User } from '@prisma/client';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -92,6 +94,8 @@ export class AuthController {
   @Public()
   @Get('kakao')
   @UseGuards(KakaoAuthGuard)
+  @ApiOperation({ summary: '카카오 로그인', description: '카카오 OAuth 로그인 페이지로 리다이렉트합니다.' })
+  @ApiResponse({ status: 302, description: '카카오 로그인 페이지로 리다이렉트' })
   async kakaoLogin() {
     // This route initiates Kakao OAuth flow
     // Passport will redirect to Kakao login page

@@ -26,6 +26,8 @@
     "lint:client": "npm run lint --workspace=client-app",
     "lint:backend": "npm run lint --workspace=backend",
     "lint:all": "npm run lint:client && npm run lint:backend",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
@@ -33,11 +35,31 @@
     "prisma:migrate": "npm run prisma:migrate:dev --workspace=backend",
     "prisma:studio": "npm run prisma:studio --workspace=backend",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "postinstall": "npm run build:shared"
+    "postinstall": "npm run build:shared",
+    "prepare": "husky"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.4.2",
     "typescript": "^5.7.2"
+  },
+  "lint-staged": {
+    "backend/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "client-app/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "packages/**/*.ts": [
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=20.0.0",
