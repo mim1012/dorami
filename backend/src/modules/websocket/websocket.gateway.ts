@@ -17,7 +17,10 @@ import { UseGuards } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: process.env.CORS_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     credentials: true,
   },
   namespace: '/',

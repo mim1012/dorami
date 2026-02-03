@@ -137,7 +137,11 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
-      // Issue new tokens
+      // Token Rotation: Delete old refresh token BEFORE issuing new one
+      // This prevents race conditions where old token could be reused
+      await this.redisService.del(`refresh_token:${payload.sub}`);
+
+      // Issue new tokens (this will store new refresh token in Redis)
       return this.login(user);
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
