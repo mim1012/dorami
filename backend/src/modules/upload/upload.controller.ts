@@ -4,30 +4,43 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { Public } from '../auth/decorators/public.decorator';
+import { randomUUID } from 'crypto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('upload')
+@UseGuards(JwtAuthGuard)  // All upload endpoints require authentication
 export class UploadController {
-  @Public()
   @Post('image')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          callback(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+          // Use UUID for filename to prevent path traversal and collisions
+          const uniqueName = `${randomUUID()}${extname(file.originalname).toLowerCase()}`;
+          callback(null, uniqueName);
         },
       }),
       fileFilter: (req, file, callback) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
+        // Check MIME type
+        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
           return callback(
-            new BadRequestException('Only image files are allowed!'),
+            new BadRequestException('Only image files (jpg, jpeg, png, gif, webp) are allowed!'),
+            false,
+          );
+        }
+        // Check file extension
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const ext = extname(file.originalname).toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+          return callback(
+            new BadRequestException('Invalid file extension'),
             false,
           );
         }
@@ -38,7 +51,10 @@ export class UploadController {
       },
     }),
   )
-  uploadImage(@UploadedFile() file: Express.Multer.File) {
+  uploadImage(
+    @CurrentUser('userId') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -48,9 +64,10 @@ export class UploadController {
     return {
       url: imageUrl,
       filename: file.filename,
-      originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
+      uploadedBy: userId,
+      uploadedAt: new Date().toISOString(),
     };
   }
 }

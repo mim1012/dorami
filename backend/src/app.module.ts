@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
+import { throttlerConfig } from './common/throttler/throttler.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -23,6 +25,7 @@ import { SettlementModule } from './modules/settlement/settlement.module';
 import { StoreModule } from './modules/store/store.module';
 import { NoticesModule } from './modules/notices/notices.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -31,6 +34,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    // Rate Limiting
+    ThrottlerModule.forRoot(throttlerConfig),
     EventEmitterModule.forRoot({
       // Set this to `true` to use wildcards
       wildcard: true,
@@ -66,14 +71,21 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     StoreModule,
     NoticesModule,
     UploadModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    // Global JWT Auth Guard
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    // Global Rate Limiting Guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
-export class AppModule { }
+export class AppModule {}
