@@ -13,11 +13,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductStatus } from '@live-commerce/shared-types';
 
-export enum ProductStatus {
-  AVAILABLE = 'AVAILABLE',
-  SOLD_OUT = 'SOLD_OUT',
-}
+// Re-export for backward compatibility
+export { ProductStatus } from '@live-commerce/shared-types';
 
 export class CreateProductDto {
   @ApiProperty({ description: 'Stream key to associate product with', example: 'abc123def456' })

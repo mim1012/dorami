@@ -4,24 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { X } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
-
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
-}
+import { Product, ProductStatus } from '@/lib/types/product';
 
 interface ProductDetailModalProps {
   product: Product;
@@ -179,16 +162,16 @@ export default function ProductDetailModal({
           {/* Add to Cart Button */}
           <button
             onClick={handleAddToCart}
-            disabled={product.status === 'SOLD_OUT' || product.stock === 0}
+            disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
             className={`
               w-full py-4 rounded-button font-bold text-body transition-colors
-              ${product.status === 'SOLD_OUT' || product.stock === 0
+              ${product.status === ProductStatus.SOLD_OUT || product.stock === 0
                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                 : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
               }
             `}
           >
-            {product.status === 'SOLD_OUT' || product.stock === 0
+            {product.status === ProductStatus.SOLD_OUT || product.stock === 0
               ? '품절'
               : '장바구니에 담기'
             }

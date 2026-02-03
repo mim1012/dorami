@@ -20,6 +20,7 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -88,10 +89,10 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 10,
-        maxBufferLength: 15,
-        liveSyncDuration: 3, // Stay 3s behind live edge
-        liveMaxLatencyDuration: 5,
+        backBufferLength: 5,
+        maxBufferLength: 5,
+        liveSyncDuration: 2,
+        liveMaxLatencyDuration: 3,
         liveDurationInfinity: true,
       });
 
@@ -103,9 +104,7 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
         setIsPlaying(true);
       });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
-
+      hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
@@ -136,19 +135,21 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
       hlsRef.current = hls;
 
       // Track latency
-      const latencyInterval = setInterval(() => {
+      latencyIntervalRef.current = setInterval(() => {
         if (hls.latency !== undefined) {
           setLatency(Math.round(hls.latency));
         }
       }, 1000);
-
-      return () => clearInterval(latencyInterval);
     } else {
       setError('Your browser does not support HLS playback');
     }
   };
 
   const cleanupPlayer = () => {
+    if (latencyIntervalRef.current) {
+      clearInterval(latencyIntervalRef.current);
+      latencyIntervalRef.current = null;
+    }
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -156,35 +157,33 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
   };
 
   const connectWebSocket = () => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000';
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 
     const socket = io(`${wsUrl}/streaming`, {
       transports: ['websocket'],
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     });
 
     socket.on('connect', () => {
-      console.log('WebSocket connected');
       socket.emit('stream:viewer:join', { streamKey });
     });
 
-    socket.on('stream:viewer-count', (data: any) => {
+    socket.on('stream:viewer-count', (data: { data?: { streamKey: string; viewerCount: number } }) => {
       if (data.data && data.data.streamKey === streamKey) {
         setViewerCount(data.data.viewerCount);
       }
     });
 
-    socket.on('stream:ended', (data: any) => {
+    socket.on('stream:ended', (data: { streamKey: string }) => {
       if (data.streamKey === streamKey) {
         setStreamEnded(true);
         if (videoRef.current) {
           videoRef.current.pause();
         }
       }
-    });
-
-    socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
     });
 
     socketRef.current = socket;
@@ -233,10 +232,15 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
   };
 
   const handleFullscreen = () => {
-    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
 
     if (!document.fullscreenElement) {
-      videoRef.current.requestFullscreen();
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if ((video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen) {
+        (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+      }
     } else {
       document.exitFullscreen();
     }

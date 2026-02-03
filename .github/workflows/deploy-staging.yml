@@ -1,0 +1,223 @@
+# Staging Deployment Workflow
+# Automatically deploys to staging when code is pushed to develop branch
+# Can also be triggered manually
+
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests before deployment'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: false
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/dorami
+
+jobs:
+  # ===========================================
+  # Run CI Tests First
+  # ===========================================
+  test:
+    name: Run Tests
+    if: inputs.skip_tests != 'true'
+    uses: ./.github/workflows/ci.yml
+
+  # ===========================================
+  # Build and Push Docker Images
+  # ===========================================
+  build:
+    name: Build & Push Images
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      backend_image: ${{ steps.meta-backend.outputs.tags }}
+      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Version
+        id: version
+        run: |
+          VERSION="staging-$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (Backend)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=staging-latest
+
+      - name: Extract metadata (Frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=staging-latest
+
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=staging
+
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client-app
+          file: ./client-app/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.STAGING_API_URL }}
+            NEXT_PUBLIC_WS_URL=${{ secrets.STAGING_WS_URL }}
+            NEXT_PUBLIC_CDN_URL=${{ secrets.STAGING_CDN_URL }}
+
+  # ===========================================
+  # Deploy to Staging Server
+  # ===========================================
+  deploy:
+    name: Deploy to Staging
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          USER: ${{ secrets.STAGING_USER }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          ssh $USER@$HOST << 'ENDSSH'
+            set -e
+
+            cd /opt/dorami
+
+            echo "=== Pulling latest code ==="
+            git fetch origin develop
+            git reset --hard origin/develop
+
+            echo "=== Pulling new images ==="
+            docker compose -f docker-compose.staging.yml pull
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.staging.yml run --rm backend npx prisma migrate deploy
+
+            echo "=== Restarting services ==="
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+
+            echo "=== Cleaning up old images ==="
+            docker image prune -f
+
+            echo "=== Checking service health ==="
+            sleep 30
+            curl -f http://localhost:3001/api/health || exit 1
+            curl -f http://localhost:3000 || exit 1
+
+            echo "=== Deployment complete ==="
+          ENDSSH
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "Staging deployment successful!"
+          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "URL: ${{ secrets.STAGING_URL }}"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "Staging deployment failed!"
+          exit 1
+
+  # ===========================================
+  # Post-deployment Smoke Tests
+  # ===========================================
+  smoke-test:
+    name: Smoke Tests
+    needs: [deploy]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Health Check - Backend
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.STAGING_API_URL }}/health)
+          if [ "$response" != "200" ]; then
+            echo "Backend health check failed: $response"
+            exit 1
+          fi
+          echo "Backend health check passed"
+
+      - name: Health Check - Frontend
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.STAGING_URL }})
+          if [ "$response" != "200" ]; then
+            echo "Frontend health check failed: $response"
+            exit 1
+          fi
+          echo "Frontend health check passed"
+
+      - name: API Response Test
+        run: |
+          # Test a basic API endpoint
+          response=$(curl -s ${{ secrets.STAGING_API_URL }}/health)
+          echo "API Response: $response"

@@ -93,3 +93,34 @@ export class StreamingSessionResponseDto {
   expiresAt: Date;
   createdAt: Date;
 }
+
+// nginx-rtmp on_publish / on_publish_done callback DTO
+export class RtmpCallbackDto {
+  @IsString()
+  @IsOptional()
+  call?: string; // "publish" or "publish_done"
+
+  @IsString()
+  @IsOptional()
+  addr?: string; // client IP
+
+  @IsString()
+  @IsOptional()
+  clientid?: string;
+
+  @IsString()
+  @IsOptional()
+  app?: string; // application name (e.g., "live")
+
+  @IsString()
+  @IsNotEmpty()
+  name: string; // stream key
+
+  @IsString()
+  @IsOptional()
+  flashver?: string;
+
+  @IsString()
+  @IsOptional()
+  tcurl?: string;
+}

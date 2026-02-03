@@ -1,10 +1,15 @@
+import { Role } from '@live-commerce/shared-types';
+
+// Re-export for convenience
+export { Role } from '@live-commerce/shared-types';
+
 export interface User {
   id: string;
   kakaoId: string;
   email?: string;
   nickname: string;
   profileImage?: string;
-  role: string;
+  role: Role;
   depositorName?: string;
   instagramId?: string;
   createdAt: string;

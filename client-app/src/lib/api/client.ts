@@ -4,6 +4,16 @@ interface ApiResponse<T> {
   data: T;
 }
 
+/**
+ * Get CSRF token from cookie
+ */
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const match = document.cookie.match(/csrf-token=([^;]+)/);
+  return match ? match[1] : null;
+}
+
 async function request<T>(
   endpoint: string,
   options?: RequestInit & { params?: Record<string, any> }
@@ -28,9 +38,17 @@ async function request<T>(
     }
   }
 
+  // Include CSRF token for non-GET requests
+  const csrfToken = getCsrfToken();
+  const csrfHeader: Record<string, string> = {};
+  if (csrfToken && options?.method && options.method !== 'GET') {
+    csrfHeader['X-CSRF-Token'] = csrfToken;
+  }
+
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      ...csrfHeader,
     },
     credentials: 'include',
   };

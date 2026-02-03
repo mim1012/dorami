@@ -1,0 +1,222 @@
+# Docker Compose for Staging Environment
+# Usage: docker-compose -f docker-compose.staging.yml up -d
+#
+# Prerequisites:
+#   1. Copy .env.staging.example to .env.staging and configure
+#   2. Build images: docker-compose -f docker-compose.staging.yml build
+#   3. Run: docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: dorami-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dorami}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-dorami}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dorami-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-dorami}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Redis Cache & Pub/Sub
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: dorami-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - dorami-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # NestJS Backend API
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: staging
+    container_name: dorami-backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: staging
+      PORT: 3001
+
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dorami}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dorami}?schema=public
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # JWT & Auth
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY is required}
+
+      # Kakao OAuth
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:-}
+
+      # RTMP/HLS
+      RTMP_SERVER_URL: rtmp://nginx-rtmp:1935/live
+      HLS_SERVER_URL: http://nginx-rtmp:8080/hls
+
+      # Frontend URL (for CORS)
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dorami-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===========================================
+  # Next.js Frontend
+  # ===========================================
+  frontend:
+    build:
+      context: ./client-app
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3001/api}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-http://backend:3001}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-http://nginx-rtmp:8080}
+    container_name: dorami-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: staging
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
+      NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dorami-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===========================================
+  # Nginx RTMP Server (Live Streaming)
+  # ===========================================
+  nginx-rtmp:
+    build:
+      context: ./infrastructure/docker/nginx-rtmp
+      dockerfile: Dockerfile
+    container_name: dorami-rtmp
+    restart: unless-stopped
+    ports:
+      - '1935:1935'   # RTMP (OBS)
+      - '8080:8080'   # HLS (CDN)
+    environment:
+      BACKEND_URL: http://backend:3001
+    volumes:
+      - hls_data:/tmp/hls
+      - ./infrastructure/docker/nginx-rtmp/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx-rtmp/rtmp.conf:/etc/nginx/rtmp.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dorami-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===========================================
+  # Nginx Reverse Proxy (Optional - for SSL)
+  # ===========================================
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: dorami-proxy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infrastructure/docker/nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx-proxy/conf.d:/etc/nginx/conf.d:ro
+      - ./infrastructure/docker/certbot/conf:/etc/letsencrypt:ro
+      - ./infrastructure/docker/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - frontend
+      - backend
+      - nginx-rtmp
+    networks:
+      - dorami-network
+    profiles:
+      - with-proxy  # Only start with: docker-compose --profile with-proxy up
+
+  # ===========================================
+  # Certbot (SSL Certificate - Optional)
+  # ===========================================
+  certbot:
+    image: certbot/certbot
+    container_name: dorami-certbot
+    volumes:
+      - ./infrastructure/docker/certbot/conf:/etc/letsencrypt
+      - ./infrastructure/docker/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    profiles:
+      - with-proxy
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  hls_data:
+    driver: local
+
+networks:
+  dorami-network:
+    driver: bridge

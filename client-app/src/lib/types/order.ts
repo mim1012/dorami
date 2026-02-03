@@ -1,13 +1,7 @@
-export type OrderStatus =
-  | 'PENDING_PAYMENT'
-  | 'PAYMENT_CONFIRMED'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELLED';
+import { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
 
-export type PaymentStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
-
-export type ShippingStatus = 'PENDING' | 'SHIPPED' | 'DELIVERED';
+// Re-export for convenience
+export { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
 
 export interface OrderItem {
   id: string;

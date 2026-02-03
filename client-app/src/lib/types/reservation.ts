@@ -1,4 +1,7 @@
-export type ReservationStatus = 'WAITING' | 'PROMOTED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+import { ReservationStatus } from '@live-commerce/shared-types';
+
+// Re-export for convenience
+export { ReservationStatus } from '@live-commerce/shared-types';
 
 export interface Reservation {
   id: string;

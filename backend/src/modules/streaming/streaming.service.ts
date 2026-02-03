@@ -468,6 +468,105 @@ export class StreamingService {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 
+  /**
+   * Authenticate RTMP stream publish request from nginx-rtmp
+   * Called by nginx-rtmp on_publish callback
+   * Returns true if stream key is valid and allowed to publish
+   */
+  async authenticateStream(streamKey: string, clientIp?: string): Promise<boolean> {
+    this.logger.log(`RTMP auth request for stream key: ${streamKey} from IP: ${clientIp}`);
+
+    // Find stream session by key
+    const session = await this.prisma.liveStream.findUnique({
+      where: { streamKey },
+    });
+
+    if (!session) {
+      this.logger.warn(`RTMP auth failed: Stream key not found - ${streamKey}`);
+      return false;
+    }
+
+    // Check if stream is in valid state (PENDING)
+    if (session.status !== 'PENDING') {
+      this.logger.warn(`RTMP auth failed: Stream not in PENDING state - ${streamKey}, status: ${session.status}`);
+      return false;
+    }
+
+    // Check if stream key has expired
+    if (session.expiresAt && new Date() > session.expiresAt) {
+      this.logger.warn(`RTMP auth failed: Stream key expired - ${streamKey}`);
+      return false;
+    }
+
+    // Authentication successful - update stream to LIVE
+    await this.prisma.liveStream.update({
+      where: { id: session.id },
+      data: {
+        status: 'LIVE',
+        startedAt: new Date(),
+      },
+    });
+
+    // Update Redis cache
+    await this.redisService.set(
+      `stream:${streamKey}:meta`,
+      JSON.stringify({
+        userId: session.userId,
+        title: session.title,
+        status: 'LIVE',
+        streamId: session.id,
+        startedAt: new Date().toISOString(),
+      }),
+      3600 * 24,
+    );
+
+    this.logger.log(`RTMP auth successful: Stream ${streamKey} is now LIVE`);
+    this.eventEmitter.emit('stream:started', { streamId: session.id, streamKey });
+
+    return true;
+  }
+
+  /**
+   * Handle RTMP stream publish done notification from nginx-rtmp
+   * Called by nginx-rtmp on_publish_done callback
+   */
+  async handleStreamDone(streamKey: string): Promise<void> {
+    this.logger.log(`RTMP stream done: ${streamKey}`);
+
+    // Find stream session by key
+    const session = await this.prisma.liveStream.findUnique({
+      where: { streamKey },
+    });
+
+    if (!session) {
+      this.logger.warn(`RTMP done: Stream key not found - ${streamKey}`);
+      return;
+    }
+
+    // Calculate total duration if stream was live
+    let totalDuration: number | null = null;
+    if (session.startedAt) {
+      totalDuration = Math.floor((new Date().getTime() - session.startedAt.getTime()) / 1000);
+    }
+
+    // Update stream status to OFFLINE
+    await this.prisma.liveStream.update({
+      where: { id: session.id },
+      data: {
+        status: 'OFFLINE',
+        endedAt: new Date(),
+        totalDuration,
+      },
+    });
+
+    // Remove from Redis cache
+    await this.redisService.del(`stream:${streamKey}:meta`);
+    await this.redisService.del(`stream:${streamKey}:viewers`);
+
+    this.logger.log(`Stream ${streamKey} ended. Duration: ${totalDuration}s`);
+    this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
+  }
+
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
     const rtmpUrl = `${this.configService.get('RTMP_SERVER_URL')}/${session.streamKey}`;
     const hlsUrl = `${this.configService.get('HLS_SERVER_URL')}/${session.streamKey}/index.m3u8`;

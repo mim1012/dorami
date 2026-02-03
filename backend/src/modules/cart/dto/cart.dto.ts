@@ -8,12 +8,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CartStatus } from '@live-commerce/shared-types';
 
-export enum CartStatus {
-  ACTIVE = 'ACTIVE',
-  EXPIRED = 'EXPIRED',
-  COMPLETED = 'COMPLETED',
-}
+// Re-export for backward compatibility
+export { CartStatus } from '@live-commerce/shared-types';
 
 export class AddToCartDto {
   @ApiProperty({ description: 'Product ID', example: '123e4567-e89b-12d3-a456-426614174000' })
