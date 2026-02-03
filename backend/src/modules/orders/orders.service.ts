@@ -177,7 +177,7 @@ export class OrdersService {
         })),
       );
 
-      this.eventEmitter.emit('order.created', event);
+      this.eventEmitter.emit('order:created', event);
 
       return this.mapToResponseDto(order);
     });
@@ -285,7 +285,7 @@ export class OrdersService {
       })),
     );
 
-    this.eventEmitter.emit('order.created', event);
+    this.eventEmitter.emit('order:created', event);
 
     return this.mapToResponseDto(order);
   }
@@ -356,7 +356,7 @@ export class OrdersService {
 
     // Emit domain event
     const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt!);
-    this.eventEmitter.emit('order.paid', paidEvent);
+    this.eventEmitter.emit('order:paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);
   }
@@ -384,7 +384,7 @@ export class OrdersService {
     // Remove timer
     await this.redisService.del(`order:timer:${orderId}`);
 
-    this.eventEmitter.emit('order.cancelled', { orderId });
+    this.eventEmitter.emit('order:cancelled', { orderId });
   }
 
   /**
@@ -477,7 +477,7 @@ export class OrdersService {
         });
 
         this.logger.log(`Auto-cancelled expired order: ${order.id}`);
-        this.eventEmitter.emit('order.cancelled', { orderId: order.id });
+        this.eventEmitter.emit('order:cancelled', { orderId: order.id });
       }
     } catch (error) {
       this.logger.error('Failed to cancel expired orders', error.stack);

@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WebsocketGateway } from './websocket.gateway';
 import { ProductAlertHandler } from './handlers/product-alert.handler';
 import { OrderAlertHandler } from './handlers/order-alert.handler';
+import { AdminNotificationHandler } from './handlers/admin-notification.handler';
 
 @Module({
   imports: [
@@ -15,7 +16,12 @@ import { OrderAlertHandler } from './handlers/order-alert.handler';
       inject: [ConfigService],
     }),
   ],
-  providers: [WebsocketGateway, ProductAlertHandler, OrderAlertHandler],
+  providers: [
+    WebsocketGateway,
+    ProductAlertHandler,
+    OrderAlertHandler,
+    AdminNotificationHandler,
+  ],
   exports: [WebsocketGateway],
 })
 export class WebsocketModule {}

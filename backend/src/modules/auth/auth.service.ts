@@ -58,7 +58,7 @@ export class AuthService {
         },
       });
 
-      this.logger.log(`New user created: ${user.email} (role: ${assignedRole})`);
+      this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
       // Update user profile, lastLoginAt, and role (in case whitelist changed)
       user = await this.prisma.user.update({
@@ -71,7 +71,7 @@ export class AuthService {
         },
       });
 
-      this.logger.log(`Returning user: ${user.email} (role: ${assignedRole})`);
+      this.logger.log(`Returning user: ${user.id} (role: ${assignedRole})`);
     }
 
     return user;
