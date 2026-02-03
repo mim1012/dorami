@@ -86,4 +86,11 @@ export class RedisService implements OnModuleInit {
   async incr(key: string): Promise<number> {
     return this.client.incr(key);
   }
+
+  /**
+   * Health check - PING command
+   */
+  async ping(): Promise<string> {
+    return this.client.ping();
+  }
 }

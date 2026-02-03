@@ -15,6 +15,19 @@ import {
   CartStatus,
 } from './dto/cart.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma, Cart } from '@prisma/client';
+
+// Type for Prisma transaction client
+type PrismaTransactionClient = Omit<
+  PrismaService,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
+// Type for Cart model from Prisma
+interface CartModel extends Cart {
+  price: Decimal;
+  shippingFee: Decimal;
+}
 
 @Injectable()
 export class CartService {
@@ -27,14 +40,35 @@ export class CartService {
 
   /**
    * Epic 6: Add product to cart with timer
+   * Optimized: Single query to fetch product, reserved quantity, and existing cart item
    */
   async addToCart(userId: string, addToCartDto: AddToCartDto): Promise<CartItemResponseDto> {
     const { productId, quantity, color, size } = addToCartDto;
 
-    // 1. Fetch product details
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
+    // 1. Fetch all required data in parallel (N+1 optimization)
+    const [product, reservedResult, existingCartItem] = await Promise.all([
+      this.prisma.product.findUnique({
+        where: { id: productId },
+      }),
+      this.prisma.cart.aggregate({
+        where: {
+          productId,
+          status: 'ACTIVE',
+        },
+        _sum: {
+          quantity: true,
+        },
+      }),
+      this.prisma.cart.findFirst({
+        where: {
+          userId,
+          productId,
+          color: color || null,
+          size: size || null,
+          status: 'ACTIVE',
+        },
+      }),
+    ]);
 
     if (!product) {
       throw new NotFoundException(`Product ${productId} not found`);
@@ -45,7 +79,7 @@ export class CartService {
     }
 
     // 2. Check stock availability
-    const reservedQuantity = await this.getReservedQuantity(productId);
+    const reservedQuantity = reservedResult._sum.quantity || 0;
     const availableStock = product.quantity - reservedQuantity;
 
     if (availableStock < quantity) {
@@ -54,23 +88,13 @@ export class CartService {
       );
     }
 
-    // 3. Check if user already has this product in cart (same color/size)
-    const existingCartItem = await this.prisma.cart.findFirst({
-      where: {
-        userId,
-        productId,
-        color: color || null,
-        size: size || null,
-        status: 'ACTIVE',
-      },
-    });
-
+    // 3. If user already has this product in cart (same color/size), update quantity
     if (existingCartItem) {
       // Update existing cart item quantity with transaction to prevent race condition
       const updatedItem = await this.prisma.$transaction(async (tx) => {
         // Re-check available stock within transaction
-        const reservedQuantity = await this.getReservedQuantityInTransaction(tx, productId);
-        const currentAvailableStock = product.quantity - reservedQuantity;
+        const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
+        const currentAvailableStock = product.quantity - currentReserved;
         const newQuantity = existingCartItem.quantity + quantity;
 
         if (currentAvailableStock < newQuantity) {
@@ -87,7 +111,7 @@ export class CartService {
 
       this.logger.log(`Updated cart item ${updatedItem.id} quantity to ${updatedItem.quantity}`);
 
-      return this.mapToResponseDto(updatedItem);
+      return this.mapToResponseDto(updatedItem as CartModel);
     }
 
     // 4. Create new cart item with timer
@@ -123,7 +147,7 @@ export class CartService {
       streamKey: product.streamKey,
     });
 
-    return this.mapToResponseDto(cartItem);
+    return this.mapToResponseDto(cartItem as CartModel);
   }
 
   /**
@@ -140,7 +164,7 @@ export class CartService {
       },
     });
 
-    const items = cartItems.map((item) => this.mapToResponseDto(item));
+    const items = cartItems.map((item) => this.mapToResponseDto(item as CartModel));
 
     return this.calculateCartSummary(items);
   }
@@ -190,7 +214,7 @@ export class CartService {
 
     this.logger.log(`Updated cart item ${cartItemId} quantity to ${updateDto.quantity}`);
 
-    return this.mapToResponseDto(updatedItem);
+    return this.mapToResponseDto(updatedItem as CartModel);
   }
 
   /**
@@ -307,7 +331,10 @@ export class CartService {
   /**
    * Get reserved quantity within transaction (for race condition prevention)
    */
-  private async getReservedQuantityInTransaction(tx: any, productId: string): Promise<number> {
+  private async getReservedQuantityInTransaction(
+    tx: PrismaTransactionClient,
+    productId: string,
+  ): Promise<number> {
     const result = await tx.cart.aggregate({
       where: {
         productId,
@@ -351,7 +378,7 @@ export class CartService {
   /**
    * Map Prisma model to Response DTO
    */
-  private mapToResponseDto(cartItem: any): CartItemResponseDto {
+  private mapToResponseDto(cartItem: CartModel): CartItemResponseDto {
     const price = parseFloat(cartItem.price.toString());
     const shippingFee = parseFloat(cartItem.shippingFee.toString());
     const subtotal = price * cartItem.quantity;

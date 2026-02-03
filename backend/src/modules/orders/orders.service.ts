@@ -5,13 +5,41 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
-import { CreateOrderDto, OrderResponseDto } from './dto/order.dto';
+import { CreateOrderDto, OrderResponseDto, OrderItemDto } from './dto/order.dto';
 import {
   OrderNotFoundException,
   BusinessException,
 } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.events';
+import { Order, OrderItem } from '@prisma/client';
+
+// Type for Order with items
+interface OrderWithItems extends Order {
+  orderItems: OrderItem[];
+}
+
+// Type for order totals calculation
+interface OrderTotalsInput {
+  price: Decimal | number;
+  shippingFee: Decimal | number;
+  quantity: number;
+}
+
+interface OrderTotals {
+  subtotal: number;
+  totalShippingFee: number;
+  total: number;
+}
+
+// Type for bank transfer info
+interface BankTransferInfo {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  amount: number;
+  depositorName: string;
+}
 
 @Injectable()
 export class OrdersService {
@@ -75,29 +103,28 @@ export class OrdersService {
         });
       }
 
-      // Calculate totals and prepare order items
-      let subtotal = 0;
-      let totalShippingFee = 0;
-      const orderItemsData = cartItems.map((item) => {
-        const itemSubtotal = Number(item.price) * item.quantity;
-        subtotal += itemSubtotal;
-        totalShippingFee += Number(item.shippingFee);
-
-        return {
-          productId: item.productId,
-          productName: item.productName,
-          quantity: item.quantity,
+      // Calculate totals using shared helper (DRY)
+      const totals = this.calculateOrderTotals(
+        cartItems.map((item) => ({
           price: item.price,
           shippingFee: item.shippingFee,
-          color: item.color,
-          size: item.size,
-          Product: {
-            connect: { id: item.productId },
-          },
-        };
-      });
+          quantity: item.quantity,
+        })),
+      );
 
-      const total = subtotal + totalShippingFee;
+      // Prepare order items
+      const orderItemsData = cartItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        shippingFee: item.shippingFee,
+        color: item.color,
+        size: item.size,
+        Product: {
+          connect: { id: item.productId },
+        },
+      }));
 
       // Generate unique order ID
       const orderId = await this.generateOrderId();
@@ -115,9 +142,9 @@ export class OrdersService {
           paymentMethod: 'BANK_TRANSFER',
           paymentStatus: 'PENDING',
           shippingStatus: 'PENDING',
-          subtotal: new Decimal(subtotal),
-          shippingFee: new Decimal(totalShippingFee),
-          total: new Decimal(total),
+          subtotal: new Decimal(totals.subtotal),
+          shippingFee: new Decimal(totals.totalShippingFee),
+          total: new Decimal(totals.total),
           orderItems: {
             create: orderItemsData,
           },
@@ -175,18 +202,15 @@ export class OrdersService {
       where: { id: { in: productIds } },
     });
 
-    // Calculate subtotal and shipping
-    let subtotal = 0;
-    let totalShippingFee = 0;
+    // Build product map for efficient lookup
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    // Validate all products exist and prepare order items
     const orderItemsData = createOrderDto.items.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
+      const product = productMap.get(item.productId);
       if (!product) {
         throw new BusinessException('PRODUCT_NOT_FOUND', { productId: item.productId });
       }
-
-      const itemSubtotal = Number(product.price) * item.quantity;
-      subtotal += itemSubtotal;
-      totalShippingFee += Number(product.shippingFee);
 
       return {
         productId: item.productId,
@@ -200,6 +224,15 @@ export class OrdersService {
       };
     });
 
+    // Calculate totals using shared helper (DRY)
+    const totals = this.calculateOrderTotals(
+      orderItemsData.map((item) => ({
+        price: item.price,
+        shippingFee: item.shippingFee,
+        quantity: item.quantity,
+      })),
+    );
+
     // Decrease stock (with pessimistic locking)
     await this.inventoryService.batchDecreaseStock(
       createOrderDto.items.map((item) => ({
@@ -207,8 +240,6 @@ export class OrdersService {
         quantity: item.quantity,
       })),
     );
-
-    const total = subtotal + totalShippingFee;
 
     // Generate unique order ID
     const orderId = await this.generateOrderId();
@@ -222,9 +253,9 @@ export class OrdersService {
         instagramId: user.instagramId || '',
         shippingAddress: user.shippingAddress || {},
         status: 'PENDING_PAYMENT',
-        subtotal: new Decimal(subtotal),
-        shippingFee: new Decimal(totalShippingFee),
-        total: new Decimal(total),
+        subtotal: new Decimal(totals.subtotal),
+        shippingFee: new Decimal(totals.totalShippingFee),
+        total: new Decimal(totals.total),
         orderItems: {
           create: orderItemsData,
         },
@@ -274,6 +305,27 @@ export class OrdersService {
 
     const sequenceStr = sequence.toString().padStart(5, '0');
     return `ORD-${dateStr}-${sequenceStr}`;
+  }
+
+  /**
+   * Calculate order totals from items (DRY - used by createOrderFromCart and createOrder)
+   */
+  private calculateOrderTotals(items: OrderTotalsInput[]): OrderTotals {
+    let subtotal = 0;
+    let totalShippingFee = 0;
+
+    items.forEach((item) => {
+      const price = typeof item.price === 'number' ? item.price : Number(item.price);
+      const shippingFee = typeof item.shippingFee === 'number' ? item.shippingFee : Number(item.shippingFee);
+      subtotal += price * item.quantity;
+      totalShippingFee += shippingFee;
+    });
+
+    return {
+      subtotal,
+      totalShippingFee,
+      total: subtotal + totalShippingFee,
+    };
   }
 
   async confirmOrder(orderId: string, userId: string): Promise<OrderResponseDto> {
@@ -338,7 +390,7 @@ export class OrdersService {
   /**
    * Epic 8 Story 8.2: Get order with bank transfer info
    */
-  async findById(orderId: string): Promise<any> {
+  async findById(orderId: string): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { orderItems: true },
@@ -355,9 +407,9 @@ export class OrdersService {
       return {
         ...responseDto,
         bankTransferInfo: {
-          bankName: this.configService.get<string>('BANK_NAME'),
-          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER'),
-          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER'),
+          bankName: this.configService.get<string>('BANK_NAME') || '',
+          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') || '',
+          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') || '',
           amount: responseDto.total,
           depositorName: order.depositorName,
         },
@@ -432,7 +484,7 @@ export class OrdersService {
     }
   }
 
-  private mapToResponseDto(order: any): OrderResponseDto {
+  private mapToResponseDto(order: OrderWithItems): OrderResponseDto {
     return {
       id: order.id,
       userId: order.userId,
@@ -447,7 +499,7 @@ export class OrdersService {
       shippingStatus: order.shippingStatus,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
-      items: order.orderItems.map((item: any) => ({
+      items: order.orderItems.map((item) => ({
         id: item.id,
         productId: item.productId,
         productName: item.productName,
