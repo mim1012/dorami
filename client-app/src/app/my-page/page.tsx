@@ -110,6 +110,22 @@ export default function MyPagePage() {
         }
       } catch (error) {
         console.error('Failed to load profile:', error);
+        // API 실패 시 useAuth의 user 데이터 사용 (개발 환경)
+        console.log('[DEV] Using user data from useAuth');
+        setProfile(user as any);
+        
+        // Pre-fill form with current address from user
+        if (user.shippingAddress) {
+          setFormData({
+            fullName: user.shippingAddress.fullName,
+            address1: user.shippingAddress.address1,
+            address2: user.shippingAddress.address2 || '',
+            city: user.shippingAddress.city,
+            state: user.shippingAddress.state,
+            zip: user.shippingAddress.zip,
+            phone: user.shippingAddress.phone,
+          });
+        }
       } finally {
         setIsLoadingProfile(false);
       }
