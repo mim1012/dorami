@@ -87,6 +87,26 @@ export class CreateProductDto {
   @IsUrl()
   imageUrl?: string;
 
+  @ApiPropertyOptional({ description: 'Display NEW badge on product card', example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isNew?: boolean;
+
+  @ApiPropertyOptional({ description: 'Discount rate percentage (0-100)', example: 15, minimum: 0, maximum: 100 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  discountRate?: number;
+
+  @ApiPropertyOptional({ description: 'Original price before discount', example: 35000, minimum: 0 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  originalPrice?: number;
+
   // Legacy field support (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
   @IsOptional()
@@ -221,6 +241,15 @@ export class ProductResponseDto {
 
   @ApiPropertyOptional({ description: 'Product image URL', example: 'https://example.com/product.jpg' })
   imageUrl?: string;
+
+  @ApiProperty({ description: 'Display NEW badge', example: false })
+  isNew: boolean;
+
+  @ApiPropertyOptional({ description: 'Discount rate percentage', example: 15 })
+  discountRate?: number;
+
+  @ApiPropertyOptional({ description: 'Original price before discount', example: 35000 })
+  originalPrice?: number;
 
   @ApiProperty({ description: 'Product status', enum: ProductStatus, example: ProductStatus.AVAILABLE })
   status: ProductStatus;

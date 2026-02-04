@@ -25,6 +25,9 @@ export interface Product {
   timerEnabled: boolean;
   timerDuration: number;
   imageUrl?: string;
+  isNew: boolean;
+  discountRate?: number;
+  originalPrice?: number;
   status: ProductStatus;
   createdAt: string;
   updatedAt: string;
