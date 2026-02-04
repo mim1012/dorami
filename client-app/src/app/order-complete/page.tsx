@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
+import { useKakaoShare } from '@/hooks/useKakaoShare';
 import { CheckCircle, Copy, MessageCircle, Package } from 'lucide-react';
 
 interface OrderDetail {
@@ -40,6 +41,8 @@ function OrderCompleteContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const { isInitialized, shareOrder } = useKakaoShare();
 
   useEffect(() => {
     if (!orderId) {
@@ -80,6 +83,34 @@ function OrderCompleteContent() {
     bank: '국민은행',
     accountNumber: '123-456-789012',
     accountHolder: '라이브커머스(주)',
+  };
+
+  const handleKakaoShare = () => {
+    if (!order) return;
+
+    const deadlineDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    shareOrder({
+      orderId: order.id,
+      orderNumber: order.id,
+      totalAmount: order.total,
+      depositorName: order.depositorName || '주문자',
+      bankName: bankInfo.bank,
+      accountNumber: bankInfo.accountNumber,
+      accountHolder: bankInfo.accountHolder,
+      deadlineDate,
+      items: order.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+    });
   };
 
   if (isLoading) {
@@ -232,11 +263,12 @@ function OrderCompleteContent() {
 
           {/* KakaoTalk Share Button */}
           <button
-            className="w-full bg-[#FEE500] text-[#000000] hover:bg-[#FEE500]/90 font-bold py-4 rounded-xl text-body transition-opacity flex items-center justify-center gap-2"
-            onClick={() => alert('카카오톡 공유 기능은 추후 구현 예정입니다')}
+            className="w-full bg-[#FEE500] text-[#000000] hover:bg-[#FEE500]/90 font-bold py-4 rounded-xl text-body transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleKakaoShare}
+            disabled={!isInitialized}
           >
             <MessageCircle className="w-5 h-5" />
-            카카오톡으로 입금 정보 받기
+            {isInitialized ? '카카오톡으로 입금 정보 받기' : '카카오톡 로딩 중...'}
           </button>
         </div>
       </div>
