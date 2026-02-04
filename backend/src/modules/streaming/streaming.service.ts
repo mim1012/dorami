@@ -567,6 +567,137 @@ export class StreamingService {
     this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
   }
 
+  /**
+   * Get featured product for a live stream
+   * Returns null if no product is featured
+   */
+  async getFeaturedProduct(streamKey: string): Promise<any | null> {
+    // Check Redis first
+    const featuredProductId = await this.redisService.get(`stream:${streamKey}:featured-product`);
+
+    if (!featuredProductId) {
+      return null;
+    }
+
+    // Fetch product details from database
+    const product = await this.prisma.product.findUnique({
+      where: { id: featuredProductId },
+    });
+
+    if (!product) {
+      // Clean up invalid Redis entry
+      await this.redisService.del(`stream:${streamKey}:featured-product`);
+      return null;
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price.toNumber(),
+      imageUrl: product.imageUrl,
+      stock: product.quantity,
+      colorOptions: product.colorOptions,
+      sizeOptions: product.sizeOptions,
+      status: product.status,
+    };
+  }
+
+  /**
+   * Set featured product for a live stream (Admin only)
+   * Broadcasts update to all viewers via WebSocket
+   */
+  async setFeaturedProduct(
+    streamKey: string,
+    productId: string,
+    userId: string,
+  ): Promise<any> {
+    // Verify stream exists and user is admin
+    const stream = await this.prisma.liveStream.findUnique({
+      where: { streamKey },
+      select: { id: true, userId: true, status: true },
+    });
+
+    if (!stream) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamKey });
+    }
+
+    // Verify product exists and belongs to this stream
+    const product = await this.prisma.product.findFirst({
+      where: {
+        id: productId,
+        streamKey,
+      },
+    });
+
+    if (!product) {
+      throw new BusinessException(
+        'PRODUCT_NOT_FOUND',
+        { productId, streamKey },
+        'Product not found for this stream',
+      );
+    }
+
+    // Set featured product in Redis
+    await this.redisService.set(
+      `stream:${streamKey}:featured-product`,
+      productId,
+      3600 * 24, // 24 hour TTL
+    );
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('stream:featured-product:updated', {
+      streamKey,
+      productId,
+      product: {
+        id: product.id,
+        name: product.name,
+        price: product.price.toNumber(),
+        imageUrl: product.imageUrl,
+        stock: product.quantity,
+        colorOptions: product.colorOptions,
+        sizeOptions: product.sizeOptions,
+        status: product.status,
+      },
+    });
+
+    this.logger.log(`Featured product set for stream ${streamKey}: ${productId}`);
+
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price.toNumber(),
+      imageUrl: product.imageUrl,
+      stock: product.quantity,
+    };
+  }
+
+  /**
+   * Clear featured product for a live stream (Admin only)
+   */
+  async clearFeaturedProduct(streamKey: string, userId: string): Promise<void> {
+    // Verify stream exists
+    const stream = await this.prisma.liveStream.findUnique({
+      where: { streamKey },
+      select: { id: true, userId: true },
+    });
+
+    if (!stream) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamKey });
+    }
+
+    // Remove from Redis
+    await this.redisService.del(`stream:${streamKey}:featured-product`);
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('stream:featured-product:updated', {
+      streamKey,
+      productId: null,
+      product: null,
+    });
+
+    this.logger.log(`Featured product cleared for stream ${streamKey}`);
+  }
+
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
     const rtmpUrl = `${this.configService.get('RTMP_SERVER_URL')}/${session.streamKey}`;
     const hlsUrl = `${this.configService.get('HLS_SERVER_URL')}/${session.streamKey}/index.m3u8`;

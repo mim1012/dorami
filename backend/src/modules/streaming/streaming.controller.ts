@@ -137,4 +137,48 @@ export class StreamingController {
     await this.streamingService.handleStreamDone(dto.name);
     return { status: 'ok' };
   }
+
+  /**
+   * Get featured product for a live stream (public)
+   */
+  @Public()
+  @Get('key/:streamKey/featured-product')
+  async getFeaturedProduct(@Param('streamKey') streamKey: string) {
+    const product = await this.streamingService.getFeaturedProduct(streamKey);
+    return { product };
+  }
+
+  /**
+   * Set featured product for a live stream (admin only)
+   */
+  @Post(':streamKey/featured-product')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async setFeaturedProduct(
+    @Param('streamKey') streamKey: string,
+    @Body('productId') productId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const product = await this.streamingService.setFeaturedProduct(
+      streamKey,
+      productId,
+      userId,
+    );
+    return { success: true, product };
+  }
+
+  /**
+   * Clear featured product for a live stream (admin only)
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  @Patch(':streamKey/featured-product/clear')
+  async clearFeaturedProduct(
+    @Param('streamKey') streamKey: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    await this.streamingService.clearFeaturedProduct(streamKey, userId);
+    return { success: true };
+  }
 }
