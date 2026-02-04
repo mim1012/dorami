@@ -159,7 +159,7 @@ export default function LiveStreamPage() {
       </div>
 
       {/* Bottom: Featured Product Bar (currently hidden - Epic 5) */}
-      {/* <FeaturedProductBar streamKey={streamKey} /> */}
+      <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
 
       {/* Product Detail Modal */}
       {selectedProduct && (

@@ -14,6 +14,7 @@ import { RedisService } from '../../common/redis/redis.service';
 import { LoggerService } from '../../common/logger/logger.service';
 import { JwtService } from '@nestjs/jwt';
 import { UseGuards } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
   cors: {
@@ -226,5 +227,27 @@ export class WebsocketGateway
   broadcastToStream(streamId: string, event: string, data: any) {
     const roomName = `stream:${streamId}`;
     this.server.to(roomName).emit(event, data);
+  }
+
+  /**
+   * Handle featured product update event
+   * Broadcast to all viewers in the stream
+   */
+  @OnEvent('stream:featured-product:updated')
+  handleFeaturedProductUpdate(payload: {
+    streamKey: string;
+    productId: string | null;
+    product: any | null;
+  }) {
+    const roomName = `stream:${payload.streamKey}`;
+
+    this.logger.log(
+      `Broadcasting featured product update to room ${roomName}: ${payload.productId || 'cleared'}`
+    );
+
+    this.server.to(roomName).emit('stream:featured-product:updated', {
+      streamKey: payload.streamKey,
+      product: payload.product,
+    });
   }
 }
