@@ -44,10 +44,10 @@ export default function Home() {
         setFeaturedProducts(products.map(p => ({
           id: p.id,
           name: p.name,
-          price: p.price,
+          price: p.originalPrice || p.price,
           imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-          isNew: true, // TODO: Add isNew field to backend
-          discount: undefined, // TODO: Add discount field to backend
+          isNew: p.isNew,
+          discount: p.discountRate,
         })));
 
         // Fetch upcoming live streams
