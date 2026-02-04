@@ -30,13 +30,14 @@ model User {
   updatedAt           DateTime   @updatedAt @map("updated_at")
 
   // Relations
-  liveStreams    LiveStream[]
-  chatMessages   ChatMessage[]
-  carts          Cart[]
-  reservations   Reservation[]
-  orders         Order[]
-  moderationLogs ModerationLog[]
-  auditLogs      AuditLog[]    @relation("AdminAuditLogs")
+  liveStreams              LiveStream[]
+  chatMessages             ChatMessage[]
+  carts                    Cart[]
+  reservations             Reservation[]
+  orders                   Order[]
+  moderationLogs           ModerationLog[]
+  auditLogs                AuditLog[]                 @relation("AdminAuditLogs")
+  notificationSubscriptions NotificationSubscription[]
 
   @@index([email])
   @@index([kakaoId])
@@ -70,8 +71,9 @@ model LiveStream {
   createdAt     DateTime     @default(now()) @map("created_at")
 
   // Relations
-  chatMessages ChatMessage[]
-  products     Product[]
+  chatMessages              ChatMessage[]
+  products                  Product[]
+  notificationSubscriptions NotificationSubscription[]
 
   @@index([streamKey])
   @@index([userId])
@@ -369,4 +371,22 @@ model Notice {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("notices")
+}
+
+// Push Notification Subscriptions
+model NotificationSubscription {
+  id           String      @id @default(uuid())
+  userId       String      @map("user_id")
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  liveStreamId String?     @map("live_stream_id") // null = subscribe to all live streams
+  liveStream   LiveStream? @relation(fields: [liveStreamId], references: [id], onDelete: Cascade)
+  endpoint     String      @db.Text // Push API endpoint URL
+  p256dh       String      @db.Text // Encryption key (base64)
+  auth         String      @db.Text // Auth secret (base64)
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@index([liveStreamId])
+  @@map("notification_subscriptions")
 }

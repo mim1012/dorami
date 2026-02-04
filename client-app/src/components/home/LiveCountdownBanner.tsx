@@ -1,19 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface LiveCountdownBannerProps {
   liveStartTime?: Date;
   isLive?: boolean;
   onLiveClick?: () => void;
+  liveStreamId?: string;
 }
 
 export function LiveCountdownBanner({
   liveStartTime,
   isLive = false,
-  onLiveClick
+  onLiveClick,
+  liveStreamId
 }: LiveCountdownBannerProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const { isSupported, permission, subscribe } = useNotifications();
+
+  const handleNotificationClick = async () => {
+    const success = await subscribe(liveStreamId);
+    if (success) {
+      alert('라이브 알림이 설정되었습니다!');
+    } else {
+      alert('알림 설정에 실패했습니다. 브라우저 설정을 확인해주세요.');
+    }
+  };
 
   useEffect(() => {
     if (!liveStartTime || isLive) return;
@@ -85,8 +98,12 @@ export function LiveCountdownBanner({
       <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-black/40">
         <h2 className="text-h2 text-white mb-4 drop-shadow-lg">다음 라이브 방송까지</h2>
         <p className="text-display text-hot-pink font-bold mb-8 drop-shadow-lg">{timeLeft}</p>
-        <button className="bg-hot-pink text-white px-8 py-4 rounded-[8px] font-bold hover:opacity-90 transition-opacity shadow-hot-pink">
-          알림받기
+        <button
+          onClick={handleNotificationClick}
+          disabled={!isSupported}
+          className="bg-hot-pink text-white px-8 py-4 rounded-[8px] font-bold hover:opacity-90 transition-opacity shadow-hot-pink disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {permission === 'granted' ? '알림 설정됨' : '알림받기'}
         </button>
       </div>
     </div>
