@@ -36,7 +36,7 @@
     "prisma:studio": "npm run prisma:studio --workspace=backend",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "postinstall": "npm run build:shared",
-    "prepare": "husky"
+    "prepare": "node -e \"if (process.env.CI !== 'true') { var husky = require('husky'); if (husky.default) husky.default(); }\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
