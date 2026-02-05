@@ -10,12 +10,15 @@
 
 /* CSS Variables for Theme Tokens */
 :root {
-  /* Dark Mode Colors (default) */
-  --primary-black: #121212;
-  --content-bg: #1E1E1E;
-  --hot-pink: #FF007A;
-  --primary-text: #FFFFFF;
-  --secondary-text: #A0A0A0;
+  /* Light Mode Colors (default) */
+  --primary-black: #FFFFFF;
+  --content-bg: #F8F9FA;
+  --hot-pink: #FF6B35;
+  --hot-pink-secondary: #FF007A;
+  --primary-text: #212529;
+  --secondary-text: #6C757D;
+  --border-color: #DEE2E6;
+  --card-bg: #FFFFFF;
   --success: #16A34A;
   --error: #DC2626;
   --warning: #EA580C;
@@ -28,22 +31,35 @@
 
   /* Spacing */
   --spacing-unit: 8px;
+  
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-floating: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Dark Mode Colors */
 .dark {
   --primary-black: #0A0A0A;
-  --content-bg: #141414;
+  --content-bg: #1A1A1A;
   --hot-pink: #FF007A;
+  --hot-pink-secondary: #FF6B35;
   --primary-text: #FFFFFF;
   --secondary-text: #A0A0A0;
+  --border-color: #2A2A2A;
+  --card-bg: #1A1A1A;
   --success: #34C759;
   --error: #FF3B30;
   --warning: #FF9500;
   --info: #5AC8FA;
+  
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-floating: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Dark Mode Base Styles */
+/* Base Styles */
 body {
   background-color: var(--primary-black);
   color: var(--primary-text);
@@ -55,12 +71,12 @@ body {
 /* Selection Color */
 ::selection {
   background-color: var(--hot-pink);
-  color: var(--primary-text);
+  color: #FFFFFF;
 }
 
 ::-moz-selection {
   background-color: var(--hot-pink);
-  color: var(--primary-text);
+  color: #FFFFFF;
 }
 
 /* Scrollbar Styling (Webkit) */
@@ -74,7 +90,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CCCCCC;
+  background: var(--secondary-text);
   border-radius: 4px;
 }
 
@@ -121,7 +137,74 @@ body {
 }
 
 .slider-hot-pink::-webkit-slider-runnable-track {
-  background: #374151;
+  background: var(--content-bg);
   height: 4px;
   border-radius: 2px;
+}
+
+/* Gradient Backgrounds */
+.gradient-hot-pink {
+  background: linear-gradient(135deg, var(--hot-pink) 0%, var(--hot-pink-secondary) 100%);
+}
+
+.gradient-hot-pink-reverse {
+  background: linear-gradient(135deg, var(--hot-pink-secondary) 0%, var(--hot-pink) 100%);
+}
+
+/* Card Styles */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--hot-pink);
+}
+
+/* Pulse Animation for LIVE Badge */
+@keyframes pulse-live {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-live {
+  animation: pulse-live 2s infinite;
+}
+
+/* Slide Up Animation for Toast */
+@keyframes slide-up-toast {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up-toast {
+  animation: slide-up-toast 0.3s ease-out;
+}
+
+/* Button Hover Effect */
+.btn-hover {
+  transition: all 0.2s ease;
+}
+
+.btn-hover:hover {
+  transform: scale(1.05);
+}
+
+.btn-hover:active {
+  transform: scale(0.98);
 }

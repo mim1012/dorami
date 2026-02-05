@@ -32,8 +32,8 @@ export function UpcomingLiveCard({
   return (
     <div
       onClick={onClick}
-      className={`bg-content-bg rounded-[12px] overflow-hidden cursor-pointer transition-transform hover:scale-105 active:scale-95 ${
-        size === 'small' ? 'scale-[0.6] origin-center' : ''
+      className={`card cursor-pointer ${
+        size === 'small' ? 'scale-[0.95]' : ''
       }`}
     >
       <div className="relative aspect-video bg-primary-black">
@@ -45,14 +45,23 @@ export function UpcomingLiveCard({
           sizes="(max-width: 768px) 100vw, 50vw"
         />
         {isLive && (
-          <div className="absolute top-3 left-3 bg-error text-white text-caption px-4 py-1.5 rounded-full font-bold animate-pulse-hot-pink flex items-center gap-2">
-            <span className="w-2 h-2 bg-white rounded-full"></span>
-            LIVE
+          <div className="absolute top-3 left-3 bg-red-600 text-white text-xs px-3 py-1.5 rounded-md font-bold animate-pulse-live flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+            ● LIVE
           </div>
         )}
         {!isLive && (
-          <div className="absolute top-3 left-3 bg-hot-pink text-white text-caption px-4 py-1.5 rounded-full font-medium">
-            예정
+          <div className="absolute bottom-3 right-3 bg-hot-pink/90 text-white text-base px-4 py-2 rounded-lg font-bold backdrop-blur-sm">
+            {(() => {
+              const now = new Date().getTime();
+              const target = new Date(scheduledTime).getTime();
+              const difference = target - now;
+              if (difference <= 0) return '곧 시작';
+              const hours = Math.floor(difference / (1000 * 60 * 60));
+              const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+              const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+              return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            })()}
           </div>
         )}
       </div>
