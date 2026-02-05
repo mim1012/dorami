@@ -10,6 +10,7 @@ interface ProductCardProps {
   isNew?: boolean;
   discount?: number;
   onClick?: () => void;
+  size?: 'normal' | 'small';
 }
 
 export function ProductCard({
@@ -18,14 +19,17 @@ export function ProductCard({
   imageUrl,
   isNew = false,
   discount,
-  onClick
+  onClick,
+  size = 'normal'
 }: ProductCardProps) {
   const discountedPrice = discount ? price * (1 - discount / 100) : price;
 
   return (
     <div
       onClick={onClick}
-      className="bg-content-bg rounded-[12px] overflow-hidden cursor-pointer transition-transform hover:scale-105 active:scale-95"
+      className={`bg-content-bg rounded-[12px] overflow-hidden cursor-pointer transition-transform hover:scale-105 active:scale-95 ${
+        size === 'small' ? 'scale-[0.6] origin-center' : ''
+      }`}
     >
       <div className="relative aspect-square bg-primary-black">
         <Image

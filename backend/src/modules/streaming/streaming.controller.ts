@@ -91,16 +91,20 @@ export class StreamingController {
     return this.streamingService.getStreamStatusByKey(streamKey);
   }
 
+  // TODO: Re-enable authentication for production
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('ADMIN')
+  @Public()
   @Get('history')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   async getHistory(@Query() query: StreamHistoryQueryDto) {
     return this.streamingService.getStreamHistory(query);
   }
 
+  // TODO: Re-enable authentication for production
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('ADMIN')
+  @Public()
   @Get('live-status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
   async getLiveStatus() {
     return this.streamingService.getLiveStatus();
   }

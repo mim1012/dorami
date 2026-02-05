@@ -49,20 +49,23 @@ export default function Sidebar() {
 
             {/* Sidebar */}
             <aside className={`
-                w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-50 shadow-lg
+                w-64 bg-primary-black border-r border-content-bg flex flex-col h-screen fixed left-0 top-0 z-50 shadow-lg
                 transition-transform duration-300 ease-in-out
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
                 {/* Logo Area */}
-                <div className="h-16 flex items-center px-6 border-b border-gray-200">
-                    <div className="flex items-center gap-2">
+                <div className="h-16 flex items-center px-6 border-b border-content-bg">
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                    >
                         <div className="w-8 h-8 bg-hot-pink rounded-full flex items-center justify-center">
                             <Radio className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-xl font-bold text-primary-text tracking-tight">
                             Dorami<span className="text-hot-pink">Live</span>
                         </span>
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Navigation */}
@@ -93,8 +96,8 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Footer / User Profile */}
-                <div className="p-4 border-t border-gray-200">
-                    <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-secondary-text hover:bg-gray-100 hover:text-primary-text transition-colors">
+                <div className="p-4 border-t border-content-bg">
+                    <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-secondary-text hover:bg-content-bg hover:text-primary-text transition-colors">
                         <LogOut className="w-5 h-5" />
                         <span className="font-medium">로그아웃</span>
                     </button>

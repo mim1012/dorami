@@ -9,6 +9,7 @@ interface UpcomingLiveCardProps {
   thumbnailUrl: string;
   isLive?: boolean;
   onClick?: () => void;
+  size?: 'normal' | 'small';
 }
 
 export function UpcomingLiveCard({
@@ -16,7 +17,8 @@ export function UpcomingLiveCard({
   scheduledTime,
   thumbnailUrl,
   isLive = false,
-  onClick
+  onClick,
+  size = 'normal'
 }: UpcomingLiveCardProps) {
   const formatTime = (date: Date) => {
     const month = date.getMonth() + 1;
@@ -30,7 +32,9 @@ export function UpcomingLiveCard({
   return (
     <div
       onClick={onClick}
-      className="bg-content-bg rounded-[12px] overflow-hidden cursor-pointer transition-transform hover:scale-105 active:scale-95"
+      className={`bg-content-bg rounded-[12px] overflow-hidden cursor-pointer transition-transform hover:scale-105 active:scale-95 ${
+        size === 'small' ? 'scale-[0.6] origin-center' : ''
+      }`}
     >
       <div className="relative aspect-video bg-primary-black">
         <Image

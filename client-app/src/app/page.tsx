@@ -16,7 +16,7 @@ export default function Home() {
     id: string;
     name: string;
     price: number;
-    imageUrl?: string;
+    imageUrl: string;
     isNew?: boolean;
     discount?: number;
   }>>([]);
@@ -130,9 +130,9 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hot-pink mx-auto mb-4"></div>
           <p>로딩 중...</p>
         </div>
       </div>
@@ -141,12 +141,12 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-pink-500 rounded-lg hover:bg-pink-600"
+          <p className="text-error mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-hot-pink rounded-lg hover:opacity-90 text-white"
           >
             다시 시도
           </button>
@@ -156,17 +156,17 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
+    <div className="min-h-screen bg-primary-black text-primary-text pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-black border-b border-gray-800">
+      <header className="sticky top-0 z-50 bg-primary-black border-b border-content-bg">
         <div className="p-4">
-          <h1 className="text-2xl font-bold mb-3">Live Commerce</h1>
+          <h1 className="text-2xl font-bold mb-3 text-primary-text">Live Commerce</h1>
           <SearchBar onSubmit={handleSearch} />
         </div>
       </header>
 
       {/* Live Countdown Banner */}
-      <LiveCountdownBanner 
+      <LiveCountdownBanner
         liveStartTime={nextLiveTime}
         isLive={isNextLiveActive}
         onLiveClick={handleLiveBannerClick}
@@ -185,6 +185,7 @@ export default function Home() {
               thumbnailUrl={live.thumbnailUrl}
               isLive={live.isLive}
               onClick={() => handleLiveClick(live.id)}
+              size="small"
             />
           ))}
         </div>
@@ -192,7 +193,7 @@ export default function Home() {
 
       {/* Featured Products Section */}
       <section className="p-4">
-        <h2 className="text-xl font-bold mb-4">이번 주 추천 상품</h2>
+        <h2 className="text-xl font-bold mb-4">지난 추천 상품</h2>
         {featuredProducts.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             등록된 상품이 없습니다
@@ -209,6 +210,7 @@ export default function Home() {
                 isNew={product.isNew}
                 discount={product.discount}
                 onClick={() => handleProductClick(product.id)}
+                size="small"
               />
             ))}
           </div>
