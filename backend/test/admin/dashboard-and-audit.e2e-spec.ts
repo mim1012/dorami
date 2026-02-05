@@ -59,7 +59,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-1',
             userId: testUser.id,
-            userEmail: testUser.email!,
+            userEmail: testUser.email,
             depositorName: 'Test Depositor 1',
             shippingAddress: {
               street: '123 Test St',
@@ -80,7 +80,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-2',
             userId: testUser.id,
-            userEmail: testUser.email!,
+            userEmail: testUser.email,
             depositorName: 'Test Depositor 2',
             shippingAddress: {
               street: '456 Test Ave',
@@ -150,7 +150,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         data: Array.from({ length: 3 }, (_, i) => ({
           id: `order-last-${i}`,
           userId: testUser.id,
-          userEmail: testUser.email!,
+          userEmail: testUser.email,
           depositorName: `Depositor ${i}`,
           shippingAddress: {
             street: `${i} Test St`,
@@ -175,7 +175,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         data: {
           id: 'order-prev',
           userId: testUser.id,
-          userEmail: testUser.email!,
+          userEmail: testUser.email,
           depositorName: 'Previous Depositor',
           shippingAddress: {
             street: 'Prev Test St',

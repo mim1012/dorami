@@ -29,7 +29,7 @@ export class BusinessExceptionFilter implements ExceptionFilter {
         errorResponse = {
           success: false,
           timestamp: new Date().toISOString(),
-          ...(exceptionResponse as object),
+          ...(exceptionResponse),
         };
       } else {
         errorResponse = {

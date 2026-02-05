@@ -82,7 +82,7 @@ export class SettlementService {
       orderDate: order.createdAt.toISOString(),
       customerId: order.user.instagramId || order.instagramId,
       total: Number(order.total),
-      paidAt: order.paidAt!.toISOString(),
+      paidAt: order.paidAt.toISOString(),
     }));
 
     return {

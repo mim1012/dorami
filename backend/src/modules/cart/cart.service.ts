@@ -359,10 +359,10 @@ export class CartService {
     const expiringItems = items.filter(item => item.expiresAt);
     const earliestExpiration = expiringItems.length > 0
       ? expiringItems.reduce((earliest, item) => {
-          return new Date(item.expiresAt!) < new Date(earliest)
-            ? item.expiresAt!
+          return new Date(item.expiresAt) < new Date(earliest)
+            ? item.expiresAt
             : earliest;
-        }, expiringItems[0].expiresAt!)
+        }, expiringItems[0].expiresAt)
       : undefined;
 
     return {

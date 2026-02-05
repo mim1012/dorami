@@ -108,8 +108,8 @@ export class AdminController {
         complete: async (results) => {
           try {
             const items = results.data.map((row: any) => ({
-              orderId: row['Order ID'] || row['orderId'] || row['order_id'],
-              trackingNumber: row['Tracking Number'] || row['trackingNumber'] || row['tracking_number'],
+              orderId: row['Order ID'] || row.orderId || row.order_id,
+              trackingNumber: row['Tracking Number'] || row.trackingNumber || row.tracking_number,
             }));
 
             // Validate data

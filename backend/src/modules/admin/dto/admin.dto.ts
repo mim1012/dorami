@@ -310,9 +310,9 @@ export interface BulkShippingNotificationResult {
   total: number;
   successful: number;
   failed: number;
-  results: Array<{
+  results: {
     orderId: string;
     success: boolean;
     error?: string;
-  }>;
+  }[];
 }

@@ -68,8 +68,8 @@ export class UsersService {
       select: { id: true },
     });
 
-    if (!existing) return true;
-    if (excludeUserId && existing.id === excludeUserId) return true;
+    if (!existing) {return true;}
+    if (excludeUserId && existing.id === excludeUserId) {return true;}
     return false;
   }
 
@@ -120,7 +120,7 @@ export class UsersService {
       select: { shippingAddress: true },
     });
 
-    if (!user || !user.shippingAddress) {
+    if (!user?.shippingAddress) {
       return null;
     }
 

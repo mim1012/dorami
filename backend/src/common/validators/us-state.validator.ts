@@ -11,7 +11,7 @@ const US_STATES = new Set([
 ]);
 
 export function IsUSState(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isUSState',
       target: object.constructor,
@@ -19,7 +19,7 @@ export function IsUSState(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: any, args: ValidationArguments) {
-          if (typeof value !== 'string') return false;
+          if (typeof value !== 'string') {return false;}
           return US_STATES.has(value.toUpperCase());
         },
         defaultMessage(args: ValidationArguments) {

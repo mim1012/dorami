@@ -49,7 +49,7 @@ export class AuthController {
    * Examples: "15m" -> 900000, "7d" -> 604800000, "1h" -> 3600000
    */
   private parseJwtExpiration(expiresIn: string): number {
-    const match = expiresIn.match(/^(\d+)([smhd])$/);
+    const match = /^(\d+)([smhd])$/.exec(expiresIn);
     if (!match) {
       this.logger.warn(`Invalid JWT expiration format: ${expiresIn}, using default 15m`);
       return 15 * 60 * 1000; // Default: 15 minutes
@@ -122,11 +122,11 @@ export class AuthController {
         ? `${this.frontendUrl}/profile/register`
         : `${this.frontendUrl}/`;
 
-      return res.redirect(redirectUrl);
+      res.redirect(redirectUrl); return;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.stack : String(error);
       this.logger.error('Kakao callback error:', errorMessage);
-      return res.redirect(`${this.frontendUrl}/login?error=auth_failed`);
+      res.redirect(`${this.frontendUrl}/login?error=auth_failed`); return;
     }
   }
 
