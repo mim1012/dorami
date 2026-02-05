@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
-import { Radio, Eye, Clock, TrendingUp, Play, StopCircle, Plus, X, Copy, Check } from 'lucide-react';
+import { Radio, Eye, Clock, TrendingUp, Play, StopCircle, Plus, X, Copy, Check, Star } from 'lucide-react';
+import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 
 interface LiveStream {
   id: string;
@@ -66,6 +67,9 @@ export default function BroadcastsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Featured product modal state
+  const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(null);
 
   // [DEV] Auth check disabled for development
   // useEffect(() => {
@@ -298,7 +302,7 @@ export default function BroadcastsPage() {
                     Stream Key: {stream.streamKey}
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="text-right">
                     <div className="flex items-center gap-1.5 text-info">
                       <Eye className="w-4 h-4" />
@@ -306,6 +310,13 @@ export default function BroadcastsPage() {
                     </div>
                     <p className="text-xs text-secondary-text">시청자</p>
                   </div>
+                  <button
+                    onClick={() => setSelectedStreamForFeatured(stream)}
+                    className="px-3 py-1.5 bg-hot-pink/10 text-hot-pink rounded-lg hover:bg-hot-pink/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                  >
+                    <Star className="w-4 h-4" />
+                    추천 상품
+                  </button>
                   {getStatusBadge(stream.status)}
                 </div>
               </div>
@@ -563,6 +574,29 @@ export default function BroadcastsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Featured Product Management Modal */}
+      {selectedStreamForFeatured && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-primary-text">추천 상품 관리</h2>
+              <button
+                onClick={() => setSelectedStreamForFeatured(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-secondary-text" />
+              </button>
+            </div>
+            <div className="p-6">
+              <FeaturedProductManager
+                streamKey={selectedStreamForFeatured.streamKey}
+                streamTitle={selectedStreamForFeatured.title}
+              />
             </div>
           </div>
         </div>
