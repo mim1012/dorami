@@ -418,9 +418,9 @@ export default function AdminProductsPage() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-secondary-text">
                     상품명
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-secondary-text">
-                    Stream Key
-                  </th>
+                   <th className="px-6 py-4 text-center text-sm font-semibold text-secondary-text">
+                    스트림 키
+                   </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-secondary-text">
                     가격
                   </th>

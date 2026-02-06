@@ -193,45 +193,45 @@ function AdminUsersContent() {
   const columns: Column<UserListItem>[] = [
     {
       key: 'instagramId',
-      label: 'Instagram ID',
+      label: '인스타그램 ID',
       sortable: true,
       render: (user) => user.instagramId || '-',
     },
     {
       key: 'email',
-      label: 'Email',
+      label: '이메일',
       sortable: true,
     },
     {
       key: 'name',
-      label: 'Name',
+      label: '이름',
       sortable: true,
     },
     {
       key: 'createdAt',
-      label: 'Registration Date',
+      label: '가입일',
       sortable: true,
       render: (user) => formatDate(user.createdAt),
     },
     {
       key: 'lastLoginAt',
-      label: 'Last Login',
+      label: '마지막 로그인',
       sortable: true,
       render: (user) => formatDate(user.lastLoginAt),
     },
     {
       key: 'totalOrders',
-      label: 'Total Orders',
+      label: '총 주문수',
       render: (user) => user.totalOrders.toString(),
     },
     {
       key: 'totalPurchaseAmount',
-      label: 'Total Purchase',
+      label: '총 구매액',
       render: (user) => formatCurrency(user.totalPurchaseAmount),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: '상태',
       render: (user) => getStatusBadge(user.status),
     },
   ];

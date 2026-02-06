@@ -410,13 +410,33 @@ function AdminOrdersContent() {
     const colorMap = type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
     const color = colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
 
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
+    // 한국어 매핑
+    const statusLabels: Record<string, string> = {
+      // Order Status
+      PENDING_PAYMENT: '결제대기',
+      PAYMENT_CONFIRMED: '결제확인',
+      CONFIRMED: '확인됨',
+      CANCELLED: '취소됨',
+      PENDING: '대기중',
+      // Payment Status
+      PAID: '결제완료',
+      FAILED: '결제실패',
+      // Shipping Status
+      PROCESSING: '처리중',
+      PREPARING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+    };
+
+    const label = statusLabels[status] || status;
+
+    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{label}</span>;
   };
 
   const columns: Column<OrderListItem>[] = [
     {
       key: 'id',
-      label: 'Order ID',
+      label: '주문 ID',
       sortable: true,
       render: (order) => (
         <span className="font-mono text-caption">{order.id}</span>
@@ -424,7 +444,7 @@ function AdminOrdersContent() {
     },
     {
       key: 'userEmail',
-      label: 'Customer',
+      label: '고객',
       sortable: false,
       render: (order) => (
         <div className="flex flex-col">
@@ -435,52 +455,52 @@ function AdminOrdersContent() {
     },
     {
       key: 'depositorName',
-      label: 'Depositor',
+      label: '입금자',
       sortable: false,
     },
     {
       key: 'status',
-      label: 'Order Status',
+      label: '주문 상태',
       render: (order) => getStatusBadge(order.status, 'order'),
     },
     {
       key: 'paymentStatus',
-      label: 'Payment',
+      label: '결제',
       render: (order) => getStatusBadge(order.paymentStatus, 'payment'),
     },
     {
       key: 'shippingStatus',
-      label: 'Shipping',
+      label: '배송',
       render: (order) => getStatusBadge(order.shippingStatus, 'shipping'),
     },
     {
       key: 'total',
-      label: 'Total',
+      label: '총액',
       sortable: true,
       render: (order) => (
         <div className="flex flex-col">
           <span className="font-medium">{formatCurrency(order.total)}</span>
           <span className="text-caption text-secondary-text">
-            {order.itemCount} item{order.itemCount > 1 ? 's' : ''}
+            {order.itemCount}개 상품
           </span>
         </div>
       ),
     },
     {
       key: 'createdAt',
-      label: 'Created',
+      label: '생성일',
       sortable: true,
       render: (order) => formatDate(order.createdAt),
     },
     {
       key: 'paidAt',
-      label: 'Paid',
+      label: '결제일',
       sortable: true,
       render: (order) => formatDate(order.paidAt),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: '작업',
       render: (order) => (
         <div className="flex gap-2 items-center justify-end">
           {order.paymentStatus === 'PENDING' && (
@@ -619,7 +639,7 @@ function AdminOrdersContent() {
 
               {/* Payment Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Payment Status</Body>
+                <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING', 'CONFIRMED', 'FAILED'].map((status) => (
                     <button
@@ -639,7 +659,7 @@ function AdminOrdersContent() {
 
               {/* Shipping Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Shipping Status</Body>
+                <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].map((status) => (
                     <button
@@ -672,7 +692,7 @@ function AdminOrdersContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
-              emptyMessage="No orders found matching your filters"
+              emptyMessage="필터에 맞는 주문을 찾을 수 없습니다"
               getRowClassName={(order) =>
                 order.paymentStatus === 'PENDING' ? 'border-l-4 border-yellow-500 bg-yellow-50/5' : ''
               }
