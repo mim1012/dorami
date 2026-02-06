@@ -66,7 +66,7 @@ export function BottomTabBar() {
                   <div className="relative">
                     <Icon
                       className={`w-6 h-6 ${
-                        isActive ? 'text-hot-pink' : 'text-secondary-text'
+                        isActive ? 'text-hot-pink' : 'text-gray-400'
                       }`}
                     />
                     {showBadge && (
@@ -82,7 +82,7 @@ export function BottomTabBar() {
                 )}
                 <span
                   className={`text-[11px] font-medium ${
-                    isActive ? 'text-hot-pink' : 'text-secondary-text'
+                    isActive ? 'text-hot-pink' : 'text-gray-400'
                   }`}
                 >
                   {tab.label}
