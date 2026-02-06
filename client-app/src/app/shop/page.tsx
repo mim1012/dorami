@@ -248,7 +248,7 @@ function ShopPageContent() {
 
           {/* 상품 그리드 */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 auto-rows-fr">
               {filteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
