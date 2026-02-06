@@ -33,7 +33,7 @@ export function UpcomingLiveCard({
     <div
       onClick={onClick}
       className={`card cursor-pointer ${
-        size === 'small' ? 'scale-[0.95]' : ''
+        size === 'small' ? 'scale-[0.95] md:scale-[0.6] origin-center' : ''
       }`}
     >
       <div className="relative aspect-video bg-primary-black">
