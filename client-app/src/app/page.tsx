@@ -190,7 +190,7 @@ export default function Home() {
     <div className="min-h-screen bg-primary-black text-primary-text pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-primary-black border-b border-border-color">
-        <div className="p-4">
+        <div className="max-w-md mx-auto p-4">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-2xl font-bold text-hot-pink">DoReMi</h1>
             <div className="flex items-center gap-3">
@@ -204,18 +204,19 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Live Countdown Banner */}
-      <LiveCountdownBanner
-        liveStartTime={nextLiveTime}
-        isLive={isNextLiveActive}
-        onLiveClick={handleLiveBannerClick}
-      />
+      <div className="max-w-md mx-auto">
+        {/* Live Countdown Banner */}
+        <LiveCountdownBanner
+          liveStartTime={nextLiveTime}
+          isLive={isNextLiveActive}
+          onLiveClick={handleLiveBannerClick}
+        />
 
-      {/* Social Proof */}
-      <SocialProof followerCount={6161} />
+        {/* Social Proof */}
+        <SocialProof followerCount={6161} />
 
-      {/* Upcoming Lives Section */}
-      <section className="p-4">
+        {/* Upcoming Lives Section */}
+        <section className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">예정된 라이브</h2>
           <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
@@ -236,8 +237,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      <section className="p-4">
+        {/* Featured Products Section */}
+        <section className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">지난 추천 상품</h2>
           <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
@@ -264,6 +265,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      </div>
 
       {/* Floating Navigation */}
       <FloatingNav />

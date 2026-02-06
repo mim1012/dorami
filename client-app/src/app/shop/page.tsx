@@ -223,7 +223,7 @@ function ShopPageContent() {
   return (
     <>
       <main className="min-h-screen bg-primary-black text-primary-text pb-20">
-        <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
+        <div className="max-w-md mx-auto px-4 py-6">
           {/* 헤더 */}
           <header className="sticky top-0 z-50 bg-primary-black border-b border-border-color -mx-4 px-4 pb-4 mb-6">
             <div className="flex items-center justify-between mb-3">
