@@ -125,7 +125,7 @@ export class ProductsService {
    * Get featured products for homepage
    * Returns latest available products with limit
    */
-  async getFeaturedProducts(limit: number = 6): Promise<ProductResponseDto[]> {
+  async getFeaturedProducts(limit = 6): Promise<ProductResponseDto[]> {
     try {
       const products = await this.prisma.product.findMany({
         where: {
@@ -210,17 +210,17 @@ export class ProductsService {
 
       const updateData: ProductUpdateData = {};
 
-      if (updateDto.name !== undefined) updateData.name = updateDto.name;
-      if (updateDto.price !== undefined) updateData.price = new Decimal(updateDto.price);
-      if (updateDto.stock !== undefined) updateData.quantity = updateDto.stock;
-      if (updateDto.colorOptions !== undefined) updateData.colorOptions = updateDto.colorOptions;
-      if (updateDto.sizeOptions !== undefined) updateData.sizeOptions = updateDto.sizeOptions;
-      if (updateDto.shippingFee !== undefined) updateData.shippingFee = new Decimal(updateDto.shippingFee);
-      if (updateDto.freeShippingMessage !== undefined) updateData.freeShippingMessage = updateDto.freeShippingMessage;
-      if (updateDto.timerEnabled !== undefined) updateData.timerEnabled = updateDto.timerEnabled;
-      if (updateDto.timerDuration !== undefined) updateData.timerDuration = updateDto.timerDuration;
-      if (updateDto.imageUrl !== undefined) updateData.imageUrl = updateDto.imageUrl;
-      if (updateDto.status !== undefined) updateData.status = updateDto.status;
+      if (updateDto.name !== undefined) {updateData.name = updateDto.name;}
+      if (updateDto.price !== undefined) {updateData.price = new Decimal(updateDto.price);}
+      if (updateDto.stock !== undefined) {updateData.quantity = updateDto.stock;}
+      if (updateDto.colorOptions !== undefined) {updateData.colorOptions = updateDto.colorOptions;}
+      if (updateDto.sizeOptions !== undefined) {updateData.sizeOptions = updateDto.sizeOptions;}
+      if (updateDto.shippingFee !== undefined) {updateData.shippingFee = new Decimal(updateDto.shippingFee);}
+      if (updateDto.freeShippingMessage !== undefined) {updateData.freeShippingMessage = updateDto.freeShippingMessage;}
+      if (updateDto.timerEnabled !== undefined) {updateData.timerEnabled = updateDto.timerEnabled;}
+      if (updateDto.timerDuration !== undefined) {updateData.timerDuration = updateDto.timerDuration;}
+      if (updateDto.imageUrl !== undefined) {updateData.imageUrl = updateDto.imageUrl;}
+      if (updateDto.status !== undefined) {updateData.status = updateDto.status;}
 
       const product = await this.prisma.product.update({
         where: { id },
@@ -412,8 +412,8 @@ export class ProductsService {
    * Epic 11 Story 11.1
    */
   async getStoreProducts(
-    page: number = 1,
-    limit: number = 24,
+    page = 1,
+    limit = 24,
   ): Promise<{
     products: ProductResponseDto[];
     total: number;
@@ -483,8 +483,8 @@ export class ProductsService {
       name: product.name,
       price: parseFloat(product.price.toString()),
       stock: product.quantity, // Map quantity to stock
-      colorOptions: product.colorOptions as string[],
-      sizeOptions: product.sizeOptions as string[],
+      colorOptions: product.colorOptions,
+      sizeOptions: product.sizeOptions,
       shippingFee: parseFloat(product.shippingFee.toString()),
       freeShippingMessage: product.freeShippingMessage ?? undefined,
       timerEnabled: product.timerEnabled,

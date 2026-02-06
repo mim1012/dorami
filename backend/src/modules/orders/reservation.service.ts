@@ -21,7 +21,7 @@ export class ReservationService {
   /**
    * Add user to reservation queue (waiting list)
    */
-  async addToQueue(userId: string, productId: string, quantity: number = 1): Promise<{ position: number }> {
+  async addToQueue(userId: string, productId: string, quantity = 1): Promise<{ position: number }> {
     // Fetch product data
     const product = await this.prisma.product.findUnique({
       where: { id: productId },

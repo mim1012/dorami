@@ -49,12 +49,12 @@ export default function Sidebar() {
 
             {/* Sidebar */}
             <aside className={`
-                w-64 bg-primary-black border-r border-content-bg flex flex-col h-screen fixed left-0 top-0 z-50 shadow-lg
+                w-64 bg-white dark:bg-[#0A0A0A] border-r border-gray-200 dark:border-[#2A2A2A] flex flex-col h-screen fixed left-0 top-0 z-50 shadow-lg
                 transition-transform duration-300 ease-in-out
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
                 {/* Logo Area */}
-                <div className="h-16 flex items-center px-6 border-b border-content-bg">
+                <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]">
                     <Link
                         href="/"
                         className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
@@ -62,14 +62,14 @@ export default function Sidebar() {
                         <div className="w-8 h-8 bg-hot-pink rounded-full flex items-center justify-center">
                             <Radio className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-xl font-bold text-primary-text tracking-tight">
+                        <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                             Dorami<span className="text-hot-pink">Live</span>
                         </span>
                     </Link>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto bg-white dark:bg-[#0A0A0A]">
                     {menuItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
@@ -79,11 +79,11 @@ export default function Sidebar() {
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group ${isActive
                                     ? 'bg-hot-pink/10 text-hot-pink'
-                                    : 'text-secondary-text hover:bg-gray-100 hover:text-primary-text'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1A1A] hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
                                 <item.icon
-                                    className={`w-5 h-5 transition-colors ${isActive ? 'text-hot-pink' : 'text-secondary-text group-hover:text-primary-text'
+                                    className={`w-5 h-5 transition-colors ${isActive ? 'text-hot-pink' : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
                                         }`}
                                 />
                                 <span className="font-medium">{item.name}</span>
@@ -96,8 +96,8 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Footer / User Profile */}
-                <div className="p-4 border-t border-content-bg">
-                    <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-secondary-text hover:bg-content-bg hover:text-primary-text transition-colors">
+                <div className="p-4 border-t border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]">
+                    <button className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1A1A] hover:text-gray-900 dark:hover:text-white transition-colors">
                         <LogOut className="w-5 h-5" />
                         <span className="font-medium">로그아웃</span>
                     </button>

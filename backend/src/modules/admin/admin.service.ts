@@ -24,13 +24,13 @@ import {
 
 // Type definitions for admin service
 interface WhereClause {
-  OR?: Array<{ [key: string]: { contains: string; mode: string } }>;
+  OR?: Record<string, { contains: string; mode: string }>[];
   createdAt?: { gte?: Date; lte?: Date };
   status?: { in: string[] };
 }
 
 interface OrderWhereClause {
-  OR?: Array<{ [key: string]: { contains: string; mode: string } }>;
+  OR?: Record<string, { contains: string; mode: string }>[];
   createdAt?: { gte?: Date; lte?: Date };
   status?: { in: string[] };
   paymentStatus?: { in: string[] };
@@ -68,10 +68,10 @@ export class AdminService {
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
     const {
-      page = 1,
-      limit = 20,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      page,
+      limit,
+      sortBy,
+      sortOrder,
       search,
       dateFrom,
       dateTo,
@@ -167,10 +167,10 @@ export class AdminService {
 
   async getOrderList(query: GetOrdersQueryDto): Promise<OrderListResponseDto> {
     const {
-      page = 1,
-      limit = 20,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      page,
+      limit,
+      sortBy,
+      sortOrder,
       search,
       dateFrom,
       dateTo,
@@ -408,7 +408,7 @@ export class AdminService {
     };
   }
 
-  async getRecentActivities(limit: number = 10): Promise<RecentActivitiesDto> {
+  async getRecentActivities(limit = 10): Promise<RecentActivitiesDto> {
     // Get recent audit logs
     const auditLogs = await this.prisma.auditLog.findMany({
       take: limit,
@@ -711,7 +711,7 @@ export class AdminService {
    * Send bulk shipping notifications from CSV data
    */
   async sendBulkShippingNotifications(
-    items: Array<{ orderId: string; trackingNumber: string }>,
+    items: { orderId: string; trackingNumber: string }[],
   ) {
     const results = [];
     let successful = 0;
@@ -1004,7 +1004,7 @@ export class AdminService {
         });
       }
 
-      const day = dailyRevenue.get(dateKey)!;
+      const day = dailyRevenue.get(dateKey);
       day.revenue += Number(order.total);
       day.orderCount += 1;
     });
@@ -1039,8 +1039,8 @@ export class AdminService {
     fromDate?: string,
     toDate?: string,
     action?: string,
-    page: number = 1,
-    limit: number = 50,
+    page = 1,
+    limit = 50,
   ) {
     const skip = (page - 1) * limit;
 

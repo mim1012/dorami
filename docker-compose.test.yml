@@ -1,0 +1,37 @@
+services:
+  # PostgreSQL Test Database
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: live-commerce-postgres-test
+    restart: unless-stopped
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: live_commerce_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data  # Use tmpfs for faster test execution
+
+  # Redis Test Instance (In-memory, no persistence)
+  redis-test:
+    image: redis:7-alpine
+    container_name: live-commerce-redis-test
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    command: redis-server --save ""  # Disable persistence for tests
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    name: live-commerce-test-network

@@ -56,7 +56,7 @@ export class NotificationEventsListener {
 
   @OnEvent('cart:expired')
   async handleCartExpired(payload: { userId?: string }) {
-    if (!payload.userId) return;
+    if (!payload.userId) {return;}
 
     this.logger.log(`Sending cart expired notification to user ${payload.userId}`);
 

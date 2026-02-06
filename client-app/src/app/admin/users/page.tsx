@@ -239,13 +239,14 @@ function AdminUsersContent() {
   const hasActiveFilters =
     debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
 
-  if (false && (authLoading || (user && user?.role !== 'ADMIN'))) { // [DEV] disabled
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Body>Loading...</Body>
-      </div>
-    );
-  }
+  // [DEV] Auth check disabled for development
+  // if (authLoading || (user && user?.role !== 'ADMIN')) {
+  //   return (
+  //     <div className="min-h-screen bg-white flex items-center justify-center">
+  //       <Body>Loading...</Body>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-white py-12 px-4">

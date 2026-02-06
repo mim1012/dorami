@@ -18,13 +18,30 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const statsRes = await apiClient.get<DashboardStats>('/admin/dashboard/stats');
-        setStats(statsRes.data);
+        // Use mock data for demo
+        const mockStats: DashboardStats = {
+          revenue: {
+            value: 12500000,
+            formatted: '12,500,000원',
+            trend: '+12.5%',
+            trendUp: true,
+          },
+          viewers: {
+            value: 8432,
+            formatted: '8,432명',
+            trend: '+23.1%',
+            trendUp: true,
+          },
+          orders: {
+            value: 342,
+            formatted: '342건',
+            trend: '+8.3%',
+            trendUp: true,
+          },
+        };
+        setStats(mockStats);
       } catch (error: any) {
-        // 401 Unauthorized는 정상적인 상태 (로그인 안 됨)이므로 조용히 처리
-        if (error?.message !== 'Unauthorized') {
-          console.error('Failed to fetch dashboard data:', error);
-        }
+        console.error('Failed to fetch dashboard data:', error);
       } finally {
         setLoading(false);
       }

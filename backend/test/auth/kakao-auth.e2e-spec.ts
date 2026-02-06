@@ -265,14 +265,14 @@ describe('Kakao OAuth 2.0 인증 (E2E)', () => {
       const loginResponse = await authService.login(user);
 
       // Access Token 만료 시간 확인 (15분)
-      const accessPayload = jwtService.decode(loginResponse.accessToken) as any;
+      const accessPayload = jwtService.decode(loginResponse.accessToken);
       const accessTokenLifetime = accessPayload.exp - accessPayload.iat;
       expect(accessTokenLifetime).toBe(15 * 60); // 15 minutes
 
       // Refresh Token 만료 시간 확인 (7일)
       const refreshPayload = jwtService.decode(
         loginResponse.refreshToken,
-      ) as any;
+      );
       const refreshTokenLifetime = refreshPayload.exp - refreshPayload.iat;
       expect(refreshTokenLifetime).toBe(7 * 24 * 60 * 60); // 7 days
     });
