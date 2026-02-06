@@ -70,15 +70,15 @@ export function ProductOptionModal({
       <div className="fixed inset-x-0 bottom-0 z-50 bg-content-bg rounded-t-3xl shadow-2xl animate-slide-up max-h-[85vh] flex flex-col">
         {/* Handle Bar */}
         <div className="flex-shrink-0 flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+          <div className="w-12 h-1.5 bg-gray-300 dark:bg-white/20 rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-white/10">
           <Heading2 className="text-primary-text">상품 옵션 선택</Heading2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5 text-secondary-text" />
           </button>
@@ -88,7 +88,7 @@ export function ProductOptionModal({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {/* Product Info */}
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-24 h-24 bg-primary-black rounded-xl overflow-hidden">
+            <div className="flex-shrink-0 w-24 h-24 bg-gray-100 dark:bg-primary-black rounded-xl overflow-hidden">
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
@@ -130,7 +130,7 @@ export function ProductOptionModal({
                 옵션 선택
               </Body>
               {/* Add option selection UI here based on product.metadata.options */}
-              <div className="p-4 bg-primary-black/50 rounded-xl">
+              <div className="p-4 bg-gray-50 dark:bg-primary-black/50 rounded-xl">
                 <Body className="text-secondary-text text-sm text-center">
                   옵션 선택 기능은 추후 구현 예정입니다
                 </Body>
@@ -147,7 +147,7 @@ export function ProductOptionModal({
               <button
                 onClick={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-primary-black hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Minus className="w-5 h-5 text-primary-text" />
               </button>
@@ -159,7 +159,7 @@ export function ProductOptionModal({
               <button
                 onClick={() => handleQuantityChange(1)}
                 disabled={quantity >= maxQuantity}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-gray-100 dark:bg-primary-black hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Plus className="w-5 h-5 text-primary-text" />
               </button>

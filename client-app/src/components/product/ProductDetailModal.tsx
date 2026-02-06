@@ -55,7 +55,7 @@ export default function ProductDetailModal({
         </div>
 
         {/* Product Image */}
-        <div className="relative w-full aspect-square bg-gray-900">
+        <div className="relative w-full aspect-square bg-gray-100 dark:bg-gray-800">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
@@ -65,7 +65,7 @@ export default function ProductDetailModal({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-gray-600">No Image</span>
+              <span className="text-gray-400 dark:text-gray-600">No Image</span>
             </div>
           )}
         </div>
