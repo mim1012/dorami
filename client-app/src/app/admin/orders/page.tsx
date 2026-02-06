@@ -447,10 +447,10 @@ function AdminOrdersContent() {
       label: '고객',
       sortable: false,
       render: (order) => (
-        <div className="flex flex-col">
+        <span className="flex flex-col">
           <span className="text-caption">{order.userEmail}</span>
           <span className="text-caption text-secondary-text">@{order.instagramId}</span>
-        </div>
+        </span>
       ),
     },
     {
