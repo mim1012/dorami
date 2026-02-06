@@ -36,15 +36,15 @@ export function Table<T extends { id: string }>({
   };
 
   return (
-    <div className="overflow-x-auto rounded-button border border-content-bg">
-      <table className="min-w-full divide-y divide-content-bg">
-        <thead className="bg-content-bg">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 onClick={() => handleSort(column.key, column.sortable)}
-                className={`px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider ${
+                className={`px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 ${
                   column.sortable ? 'cursor-pointer hover:text-hot-pink transition-colors' : ''
                 }`}
               >
@@ -70,7 +70,7 @@ export function Table<T extends { id: string }>({
             ))}
           </tr>
         </thead>
-        <tbody className="bg-primary-black divide-y divide-content-bg">
+        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           {data.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="px-6 py-12 text-center">
@@ -83,10 +83,10 @@ export function Table<T extends { id: string }>({
               return (
                 <tr
                   key={item.id}
-                  className={`hover:bg-content-bg/50 transition-colors ${customRowClass}`}
+                  className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${customRowClass}`}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                    <td key={column.key} className="px-6 py-4">
                       <Body className="text-primary-text">
                         {column.render
                           ? column.render(item)
