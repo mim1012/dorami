@@ -71,7 +71,7 @@ export class RedisService implements OnModuleInit {
     await this.client.zadd(key, score, member);
   }
 
-  async zpopmin(key: string, count: number = 1): Promise<string[]> {
+  async zpopmin(key: string, count = 1): Promise<string[]> {
     return this.client.zpopmin(key, count);
   }
 

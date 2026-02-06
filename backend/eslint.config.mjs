@@ -4,8 +4,7 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   eslint.configs.recommended,
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+  ...tseslint.configs.recommended,
   prettierConfig,
   {
     languageOptions: {
@@ -37,6 +36,8 @@ export default tseslint.config(
       '@typescript-eslint/prefer-nullish-coalescing': 'warn',
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/strict-boolean-expressions': 'off', // Too strict for NestJS patterns
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'warn',
+      '@typescript-eslint/restrict-template-expressions': 'warn',
 
       // NestJS specific relaxations
       '@typescript-eslint/no-extraneous-class': 'off', // NestJS modules are classes

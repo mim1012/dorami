@@ -129,25 +129,103 @@ function AdminOrdersContent() {
       setError(null);
 
       try {
-        const params: any = {
-          page,
-          limit: pageSize,
-          sortBy,
-          sortOrder,
-        };
+        // Use mock data for demo
+        const mockOrders: OrderListItem[] = [
+          {
+            id: 'ORD-001',
+            userId: 'user1',
+            userEmail: 'customer1@example.com',
+            depositorName: '김철수',
+            instagramId: '@customer1',
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            shippingStatus: 'DELIVERED',
+            subtotal: 150000,
+            shippingFee: 3000,
+            total: 153000,
+            itemCount: 2,
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            shippedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            deliveredAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            id: 'ORD-002',
+            userId: 'user2',
+            userEmail: 'customer2@example.com',
+            depositorName: '이영희',
+            instagramId: '@customer2',
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            shippingStatus: 'SHIPPED',
+            subtotal: 89000,
+            shippingFee: 3000,
+            total: 92000,
+            itemCount: 1,
+            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            paidAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            shippedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            deliveredAt: null,
+          },
+          {
+            id: 'ORD-003',
+            userId: 'user3',
+            userEmail: 'customer3@example.com',
+            depositorName: '박민수',
+            instagramId: '@customer3',
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            shippingStatus: 'PREPARING',
+            subtotal: 199000,
+            shippingFee: 0,
+            total: 199000,
+            itemCount: 1,
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            paidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            shippedAt: null,
+            deliveredAt: null,
+          },
+          {
+            id: 'ORD-004',
+            userId: 'user4',
+            userEmail: 'customer4@example.com',
+            depositorName: '정수진',
+            instagramId: '@customer4',
+            status: 'PENDING',
+            paymentStatus: 'PENDING',
+            shippingStatus: 'PENDING',
+            subtotal: 67150,
+            shippingFee: 3000,
+            total: 70150,
+            itemCount: 1,
+            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            paidAt: null,
+            shippedAt: null,
+            deliveredAt: null,
+          },
+          {
+            id: 'ORD-005',
+            userId: 'user5',
+            userEmail: 'customer5@example.com',
+            depositorName: '최지우',
+            instagramId: '@customer5',
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
+            shippingStatus: 'PREPARING',
+            subtotal: 119200,
+            shippingFee: 3000,
+            total: 122200,
+            itemCount: 1,
+            createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+            paidAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+            shippedAt: null,
+            deliveredAt: null,
+          },
+        ];
 
-        if (debouncedSearch) params.search = debouncedSearch;
-        if (dateFrom) params.dateFrom = dateFrom;
-        if (dateTo) params.dateTo = dateTo;
-        if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
-        if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter;
-        if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter;
-
-        const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
-
-        setOrders(response.data.orders);
-        setTotal(response.data.total);
-        setTotalPages(response.data.totalPages);
+        setOrders(mockOrders);
+        setTotal(mockOrders.length);
+        setTotalPages(1);
       } catch (err: any) {
         console.error('Failed to fetch orders:', err);
         setError(err.response?.data?.message || 'Failed to load orders');

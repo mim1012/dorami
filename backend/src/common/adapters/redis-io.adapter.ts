@@ -51,7 +51,7 @@ export class RedisIoAdapter extends IoAdapter {
       await Promise.race([
         Promise.all([this.pubClient.connect(), this.subClient.connect()]),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Redis connection timeout')), CONNECTION_TIMEOUT),
+          setTimeout(() => { reject(new Error('Redis connection timeout')); }, CONNECTION_TIMEOUT),
         ),
       ]);
 
@@ -82,7 +82,7 @@ export class RedisIoAdapter extends IoAdapter {
       if (this.subClient?.isOpen) {
         await this.subClient.quit();
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.warn('Error during Redis cleanup');
     }
     this.pubClient = null;

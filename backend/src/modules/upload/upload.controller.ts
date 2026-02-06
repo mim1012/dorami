@@ -29,20 +29,20 @@ export class UploadController {
       }),
       fileFilter: (req, file, callback) => {
         // Check MIME type
-        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
-          return callback(
+        if (!(/^image\/(jpg|jpeg|png|gif|webp)$/.exec(file.mimetype))) {
+          callback(
             new BadRequestException('Only image files (jpg, jpeg, png, gif, webp) are allowed!'),
             false,
-          );
+          ); return;
         }
         // Check file extension
         const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
         const ext = extname(file.originalname).toLowerCase();
         if (!allowedExtensions.includes(ext)) {
-          return callback(
+          callback(
             new BadRequestException('Invalid file extension'),
             false,
-          );
+          ); return;
         }
         callback(null, true);
       },

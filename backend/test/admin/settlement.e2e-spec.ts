@@ -14,7 +14,7 @@ describe('Settlement Management (E2E)', () => {
 
   let adminUser: any;
   let regularUser: any;
-  let confirmedOrders: any[] = [];
+  const confirmedOrders: any[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

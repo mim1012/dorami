@@ -6,6 +6,8 @@ import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
 import { getProducts, type Product } from '@/lib/api/products';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FloatingNav } from '@/components/layout/FloatingNav';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 export default function ShopPage() {
   return (
@@ -28,8 +30,130 @@ function ShopPageContent() {
     async function fetchProducts() {
       try {
         setLoading(true);
-        const data = await getProducts('AVAILABLE');
-        setProducts(data);
+        // Use mock data for demo
+        const mockProducts: Product[] = [
+          {
+            id: '1',
+            name: 'Chic Evening Bag',
+            price: 129000,
+            originalPrice: 129000,
+            imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+            description: '세련된 저녁 가방',
+            category: 'fashion',
+            stock: 10,
+            status: 'AVAILABLE',
+            isNew: true,
+            discountRate: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            name: 'Pro Audio Pods',
+            price: 62300,
+            originalPrice: 89000,
+            imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+            description: '프로 오디오 팟',
+            category: 'electronics',
+            stock: 25,
+            status: 'AVAILABLE',
+            isNew: false,
+            discountRate: 30,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '3',
+            name: 'Handmade Tableware',
+            price: 45000,
+            originalPrice: 45000,
+            imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
+            description: '수제 식기세트',
+            category: 'home',
+            stock: 15,
+            status: 'AVAILABLE',
+            isNew: false,
+            discountRate: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '4',
+            name: 'Smart Fitness Watch',
+            price: 199000,
+            originalPrice: 199000,
+            imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+            description: '스마트 피트니스 워치',
+            category: 'electronics',
+            stock: 8,
+            status: 'AVAILABLE',
+            isNew: false,
+            discountRate: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '5',
+            name: 'Premium Leather Wallet',
+            price: 67150,
+            originalPrice: 79000,
+            imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+            description: '프리미엄 가죽 지갑',
+            category: 'fashion',
+            stock: 20,
+            status: 'AVAILABLE',
+            isNew: true,
+            discountRate: 15,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '6',
+            name: 'Wireless Keyboard',
+            price: 119200,
+            originalPrice: 149000,
+            imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
+            description: '무선 키보드',
+            category: 'electronics',
+            stock: 12,
+            status: 'AVAILABLE',
+            isNew: false,
+            discountRate: 20,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '7',
+            name: 'Designer Sunglasses',
+            price: 159000,
+            originalPrice: 159000,
+            imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500&q=80',
+            description: '디자이너 선글라스',
+            category: 'fashion',
+            stock: 18,
+            status: 'AVAILABLE',
+            isNew: true,
+            discountRate: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: '8',
+            name: 'Ceramic Coffee Mug Set',
+            price: 32000,
+            originalPrice: 32000,
+            imageUrl: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500&q=80',
+            description: '세라믹 커피머그 세트',
+            category: 'home',
+            stock: 30,
+            status: 'AVAILABLE',
+            isNew: false,
+            discountRate: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        setProducts(mockProducts);
       } catch (err) {
         setError(err instanceof Error ? err.message : '상품을 불러오는데 실패했습니다');
       } finally {
@@ -98,24 +222,29 @@ function ShopPageContent() {
 
   return (
     <>
-      <main className="min-h-screen pb-20">
+      <main className="min-h-screen bg-primary-black text-primary-text pb-20">
         <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
           {/* 헤더 */}
-          <div className="mb-8">
-            <h1 className="text-h1 text-primary-text font-bold mb-2">Shop</h1>
-            <p className="text-body text-secondary-text">
+          <header className="sticky top-0 z-50 bg-primary-black border-b border-border-color -mx-4 px-4 pb-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-2xl font-bold text-hot-pink">DoReMi Shop</h1>
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <button className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center" title="알림">
+                  🔔
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-secondary-text mb-3">
               {products.length}개의 상품
             </p>
-          </div>
 
-          {/* 검색바 */}
-          <div className="mb-6">
             <SearchBar
               defaultValue={initialQuery}
               onChange={handleSearchChange}
               placeholder="상품 검색..."
             />
-          </div>
+          </header>
 
           {/* 상품 그리드 */}
           {filteredProducts.length > 0 ? (
@@ -127,6 +256,8 @@ function ShopPageContent() {
                   name={product.name}
                   price={product.price}
                   imageUrl={product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'}
+                  isNew={product.isNew}
+                  discount={product.discountRate}
                   onClick={() => handleProductClick(product.id)}
                 />
               ))}
@@ -151,6 +282,7 @@ function ShopPageContent() {
         </div>
       </main>
 
+      <FloatingNav />
       <BottomTabBar />
     </>
   );

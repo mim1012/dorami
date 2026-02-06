@@ -36,7 +36,20 @@
       "Bash(start \"Frontend ngrok\" cmd /k \"ngrok http 3000 --domain=unossified-georgie-smeeky.ngrok-free.dev\")",
       "Bash(timeout /t 8 /nobreak)",
       "Bash(start \"ngrok Frontend\" cmd /k \"ngrok http 3000 --domain=unossified-georgie-smeeky.ngrok-free.dev\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git checkout:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(npm run lint)",
+      "Bash(npx next lint --help:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm install:*)",
+      "Bash(del \"D:\\Project\\dorami\\client-app\\eslint.config.mjs\")",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

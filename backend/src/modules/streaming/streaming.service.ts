@@ -31,7 +31,7 @@ export class StreamingService {
    * Get upcoming live streams for homepage
    * Returns streams with PENDING status ordered by scheduled time
    */
-  async getUpcomingStreams(limit: number = 3): Promise<any[]> {
+  async getUpcomingStreams(limit = 3): Promise<any[]> {
     try {
       const streams = await this.prisma.liveStream.findMany({
         where: {
@@ -195,7 +195,7 @@ export class StreamingService {
     const cached = await this.redisService.get(`stream:${streamId}`);
     if (cached) {
       const data = JSON.parse(cached);
-      return this.mapToResponseDto({ id: streamId, ...data } as any);
+      return this.mapToResponseDto({ id: streamId, ...data });
     }
 
     // Fallback to database
@@ -314,7 +314,7 @@ export class StreamingService {
   }
 
   async getStreamHistory(query: StreamHistoryQueryDto): Promise<StreamHistoryResponseDto> {
-    const { page = 1, limit = 20, userId, dateFrom, dateTo } = query;
+    const { page, limit, userId, dateFrom, dateTo } = query;
 
     const skip = (page - 1) * limit;
 

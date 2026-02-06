@@ -45,7 +45,7 @@ export function LiveCountdownBanner({
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
     };
 
     updateCountdown();
@@ -90,22 +90,17 @@ export function LiveCountdownBanner({
   }
 
   return (
-    <div className="relative w-full aspect-video bg-primary-black rounded-[12px] overflow-hidden">
-      {/* 배경 이미지 또는 그라데이션 */}
-      <div className="absolute inset-0 bg-gradient-to-br from-content-bg via-primary-black to-content-bg" />
-
-      {/* 오버레이 정보 */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-black/40">
-        <h2 className="text-h2 text-white mb-4 drop-shadow-lg">다음 라이브 방송까지</h2>
-        <p className="text-display text-hot-pink font-bold mb-8 drop-shadow-lg">{timeLeft}</p>
-        <button
-          onClick={handleNotificationClick}
-          disabled={!isSupported}
-          className="bg-hot-pink text-white px-8 py-4 rounded-[8px] font-bold hover:opacity-90 transition-opacity shadow-hot-pink disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {permission === 'granted' ? '알림 설정됨' : '알림받기'}
-        </button>
-      </div>
+    <div className="mx-4 mb-6 p-6 rounded-2xl gradient-hot-pink text-white" style={{ boxShadow: '0 4px 16px rgba(255, 107, 53, 0.3)' }}>
+      <p className="text-sm font-semibold mb-2 opacity-90">NEXT LIVE</p>
+      <p className="text-5xl font-bold mb-4 tracking-wider">{timeLeft}</p>
+      <p className="text-sm mb-4 opacity-90">Live starts in</p>
+      <button
+        onClick={handleNotificationClick}
+        disabled={!isSupported}
+        className="bg-white text-hot-pink px-6 py-3 rounded-full font-semibold btn-hover disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {permission === 'granted' ? '알림 설정됨' : '알림 받기'}
+      </button>
     </div>
   );
 }

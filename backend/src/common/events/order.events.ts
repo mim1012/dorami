@@ -3,11 +3,11 @@ export class OrderCreatedEvent {
     public readonly orderId: string,
     public readonly userId: string,
     public readonly totalAmount: number,
-    public readonly items: Array<{
+    public readonly items: {
       productId: string;
       quantity: number;
       priceAtPurchase: number;
-    }>,
+    }[],
     public readonly timestamp: Date = new Date(),
   ) {}
 }

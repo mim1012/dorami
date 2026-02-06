@@ -1,0 +1,55 @@
+import { test, expect } from '@playwright/test';
+import { gotoWithNgrokHandling, handleNgrokWarning } from './helpers/ngrok-helper';
+
+test.describe('API Health Check', () => {
+  test('should have working API proxy', async ({ page, request }) => {
+    // Navigate to home page to ensure the app is loaded and bypass ngrok warning
+    await gotoWithNgrokHandling(page, '/');
+
+    // Make API request through the app's proxy using the base URL
+    const response = await request.get('https://unossified-georgie-smeeky.ngrok-free.dev/api/health', {
+      headers: {
+        'ngrok-skip-browser-warning': 'true' // Skip ngrok warning for API requests
+      }
+    });
+
+    expect(response.ok()).toBeTruthy();
+    expect(response.status()).toBe(200);
+
+    const data = await response.json();
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('data');
+    expect(data.data).toHaveProperty('status', 'ok');
+  });
+
+  test('should load page without API errors', async ({ page }) => {
+    // Listen for console errors
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    // Listen for page errors
+    const pageErrors: Error[] = [];
+    page.on('pageerror', (error) => {
+      pageErrors.push(error);
+    });
+
+    await gotoWithNgrokHandling(page, '/');
+
+    // Wait for network to be idle
+    await page.waitForLoadState('networkidle');
+
+    // Check that there are no critical API errors
+    const hasCriticalErrors = consoleErrors.some(error =>
+      error.includes('Failed to fetch') ||
+      error.includes('API') ||
+      error.includes('500')
+    );
+
+    expect(hasCriticalErrors).toBe(false);
+    expect(pageErrors.length).toBe(0);
+  });
+});

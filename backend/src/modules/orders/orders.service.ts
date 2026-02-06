@@ -355,7 +355,7 @@ export class OrdersService {
     await this.redisService.del(`order:timer:${orderId}`);
 
     // Emit domain event
-    const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt!);
+    const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt);
     this.eventEmitter.emit('order:paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);

@@ -208,13 +208,14 @@ export default function BroadcastsPage() {
     setNewStreamTitle('');
   };
 
-  if (false && (authLoading || (user && user?.role !== 'ADMIN'))) { // [DEV] disabled
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-secondary-text">Loading...</div>
-      </div>
-    );
-  }
+  // [DEV] Auth check disabled for development
+  // if (authLoading || (user && user?.role !== 'ADMIN')) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="text-secondary-text">Loading...</div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-6 md:space-y-8">

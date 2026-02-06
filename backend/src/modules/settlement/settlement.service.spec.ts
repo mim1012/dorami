@@ -48,7 +48,7 @@ describe('SettlementService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string, defaultValue?: any) => {
-              if (key === 'EXCEL_HEADER_COLOR') return 'FFE91E63';
+              if (key === 'EXCEL_HEADER_COLOR') {return 'FFE91E63';}
               return defaultValue;
             }),
           },

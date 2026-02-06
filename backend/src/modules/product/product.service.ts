@@ -138,17 +138,17 @@ export class ProductService {
 
       const updateData: any = {};
 
-      if (updateProductDto.name !== undefined) updateData.name = updateProductDto.name;
-      if (updateProductDto.price !== undefined) updateData.price = new Decimal(updateProductDto.price);
-      if (updateProductDto.quantity !== undefined) updateData.quantity = updateProductDto.quantity;
-      if (updateProductDto.colorOptions !== undefined) updateData.colorOptions = updateProductDto.colorOptions;
-      if (updateProductDto.sizeOptions !== undefined) updateData.sizeOptions = updateProductDto.sizeOptions;
-      if (updateProductDto.shippingFee !== undefined) updateData.shippingFee = new Decimal(updateProductDto.shippingFee);
-      if (updateProductDto.freeShippingMessage !== undefined) updateData.freeShippingMessage = updateProductDto.freeShippingMessage;
-      if (updateProductDto.timerEnabled !== undefined) updateData.timerEnabled = updateProductDto.timerEnabled;
-      if (updateProductDto.timerDuration !== undefined) updateData.timerDuration = updateProductDto.timerDuration;
-      if (updateProductDto.imageUrl !== undefined) updateData.imageUrl = updateProductDto.imageUrl;
-      if (updateProductDto.status !== undefined) updateData.status = updateProductDto.status;
+      if (updateProductDto.name !== undefined) {updateData.name = updateProductDto.name;}
+      if (updateProductDto.price !== undefined) {updateData.price = new Decimal(updateProductDto.price);}
+      if (updateProductDto.quantity !== undefined) {updateData.quantity = updateProductDto.quantity;}
+      if (updateProductDto.colorOptions !== undefined) {updateData.colorOptions = updateProductDto.colorOptions;}
+      if (updateProductDto.sizeOptions !== undefined) {updateData.sizeOptions = updateProductDto.sizeOptions;}
+      if (updateProductDto.shippingFee !== undefined) {updateData.shippingFee = new Decimal(updateProductDto.shippingFee);}
+      if (updateProductDto.freeShippingMessage !== undefined) {updateData.freeShippingMessage = updateProductDto.freeShippingMessage;}
+      if (updateProductDto.timerEnabled !== undefined) {updateData.timerEnabled = updateProductDto.timerEnabled;}
+      if (updateProductDto.timerDuration !== undefined) {updateData.timerDuration = updateProductDto.timerDuration;}
+      if (updateProductDto.imageUrl !== undefined) {updateData.imageUrl = updateProductDto.imageUrl;}
+      if (updateProductDto.status !== undefined) {updateData.status = updateProductDto.status;}
 
       const product = await this.prisma.product.update({
         where: { id },

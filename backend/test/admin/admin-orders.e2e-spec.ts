@@ -14,7 +14,7 @@ describe('Admin Order Management (E2E)', () => {
 
   let adminUser: any;
   let regularUser: any;
-  let testOrders: any[] = [];
+  const testOrders: any[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -415,7 +415,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(beforeConfirm?.paidAt).toBeDefined();
 
-      const paidAtTime = beforeConfirm!.paidAt!.getTime();
+      const paidAtTime = beforeConfirm.paidAt.getTime();
       const now = new Date().getTime();
 
       // paidAt should be within last minute (just confirmed)

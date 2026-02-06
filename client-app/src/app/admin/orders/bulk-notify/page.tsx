@@ -111,7 +111,7 @@ export default function BulkNotifyPage() {
               2. Fill in your Order IDs and Tracking Numbers
             </Body>
             <Body className="text-blue-800 text-sm">
-              3. Upload the CSV file and click "Send Notifications"
+              3. Upload the CSV file and click &quot;Send Notifications&quot;
             </Body>
             <Body className="text-blue-800 text-sm font-semibold mt-3">
               Note: Only orders with confirmed payment status will receive notifications

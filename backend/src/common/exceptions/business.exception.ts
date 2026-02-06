@@ -1,8 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export interface ErrorContext {
-  [key: string]: any;
-}
+export type ErrorContext = Record<string, any>;
 
 export class BusinessException extends HttpException {
   constructor(
