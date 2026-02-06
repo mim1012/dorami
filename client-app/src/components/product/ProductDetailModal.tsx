@@ -42,13 +42,13 @@ export default function ProductDetailModal({
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-white dark:bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 bg-content-bg border-b border-gray-800 p-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-content-bg border-b border-gray-200 dark:border-gray-800 p-4 flex items-center justify-between z-10">
           <Heading2 className="text-primary-text">상품 상세</Heading2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
             <X className="w-6 h-6 text-secondary-text" />
           </button>
@@ -104,7 +104,7 @@ export default function ProductDetailModal({
           )}
 
           {/* Stock Info */}
-          <div className="flex items-center justify-between p-3 bg-primary-black rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-primary-black rounded-lg">
             <Caption className="text-secondary-text">재고</Caption>
             <Body className={`font-medium ${product.stock < 5 ? 'text-orange-500' : 'text-primary-text'}`}>
               {product.stock}개 남음
@@ -124,7 +124,7 @@ export default function ProductDetailModal({
                       px-4 py-2 rounded-button text-caption transition-all
                       ${selectedColor === color
                         ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-gray-800'
+                        : 'bg-gray-100 dark:bg-primary-black text-secondary-text hover:bg-gray-200 dark:hover:bg-gray-800'
                       }
                     `}
                   >
@@ -148,7 +148,7 @@ export default function ProductDetailModal({
                       px-4 py-2 rounded-button text-caption transition-all
                       ${selectedSize === size
                         ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-gray-800'
+                        : 'bg-gray-100 dark:bg-primary-black text-secondary-text hover:bg-gray-200 dark:hover:bg-gray-800'
                       }
                     `}
                   >
@@ -166,8 +166,8 @@ export default function ProductDetailModal({
             className={`
               w-full py-4 rounded-button font-bold text-body transition-colors
               ${product.status === ProductStatus.SOLD_OUT || product.stock === 0
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
+                ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-hot-pink text-white hover:opacity-90'
               }
             `}
           >

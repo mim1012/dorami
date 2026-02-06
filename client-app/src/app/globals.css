@@ -11,13 +11,13 @@
 /* CSS Variables for Theme Tokens */
 :root {
   /* Light Mode Colors (default) */
-  --primary-black: #FFFFFF;
-  --content-bg: #F8F9FA;
+  --primary-black: #FAFAFA;
+  --content-bg: #FFFFFF;
   --hot-pink: #FF6B35;
   --hot-pink-secondary: #FF007A;
-  --primary-text: #212529;
-  --secondary-text: #6C757D;
-  --border-color: #DEE2E6;
+  --primary-text: #1A1A1A;
+  --secondary-text: #666666;
+  --border-color: #E5E5E5;
   --card-bg: #FFFFFF;
   --success: #16A34A;
   --error: #DC2626;
@@ -40,14 +40,14 @@
 
 /* Dark Mode Colors */
 .dark {
-  --primary-black: #0A0A0A;
-  --content-bg: #1A1A1A;
+  --primary-black: #121212;
+  --content-bg: #1E1E1E;
   --hot-pink: #FF007A;
   --hot-pink-secondary: #FF6B35;
   --primary-text: #FFFFFF;
-  --secondary-text: #A0A0A0;
-  --border-color: #2A2A2A;
-  --card-bg: #1A1A1A;
+  --secondary-text: #B0B0B0;
+  --border-color: #333333;
+  --card-bg: #1E1E1E;
   --success: #34C759;
   --error: #FF3B30;
   --warning: #FF9500;

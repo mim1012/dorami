@@ -53,7 +53,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-secondary-text">Loading dashboard...</div>
+        <div className="text-secondary-text">대시보드 불러오는 중...</div>
       </div>
     );
   }
