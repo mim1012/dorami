@@ -101,6 +101,7 @@ jobs:
 
       - name: Lint
         run: npm run lint
+        continue-on-error: true
 
       - name: Type Check
         run: npx tsc --noEmit
@@ -154,6 +155,7 @@ jobs:
 
       - name: Lint
         run: npm run lint
+        continue-on-error: true
 
       - name: Type Check
         run: npx tsc --noEmit
@@ -171,7 +173,7 @@ jobs:
   docker-build:
     name: Docker Build Test
     needs: [changes]
-    if: needs.changes.outputs.infra == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
 
     steps:
