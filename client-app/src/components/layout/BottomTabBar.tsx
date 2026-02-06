@@ -48,7 +48,7 @@ export function BottomTabBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#1E1E1E]/95 backdrop-blur-sm border-t border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] backdrop-blur-sm border-t border-gray-200 dark:border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-around h-16 px-2">
           {tabs.map((tab) => {
@@ -66,7 +66,7 @@ export function BottomTabBar() {
                   <div className="relative">
                     <Icon
                       className={`w-6 h-6 ${
-                        isActive ? 'text-hot-pink' : 'text-secondary-text'
+                        isActive ? 'text-hot-pink' : 'text-gray-600 dark:text-gray-400'
                       }`}
                     />
                     {showBadge && (
@@ -82,7 +82,7 @@ export function BottomTabBar() {
                 )}
                 <span
                   className={`text-[11px] font-medium ${
-                    isActive ? 'text-hot-pink' : 'text-secondary-text'
+                    isActive ? 'text-hot-pink' : 'text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   {tab.label}
