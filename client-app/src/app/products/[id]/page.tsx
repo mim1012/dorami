@@ -115,7 +115,8 @@ export default function ProductDetailPage() {
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="fixe          className="w-10 h-10 bg-white/90 dark:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white dark:hover:bg-black/70 transition-colors"        >
+          className="fixed top-4 left-4 z-30 w-10 h-10 bg-white/90 dark:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white dark:hover:bg-black/70 transition-colors"
+        >
           <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
 
