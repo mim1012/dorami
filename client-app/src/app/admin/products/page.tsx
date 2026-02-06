@@ -501,7 +501,7 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${statusBadge.color}`}
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold whitespace-nowrap ${statusBadge.color}`}
                         >
                           {statusBadge.text}
                         </span>

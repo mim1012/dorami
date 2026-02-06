@@ -430,7 +430,7 @@ function AdminOrdersContent() {
 
     const label = statusLabels[status] || status;
 
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{label}</span>;
+    return <span className={`px-2 py-1 rounded text-caption border whitespace-nowrap ${color}`}>{label}</span>;
   };
 
   const columns: Column<OrderListItem>[] = [

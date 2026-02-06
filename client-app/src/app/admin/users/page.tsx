@@ -187,7 +187,7 @@ function AdminUsersContent() {
 
     const color = colors[status as keyof typeof colors] || colors.INACTIVE;
 
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
+    return <span className={`px-2 py-1 rounded text-caption border whitespace-nowrap ${color}`}>{status}</span>;
   };
 
   const columns: Column<UserListItem>[] = [
