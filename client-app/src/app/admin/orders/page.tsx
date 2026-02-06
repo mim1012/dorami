@@ -534,8 +534,8 @@ function AdminOrdersContent() {
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">Order Management</Display>
-          <Body className="text-secondary-text">View and manage all customer orders</Body>
+          <Display className="text-hot-pink mb-2">주문 관리</Display>
+          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
 
         {error && (
@@ -549,7 +549,7 @@ function AdminOrdersContent() {
           {/* Search Input */}
           <div className="flex gap-4">
             <Input
-              placeholder="Search by Order ID, email, depositor name, or Instagram ID..."
+              placeholder="주문 ID, 이메일, 입금자명, 인스타그램 ID로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               fullWidth
@@ -559,7 +559,7 @@ function AdminOrdersContent() {
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="whitespace-nowrap"
             >
-              {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
+              {isFilterOpen ? '필터 숨기기' : '필터 표시'}
             </Button>
             {hasActiveFilters && (
               <Button variant="ghost" onClick={handleClearFilters}>
@@ -599,7 +599,7 @@ function AdminOrdersContent() {
 
               {/* Order Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Order Status</Body>
+                <Body className="text-primary-text font-medium mb-2">주문 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'].map((status) => (
                     <button

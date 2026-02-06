@@ -60,9 +60,9 @@ export default function AdminSettingsPage() {
         <div>
           <Display className="text-hot-pink mb-2 flex items-center gap-3">
             <SettingsIcon className="w-10 h-10" />
-            System Settings
+            시스템 설정
           </Display>
-          <Body className="text-secondary-text">Configure system-wide settings for your platform</Body>
+          <Body className="text-secondary-text">플랫폼 전체 설정을 관리합니다</Body>
         </div>
 
         {successMessage && (
@@ -82,11 +82,11 @@ export default function AdminSettingsPage() {
         <div className="bg-content-bg rounded-button p-6">
           <div className="flex items-center gap-3 mb-4">
             <Clock className="w-6 h-6 text-hot-pink" />
-            <Heading2 className="text-primary-text">Cart Reservation Timer</Heading2>
+            <Heading2 className="text-primary-text">장바구니 예약 타이머</Heading2>
           </div>
           <div className="space-y-4">
             <Input
-              label="Default Cart Timer Duration (minutes)"
+              label="기본 장바구니 타이머 (분)"
               type="number"
               min={1}
               max={60}
@@ -97,7 +97,7 @@ export default function AdminSettingsPage() {
               fullWidth
             />
             <Caption className="text-secondary-text">
-              How long customers have to complete checkout after adding items to cart (1-60 minutes)
+              고객이 장바구니에 상품을 담은 후 결제를 완료해야 하는 시간 (1-60분)
             </Caption>
           </div>
         </div>
@@ -106,23 +106,23 @@ export default function AdminSettingsPage() {
         <div className="bg-content-bg rounded-button p-6">
           <div className="flex items-center gap-3 mb-4">
             <DollarSign className="w-6 h-6 text-hot-pink" />
-            <Heading2 className="text-primary-text">Bank Transfer Information</Heading2>
+            <Heading2 className="text-primary-text">계좌 이체 정보</Heading2>
           </div>
           <div className="space-y-4">
             <Input
-              label="Bank Name"
+              label="은행명"
               value={settings.bankName}
               onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
               fullWidth
             />
             <Input
-              label="Account Number"
+              label="계좌번호"
               value={settings.bankAccountNumber}
               onChange={(e) => setSettings({ ...settings, bankAccountNumber: e.target.value })}
               fullWidth
             />
             <Input
-              label="Account Holder"
+              label="예금주"
               value={settings.bankAccountHolder}
               onChange={(e) => setSettings({ ...settings, bankAccountHolder: e.target.value })}
               fullWidth
@@ -132,10 +132,10 @@ export default function AdminSettingsPage() {
 
         {/* Shipping Settings */}
         <div className="bg-content-bg rounded-button p-6">
-          <Heading2 className="text-primary-text mb-4">Shipping Configuration</Heading2>
+          <Heading2 className="text-primary-text mb-4">배송 설정</Heading2>
           <div className="space-y-4">
             <Input
-              label="Default Shipping Fee (USD)"
+              label="기본 배송비 (원)"
               type="number"
               step="0.01"
               min={0}
@@ -152,15 +152,15 @@ export default function AdminSettingsPage() {
         <div className="bg-content-bg rounded-button p-6">
           <div className="flex items-center gap-3 mb-4">
             <Bell className="w-6 h-6 text-hot-pink" />
-            <Heading2 className="text-primary-text">Notification Settings</Heading2>
+            <Heading2 className="text-primary-text">알림 설정</Heading2>
           </div>
           <div className="space-y-4">
             <Input
-              label="KakaoTalk API Key"
+              label="카카오톡 API 키"
               type="password"
               value={settings.kakaoTalkApiKey}
               onChange={(e) => setSettings({ ...settings, kakaoTalkApiKey: e.target.value })}
-              placeholder="Enter your KakaoTalk API key"
+              placeholder="카카오톡 API 키를 입력하세요"
               fullWidth
             />
             <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ export default function AdminSettingsPage() {
                 className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
               />
               <label htmlFor="emailNotifications" className="text-primary-text cursor-pointer">
-                <Body>Enable Email Notifications</Body>
+                <Body>이메일 알림 활성화</Body>
               </label>
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function AdminSettingsPage() {
         <div className="flex justify-end gap-4">
           <Button variant="primary" size="lg" onClick={handleSave} disabled={isSaving}>
             <Save className="w-5 h-5 mr-2" />
-            {isSaving ? 'Saving...' : 'Save All Settings'}
+            {isSaving ? '저장 중...' : '모든 설정 저장'}
           </Button>
         </div>
       </div>

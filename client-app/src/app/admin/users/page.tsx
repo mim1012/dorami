@@ -116,7 +116,7 @@ function AdminUsersContent() {
         setTotalPages(response.data.totalPages);
       } catch (err: any) {
         console.error('Failed to fetch users:', err);
-        setError(err.response?.data?.message || 'Failed to load users');
+        setError(err.response?.data?.message || '사용자 로드 실패');
       } finally {
         setIsLoading(false);
       }
@@ -252,8 +252,8 @@ function AdminUsersContent() {
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">User Management</Display>
-          <Body className="text-secondary-text">View and manage all registered users</Body>
+          <Display className="text-hot-pink mb-2">사용자 관리</Display>
+          <Body className="text-secondary-text">등록된 모든 사용자를 조회하고 관리합니다</Body>
         </div>
 
         {error && (
@@ -267,7 +267,7 @@ function AdminUsersContent() {
           {/* Search Input */}
           <div className="flex gap-4">
             <Input
-              placeholder="Search by name, email, or Instagram ID..."
+              placeholder="이름, 이메일, 인스타그램 ID로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               fullWidth
@@ -277,7 +277,7 @@ function AdminUsersContent() {
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="whitespace-nowrap"
             >
-              {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
+              {isFilterOpen ? '필터 숨기기' : '필터 표시'}
             </Button>
             {hasActiveFilters && (
               <Button variant="ghost" onClick={handleClearFilters}>
@@ -354,7 +354,7 @@ function AdminUsersContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
-              emptyMessage="No users found matching your filters"
+              emptyMessage="필터에 맞는 사용자를 찾을 수 없습니다"
             />
 
             <Pagination
