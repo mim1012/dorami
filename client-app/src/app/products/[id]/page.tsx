@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <>
-        <div className="min-h-screen bg-[#121212] pb-24">
+        <div className="min-h-screen bg-primary-black pb-24">
           <div className="flex items-center justify-center h-screen">
             <div className="text-center">
               <div className="w-12 h-12 border-4 border-hot-pink border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -111,13 +111,12 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#121212] pb-24">
+      <div className="min-h-screen bg-primary-black pb-24">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="fixed top-4 left-4 z-30 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-white" />
+          className="fixe          className="w-10 h-10 bg-white/90 dark:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white dark:hover:bg-black/70 transition-colors"        >
+          <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
         </button>
 
         {/* Product Image */}
@@ -154,7 +153,7 @@ export default function ProductDetailPage() {
 
           {/* Description */}
           {product.description && (
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-gray-200 dark:border-white/10 pt-4">
               <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
               <Body className="text-secondary-text leading-relaxed">
                 {product.description}
@@ -163,7 +162,7 @@ export default function ProductDetailPage() {
           )}
 
           {/* Color Selector */}
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-gray-200 dark:border-white/10 pt-4">
             <Body className="text-primary-text font-semibold mb-3">색상</Body>
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => (
@@ -173,7 +172,7 @@ export default function ProductDetailPage() {
                   className={`px-4 py-2 rounded-full border text-sm transition-colors ${
                     selectedColor === color
                       ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                      : 'border-white/20 text-secondary-text hover:border-white/40'
+                      : 'border-gray-300 dark:border-white/20 text-secondary-text hover:border-gray-400 dark:hover:border-white/40'
                   }`}
                 >
                   {color}
@@ -193,7 +192,7 @@ export default function ProductDetailPage() {
                   className={`w-12 h-12 rounded-xl border text-sm font-bold transition-colors ${
                     selectedSize === size
                       ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                      : 'border-white/20 text-secondary-text hover:border-white/40'
+                      : 'border-gray-300 dark:border-white/20 text-secondary-text hover:border-gray-400 dark:hover:border-white/40'
                   }`}
                 >
                   {size}
@@ -203,13 +202,13 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Quantity Selector */}
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-gray-200 dark:border-white/10 pt-4">
             <Body className="text-primary-text font-semibold mb-3">수량</Body>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
-                className="w-11 h-11 bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-gray-100 dark:bg-primary-black hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Minus className="w-5 h-5 text-primary-text" />
               </button>
@@ -219,7 +218,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => handleQuantityChange(1)}
                 disabled={quantity >= maxQuantity}
-                className="w-11 h-11 bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-gray-100 dark:bg-primary-black hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Plus className="w-5 h-5 text-primary-text" />
               </button>
@@ -227,7 +226,7 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Total */}
-          <div className="bg-content-bg rounded-2xl p-4 border border-white/5">
+          <div className="bg-content-bg rounded-2xl p-4 border border-gray-200 dark:border-white/5">
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
               <Display className="text-hot-pink">
@@ -238,7 +237,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Sticky CTA */}
-        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-[#121212]/90 backdrop-blur-sm border-t border-white/10">
+        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-white/95 dark:bg-[#121212]/90 backdrop-blur-sm border-t border-gray-200 dark:border-white/10">
           <Button
             variant="primary"
             size="lg"
