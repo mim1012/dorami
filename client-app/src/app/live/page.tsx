@@ -1,10 +1,57 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { getActiveStreams, type Stream } from '@/lib/api/streaming';
 
+const MOCK_STREAMS: Stream[] = [
+  {
+    id: 'live-1',
+    streamKey: 'demo-live-1',
+    title: '🔥 겨울 패션 특가! 최대 70% 할인',
+    description: '따뜻한 겨울 아우터부터 니트까지 모두 준비했어요!',
+    status: 'LIVE',
+    viewerCount: 1234,
+    scheduledStartTime: new Date().toISOString(),
+    startedAt: new Date().toISOString(),
+    endedAt: null,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'live-2',
+    streamKey: 'demo-live-2',
+    title: '✨ 뷰티 신상품 라이브',
+    description: '인기 브랜드 뷰티 제품을 특가로 만나보세요',
+    status: 'LIVE',
+    viewerCount: 856,
+    scheduledStartTime: new Date().toISOString(),
+    startedAt: new Date().toISOString(),
+    endedAt: null,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'scheduled-1',
+    streamKey: 'demo-scheduled-1',
+    title: '🎁 오늘 밤 8시! 럭셔리 가방 특집',
+    description: '명품 브랜드 가방을 최저가로 만나보세요',
+    status: 'SCHEDULED',
+    viewerCount: 0,
+    scheduledStartTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+    startedAt: null,
+    endedAt: null,
+    thumbnailUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&q=80',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export default function LivePage() {
+  const router = useRouter();
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +63,9 @@ export default function LivePage() {
         const data = await getActiveStreams();
         setStreams(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : '라이브 방송을 불러오는데 실패했습니다');
+        // Use mock data on error
+        console.log('Using mock data for live streams');
+        setStreams(MOCK_STREAMS);
       } finally {
         setLoading(false);
       }
@@ -95,6 +144,7 @@ export default function LivePage() {
                 {liveStreams.map((stream) => (
                   <div
                     key={stream.id}
+                    onClick={() => router.push(`/live/${stream.streamKey}`)}
                     className="relative aspect-video bg-white rounded-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
                   >
                     {/* 비디오 플레이스홀더 */}
