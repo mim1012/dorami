@@ -9,6 +9,8 @@ interface ProductCardProps {
   imageUrl: string;
   isNew?: boolean;
   discount?: number;
+  likes?: number;
+  rating?: number;
   onClick?: () => void;
   size?: 'normal' | 'small';
 }
@@ -19,17 +21,17 @@ export function ProductCard({
   imageUrl,
   isNew = false,
   discount,
+  likes = 0,
+  rating = 0,
   onClick,
-  size = 'normal'
+  size = 'normal',
 }: ProductCardProps) {
   const discountedPrice = discount ? price * (1 - discount / 100) : price;
 
   return (
     <div
       onClick={onClick}
-      className={`card cursor-pointer ${
-        size === 'small' ? 'scale-[0.95]' : ''
-      }`}
+      className={`card cursor-pointer ${size === 'small' ? 'scale-[0.95]' : ''}`}
     >
       <div className="relative aspect-square bg-primary-black">
         <Image
@@ -51,9 +53,7 @@ export function ProductCard({
         )}
       </div>
       <div className="p-4">
-        <h3 className="text-body text-primary-text font-semibold mb-2 line-clamp-2">
-          {name}
-        </h3>
+        <h3 className="text-body text-primary-text font-semibold mb-2 line-clamp-2">{name}</h3>
         <div className="flex items-center gap-2 mb-2">
           {discount && (
             <span className="text-caption text-secondary-text line-through">
@@ -65,8 +65,8 @@ export function ProductCard({
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-secondary-text">
-          <span>❤️ {Math.floor(Math.random() * 500 + 100)}</span>
-          <span>⭐ {(Math.random() * 0.5 + 4.5).toFixed(1)}</span>
+          <span>❤️ {likes}</span>
+          <span>⭐ {rating.toFixed(1)}</span>
         </div>
       </div>
     </div>

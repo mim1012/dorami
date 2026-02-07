@@ -3,7 +3,6 @@
 import { DollarSign, Eye, TrendingUp, ShoppingBag } from 'lucide-react';
 import StatCard from '@/components/admin/dashboard/StatCard';
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api/client';
 
 interface DashboardStats {
   revenue: { value: number; formatted: string; trend: string; trendUp: boolean };
@@ -17,34 +16,29 @@ export default function AdminPage() {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      try {
-        // Use mock data for demo
-        const mockStats: DashboardStats = {
-          revenue: {
-            value: 12500000,
-            formatted: '12,500,000원',
-            trend: '+12.5%',
-            trendUp: true,
-          },
-          viewers: {
-            value: 8432,
-            formatted: '8,432명',
-            trend: '+23.1%',
-            trendUp: true,
-          },
-          orders: {
-            value: 342,
-            formatted: '342건',
-            trend: '+8.3%',
-            trendUp: true,
-          },
-        };
-        setStats(mockStats);
-      } catch (error: any) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+      // Use mock data for demo
+      const mockStats: DashboardStats = {
+        revenue: {
+          value: 12500000,
+          formatted: '12,500,000원',
+          trend: '+12.5%',
+          trendUp: true,
+        },
+        viewers: {
+          value: 8432,
+          formatted: '8,432명',
+          trend: '+23.1%',
+          trendUp: true,
+        },
+        orders: {
+          value: 342,
+          formatted: '342건',
+          trend: '+8.3%',
+          trendUp: true,
+        },
+      };
+      setStats(mockStats);
+      setLoading(false);
     };
 
     fetchDashboardData();
@@ -66,7 +60,9 @@ export default function AdminPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-primary-text mb-2">
             반갑습니다, <span className="text-hot-pink">관리자님</span> 👋
           </h1>
-          <p className="text-sm md:text-base text-secondary-text">오늘의 스토어 현황을 확인하세요.</p>
+          <p className="text-sm md:text-base text-secondary-text">
+            오늘의 스토어 현황을 확인하세요.
+          </p>
         </div>
         <div className="flex gap-2 md:gap-3">
           <button className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-content-bg border border-gray-300 rounded-lg text-xs md:text-sm font-medium text-primary-text hover:bg-gray-100 transition-colors">

@@ -99,8 +99,7 @@ function AdminOrdersContent() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
-    if (paymentStatusFilter.length > 0)
-      params.set('paymentStatus', paymentStatusFilter.join(','));
+    if (paymentStatusFilter.length > 0) params.set('paymentStatus', paymentStatusFilter.join(','));
     if (shippingStatusFilter.length > 0)
       params.set('shippingStatus', shippingStatusFilter.join(','));
 
@@ -278,10 +277,7 @@ function AdminOrdersContent() {
     setPage(1);
   };
 
-  const handleStatusToggle = (
-    status: string,
-    filterType: 'order' | 'payment' | 'shipping',
-  ) => {
+  const handleStatusToggle = (status: string, filterType: 'order' | 'payment' | 'shipping') => {
     if (filterType === 'order') {
       setOrderStatusFilter((prev) =>
         prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
@@ -301,39 +297,29 @@ function AdminOrdersContent() {
   const handleConfirmPayment = async (order: OrderListItem) => {
     const confirmed = window.confirm(
       `입금 확인\n\n` +
-      `주문번호: ${order.id}\n` +
-      `고객: @${order.instagramId}\n` +
-      `입금자명: ${order.depositorName}\n` +
-      `금액: ${formatCurrency(order.total)}\n\n` +
-      `은행 계좌로 위 금액의 입금을 확인하셨습니까?`
+        `주문번호: ${order.id}\n` +
+        `고객: @${order.instagramId}\n` +
+        `입금자명: ${order.depositorName}\n` +
+        `금액: ${formatCurrency(order.total)}\n\n` +
+        `은행 계좌로 위 금액의 입금을 확인하셨습니까?`,
     );
 
     if (!confirmed) return;
 
     setConfirmingOrderId(order.id);
     try {
-      await apiClient.patch(`/admin/orders/${order.id}/confirm-payment`);
+      // TODO: 실제 API 연동 시 아래 주석 해제
+      // await apiClient.patch(`/admin/orders/${order.id}/confirm-payment`);
+
+      // 로컬 state 업데이트 (mock 모드)
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? { ...o, paymentStatus: 'PAID', status: 'CONFIRMED', paidAt: new Date().toISOString() }
+            : o,
+        ),
+      );
       alert(`주문 ${order.id} 입금이 확인되었습니다`);
-
-      // Refetch orders to update the list
-      const params: any = {
-        page,
-        limit: pageSize,
-        sortBy,
-        sortOrder,
-      };
-
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (dateFrom) params.dateFrom = dateFrom;
-      if (dateTo) params.dateTo = dateTo;
-      if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
-      if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter;
-      if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter;
-
-      const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
-      setOrders(response.data.orders);
-      setTotal(response.data.total);
-      setTotalPages(response.data.totalPages);
     } catch (err: any) {
       console.error('Failed to confirm payment:', err);
       const errorMessage = err.message || '입금 확인 중 오류가 발생했습니다. 다시 시도해주세요';
@@ -346,18 +332,19 @@ function AdminOrdersContent() {
   const handleSendReminder = async (order: OrderListItem) => {
     const confirmed = window.confirm(
       `결제 알림 전송\n\n` +
-      `주문번호: ${order.id}\n` +
-      `고객: @${order.instagramId}\n` +
-      `입금자명: ${order.depositorName}\n` +
-      `금액: ${formatCurrency(order.total)}\n\n` +
-      `고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`
+        `주문번호: ${order.id}\n` +
+        `고객: @${order.instagramId}\n` +
+        `입금자명: ${order.depositorName}\n` +
+        `금액: ${formatCurrency(order.total)}\n\n` +
+        `고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`,
     );
 
     if (!confirmed) return;
 
     setSendingReminderId(order.id);
     try {
-      await apiClient.patch(`/admin/orders/${order.id}/send-reminder`);
+      // TODO: 실제 API 연동 시 아래 주석 해제
+      // await apiClient.patch(`/admin/orders/${order.id}/send-reminder`);
       alert(`주문 ${order.id} 결제 알림이 전송되었습니다`);
     } catch (err: any) {
       console.error('Failed to send reminder:', err);
@@ -407,8 +394,10 @@ function AdminOrdersContent() {
       DELIVERED: 'bg-success/10 text-success border-success',
     };
 
-    const colorMap = type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
-    const color = colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
+    const colorMap =
+      type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
+    const color =
+      colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
 
     return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
   };
@@ -418,9 +407,7 @@ function AdminOrdersContent() {
       key: 'id',
       label: 'Order ID',
       sortable: true,
-      render: (order) => (
-        <span className="font-mono text-caption">{order.id}</span>
-      ),
+      render: (order) => <span className="font-mono text-caption">{order.id}</span>,
     },
     {
       key: 'userEmail',
@@ -674,7 +661,9 @@ function AdminOrdersContent() {
               onSort={handleSort}
               emptyMessage="No orders found matching your filters"
               getRowClassName={(order) =>
-                order.paymentStatus === 'PENDING' ? 'border-l-4 border-yellow-500 bg-yellow-50/5' : ''
+                order.paymentStatus === 'PENDING'
+                  ? 'border-l-4 border-yellow-500 bg-yellow-50/5'
+                  : ''
               }
             />
 

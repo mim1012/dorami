@@ -11,7 +11,10 @@ test.describe('Shop Purchase Flow', () => {
 
     // Check if products are loaded
     // The page might show products or empty state
-    const hasProducts = await page.getByText('상품이 없습니다').isVisible({ timeout: 3000 }).catch(() => false);
+    const hasProducts = await page
+      .getByText('상품이 없습니다')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (!hasProducts) {
       console.log('✅ Shop page loaded - products are displayed');
@@ -35,14 +38,14 @@ test.describe('Shop Purchase Flow', () => {
       await page.waitForLoadState('networkidle');
 
       // Verify we're on a product detail page
-      await expect(page).toHaveURL(/\/products\/\w+/);
+      await expect(page).toHaveURL(/\/products\/[\w-]+/);
       console.log('✅ Product detail page loaded');
     } else {
       console.log('⚠️ No products available to test detail page navigation');
     }
   });
 
-  test('should navigate to cart page', async ({ page }) => {
+  test('should navigate to shop page via bottom tab', async ({ page }) => {
     await gotoWithNgrokHandling(page, '/');
     await page.waitForLoadState('networkidle');
 
@@ -70,7 +73,10 @@ test.describe('Shop Purchase Flow', () => {
     await page.waitForLoadState('networkidle');
 
     // Cart might be empty or have items
-    const emptyCart = await page.getByText('장바구니가 비어있습니다').isVisible({ timeout: 3000 }).catch(() => false);
+    const emptyCart = await page
+      .getByText('장바구니가 비어있습니다')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (emptyCart) {
       console.log('✅ Empty cart state displayed correctly');
@@ -90,7 +96,10 @@ test.describe('Admin Orders Management', () => {
     await expect(page).toHaveURL(/\/admin\/orders/);
 
     // Check for orders table or empty state
-    const hasOrders = await page.getByText('주문 내역이 없습니다').isVisible({ timeout: 3000 }).catch(() => false);
+    const hasOrders = await page
+      .getByText('주문 내역이 없습니다')
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (!hasOrders) {
       console.log('✅ Admin orders page loaded with orders');
@@ -104,12 +113,7 @@ test.describe('Admin Orders Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Look for order-related elements
-    const orderElements = [
-      '주문 관리',
-      '주문 번호',
-      '고객',
-      '상태'
-    ];
+    const orderElements = ['주문 관리', '주문 번호', '고객', '상태'];
 
     for (const text of orderElements) {
       const element = page.getByText(text);
@@ -138,11 +142,7 @@ test.describe('Admin Users Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Look for user management elements
-    const userElements = [
-      '사용자 관리',
-      '회원',
-      '이메일'
-    ];
+    const userElements = ['사용자 관리', '회원', '이메일'];
 
     for (const text of userElements) {
       const element = page.getByText(text);
