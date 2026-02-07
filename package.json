@@ -36,7 +36,7 @@
     "prisma:studio": "npm run prisma:studio --workspace=backend",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "postinstall": "npm run build:shared",
-    "prepare": "node -e \"if (process.env.CI !== 'true') { try { var husky = require('husky'); if (husky.default) husky.default(); } catch (e) { /* husky not installed yet */ } }\""
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
@@ -47,11 +47,11 @@
   },
   "lint-staged": {
     "backend/**/*.ts": [
-      "eslint --fix",
+      "eslint --fix --config backend/eslint.config.mjs",
       "prettier --write"
     ],
     "client-app/**/*.{ts,tsx}": [
-      "eslint --fix",
+      "eslint --fix --config client-app/eslint.config.mjs",
       "prettier --write"
     ],
     "packages/**/*.ts": [

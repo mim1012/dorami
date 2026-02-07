@@ -291,8 +291,14 @@ export default function AdminProductsPage() {
         name: formData.name,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
-        colorOptions: formData.colorOptions.split(',').map(s => s.trim()).filter(Boolean),
-        sizeOptions: formData.sizeOptions.split(',').map(s => s.trim()).filter(Boolean),
+        colorOptions: formData.colorOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        sizeOptions: formData.sizeOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         shippingFee: parseFloat(formData.shippingFee),
         freeShippingMessage: formData.freeShippingMessage || undefined,
         timerEnabled: formData.timerEnabled,
@@ -300,13 +306,48 @@ export default function AdminProductsPage() {
         imageUrl: formData.imageUrl || undefined,
       };
 
+      // TODO: 실제 API 연동 시 아래 주석 해제
+      // if (editingProduct) {
+      //   await apiClient.patch(`/products/${editingProduct.id}`, payload);
+      // } else {
+      //   await apiClient.post('/products', payload);
+      // }
+
       if (editingProduct) {
-        await apiClient.patch(`/products/${editingProduct.id}`, payload);
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === editingProduct.id
+              ? {
+                  ...p,
+                  ...payload,
+                  colorOptions: payload.colorOptions as string[],
+                  sizeOptions: payload.sizeOptions as string[],
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        );
       } else {
-        await apiClient.post('/products', payload);
+        const newProduct: Product = {
+          id: `prod-${Date.now()}`,
+          streamKey: payload.streamKey,
+          name: payload.name,
+          price: payload.price,
+          stock: payload.stock,
+          colorOptions: payload.colorOptions as string[],
+          sizeOptions: payload.sizeOptions as string[],
+          shippingFee: payload.shippingFee,
+          freeShippingMessage: payload.freeShippingMessage,
+          timerEnabled: payload.timerEnabled,
+          timerDuration: payload.timerDuration,
+          imageUrl: payload.imageUrl,
+          status: 'AVAILABLE',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setProducts((prev) => [newProduct, ...prev]);
       }
 
-      fetchProducts();
       setIsModalOpen(false);
       alert(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!');
     } catch (err: any) {
@@ -321,8 +362,11 @@ export default function AdminProductsPage() {
     if (!confirm('이 상품을 품절 처리하시겠습니까?')) return;
 
     try {
-      await apiClient.patch(`/products/${productId}/sold-out`, {});
-      fetchProducts();
+      // TODO: 실제 API 연동 시 아래 주석 해제
+      // await apiClient.patch(`/products/${productId}/sold-out`, {});
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, status: 'SOLD_OUT', stock: 0 } : p)),
+      );
       alert('상품이 품절 처리되었습니다.');
     } catch (err: any) {
       console.error('Failed to mark as sold out:', err);
@@ -334,8 +378,9 @@ export default function AdminProductsPage() {
     if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
 
     try {
-      await apiClient.delete(`/products/${productId}`);
-      fetchProducts();
+      // TODO: 실제 API 연동 시 아래 주석 해제
+      // await apiClient.delete(`/products/${productId}`);
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
       alert('상품이 삭제되었습니다.');
     } catch (err: any) {
       console.error('Failed to delete product:', err);
@@ -454,9 +499,7 @@ export default function AdminProductsPage() {
                             </div>
                           )}
                           <div>
-                            <Body className="text-primary-text font-semibold">
-                              {product.name}
-                            </Body>
+                            <Body className="text-primary-text font-semibold">{product.name}</Body>
                             <div className="flex gap-2 mt-1">
                               {product.colorOptions.length > 0 && (
                                 <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-0.5 rounded">
@@ -641,7 +684,9 @@ export default function AdminProductsPage() {
                 onChange={(e) => setFormData({ ...formData, timerEnabled: e.target.checked })}
                 className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
               />
-              <span className="text-sm font-medium text-primary-text">장바구니 예약 타이머 활성화</span>
+              <span className="text-sm font-medium text-primary-text">
+                장바구니 예약 타이머 활성화
+              </span>
             </label>
             {formData.timerEnabled && (
               <Input

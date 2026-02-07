@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { ProductCard } from '@/components/home/ProductCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
-import { getProducts, type Product } from '@/lib/api/products';
+import { type Product } from '@/lib/api/products';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
@@ -169,7 +169,7 @@ function ShopPageContent() {
   }, []);
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleProductClick = (productId: string) => {
@@ -230,14 +230,15 @@ function ShopPageContent() {
               <h1 className="text-2xl font-bold text-hot-pink">DoReMi Shop</h1>
               <div className="flex items-center gap-3">
                 <ThemeToggle />
-                <button className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center" title="알림">
+                <button
+                  className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center"
+                  title="알림"
+                >
                   🔔
                 </button>
               </div>
             </div>
-            <p className="text-sm text-secondary-text mb-3">
-              {products.length}개의 상품
-            </p>
+            <p className="text-sm text-secondary-text mb-3">{products.length}개의 상품</p>
 
             <SearchBar
               defaultValue={initialQuery}
@@ -255,7 +256,10 @@ function ShopPageContent() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
-                  imageUrl={product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'}
+                  imageUrl={
+                    product.imageUrl ||
+                    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'
+                  }
                   isNew={product.isNew}
                   discount={product.discountRate}
                   onClick={() => handleProductClick(product.id)}
@@ -268,7 +272,9 @@ function ShopPageContent() {
                 {searchQuery ? (
                   <>
                     <p className="text-h2 text-primary-text mb-2">검색 결과 없음</p>
-                    <p className="text-body text-secondary-text">&apos;{searchQuery}&apos;에 대한 결과가 없습니다</p>
+                    <p className="text-body text-secondary-text">
+                      &apos;{searchQuery}&apos;에 대한 결과가 없습니다
+                    </p>
                   </>
                 ) : (
                   <>

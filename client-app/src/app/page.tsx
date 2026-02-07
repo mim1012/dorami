@@ -7,29 +7,33 @@ import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
 import { useRouter } from 'next/navigation';
-import { getFeaturedProducts } from '@/lib/api/products';
-import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 export default function Home() {
   const router = useRouter();
-  const [featuredProducts, setFeaturedProducts] = useState<Array<{
-    id: string;
-    name: string;
-    price: number;
-    imageUrl: string;
-    isNew?: boolean;
-    discount?: number;
-  }>>([]);
-  const [upcomingLives, setUpcomingLives] = useState<Array<{
-    id: string;
-    title: string;
-    scheduledTime: Date;
-    thumbnailUrl: string;
-    isLive: boolean;
-  }>>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<
+    Array<{
+      id: string;
+      name: string;
+      price: number;
+      imageUrl: string;
+      isNew?: boolean;
+      discount?: number;
+      likes?: number;
+      rating?: number;
+    }>
+  >([]);
+  const [upcomingLives, setUpcomingLives] = useState<
+    Array<{
+      id: string;
+      title: string;
+      scheduledTime: Date;
+      thumbnailUrl: string;
+      isLive: boolean;
+    }>
+  >([]);
   const [nextLiveTime, setNextLiveTime] = useState<Date>(new Date());
   const [isNextLiveActive, setIsNextLiveActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -43,7 +47,7 @@ export default function Home() {
         setError(null);
 
         const now = Date.now();
-        
+
         // Use mock data for demo
         setFeaturedProducts([
           {
@@ -53,6 +57,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
             isNew: true,
             discount: 0,
+            likes: 324,
+            rating: 4.8,
           },
           {
             id: '2',
@@ -61,6 +67,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
             isNew: false,
             discount: 30,
+            likes: 512,
+            rating: 4.9,
           },
           {
             id: '3',
@@ -69,6 +77,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
             isNew: false,
             discount: 0,
+            likes: 187,
+            rating: 4.6,
           },
           {
             id: '4',
@@ -77,6 +87,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
             isNew: false,
             discount: 0,
+            likes: 445,
+            rating: 4.7,
           },
           {
             id: '5',
@@ -85,6 +97,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
             isNew: true,
             discount: 15,
+            likes: 231,
+            rating: 4.5,
           },
           {
             id: '6',
@@ -93,6 +107,8 @@ export default function Home() {
             imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
             isNew: false,
             discount: 20,
+            likes: 378,
+            rating: 4.8,
           },
         ]);
 
@@ -106,7 +122,7 @@ export default function Home() {
           },
           {
             id: '2',
-            title: '겪울 패션 아이템 특가 방송',
+            title: '겨울 패션 아이템 특가 방송',
             scheduledTime: new Date(now + 5 * 60 * 60 * 1000),
             thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
             isLive: false,
@@ -195,7 +211,10 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-hot-pink">DoReMi</h1>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <button className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center" title="알림">
+              <button
+                className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center"
+                title="알림"
+              >
                 🔔
               </button>
             </div>
@@ -218,7 +237,12 @@ export default function Home() {
       <section className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">예정된 라이브</h2>
-          <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
+          <button
+            onClick={() => router.push('/live')}
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors"
+          >
+            더보기 →
+          </button>
         </div>
         <div className="space-y-3">
           {upcomingLives.map((live) => (
@@ -240,12 +264,15 @@ export default function Home() {
       <section className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">지난 추천 상품</h2>
-          <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
+          <button
+            onClick={() => router.push('/shop')}
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors"
+          >
+            더보기 →
+          </button>
         </div>
         {featuredProducts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            등록된 상품이 없습니다
-          </div>
+          <div className="text-center py-8 text-gray-400">등록된 상품이 없습니다</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {featuredProducts.map((product) => (
@@ -257,6 +284,8 @@ export default function Home() {
                 imageUrl={product.imageUrl}
                 isNew={product.isNew}
                 discount={product.discount}
+                likes={product.likes}
+                rating={product.rating}
                 onClick={() => handleProductClick(product.id)}
                 size="small"
               />

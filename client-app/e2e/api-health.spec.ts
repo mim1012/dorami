@@ -7,10 +7,11 @@ test.describe('API Health Check', () => {
     await gotoWithNgrokHandling(page, '/');
 
     // Make API request through the app's proxy using the base URL
-    const response = await request.get('https://unossified-georgie-smeeky.ngrok-free.dev/api/health', {
+    const baseURL = page.url().replace(/\/$/, '');
+    const response = await request.get(`${baseURL}/api/health`, {
       headers: {
-        'ngrok-skip-browser-warning': 'true' // Skip ngrok warning for API requests
-      }
+        'ngrok-skip-browser-warning': 'true',
+      },
     });
 
     expect(response.ok()).toBeTruthy();
@@ -43,10 +44,9 @@ test.describe('API Health Check', () => {
     await page.waitForLoadState('networkidle');
 
     // Check that there are no critical API errors
-    const hasCriticalErrors = consoleErrors.some(error =>
-      error.includes('Failed to fetch') ||
-      error.includes('API') ||
-      error.includes('500')
+    const hasCriticalErrors = consoleErrors.some(
+      (error) =>
+        error.includes('Failed to fetch') || error.includes('API') || error.includes('500'),
     );
 
     expect(hasCriticalErrors).toBe(false);

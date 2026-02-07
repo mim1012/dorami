@@ -36,19 +36,25 @@ export function FloatingNav() {
       label: '공유',
       onClick: () => {
         if (navigator.share) {
-          navigator.share({
-            title: 'DoReMi Live Commerce',
-            text: '라이브 커머스 플랫폼 DoReMi',
-            url: window.location.href,
-          }).catch(() => {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(window.location.href);
-            alert('링크가 복사되었습니다!');
-          });
+          navigator
+            .share({
+              title: 'DoReMi Live Commerce',
+              text: '라이브 커머스 플랫폼 DoReMi',
+              url: window.location.href,
+            })
+            .catch(() => {
+              // Fallback: copy to clipboard
+              navigator.clipboard
+                .writeText(window.location.href)
+                .then(() => alert('링크가 복사되었습니다!'))
+                .catch(() => alert('링크 복사에 실패했습니다.'));
+            });
         } else {
           // Fallback: copy to clipboard
-          navigator.clipboard.writeText(window.location.href);
-          alert('링크가 복사되었습니다!');
+          navigator.clipboard
+            .writeText(window.location.href)
+            .then(() => alert('링크가 복사되었습니다!'))
+            .catch(() => alert('링크 복사에 실패했습니다.'));
         }
       },
       title: '공유하기',
