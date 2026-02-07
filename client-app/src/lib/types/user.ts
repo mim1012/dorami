@@ -7,11 +7,13 @@ export interface User {
   id: string;
   kakaoId: string;
   email?: string;
-  nickname: string;
+  name?: string;
+  nickname?: string;
   profileImage?: string;
-  role: Role;
+  role: Role | string;
   depositorName?: string;
   instagramId?: string;
+  shippingAddress?: object;
   createdAt: string;
   updatedAt: string;
 }

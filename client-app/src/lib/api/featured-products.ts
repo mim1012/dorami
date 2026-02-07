@@ -45,8 +45,8 @@ export async function clearFeaturedProduct(streamKey: string): Promise<void> {
 /**
  * 특정 스트림의 상품 목록 조회
  */
-export async function getStreamProducts(streamKey: string) {
-  const response = await apiClient.get('/products', {
+export async function getStreamProducts(streamKey: string): Promise<FeaturedProduct[]> {
+  const response = await apiClient.get<FeaturedProduct[]>('/products', {
     params: { streamKey }
   });
   return response.data;

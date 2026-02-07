@@ -36,7 +36,7 @@ describe('Orders (e2e)', () => {
       data: {
         kakaoId: 'test-order-user-' + Date.now(),
         email: `test-order-${Date.now()}@test.com`,
-        nickname: 'Test Order User',
+        name: 'Test Order User',
         role: 'USER',
         status: 'ACTIVE',
         depositorName: 'Test Depositor',

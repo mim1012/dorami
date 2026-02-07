@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { ReservationService } from './reservation.service';
-import { CreateOrderDto } from './dto/order.dto';
+import { CreateOrderDto, CreateOrderFromCartDto } from './dto/order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -23,10 +23,14 @@ export class OrdersController {
 
   /**
    * Epic 8 Story 8.1: Create order from cart
+   * Epic 13 Story 13.3: Support pointsToUse for point redemption
    */
   @Post('from-cart')
-  async createOrderFromCart(@CurrentUser('userId') userId: string) {
-    return this.ordersService.createOrderFromCart(userId);
+  async createOrderFromCart(
+    @CurrentUser('userId') userId: string,
+    @Body() dto?: CreateOrderFromCartDto,
+  ) {
+    return this.ordersService.createOrderFromCart(userId, dto?.pointsToUse);
   }
 
   @Post()

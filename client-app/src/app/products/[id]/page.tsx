@@ -61,7 +61,7 @@ export default function ProductDetailPage() {
     }).format(price);
   };
 
-  const maxQuantity = product ? Math.min(product.stockQuantity, 10) : 1;
+  const maxQuantity = product ? Math.min(product.stockQuantity || product.stock || 0, 10) : 1;
 
   const handleQuantityChange = (delta: number) => {
     const next = quantity + delta;
@@ -76,7 +76,7 @@ export default function ProductDetailPage() {
       price: product.price,
       quantity,
       imageUrl: product.imageUrl,
-      stock: product.stockQuantity,
+      stock: product.stockQuantity || product.stock || 0,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -130,7 +130,7 @@ export default function ProductDetailPage() {
             sizes="100vw"
             priority
           />
-          {product.status === 'OUT_OF_STOCK' && (
+          {product.status === 'SOLD_OUT' && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
               <Display className="text-white">품절</Display>
             </div>
@@ -244,7 +244,7 @@ export default function ProductDetailPage() {
             size="lg"
             fullWidth
             onClick={handleAddToCart}
-            disabled={product.status === 'OUT_OF_STOCK'}
+            disabled={product.status === 'SOLD_OUT'}
             className="mb-2"
           >
             {addedToCart ? '✓ 담았습니다!' : '장바구니 담기'}
@@ -254,7 +254,7 @@ export default function ProductDetailPage() {
             size="lg"
             fullWidth
             onClick={handleBuyNow}
-            disabled={product.status === 'OUT_OF_STOCK'}
+            disabled={product.status === 'SOLD_OUT'}
           >
             바로 구매
           </Button>

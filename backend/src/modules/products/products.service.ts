@@ -20,6 +20,8 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { Product } from '@prisma/client';
 
+import { ProductStatus as PrismaProductStatus } from '@prisma/client';
+
 // Type for product update data
 interface ProductUpdateData {
   name?: string;
@@ -32,7 +34,7 @@ interface ProductUpdateData {
   timerEnabled?: boolean;
   timerDuration?: number;
   imageUrl?: string | null;
-  status?: string;
+  status?: PrismaProductStatus;
 }
 
 @Injectable()
@@ -490,6 +492,7 @@ export class ProductsService {
       timerEnabled: product.timerEnabled,
       timerDuration: product.timerDuration,
       imageUrl: product.imageUrl ?? undefined,
+      isNew: false,
       status: product.status as ProductStatus,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,

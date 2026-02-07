@@ -3,9 +3,13 @@ import { apiClient } from './client';
 export interface LiveStream {
   id: string;
   title: string;
+  description?: string;
   scheduledTime: string;
+  scheduledStartTime?: string;
   thumbnailUrl?: string | null;
   isLive: boolean;
+  status?: string;
+  viewerCount?: number;
   streamer?: {
     id: string;
     name: string;

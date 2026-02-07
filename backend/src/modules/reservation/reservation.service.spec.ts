@@ -319,7 +319,7 @@ describe('ReservationService', () => {
     it('should calculate correct queue position for waiting reservation', async () => {
       jest.spyOn(prisma.reservation, 'count').mockResolvedValue(3); // 3 people ahead
 
-      const position = await service.getQueuePosition('product-1', 5);
+      const position = await (service as any).getQueuePosition('product-1', 5);
 
       expect(position).toBe(4); // Position starts at 1, so 3 ahead = position 4
       expect(prisma.reservation.count).toHaveBeenCalledWith({
@@ -336,7 +336,7 @@ describe('ReservationService', () => {
     it('should return 1 when first in queue', async () => {
       jest.spyOn(prisma.reservation, 'count').mockResolvedValue(0); // No one ahead
 
-      const position = await service.getQueuePosition('product-1', 1);
+      const position = await (service as any).getQueuePosition('product-1', 1);
 
       expect(position).toBe(1); // Position starts at 1
     });

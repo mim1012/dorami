@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
-import { Display, Body, Heading2 } from '@/components/common/Typography';
+import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
+import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentModal';
+import { usePointBalance } from '@/lib/hooks/use-points';
 
 interface ShippingAddress {
   fullName: string;
@@ -49,6 +51,8 @@ export default function AdminUserDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const { balance: pointBalance, refetch: refetchPoints } = usePointBalance(userId);
 
   useEffect(() => {
     fetchUserDetail();
@@ -297,6 +301,51 @@ export default function AdminUserDetailPage() {
           </Body>
         </div>
 
+        {/* Points Section */}
+        <div className="bg-content-bg rounded-button p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <Heading2 className="text-hot-pink">Reward Points</Heading2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPointsModal(true)}
+            >
+              Adjust Points
+            </Button>
+          </div>
+
+          {pointBalance ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <Display className="text-hot-pink">
+                  {new Intl.NumberFormat('ko-KR').format(pointBalance.currentBalance)}
+                </Display>
+                <Caption className="text-secondary-text">Current Balance</Caption>
+              </div>
+              <div className="text-center">
+                <Display className="text-green-600">
+                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeEarned)}
+                </Display>
+                <Caption className="text-secondary-text">Lifetime Earned</Caption>
+              </div>
+              <div className="text-center">
+                <Display className="text-blue-600">
+                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeUsed)}
+                </Display>
+                <Caption className="text-secondary-text">Lifetime Used</Caption>
+              </div>
+              <div className="text-center">
+                <Display className="text-gray-500">
+                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeExpired)}
+                </Display>
+                <Caption className="text-secondary-text">Expired</Caption>
+              </div>
+            </div>
+          ) : (
+            <Body className="text-secondary-text">No points data available</Body>
+          )}
+        </div>
+
         {/* Order History Placeholder */}
         <div className="bg-content-bg rounded-button p-6">
           <Heading2 className="text-hot-pink mb-4">Order History</Heading2>
@@ -305,6 +354,18 @@ export default function AdminUserDetailPage() {
           </Body>
         </div>
       </div>
+
+      {/* Point Adjustment Modal */}
+      <PointAdjustmentModal
+        isOpen={showPointsModal}
+        onClose={() => setShowPointsModal(false)}
+        userId={userId}
+        currentBalance={pointBalance?.currentBalance || 0}
+        onSuccess={() => {
+          refetchPoints();
+          fetchUserDetail();
+        }}
+      />
 
       {/* Status Update Confirmation Modal */}
       {showConfirmModal && (

@@ -27,6 +27,7 @@ import { StoreModule } from './modules/store/store.module';
 import { NoticesModule } from './modules/notices/notices.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './modules/health/health.module';
+import { PointsModule } from './modules/points/points.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -78,6 +79,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     NoticesModule,
     UploadModule,
     HealthModule,
+    PointsModule,
   ],
   controllers: [AppController],
   providers: [

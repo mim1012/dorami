@@ -82,6 +82,16 @@ export enum SettlementStatus {
   PAID = 'PAID',
 }
 
+// Epic 13: Reward Points
+export enum PointTransactionType {
+  EARNED_ORDER = 'EARNED_ORDER',
+  USED_ORDER = 'USED_ORDER',
+  REFUND_CANCELLED = 'REFUND_CANCELLED',
+  MANUAL_ADD = 'MANUAL_ADD',
+  MANUAL_SUBTRACT = 'MANUAL_SUBTRACT',
+  EXPIRED = 'EXPIRED',
+}
+
 // ============================================================================
 // BASE TYPES
 // ============================================================================
@@ -270,6 +280,8 @@ export interface Order {
   subtotal: string; // Decimal as string
   shippingFee: string; // Decimal as string
   total: string; // Decimal as string
+  pointsEarned: number;
+  pointsUsed: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   shippingStatus: ShippingStatus;
@@ -323,6 +335,30 @@ export interface Settlement {
   status: SettlementStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+// Epic 13: Reward Points Entities
+export interface PointBalance {
+  id: string;
+  userId: string;
+  currentBalance: number;
+  lifetimeEarned: number;
+  lifetimeUsed: number;
+  lifetimeExpired: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PointTransaction {
+  id: string;
+  balanceId: string;
+  transactionType: PointTransactionType;
+  amount: number;
+  balanceAfter: number;
+  orderId?: string;
+  reason?: string;
+  expiresAt?: string;
+  createdAt: string;
 }
 
 // ============================================================================
@@ -506,6 +542,46 @@ export interface SetSystemConfigRequest {
   value: any;
 }
 
+// Epic 13: Reward Points DTOs
+export interface PointBalanceResponse {
+  currentBalance: number;
+  lifetimeEarned: number;
+  lifetimeUsed: number;
+  lifetimeExpired: number;
+}
+
+export interface PointTransactionHistoryQuery {
+  page?: number;
+  limit?: number;
+  transactionType?: PointTransactionType;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface PointsConfigResponse {
+  pointsEnabled: boolean;
+  pointEarningRate: number;
+  pointMinRedemption: number;
+  pointMaxRedemptionPct: number;
+  pointExpirationEnabled: boolean;
+  pointExpirationMonths: number;
+}
+
+export interface UpdatePointsConfigRequest {
+  pointsEnabled?: boolean;
+  pointEarningRate?: number;
+  pointMinRedemption?: number;
+  pointMaxRedemptionPct?: number;
+  pointExpirationEnabled?: boolean;
+  pointExpirationMonths?: number;
+}
+
+export interface AdjustPointsRequest {
+  type: 'add' | 'subtract';
+  amount: number;
+  reason: string;
+}
+
 // ============================================================================
 // ERROR TYPES
 // ============================================================================
@@ -516,6 +592,7 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'VALIDATION_ERROR'
   | 'INSUFFICIENT_STOCK'
+  | 'INSUFFICIENT_POINTS'
   | 'CART_EXPIRED'
   | 'PRODUCT_SOLD_OUT'
   | 'INVALID_OPTION'

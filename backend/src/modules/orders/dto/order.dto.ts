@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsNumber, Min, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsNumber, IsOptional, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
 
@@ -24,6 +24,20 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   streamId: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  pointsToUse?: number;
+}
+
+export class CreateOrderFromCartDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  pointsToUse?: number;
 }
 
 export class OrderResponseDto {
@@ -36,6 +50,8 @@ export class OrderResponseDto {
   subtotal: number;
   shippingFee: number;
   total: number;
+  pointsEarned: number;
+  pointsUsed: number;
   paymentStatus: PaymentStatus;
   shippingStatus: ShippingStatus;
   createdAt: Date;

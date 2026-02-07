@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { getActiveStreams, type Stream } from '@/lib/api/streaming';
+import { getActiveStreams, type LiveStream as Stream } from '@/lib/api/streaming';
 
 export default function LivePage() {
   const [streams, setStreams] = useState<Stream[]>([]);

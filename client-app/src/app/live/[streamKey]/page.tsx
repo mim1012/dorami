@@ -7,7 +7,9 @@ import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatOverlay from '@/components/chat/ChatOverlay';
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
+import FeaturedProductBar from '@/components/product/FeaturedProductBar';
 import { Body, Heading2 } from '@/components/common/Typography';
+import { ProductStatus } from '@live-commerce/shared-types';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -29,7 +31,8 @@ interface Product {
   timerEnabled: boolean;
   timerDuration: number;
   imageUrl?: string;
-  status: 'AVAILABLE' | 'SOLD_OUT';
+  isNew?: boolean;
+  status: ProductStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -112,8 +115,8 @@ export default function LiveStreamPage() {
     );
   }
 
-  const handleProductClick = (product: Product) => {
-    setSelectedProduct(product);
+  const handleProductClick = (product: any) => {
+    setSelectedProduct(product as Product);
     setIsModalOpen(true);
   };
 

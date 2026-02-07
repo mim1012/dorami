@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Save, Settings as SettingsIcon, DollarSign, Clock, Bell } from 'lucide-react';
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
+import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,6 +180,9 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Reward Points Configuration */}
+        <PointsConfiguration />
 
         {/* Notice Management Section */}
         <NoticeManagement />
