@@ -4,9 +4,14 @@ export interface Product {
   id: string;
   name: string;
   description?: string;
+  category?: string;
   price: number;
-  stockQuantity: number;
+  originalPrice?: number;
+  stockQuantity?: number;
+  stock?: number;
   imageUrl?: string;
+  isNew?: boolean;
+  discountRate?: number;
   status: 'AVAILABLE' | 'SOLD_OUT';
   createdAt: string;
   updatedAt: string;

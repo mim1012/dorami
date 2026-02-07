@@ -110,7 +110,7 @@ export function useNotifications(): UseNotificationsReturn {
           // Create new subscription
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
           });
 
           console.log('[useNotifications] Push subscription created:', subscription);
@@ -156,11 +156,7 @@ export function useNotifications(): UseNotificationsReturn {
       await subscription.unsubscribe();
 
       // Remove subscription from backend
-      await apiClient.delete('/notifications/unsubscribe', {
-        data: {
-          endpoint: subscriptionData.endpoint,
-        },
-      });
+      await apiClient.delete(`/notifications/unsubscribe?endpoint=${encodeURIComponent(subscriptionData.endpoint || '')}`);
 
       setIsSubscribed(false);
       console.log('[useNotifications] Unsubscribed from notifications');

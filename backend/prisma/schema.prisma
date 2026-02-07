@@ -38,6 +38,7 @@ model User {
   moderationLogs           ModerationLog[]
   auditLogs                AuditLog[]                 @relation("AdminAuditLogs")
   notificationSubscriptions NotificationSubscription[]
+  pointBalance             PointBalance?
 
   @@index([email])
   @@index([kakaoId])
@@ -235,6 +236,8 @@ model Order {
   subtotal        Decimal        @db.Decimal(10, 2)
   shippingFee     Decimal        @map("shipping_fee") @db.Decimal(10, 2)
   total           Decimal        @db.Decimal(10, 2)
+  pointsEarned    Int            @default(0) @map("points_earned")
+  pointsUsed      Int            @default(0) @map("points_used")
   paymentMethod   PaymentMethod  @default(BANK_TRANSFER) @map("payment_method")
   paymentStatus   PaymentStatus  @default(PENDING) @map("payment_status")
   shippingStatus  ShippingStatus @default(PENDING) @map("shipping_status")
@@ -319,6 +322,14 @@ model SystemConfig {
   noticeFontSize   Int      @default(14) @map("notice_font_size") // Range: 10-24px
   noticeFontFamily String   @default("Pretendard") @map("notice_font_family")
 
+  // Points Configuration (Epic 13)
+  pointsEnabled          Boolean @default(false) @map("points_enabled")
+  pointEarningRate       Int     @default(5) @map("point_earning_rate") // % of order total
+  pointMinRedemption     Int     @default(1000) @map("point_min_redemption") // minimum points to use
+  pointMaxRedemptionPct  Int     @default(50) @map("point_max_redemption_pct") // max % of order payable with points
+  pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
+  pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -371,6 +382,53 @@ model Notice {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("notices")
+}
+
+// Epic 13: Reward Points System
+enum PointTransactionType {
+  EARNED_ORDER
+  USED_ORDER
+  REFUND_CANCELLED
+  MANUAL_ADD
+  MANUAL_SUBTRACT
+  EXPIRED
+}
+
+model PointBalance {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  currentBalance  Int      @default(0) @map("current_balance")
+  lifetimeEarned  Int      @default(0) @map("lifetime_earned")
+  lifetimeUsed    Int      @default(0) @map("lifetime_used")
+  lifetimeExpired Int      @default(0) @map("lifetime_expired")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  transactions PointTransaction[]
+
+  @@index([userId])
+  @@map("point_balances")
+}
+
+model PointTransaction {
+  id              String               @id @default(uuid())
+  balanceId       String               @map("balance_id")
+  balance         PointBalance         @relation(fields: [balanceId], references: [id])
+  transactionType PointTransactionType @map("transaction_type")
+  amount          Int
+  balanceAfter    Int                  @map("balance_after")
+  orderId         String?              @map("order_id")
+  reason          String?
+  expiresAt       DateTime?            @map("expires_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@index([balanceId, createdAt])
+  @@index([orderId])
+  @@index([expiresAt])
+  @@index([transactionType])
+  @@map("point_transactions")
 }
 
 // Push Notification Subscriptions

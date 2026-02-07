@@ -22,19 +22,21 @@ import {
   UserStatisticsDto,
 } from './dto/admin.dto';
 
+import { UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+
 // Type definitions for admin service
 interface WhereClause {
   OR?: Record<string, { contains: string; mode: string }>[];
   createdAt?: { gte?: Date; lte?: Date };
-  status?: { in: string[] };
+  status?: { in: UserStatus[] };
 }
 
 interface OrderWhereClause {
   OR?: Record<string, { contains: string; mode: string }>[];
   createdAt?: { gte?: Date; lte?: Date };
-  status?: { in: string[] };
-  paymentStatus?: { in: string[] };
-  shippingStatus?: { in: string[] };
+  status?: { in: OrderStatus[] };
+  paymentStatus?: { in: PaymentStatus[] };
+  shippingStatus?: { in: ShippingStatus[] };
   total?: { gte?: number; lte?: number };
 }
 
@@ -45,7 +47,7 @@ interface SystemConfigUpdateData {
 }
 
 interface UserStatusUpdateData {
-  status: string;
+  status: UserStatus;
   suspendedAt?: Date | null;
   suspensionReason?: string | null;
 }
@@ -111,7 +113,7 @@ export class AdminService {
 
     // Status filter
     if (status && status.length > 0) {
-      where.status = { in: status };
+      where.status = { in: status as UserStatus[] };
     }
 
     // Note: Order count and purchase amount filters will be implemented in Epic 8
@@ -213,17 +215,17 @@ export class AdminService {
 
     // Order status filter
     if (orderStatus && orderStatus.length > 0) {
-      where.status = { in: orderStatus };
+      where.status = { in: orderStatus as OrderStatus[] };
     }
 
     // Payment status filter
     if (paymentStatus && paymentStatus.length > 0) {
-      where.paymentStatus = { in: paymentStatus };
+      where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
     }
 
     // Shipping status filter
     if (shippingStatus && shippingStatus.length > 0) {
-      where.shippingStatus = { in: shippingStatus };
+      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
     }
 
     // Amount range filter
@@ -866,7 +868,7 @@ export class AdminService {
     }
 
     const updateData: UserStatusUpdateData = {
-      status: dto.status,
+      status: dto.status as UserStatus,
     };
 
     // If setting to SUSPENDED, set suspendedAt timestamp

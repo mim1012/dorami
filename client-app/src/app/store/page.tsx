@@ -9,6 +9,7 @@ import { Display, Heading2, Body, Caption } from '@/components/common/Typography
 import { Button } from '@/components/common/Button';
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
+import { ProductStatus } from '@live-commerce/shared-types';
 
 interface Product {
   id: string;
@@ -16,7 +17,7 @@ interface Product {
   price: number;
   imageUrl: string;
   stock: number;
-  status: 'AVAILABLE' | 'SOLD_OUT';
+  status: ProductStatus;
   streamKey: string;
   colorOptions: string[];
   sizeOptions: string[];
@@ -24,6 +25,7 @@ interface Product {
   freeShippingMessage?: string;
   timerEnabled: boolean;
   timerDuration: number;
+  isNew?: boolean;
   createdAt: string;
   updatedAt: string;
 }

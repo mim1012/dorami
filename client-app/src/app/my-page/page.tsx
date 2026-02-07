@@ -11,6 +11,7 @@ import {
   ShippingAddressCard,
   AdminDashboardCard,
   OrderHistoryCard,
+  PointsBalanceCard,
   AddressEditModal,
   LoginRequiredModal,
   type AddressFormData,
@@ -160,6 +161,8 @@ export default function MyPagePage() {
             email={profile.email}
             nickname={profile.nickname}
           />
+
+          <PointsBalanceCard />
 
           <ShippingAddressCard
             address={profile.shippingAddress}

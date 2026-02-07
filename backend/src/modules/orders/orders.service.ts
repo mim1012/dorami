@@ -5,14 +5,15 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
-import { CreateOrderDto, OrderResponseDto, OrderItemDto } from './dto/order.dto';
+import { CreateOrderDto, CreateOrderFromCartDto, OrderResponseDto, OrderStatus, PaymentStatus, ShippingStatus } from './dto/order.dto';
 import {
   OrderNotFoundException,
   BusinessException,
 } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.events';
-import { Order, OrderItem } from '@prisma/client';
+import { PointsService } from '../points/points.service';
+import { PointTransactionType, Order, OrderItem } from '@prisma/client';
 
 // Type for Order with items
 interface OrderWithItems extends Order {
@@ -33,7 +34,7 @@ interface OrderTotals {
 }
 
 // Type for bank transfer info
-interface BankTransferInfo {
+export interface BankTransferInfo {
   bankName: string;
   accountNumber: string;
   accountHolder: string;
@@ -50,6 +51,7 @@ export class OrdersService {
     private prisma: PrismaService,
     private redisService: RedisService,
     private inventoryService: InventoryService,
+    private pointsService: PointsService,
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
   ) {
@@ -61,9 +63,26 @@ export class OrdersService {
 
   /**
    * Epic 8 Story 8.1: Create order from active cart items
+   * Epic 13 Story 13.3: Support pointsToUse for point redemption
    */
-  async createOrderFromCart(userId: string): Promise<OrderResponseDto> {
-    return await this.prisma.$transaction(async (tx) => {
+  async createOrderFromCart(userId: string, pointsToUse?: number): Promise<OrderResponseDto> {
+    // Validate point redemption before transaction if needed
+    if (pointsToUse && pointsToUse > 0) {
+      // Pre-validate: we need to calculate totals first, so do a preliminary check
+      const cartItems = await this.prisma.cart.findMany({
+        where: { userId, status: 'ACTIVE' },
+      });
+      const totals = this.calculateOrderTotals(
+        cartItems.map((item) => ({
+          price: item.price,
+          shippingFee: item.shippingFee,
+          quantity: item.quantity,
+        })),
+      );
+      await this.pointsService.validateRedemption(userId, pointsToUse, totals.total);
+    }
+
+    const order = await this.prisma.$transaction(async (tx) => {
       // Fetch user data
       const user = await tx.user.findUnique({
         where: { id: userId },
@@ -112,6 +131,10 @@ export class OrdersService {
         })),
       );
 
+      // Apply point discount
+      const effectivePointsUsed = pointsToUse && pointsToUse > 0 ? pointsToUse : 0;
+      const finalTotal = totals.total - effectivePointsUsed;
+
       // Prepare order items
       const orderItemsData = cartItems.map((item) => ({
         productId: item.productId,
@@ -130,7 +153,7 @@ export class OrdersService {
       const orderId = await this.generateOrderId();
 
       // Create order
-      const order = await tx.order.create({
+      const createdOrder = await tx.order.create({
         data: {
           id: orderId,
           userId,
@@ -144,7 +167,8 @@ export class OrdersService {
           shippingStatus: 'PENDING',
           subtotal: new Decimal(totals.subtotal),
           shippingFee: new Decimal(totals.totalShippingFee),
-          total: new Decimal(totals.total),
+          total: new Decimal(finalTotal),
+          pointsUsed: effectivePointsUsed,
           orderItems: {
             create: orderItemsData,
           },
@@ -165,22 +189,34 @@ export class OrdersService {
         },
       });
 
-      // Emit domain event
-      const event = new OrderCreatedEvent(
-        order.id,
-        order.userId,
-        Number(order.total),
-        order.orderItems.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          priceAtPurchase: Number(item.price),
-        })),
-      );
-
-      this.eventEmitter.emit('order:created', event);
-
-      return this.mapToResponseDto(order);
+      return createdOrder;
     });
+
+    // Deduct points outside the main transaction (separate atomic operation)
+    if (pointsToUse && pointsToUse > 0) {
+      await this.pointsService.deductPoints(
+        userId,
+        pointsToUse,
+        PointTransactionType.USED_ORDER,
+        order.id,
+      );
+    }
+
+    // Emit domain event
+    const event = new OrderCreatedEvent(
+      order.id,
+      order.userId,
+      Number(order.total),
+      order.orderItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceAtPurchase: Number(item.price),
+      })),
+    );
+
+    this.eventEmitter.emit('order:created', event);
+
+    return this.mapToResponseDto(order);
   }
 
   async createOrder(
@@ -491,12 +527,14 @@ export class OrdersService {
       userEmail: order.userEmail,
       depositorName: order.depositorName,
       instagramId: order.instagramId,
-      status: order.status,
+      status: order.status as unknown as OrderStatus,
       subtotal: Number(order.subtotal),
       shippingFee: Number(order.shippingFee),
       total: Number(order.total),
-      paymentStatus: order.paymentStatus,
-      shippingStatus: order.shippingStatus,
+      pointsEarned: order.pointsEarned,
+      pointsUsed: order.pointsUsed,
+      paymentStatus: order.paymentStatus as unknown as PaymentStatus,
+      shippingStatus: order.shippingStatus as unknown as ShippingStatus,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       items: order.orderItems.map((item) => ({

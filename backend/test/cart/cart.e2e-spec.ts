@@ -39,7 +39,7 @@ describe('Cart (e2e)', () => {
       data: {
         kakaoId: 'test-cart-user-' + Date.now(),
         email: `test-cart-${Date.now()}@test.com`,
-        nickname: 'Test Cart User',
+        name: 'Test Cart User',
         role: 'USER',
         status: 'ACTIVE',
       },

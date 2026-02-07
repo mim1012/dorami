@@ -4,8 +4,10 @@ import { OrdersController } from './orders.controller';
 import { InventoryService } from './inventory.service';
 import { ReservationService } from './reservation.service';
 import { OrderEventsListener } from './listeners/order-events.listener';
+import { PointsModule } from '../points/points.module';
 
 @Module({
+  imports: [PointsModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

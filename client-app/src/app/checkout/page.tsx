@@ -4,18 +4,30 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/contexts/CartContext';
 import { useAuth } from '@/lib/hooks/use-auth';
-import { Display, Heading2, Body } from '@/components/common/Typography';
+import { usePointBalance } from '@/lib/hooks/use-points';
+import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Coins } from 'lucide-react';
+
+interface PointsConfig {
+  pointsEnabled: boolean;
+  pointEarningRate: number;
+  pointMinRedemption: number;
+  pointMaxRedemptionPct: number;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
+  const { balance } = usePointBalance();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -23,11 +35,53 @@ export default function CheckoutPage() {
     }
   }, [items, router]);
 
+  // Load points config
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await apiClient.get<PointsConfig>('/admin/config/points');
+        setPointsConfig(response.data);
+      } catch {
+        // Points config unavailable, silently ignore
+      }
+    };
+    loadConfig();
+  }, []);
+
+  const orderTotal = getTotalPrice();
+
+  const maxPointsAllowed = pointsConfig
+    ? Math.floor(orderTotal * (pointsConfig.pointMaxRedemptionPct / 100))
+    : 0;
+
+  const maxUsablePoints = Math.min(
+    balance?.currentBalance || 0,
+    maxPointsAllowed,
+  );
+
+  const canUsePoints =
+    pointsConfig?.pointsEnabled &&
+    balance &&
+    balance.currentBalance >= (pointsConfig?.pointMinRedemption || 0) &&
+    maxUsablePoints > 0;
+
+  const effectivePointsUsed = usePoints ? pointsToUse : 0;
+  const finalTotal = orderTotal - effectivePointsUsed;
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW',
     }).format(price);
+  };
+
+  const handleUseAllPoints = () => {
+    setPointsToUse(maxUsablePoints);
+  };
+
+  const handlePointsInputChange = (value: string) => {
+    const num = parseInt(value) || 0;
+    setPointsToUse(Math.min(Math.max(0, num), maxUsablePoints));
   };
 
   const handleSubmitOrder = async () => {
@@ -40,13 +94,14 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      // Epic 8 Story 8.1: Create order from cart
-      const response = await apiClient.post<{ id: string }>('/orders/from-cart');
+      const body: { pointsToUse?: number } = {};
+      if (usePoints && pointsToUse > 0) {
+        body.pointsToUse = pointsToUse;
+      }
 
-      // Clear cart (cart items marked as COMPLETED on server)
+      const response = await apiClient.post<{ id: string }>('/orders/from-cart', body);
+
       clearCart();
-
-      // Navigate to order confirmation page
       router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
       console.error('Order creation failed:', err);
@@ -105,19 +160,84 @@ export default function CheckoutPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <Body className="text-secondary-text">상품 금액</Body>
-              <Body className="text-primary-text">{formatPrice(getTotalPrice())}</Body>
+              <Body className="text-primary-text">{formatPrice(orderTotal)}</Body>
             </div>
             <div className="flex justify-between items-center">
               <Body className="text-secondary-text">배송비</Body>
               <Body className="text-primary-text">무료</Body>
             </div>
+            {effectivePointsUsed > 0 && (
+              <div className="flex justify-between items-center">
+                <Body className="text-secondary-text">포인트 할인</Body>
+                <Body className="text-green-400">-{formatPrice(effectivePointsUsed)}</Body>
+              </div>
+            )}
             <div className="h-px bg-white/10 my-3" />
             <div className="flex justify-between items-center">
               <Heading2 className="text-primary-text">총 결제 금액</Heading2>
-              <Display className="text-hot-pink">{formatPrice(getTotalPrice())}</Display>
+              <Display className="text-hot-pink">{formatPrice(finalTotal)}</Display>
             </div>
           </div>
         </div>
+
+        {/* Points Usage Section */}
+        {canUsePoints && (
+          <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Coins className="w-5 h-5 text-hot-pink" />
+              <Heading2 className="text-hot-pink">포인트 사용</Heading2>
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <Body className="text-secondary-text">
+                보유 포인트: <span className="text-hot-pink font-bold">{new Intl.NumberFormat('ko-KR').format(balance!.currentBalance)} P</span>
+              </Body>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={usePoints}
+                  onChange={(e) => {
+                    setUsePoints(e.target.checked);
+                    if (!e.target.checked) setPointsToUse(0);
+                  }}
+                  className="w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink"
+                />
+                <Body className="text-primary-text text-sm">포인트 사용</Body>
+              </label>
+            </div>
+
+            {usePoints && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      value={pointsToUse || ''}
+                      onChange={(e) => handlePointsInputChange(e.target.value)}
+                      placeholder="사용할 포인트 입력"
+                      min={0}
+                      max={maxUsablePoints}
+                      className="w-full px-4 py-3 bg-[#121212] border border-white/10 rounded-xl text-primary-text placeholder:text-secondary-text focus:border-hot-pink focus:outline-none"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-text text-sm">
+                      P
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUseAllPoints}
+                  >
+                    전액 사용
+                  </Button>
+                </div>
+                <Caption className="text-secondary-text">
+                  최소 {new Intl.NumberFormat('ko-KR').format(pointsConfig!.pointMinRedemption)}P 이상 사용 가능 / 최대 주문금액의 {pointsConfig!.pointMaxRedemptionPct}% ({new Intl.NumberFormat('ko-KR').format(maxUsablePoints)}P)
+                </Caption>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Payment Method */}
         <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
@@ -170,7 +290,7 @@ export default function CheckoutPage() {
             onClick={handleSubmitOrder}
             disabled={isSubmitting}
           >
-            {isSubmitting ? '주문 처리 중...' : `${formatPrice(getTotalPrice())} 주문하기`}
+            {isSubmitting ? '주문 처리 중...' : `${formatPrice(finalTotal)} 주문하기`}
           </Button>
           <Button
             variant="outline"

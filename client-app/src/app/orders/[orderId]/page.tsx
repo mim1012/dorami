@@ -63,10 +63,10 @@ export default function OrderConfirmationPage() {
     ];
 
     const statusOrder: OrderStatus[] = [
-      'PENDING_PAYMENT',
-      'PAYMENT_CONFIRMED',
-      'SHIPPED',
-      'DELIVERED',
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.PAYMENT_CONFIRMED,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
     ];
 
     const currentIndex = statusOrder.indexOf(order!.status);

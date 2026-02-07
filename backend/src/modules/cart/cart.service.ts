@@ -20,7 +20,7 @@ import { Prisma, Cart } from '@prisma/client';
 // Type for Prisma transaction client
 type PrismaTransactionClient = Omit<
   PrismaService,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends' | 'onModuleInit' | 'onModuleDestroy' | 'isHealthy'
 >;
 
 // Type for Cart model from Prisma
