@@ -58,7 +58,7 @@ export function LiveCountdownBanner({
     return (
       <div
         onClick={onLiveClick}
-        className="relative w-full aspect-video bg-primary-black rounded-[12px] overflow-hidden cursor-pointer group"
+        className="relative w-full aspect-video bg-gray-900 rounded-[12px] overflow-hidden cursor-pointer group"
       >
         {/* 라이브 비디오 영역 (실제로는 비디오가 여기 들어감) */}
         <div className="absolute inset-0 bg-gradient-to-br from-hot-pink/30 to-purple-600/30" />
