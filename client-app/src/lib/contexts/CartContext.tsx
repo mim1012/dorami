@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/api/client';
+import { useToast } from '@/components/common/Toast';
 
 export interface CartItem {
   productId: string;
@@ -32,6 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const { showToast } = useToast();
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -78,7 +80,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (remaining <= 0) {
         // Timer expired - clear cart
         clearCart();
-        alert('장바구니 타이머가 만료되었습니다. 장바구니가 비워졌습니다.');
+        showToast('장바구니 타이머가 만료되었습니다. 장바구니가 비워졌습니다.', 'info');
       } else {
         setTimeRemaining(remaining);
       }

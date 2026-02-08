@@ -111,9 +111,9 @@ export default function NotificationSettingsPage() {
         )}
 
         {successMessage && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
-            <Save className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <Body className="text-green-800 flex-1">{successMessage}</Body>
+          <div className="bg-success-bg border border-success/20 rounded-2xl p-4 mb-6 flex items-start gap-3">
+            <Save className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+            <Body className="text-success flex-1">{successMessage}</Body>
           </div>
         )}
 
@@ -155,15 +155,15 @@ export default function NotificationSettingsPage() {
                   />
                 </div>
 
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <Body className="text-blue-900 text-sm font-semibold mb-2">
+                <div className="bg-info-bg rounded-lg p-3">
+                  <Body className="text-primary-text text-sm font-semibold mb-2">
                     Available Variables:
                   </Body>
                   <div className="flex flex-wrap gap-2">
                     {variables.map((variable) => (
                       <code
                         key={variable}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-mono"
+                        className="px-2 py-1 bg-info/10 text-info rounded text-xs font-mono"
                       >
                         {variable}
                       </code>

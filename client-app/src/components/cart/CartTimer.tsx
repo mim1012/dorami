@@ -60,7 +60,7 @@ export default function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
   return (
     <div
       className={`flex items-center gap-2 ${
-        isLowTime ? 'text-orange-500' : 'text-hot-pink'
+        isLowTime ? 'text-warning' : 'text-hot-pink'
       }`}
     >
       <Clock className="w-4 h-4" />

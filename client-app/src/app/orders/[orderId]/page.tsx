@@ -84,7 +84,7 @@ export default function OrderConfirmationPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-info"></div>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function OrderConfirmationPage() {
             <p className="text-gray-600 mb-6">{error || 'Unable to load order details'}</p>
             <button
               onClick={() => router.push('/orders')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-6 py-2 bg-info text-white rounded-lg hover:bg-info/80"
             >
               View All Orders
             </button>
@@ -114,12 +114,12 @@ export default function OrderConfirmationPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Success Message */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+        <div className="bg-success-bg border border-success/20 rounded-lg p-6 mb-6">
           <div className="flex items-center">
-            <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+            <CheckCircle className="w-8 h-8 text-success mr-3" />
             <div>
-              <h1 className="text-2xl font-bold text-green-900">Order Placed Successfully!</h1>
-              <p className="text-green-700 mt-1">
+              <h1 className="text-2xl font-bold text-primary-text">Order Placed Successfully!</h1>
+              <p className="text-success mt-1">
                 Order ID: {order.id} • {new Date(order.createdAt).toLocaleString('ko-KR')}
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function OrderConfirmationPage() {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
                       step.completed
-                        ? 'bg-green-600 border-green-600'
+                        ? 'bg-success border-success'
                         : step.current
                         ? 'bg-pink-500 border-pink-500 animate-pulse'
                         : 'bg-white border-gray-300'
@@ -186,7 +186,7 @@ export default function OrderConfirmationPage() {
                     className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
                   >
                     {copied ? (
-                      <Check className="w-4 h-4 text-green-600" />
+                      <Check className="w-4 h-4 text-success" />
                     ) : (
                       <Copy className="w-4 h-4 text-gray-600" />
                     )}
@@ -212,14 +212,14 @@ export default function OrderConfirmationPage() {
                 </span>
               </div>
             </div>
-            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-900">
+            <div className="mt-4 bg-warning-bg border border-warning/20 rounded-lg p-3">
+              <p className="text-sm text-primary-text">
                 ⚠️ <strong>Important:</strong> Please use your registered depositor name (
                 {order.bankTransferInfo.depositorName}) for transfer verification.
               </p>
             </div>
             {copied && (
-              <div className="mt-3 text-center text-sm text-green-600 font-medium">
+              <div className="mt-3 text-center text-sm text-success font-medium">
                 ✓ Account number copied to clipboard!
               </div>
             )}
@@ -273,7 +273,7 @@ export default function OrderConfirmationPage() {
           </button>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+            className="px-6 py-3 bg-info text-white rounded-lg hover:bg-info/80 font-medium transition-colors"
           >
             Continue Shopping
           </button>

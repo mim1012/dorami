@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
 import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentModal';
 import { usePointBalance } from '@/lib/hooks/use-points';
+import { useToast } from '@/components/common/Toast';
 
 interface ShippingAddress {
   fullName: string;
@@ -44,6 +45,7 @@ export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
+  const { showToast } = useToast();
 
   const [user, setUser] = useState<UserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,8 +93,7 @@ export default function AdminUserDetailPage() {
       setShowConfirmModal(false);
       await fetchUserDetail();
 
-      // Show success message (you can add a toast here)
-      alert(`User status updated to ${selectedStatus}`);
+      showToast('사용자 상태가 변경되었습니다.', 'success');
     } catch (err: any) {
       console.error('Failed to update user status:', err);
       setError(err.response?.data?.message || 'Failed to update user status');
@@ -323,13 +324,13 @@ export default function AdminUserDetailPage() {
                 <Caption className="text-secondary-text">Current Balance</Caption>
               </div>
               <div className="text-center">
-                <Display className="text-green-600">
+                <Display className="text-success">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeEarned)}
                 </Display>
                 <Caption className="text-secondary-text">Lifetime Earned</Caption>
               </div>
               <div className="text-center">
-                <Display className="text-blue-600">
+                <Display className="text-info">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeUsed)}
                 </Display>
                 <Caption className="text-secondary-text">Lifetime Used</Caption>

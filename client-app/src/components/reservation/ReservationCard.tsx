@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Reservation } from '@/lib/types/reservation';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface ReservationCardProps {
   reservation: Reservation;
@@ -9,6 +10,7 @@ interface ReservationCardProps {
 }
 
 export function ReservationCard({ reservation, onCancel }: ReservationCardProps) {
+  const confirm = useConfirm();
   const [remainingSeconds, setRemainingSeconds] = useState(
     reservation.remainingSeconds || 0
   );
@@ -34,7 +36,13 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
   }, [reservation.expiresAt, reservation.status]);
 
   const handleCancel = async () => {
-    if (!confirm('예약을 취소하시겠습니까?')) {
+    const confirmed = await confirm({
+      title: '예약 취소',
+      message: '예약을 취소하시겠습니까?',
+      confirmText: '취소',
+      variant: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -49,13 +57,13 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
     switch (reservation.status) {
       case 'WAITING':
         return (
-          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-info/10 text-info rounded-full text-sm font-medium">
             대기 중
           </span>
         );
       case 'PROMOTED':
         return (
-          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-success/10 text-success rounded-full text-sm font-medium">
             구매 가능
           </span>
         );
@@ -67,7 +75,7 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
         );
       case 'CANCELLED':
         return (
-          <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-error/10 text-error rounded-full text-sm font-medium">
             취소됨
           </span>
         );
@@ -100,39 +108,39 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
       </div>
 
       {reservation.status === 'WAITING' && reservation.queuePosition && (
-        <div className="bg-blue-50 rounded-lg p-4 mb-4">
-          <p className="text-sm text-blue-900 font-medium">
+        <div className="bg-info-bg rounded-lg p-4 mb-4">
+          <p className="text-sm text-primary-text font-medium">
             대기 순번: {reservation.queuePosition}번째
           </p>
-          <p className="text-xs text-blue-700 mt-1">
+          <p className="text-xs text-info mt-1">
             재고가 확보되면 순서대로 구매 기회가 제공됩니다.
           </p>
         </div>
       )}
 
       {reservation.status === 'PROMOTED' && remainingSeconds > 0 && (
-        <div className="bg-green-50 rounded-lg p-4 mb-4">
-          <p className="text-sm text-green-900 font-medium mb-2">
+        <div className="bg-success-bg rounded-lg p-4 mb-4">
+          <p className="text-sm text-primary-text font-medium mb-2">
             🎉 구매 가능 시간이 시작되었습니다!
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-green-700">남은 시간:</span>
-            <span className="text-2xl font-bold text-green-900">
+            <span className="text-xs text-success">남은 시간:</span>
+            <span className="text-2xl font-bold text-primary-text">
               {formatTime(remainingSeconds)}
             </span>
           </div>
-          <p className="text-xs text-green-700 mt-2">
+          <p className="text-xs text-success mt-2">
             시간 내에 장바구니에 담아주세요.
           </p>
         </div>
       )}
 
       {reservation.status === 'PROMOTED' && remainingSeconds === 0 && (
-        <div className="bg-red-50 rounded-lg p-4 mb-4">
-          <p className="text-sm text-red-900 font-medium">
+        <div className="bg-error-bg rounded-lg p-4 mb-4">
+          <p className="text-sm text-primary-text font-medium">
             구매 시간이 만료되었습니다.
           </p>
-          <p className="text-xs text-red-700 mt-1">
+          <p className="text-xs text-error mt-1">
             다음 대기자에게 순서가 넘어갔습니다.
           </p>
         </div>
@@ -143,7 +151,7 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
           <button
             onClick={handleCancel}
             disabled={isCancelling}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-error text-white rounded-lg hover:bg-error/80 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
           >
             {isCancelling ? '취소 중...' : '예약 취소'}
           </button>

@@ -86,9 +86,9 @@ export default function OrdersPage() {
   const getPaymentStatusInfo = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { text: '입금 대기', color: 'text-yellow-500', icon: Clock, bgColor: 'bg-yellow-500/20' };
+        return { text: '입금 대기', color: 'text-warning', icon: Clock, bgColor: 'bg-warning/20' };
       case 'CONFIRMED':
-        return { text: '결제 확인', color: 'text-green-600', icon: CheckCircle, bgColor: 'bg-green-100' };
+        return { text: '결제 확인', color: 'text-success', icon: CheckCircle, bgColor: 'bg-success/10' };
       case 'FAILED':
         return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
       default:
@@ -101,9 +101,9 @@ export default function OrdersPage() {
       case 'PENDING':
         return { text: '배송 대기', color: 'text-gray-500' };
       case 'SHIPPED':
-        return { text: '배송 중', color: 'text-blue-600' };
+        return { text: '배송 중', color: 'text-info' };
       case 'DELIVERED':
-        return { text: '배송 완료', color: 'text-green-600' };
+        return { text: '배송 완료', color: 'text-success' };
       default:
         return { text: '대기 중', color: 'text-secondary-text' };
     }
@@ -112,15 +112,15 @@ export default function OrdersPage() {
   const getOrderStatusInfo = (status: string) => {
     switch (status) {
       case 'PENDING_PAYMENT':
-        return { text: '입금 대기 중', color: 'text-yellow-600', icon: Clock };
+        return { text: '입금 대기 중', color: 'text-warning', icon: Clock };
       case 'PAYMENT_CONFIRMED':
-        return { text: '결제 완료', color: 'text-green-600', icon: CheckCircle };
+        return { text: '결제 완료', color: 'text-success', icon: CheckCircle };
       case 'SHIPPED':
-        return { text: '배송 중', color: 'text-blue-600', icon: Truck };
+        return { text: '배송 중', color: 'text-info', icon: Truck };
       case 'DELIVERED':
-        return { text: '배송 완료', color: 'text-green-700', icon: CheckCircle };
+        return { text: '배송 완료', color: 'text-success', icon: CheckCircle };
       case 'CANCELLED':
-        return { text: '취소됨', color: 'text-red-600', icon: XCircle };
+        return { text: '취소됨', color: 'text-error', icon: XCircle };
       default:
         return { text: status, color: 'text-gray-500', icon: Package };
     }

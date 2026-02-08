@@ -171,12 +171,12 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
                 <p className="text-body text-hot-pink font-bold">
                   ₩{product.price.toLocaleString()}
                 </p>
-                <p className={`text-small ${product.stock < 5 ? 'text-orange-500' : 'text-secondary-text'}`}>
+                <p className={`text-small ${product.stock < 5 ? 'text-warning' : 'text-secondary-text'}`}>
                   재고 {product.stock}
                 </p>
               </div>
               {product.freeShippingMessage && (
-                <p className="text-small text-green-500 mt-1">
+                <p className="text-small text-success mt-1">
                   {product.freeShippingMessage}
                 </p>
               )}

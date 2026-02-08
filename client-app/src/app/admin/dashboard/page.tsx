@@ -33,15 +33,15 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial fetch
+    // 초기 데이터 조회
     fetchDashboardStats();
 
-    // Auto-refresh every 30 seconds
+    // 30초마다 자동 새로고침
     const refreshInterval = setInterval(() => {
       fetchDashboardStats();
     }, 30000);
 
-    // Cleanup interval on unmount
+    // 컴포넌트 언마운트 시 인터벌 정리
     return () => clearInterval(refreshInterval);
   }, []);
 
@@ -54,7 +54,7 @@ export default function AdminDashboardPage() {
       setStats(response.data);
     } catch (err: any) {
       console.error('Failed to fetch dashboard stats:', err);
-      setError(err.response?.data?.message || 'Failed to load dashboard statistics');
+      setError(err.response?.data?.message || '대시보드 통계를 불러오지 못했습니다');
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Body className="text-secondary-text">Loading dashboard...</Body>
+        <Body className="text-secondary-text">대시보드 로딩 중...</Body>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function AdminDashboardPage() {
       <div className="min-h-screen bg-white py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-error/10 border border-error rounded-button p-4">
-            <Caption className="text-error">{error || 'No data available'}</Caption>
+            <Caption className="text-error">{error || '데이터가 없습니다'}</Caption>
           </div>
         </div>
       </div>
@@ -83,23 +83,23 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* 헤더 */}
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">Dashboard Overview</Display>
+          <Display className="text-hot-pink mb-2">대시보드 현황</Display>
           <Body className="text-secondary-text">
-            Monitor your business performance at a glance (Last 7 days)
+            최근 7일간의 비즈니스 성과를 한눈에 확인하세요
           </Body>
         </div>
 
-        {/* Main Stats Grid */}
+        {/* 주요 통계 그리드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Total Revenue */}
+          {/* 총 매출 */}
           <div className="bg-content-bg rounded-button p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-hot-pink/10 rounded-button">
                 <DollarSign className="w-6 h-6 text-hot-pink" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.revenue.trendUp ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`flex items-center gap-1 ${stats.revenue.trendUp ? 'text-success' : 'text-error'}`}>
                 {stats.revenue.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -108,18 +108,18 @@ export default function AdminDashboardPage() {
                 <Caption className="font-medium">{stats.revenue.trend}</Caption>
               </div>
             </div>
-            <Caption className="text-secondary-text mb-1">Total Revenue</Caption>
+            <Caption className="text-secondary-text mb-1">총 매출</Caption>
             <Heading2 className="text-hot-pink mb-1">{stats.revenue.formatted}</Heading2>
-            <Caption className="text-secondary-text">Last 7 days</Caption>
+            <Caption className="text-secondary-text">최근 7일</Caption>
           </div>
 
-          {/* Total Orders */}
+          {/* 총 주문 */}
           <div className="bg-content-bg rounded-button p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-blue-500/10 rounded-button">
-                <ShoppingCart className="w-6 h-6 text-blue-500" />
+              <div className="p-3 bg-info/10 rounded-button">
+                <ShoppingCart className="w-6 h-6 text-info" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.orders.trendUp ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`flex items-center gap-1 ${stats.orders.trendUp ? 'text-success' : 'text-error'}`}>
                 {stats.orders.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -128,42 +128,42 @@ export default function AdminDashboardPage() {
                 <Caption className="font-medium">{stats.orders.trend}</Caption>
               </div>
             </div>
-            <Caption className="text-secondary-text mb-1">Total Orders</Caption>
+            <Caption className="text-secondary-text mb-1">총 주문</Caption>
             <Heading2 className="text-primary-text mb-1">{stats.orders.formatted}</Heading2>
-            <Caption className="text-secondary-text">vs Previous 7 days</Caption>
+            <Caption className="text-secondary-text">이전 7일 대비</Caption>
           </div>
 
-          {/* Pending Payments */}
+          {/* 결제 대기 */}
           <div className="bg-content-bg rounded-button p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-orange-500/10 rounded-button">
-                <Clock className="w-6 h-6 text-orange-500" />
+              <div className="p-3 bg-warning/10 rounded-button">
+                <Clock className="w-6 h-6 text-warning" />
               </div>
             </div>
-            <Caption className="text-secondary-text mb-1">Pending Payments</Caption>
-            <Heading2 className="text-orange-500 mb-1">{stats.pendingPayments.formatted}</Heading2>
-            <Caption className="text-secondary-text">Orders awaiting payment</Caption>
+            <Caption className="text-secondary-text mb-1">결제 대기</Caption>
+            <Heading2 className="text-warning mb-1">{stats.pendingPayments.formatted}</Heading2>
+            <Caption className="text-secondary-text">결제 대기 중인 주문</Caption>
           </div>
 
-          {/* Active Live Streams */}
+          {/* 진행 중인 라이브 */}
           <div className="bg-content-bg rounded-button p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-green-500/10 rounded-button">
-                <Radio className="w-6 h-6 text-green-500" />
+              <div className="p-3 bg-success/10 rounded-button">
+                <Radio className="w-6 h-6 text-success" />
               </div>
             </div>
-            <Caption className="text-secondary-text mb-1">Active Live Streams</Caption>
-            <Heading2 className="text-green-500 mb-1">{stats.activeLiveStreams.formatted}</Heading2>
-            <Caption className="text-secondary-text">Currently broadcasting</Caption>
+            <Caption className="text-secondary-text mb-1">진행 중인 라이브</Caption>
+            <Heading2 className="text-success mb-1">{stats.activeLiveStreams.formatted}</Heading2>
+            <Caption className="text-secondary-text">현재 방송 중</Caption>
           </div>
 
-          {/* Chat Messages */}
+          {/* 채팅 메시지 */}
           <div className="bg-content-bg rounded-button p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-purple-500/10 rounded-button">
                 <Package className="w-6 h-6 text-purple-500" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.messages.trendUp ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`flex items-center gap-1 ${stats.messages.trendUp ? 'text-success' : 'text-error'}`}>
                 {stats.messages.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -172,16 +172,16 @@ export default function AdminDashboardPage() {
                 <Caption className="font-medium">{stats.messages.trend}</Caption>
               </div>
             </div>
-            <Caption className="text-secondary-text mb-1">Chat Messages</Caption>
+            <Caption className="text-secondary-text mb-1">채팅 메시지</Caption>
             <Heading2 className="text-primary-text mb-1">{stats.messages.formatted}</Heading2>
-            <Caption className="text-secondary-text">Last 7 days</Caption>
+            <Caption className="text-secondary-text">최근 7일</Caption>
           </div>
         </div>
 
-        {/* Top Selling Products */}
+        {/* 판매 상위 상품 */}
         {stats.topProducts.length > 0 && (
           <div className="bg-content-bg rounded-button p-6">
-            <Heading2 className="text-hot-pink mb-4">Top 5 Selling Products</Heading2>
+            <Heading2 className="text-hot-pink mb-4">판매 상위 5개 상품</Heading2>
             <div className="space-y-3">
               {stats.topProducts.map((product, index) => (
                 <div
@@ -199,7 +199,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="text-right">
                     <Body className="text-hot-pink font-bold">{product.totalSold}</Body>
-                    <Caption className="text-secondary-text">sold</Caption>
+                    <Caption className="text-secondary-text">판매</Caption>
                   </div>
                 </div>
               ))}
@@ -210,9 +210,9 @@ export default function AdminDashboardPage() {
         {stats.topProducts.length === 0 && (
           <div className="bg-content-bg rounded-button p-12 text-center">
             <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg></div>
-            <Heading2 className="text-secondary-text mb-2">No Sales Data Yet</Heading2>
+            <Heading2 className="text-secondary-text mb-2">판매 데이터 없음</Heading2>
             <Body className="text-secondary-text">
-              Top selling products will appear here once you have confirmed orders
+              확정된 주문이 생기면 인기 판매 상품이 여기에 표시됩니다
             </Body>
           </div>
         )}

@@ -10,6 +10,8 @@ import { Pagination } from '@/components/common/Pagination';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
+import { useToast } from '@/components/common/Toast';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface OrderListItem {
   id: string;
@@ -42,6 +44,8 @@ function AdminOrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const { showToast } = useToast();
+  const confirm = useConfirm();
 
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -228,7 +232,7 @@ function AdminOrdersContent() {
         setTotalPages(1);
       } catch (err: any) {
         console.error('Failed to fetch orders:', err);
-        setError(err.response?.data?.message || 'Failed to load orders');
+        setError(err.response?.data?.message || '주문 목록을 불러오는데 실패했습니다');
       } finally {
         setIsLoading(false);
       }
@@ -299,21 +303,19 @@ function AdminOrdersContent() {
   };
 
   const handleConfirmPayment = async (order: OrderListItem) => {
-    const confirmed = window.confirm(
-      `입금 확인\n\n` +
-      `주문번호: ${order.id}\n` +
-      `고객: @${order.instagramId}\n` +
-      `입금자명: ${order.depositorName}\n` +
-      `금액: ${formatCurrency(order.total)}\n\n` +
-      `은행 계좌로 위 금액의 입금을 확인하셨습니까?`
-    );
+    const confirmed = await confirm({
+      title: '입금 확인',
+      message: `주문번호: ${order.id}\n고객: @${order.instagramId}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n은행 계좌로 위 금액의 입금을 확인하셨습니까?`,
+      confirmText: '확인',
+      variant: 'info',
+    });
 
     if (!confirmed) return;
 
     setConfirmingOrderId(order.id);
     try {
       await apiClient.patch(`/admin/orders/${order.id}/confirm-payment`);
-      alert(`주문 ${order.id} 입금이 확인되었습니다`);
+      showToast(`주문 ${order.id} 입금이 확인되었습니다`, 'success');
 
       // Refetch orders to update the list
       const params: any = {
@@ -337,32 +339,30 @@ function AdminOrdersContent() {
     } catch (err: any) {
       console.error('Failed to confirm payment:', err);
       const errorMessage = err.message || '입금 확인 중 오류가 발생했습니다. 다시 시도해주세요';
-      alert(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setConfirmingOrderId(null);
     }
   };
 
   const handleSendReminder = async (order: OrderListItem) => {
-    const confirmed = window.confirm(
-      `결제 알림 전송\n\n` +
-      `주문번호: ${order.id}\n` +
-      `고객: @${order.instagramId}\n` +
-      `입금자명: ${order.depositorName}\n` +
-      `금액: ${formatCurrency(order.total)}\n\n` +
-      `고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`
-    );
+    const confirmed = await confirm({
+      title: '알림 전송',
+      message: `주문번호: ${order.id}\n고객: @${order.instagramId}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`,
+      confirmText: '전송',
+      variant: 'warning',
+    });
 
     if (!confirmed) return;
 
     setSendingReminderId(order.id);
     try {
       await apiClient.patch(`/admin/orders/${order.id}/send-reminder`);
-      alert(`주문 ${order.id} 결제 알림이 전송되었습니다`);
+      showToast(`주문 ${order.id} 결제 알림이 전송되었습니다`, 'success');
     } catch (err: any) {
       console.error('Failed to send reminder:', err);
       const errorMessage = err.message || '알림 전송 중 오류가 발생했습니다. 다시 시도해주세요';
-      alert(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setSendingReminderId(null);
     }
@@ -371,7 +371,7 @@ function AdminOrdersContent() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -381,9 +381,9 @@ function AdminOrdersContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
     }).format(amount);
   };
 
@@ -416,7 +416,7 @@ function AdminOrdersContent() {
   const columns: Column<OrderListItem>[] = [
     {
       key: 'id',
-      label: 'Order ID',
+      label: '주문번호',
       sortable: true,
       render: (order) => (
         <span className="font-mono text-caption">{order.id}</span>
@@ -424,7 +424,7 @@ function AdminOrdersContent() {
     },
     {
       key: 'userEmail',
-      label: 'Customer',
+      label: '고객',
       sortable: false,
       render: (order) => (
         <div className="flex flex-col">
@@ -435,52 +435,52 @@ function AdminOrdersContent() {
     },
     {
       key: 'depositorName',
-      label: 'Depositor',
+      label: '입금자명',
       sortable: false,
     },
     {
       key: 'status',
-      label: 'Order Status',
+      label: '주문 상태',
       render: (order) => getStatusBadge(order.status, 'order'),
     },
     {
       key: 'paymentStatus',
-      label: 'Payment',
+      label: '결제',
       render: (order) => getStatusBadge(order.paymentStatus, 'payment'),
     },
     {
       key: 'shippingStatus',
-      label: 'Shipping',
+      label: '배송',
       render: (order) => getStatusBadge(order.shippingStatus, 'shipping'),
     },
     {
       key: 'total',
-      label: 'Total',
+      label: '합계',
       sortable: true,
       render: (order) => (
         <div className="flex flex-col">
           <span className="font-medium">{formatCurrency(order.total)}</span>
           <span className="text-caption text-secondary-text">
-            {order.itemCount} item{order.itemCount > 1 ? 's' : ''}
+            {order.itemCount}개
           </span>
         </div>
       ),
     },
     {
       key: 'createdAt',
-      label: 'Created',
+      label: '주문일',
       sortable: true,
       render: (order) => formatDate(order.createdAt),
     },
     {
       key: 'paidAt',
-      label: 'Paid',
+      label: '결제일',
       sortable: true,
       render: (order) => formatDate(order.paidAt),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: '작업',
       render: (order) => (
         <div className="flex gap-2 items-center justify-end">
           {order.paymentStatus === 'PENDING' && (
@@ -490,7 +490,7 @@ function AdminOrdersContent() {
                 size="sm"
                 onClick={() => handleSendReminder(order)}
                 disabled={sendingReminderId === order.id}
-                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                className="text-info border-info hover:bg-info/10"
               >
                 {sendingReminderId === order.id ? '전송중...' : '알림전송'}
               </Button>
@@ -499,14 +499,14 @@ function AdminOrdersContent() {
                 size="sm"
                 onClick={() => handleConfirmPayment(order)}
                 disabled={confirmingOrderId === order.id}
-                className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+                className="bg-success hover:bg-success/80 text-white border-success"
               >
                 {confirmingOrderId === order.id ? '처리중...' : '입금확인'}
               </Button>
             </>
           )}
           {order.paymentStatus === 'CONFIRMED' && (
-            <span className="text-green-600 font-medium text-caption">✓ 확인완료</span>
+            <span className="text-success font-medium text-caption">✓ 확인완료</span>
           )}
         </div>
       ),
@@ -534,8 +534,8 @@ function AdminOrdersContent() {
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">Order Management</Display>
-          <Body className="text-secondary-text">View and manage all customer orders</Body>
+          <Display className="text-hot-pink mb-2">주문 관리</Display>
+          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
 
         {error && (
@@ -549,7 +549,7 @@ function AdminOrdersContent() {
           {/* Search Input */}
           <div className="flex gap-4">
             <Input
-              placeholder="Search by Order ID, email, depositor name, or Instagram ID..."
+              placeholder="주문번호, 이메일, 입금자명, 인스타그램 ID로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               fullWidth
@@ -559,11 +559,11 @@ function AdminOrdersContent() {
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="whitespace-nowrap"
             >
-              {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
+              {isFilterOpen ? '필터 숨기기' : '필터 보기'}
             </Button>
             {hasActiveFilters && (
               <Button variant="ghost" onClick={handleClearFilters}>
-                Clear All
+                전체 초기화
               </Button>
             )}
           </div>
@@ -571,12 +571,12 @@ function AdminOrdersContent() {
           {/* Filter Panel */}
           {isFilterOpen && (
             <div className="pt-4 border-t border-gray-200 space-y-4">
-              <Heading2 className="text-hot-pink text-body">Filters</Heading2>
+              <Heading2 className="text-hot-pink text-body">필터</Heading2>
 
               {/* Date Range */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Order Date From"
+                  label="주문일 시작"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => {
@@ -586,7 +586,7 @@ function AdminOrdersContent() {
                   fullWidth
                 />
                 <Input
-                  label="Order Date To"
+                  label="주문일 종료"
                   type="date"
                   value={dateTo}
                   onChange={(e) => {
@@ -599,7 +599,7 @@ function AdminOrdersContent() {
 
               {/* Order Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Order Status</Body>
+                <Body className="text-primary-text font-medium mb-2">주문 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'].map((status) => (
                     <button
@@ -619,7 +619,7 @@ function AdminOrdersContent() {
 
               {/* Payment Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Payment Status</Body>
+                <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING', 'CONFIRMED', 'FAILED'].map((status) => (
                     <button
@@ -639,7 +639,7 @@ function AdminOrdersContent() {
 
               {/* Shipping Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Shipping Status</Body>
+                <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
                 <div className="flex gap-2 flex-wrap">
                   {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].map((status) => (
                     <button
@@ -662,7 +662,7 @@ function AdminOrdersContent() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Body className="text-secondary-text">Loading orders...</Body>
+            <Body className="text-secondary-text">주문 목록 불러오는 중...</Body>
           </div>
         ) : (
           <>
@@ -672,9 +672,9 @@ function AdminOrdersContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
-              emptyMessage="No orders found matching your filters"
+              emptyMessage="필터 조건에 맞는 주문이 없습니다"
               getRowClassName={(order) =>
-                order.paymentStatus === 'PENDING' ? 'border-l-4 border-yellow-500 bg-yellow-50/5' : ''
+                order.paymentStatus === 'PENDING' ? 'border-l-4 border-warning bg-warning/5' : ''
               }
             />
 
@@ -698,7 +698,7 @@ export default function AdminOrdersPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Body>Loading...</Body>
+          <Body>불러오는 중...</Body>
         </div>
       }
     >

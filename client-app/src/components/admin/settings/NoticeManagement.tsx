@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { Megaphone, Inbox } from 'lucide-react';
+import { useToast } from '@/components/common/Toast';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface NoticeConfig {
   text: string | null;
@@ -32,6 +35,8 @@ const FONT_FAMILIES = [
  */
 export function NoticeManagement() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const confirm = useConfirm();
 
   // Form state
   const [formData, setFormData] = useState<NoticeConfig>({
@@ -70,11 +75,11 @@ export function NoticeManagement() {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['admin', 'config'] });
       queryClient.invalidateQueries({ queryKey: ['notice', 'current'] });
-      alert('공지가 성공적으로 저장되었습니다! 🎉');
+      showToast('공지가 성공적으로 저장되었습니다!', 'success');
     },
     onError: (error: any) => {
       console.error('Failed to save notice:', error);
-      alert('공지 저장에 실패했습니다. 다시 시도해주세요.');
+      showToast('공지 저장에 실패했습니다. 다시 시도해주세요.', 'error');
     },
   });
 
@@ -92,11 +97,11 @@ export function NoticeManagement() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'config'] });
       queryClient.invalidateQueries({ queryKey: ['notice', 'current'] });
       setFormData({ text: '', fontSize: 14, fontFamily: 'Pretendard' });
-      alert('공지가 초기화되었습니다.');
+      showToast('공지가 초기화되었습니다.', 'success');
     },
     onError: (error: any) => {
       console.error('Failed to reset notice:', error);
-      alert('공지 초기화에 실패했습니다.');
+      showToast('공지 초기화에 실패했습니다.', 'error');
     },
   });
 
@@ -109,8 +114,15 @@ export function NoticeManagement() {
     saveMutation.mutate(dto);
   };
 
-  const handleReset = () => {
-    if (confirm('공지를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+  const handleReset = async () => {
+    const confirmed = await confirm({
+      title: '공지 초기화',
+      message: '공지를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      confirmText: '초기화',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (confirmed) {
       resetMutation.mutate();
     }
   };
@@ -232,7 +244,7 @@ export function NoticeManagement() {
             {/* Header */}
             <div className="mb-4 flex-shrink-0">
               <h3 className="text-lg font-semibold text-hot-pink flex items-center gap-2">
-                📢 공지
+                <Megaphone className="w-5 h-5" aria-hidden="true" /> 공지
               </h3>
             </div>
 
@@ -250,7 +262,7 @@ export function NoticeManagement() {
                 </p>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <div className="text-5xl mb-3 opacity-50">📭</div>
+                  <Inbox className="w-12 h-12 text-secondary-text/50 mb-3" aria-hidden="true" />
                   <p className="text-secondary-text text-sm">현재 공지가 없습니다</p>
                 </div>
               )}

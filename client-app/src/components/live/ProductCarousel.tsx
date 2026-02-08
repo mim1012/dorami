@@ -37,7 +37,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
       return { text: '품절', color: 'text-error', bgColor: 'bg-error/20' };
     }
     if (product.stock < 5) {
-      return { text: `재고 ${product.stock}개`, color: 'text-yellow-500', bgColor: 'bg-yellow-500/20' };
+      return { text: `재고 ${product.stock}개`, color: 'text-warning', bgColor: 'bg-warning/20' };
     }
     return { text: '구매 가능', color: 'text-success', bgColor: 'bg-success/20' };
   };

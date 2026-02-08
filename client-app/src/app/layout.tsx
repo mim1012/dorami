@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/lib/theme/theme-context';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { CartProvider } from '@/lib/contexts/CartContext';
 import { ToastProvider } from '@/components/common/Toast';
+import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 
 export const metadata: Metadata = {
   title: 'Live Commerce',
@@ -27,7 +28,8 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="bg-white text-gray-900 [--primary-black:#FFFFFF] [--primary-text:#111827] [--secondary-text:#6B7280] [--content-bg:#F9FAFB]" suppressHydrationWarning>
+      <body className="bg-primary-black text-primary-text" suppressHydrationWarning>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-hot-pink focus:text-white focus:rounded-button focus:text-sm focus:font-medium">본문으로 건너뛰기</a>
         {/* Kakao SDK */}
         <Script
           src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"
@@ -39,9 +41,13 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <ToastProvider>
-              <CartProvider>
-                {children}
-              </CartProvider>
+              <ConfirmProvider>
+                <CartProvider>
+                  <main id="main-content">
+                    {children}
+                  </main>
+                </CartProvider>
+              </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>
         </QueryProvider>

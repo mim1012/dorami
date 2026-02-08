@@ -115,7 +115,7 @@ export default function MyPagePage() {
   if (!user) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28">
+        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-bottom-nav">
           <div className="w-full md:max-w-4xl md:mx-auto">
             <div className="text-center mb-8">
               <Display className="text-gray-900 mb-2">마이페이지</Display>
@@ -132,7 +132,7 @@ export default function MyPagePage() {
   if (!profile) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-28">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-bottom-nav">
           <Body className="text-error">프로필을 불러올 수 없습니다</Body>
         </div>
         <BottomTabBar />
@@ -142,7 +142,7 @@ export default function MyPagePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28">
+      <div className="min-h-screen bg-gray-50 py-12 px-4 pb-bottom-nav">
         <div className="w-full md:max-w-4xl md:mx-auto">
           <div className="text-center mb-8">
             <Display className="text-gray-900 mb-2">마이페이지</Display>

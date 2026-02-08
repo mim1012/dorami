@@ -9,16 +9,16 @@ export function ReservationList() {
   if (isLoading && !reservations) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-info"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800 font-medium">오류가 발생했습니다</p>
-        <p className="text-red-600 text-sm mt-1">{error}</p>
+      <div className="bg-error-bg border border-error/20 rounded-lg p-6">
+        <p className="text-error font-medium">오류가 발생했습니다</p>
+        <p className="text-error text-sm mt-1">{error}</p>
       </div>
     );
   }
@@ -45,23 +45,23 @@ export function ReservationList() {
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-info/20">
         <h2 className="text-xl font-bold text-gray-900 mb-4">예약 현황</h2>
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-2xl font-bold text-info">
               {reservations.totalCount}
             </p>
             <p className="text-sm text-gray-600 mt-1">전체</p>
           </div>
           <div className="bg-white rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">
+            <p className="text-2xl font-bold text-warning">
               {reservations.waitingCount}
             </p>
             <p className="text-sm text-gray-600 mt-1">대기 중</p>
           </div>
           <div className="bg-white rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-2xl font-bold text-success">
               {reservations.promotedCount}
             </p>
             <p className="text-sm text-gray-600 mt-1">구매 가능</p>

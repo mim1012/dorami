@@ -68,9 +68,9 @@ export default function AdminSettingsPage() {
         </div>
 
         {successMessage && (
-          <div className="bg-green-50 border border-green-200 rounded-button p-4 flex items-center gap-3">
-            <Save className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <Body className="text-green-800">{successMessage}</Body>
+          <div className="bg-success-bg border border-success/20 rounded-button p-4 flex items-center gap-3">
+            <Save className="w-5 h-5 text-success flex-shrink-0" />
+            <Body className="text-success">{successMessage}</Body>
           </div>
         )}
 

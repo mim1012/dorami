@@ -24,7 +24,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = Math.random().toString(36).substring(7);
     const newToast = { id, message, type };
 
-    setToasts((prev) => [...prev, newToast]);
+    setToasts((prev) => {
+      const updated = [...prev, newToast];
+      return updated.length > 5 ? updated.slice(-5) : updated;
+    });
 
     // Auto-dismiss after 4 seconds
     setTimeout(() => {
@@ -50,21 +53,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-500" />,
-    error: <XCircle className="w-5 h-5 text-red-500" />,
-    info: <Info className="w-5 h-5 text-blue-500" />,
+    success: <CheckCircle className="w-5 h-5 text-success" />,
+    error: <XCircle className="w-5 h-5 text-error" />,
+    info: <Info className="w-5 h-5 text-info" />,
   };
 
   const bgColors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200',
+    success: 'bg-success-bg border-success/20',
+    error: 'bg-error-bg border-error/20',
+    info: 'bg-info-bg border-info/20',
   };
 
   const textColors = {
-    success: 'text-green-900',
-    error: 'text-red-900',
-    info: 'text-blue-900',
+    success: 'text-primary-text',
+    error: 'text-primary-text',
+    info: 'text-primary-text',
   };
 
   return (
@@ -77,7 +80,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       <button
         onClick={onClose}
         className="text-gray-400 hover:text-gray-600 transition-colors"
-        aria-label="Close notification"
+        aria-label="알림 닫기"
       >
         <X className="w-4 h-4" />
       </button>

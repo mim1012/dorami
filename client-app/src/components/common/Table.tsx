@@ -26,7 +26,7 @@ export function Table<T extends { id: string }>({
   sortBy,
   sortOrder,
   onSort,
-  emptyMessage = 'No data available',
+  emptyMessage = '데이터가 없습니다',
   getRowClassName,
 }: TableProps<T>) {
   const handleSort = (key: string, sortable: boolean = true) => {
@@ -36,7 +36,9 @@ export function Table<T extends { id: string }>({
   };
 
   return (
-    <div className="overflow-x-auto rounded-button border border-content-bg">
+    <div className="relative rounded-button border border-content-bg">
+      <div className="overflow-x-auto">
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-primary-black to-transparent z-10 md:hidden" aria-hidden="true" />
       <table className="min-w-full divide-y divide-content-bg">
         <thead className="bg-content-bg">
           <tr>
@@ -100,6 +102,7 @@ export function Table<T extends { id: string }>({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

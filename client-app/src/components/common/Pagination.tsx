@@ -51,12 +51,12 @@ export function Pagination({
       {/* Page Info */}
       <div className="flex items-center gap-4">
         <Body className="text-secondary-text text-caption">
-          Showing {startItem}-{endItem} of {totalItems}
+          총 {totalItems}건 중 {startItem}-{endItem}
         </Body>
 
         {/* Page Size Selector */}
         <div className="flex items-center gap-2">
-          <Caption className="text-secondary-text">Rows per page:</Caption>
+          <Caption className="text-secondary-text">페이지당 행:</Caption>
           <Select
             value={pageSize.toString()}
             onChange={handlePageSizeChange}
@@ -78,12 +78,14 @@ export function Pagination({
           size="sm"
           onClick={handlePrevious}
           disabled={currentPage === 1}
+          aria-label="이전 페이지"
         >
-          Previous
+          이전
         </Button>
 
         <Body className="text-primary-text px-4">
-          Page {currentPage} of {totalPages}
+          <span className="sr-only">현재 페이지</span>
+          {currentPage} / {totalPages}
         </Body>
 
         <Button
@@ -91,8 +93,9 @@ export function Pagination({
           size="sm"
           onClick={handleNext}
           disabled={currentPage === totalPages}
+          aria-label="다음 페이지"
         >
-          Next
+          다음
         </Button>
       </div>
     </div>

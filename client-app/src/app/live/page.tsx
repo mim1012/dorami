@@ -28,7 +28,7 @@ export default function LivePage() {
   if (loading) {
     return (
       <>
-        <main className="min-h-screen pb-20">
+        <main className="min-h-screen pb-bottom-nav">
           <div className="max-w-screen-xl mx-auto px-4 py-6">
             <h1 className="text-h1 text-primary-text font-bold mb-8">Live</h1>
             <div className="flex items-center justify-center h-64">
@@ -47,7 +47,7 @@ export default function LivePage() {
   if (error) {
     return (
       <>
-        <main className="min-h-screen pb-20">
+        <main className="min-h-screen pb-bottom-nav">
           <div className="max-w-screen-xl mx-auto px-4 py-6">
             <h1 className="text-h1 text-primary-text font-bold mb-8">Live</h1>
             <div className="flex items-center justify-center h-64">
@@ -74,7 +74,7 @@ export default function LivePage() {
 
   return (
     <>
-      <main className="min-h-screen pb-20">
+      <main className="min-h-screen pb-bottom-nav">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
           {/* 헤더 */}
           <div className="mb-8">

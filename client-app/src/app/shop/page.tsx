@@ -8,6 +8,9 @@ import { getProducts, type Product } from '@/lib/api/products';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { ProductGridSkeleton } from '@/components/common/Skeleton';
+import { EmptyState } from '@/components/common/EmptyState';
+import { Search } from 'lucide-react';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS: Product[] = [
@@ -220,18 +223,9 @@ function ShopPageContent() {
   if (loading) {
     return (
       <>
-        <main className="min-h-screen bg-primary-black pb-20">
+        <main className="min-h-screen bg-primary-black pb-bottom-nav">
           <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="relative w-16 h-16 mx-auto mb-4">
-                  <div className="absolute inset-0 rounded-full border-4 border-hot-pink/20"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-hot-pink animate-spin"></div>
-                  <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-[#7928CA] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
-                </div>
-                <p className="text-body text-secondary-text font-medium">상품을 불러오는 중...</p>
-              </div>
-            </div>
+            <ProductGridSkeleton count={6} />
           </div>
         </main>
         <BottomTabBar />
@@ -242,11 +236,11 @@ function ShopPageContent() {
   if (error) {
     return (
       <>
-        <main className="min-h-screen bg-primary-black pb-20">
+        <main className="min-h-screen bg-primary-black pb-bottom-nav">
           <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-red-50 flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-error-bg flex items-center justify-center">
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="8" x2="12" y2="12" />
@@ -272,7 +266,7 @@ function ShopPageContent() {
 
   return (
     <>
-      <main className="min-h-screen bg-primary-black text-primary-text pb-20">
+      <main className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
         <div className="w-full md:max-w-screen-xl md:mx-auto">
           {/* Header */}
           <header className="sticky top-0 z-50 bg-primary-black/80 backdrop-blur-xl border-b border-[var(--border-color)]/30">
@@ -377,30 +371,18 @@ function ShopPageContent() {
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  {searchQuery ? (
-                    <>
-                      <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                      <p className="text-xl font-bold text-primary-text mb-2">검색 결과 없음</p>
-                      <p className="text-body text-secondary-text">&apos;{searchQuery}&apos;에 대한 결과가 없습니다</p>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <path d="M16 10a4 4 0 0 1-8 0" />
-                      </svg>
-                      <p className="text-xl font-bold text-primary-text mb-2">등록된 상품이 없습니다</p>
-                      <p className="text-body text-secondary-text">곧 새로운 상품이 등록됩니다</p>
-                    </>
-                  )}
-                </div>
-              </div>
+              searchQuery ? (
+                <EmptyState
+                  icon={Search}
+                  title="검색 결과 없음"
+                  description={`'${searchQuery}'에 대한 결과가 없습니다`}
+                />
+              ) : (
+                <EmptyState
+                  title="등록된 상품이 없습니다"
+                  description="곧 새로운 상품이 등록됩니다"
+                />
+              )
             )}
           </div>
         </div>

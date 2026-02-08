@@ -105,7 +105,7 @@ export function PointAdjustmentModal({
                 <div
                   className={`p-3 rounded-button border-2 text-center cursor-pointer transition-colors ${
                     type === 'add'
-                      ? 'border-green-500 bg-green-50 text-green-700'
+                      ? 'border-success bg-success-bg text-success'
                       : 'border-gray-200 text-secondary-text'
                   }`}
                 >
@@ -124,7 +124,7 @@ export function PointAdjustmentModal({
                 <div
                   className={`p-3 rounded-button border-2 text-center cursor-pointer transition-colors ${
                     type === 'subtract'
-                      ? 'border-red-500 bg-red-50 text-red-700'
+                      ? 'border-error bg-error-bg text-error'
                       : 'border-gray-200 text-secondary-text'
                   }`}
                 >
@@ -171,7 +171,7 @@ export function PointAdjustmentModal({
                 }`}
               >
                 {new Intl.NumberFormat('ko-KR').format(currentBalance)}{' '}
-                <span className={type === 'add' ? 'text-green-600' : 'text-red-600'}>
+                <span className={type === 'add' ? 'text-success' : 'text-error'}>
                   {type === 'add' ? '+' : '-'} {new Intl.NumberFormat('ko-KR').format(amount)}
                 </span>{' '}
                 = {new Intl.NumberFormat('ko-KR').format(resultBalance)} P
