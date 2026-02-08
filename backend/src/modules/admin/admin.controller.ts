@@ -9,9 +9,11 @@ import { Public } from '../auth/decorators/public.decorator';
 import * as Papa from 'papaparse';
 
 @Controller('admin')
-// TODO: Re-enable authentication for production
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles('ADMIN')
+// Authentication: JwtAuthGuard auto-bypasses in development (NODE_ENV !== 'production')
+// injecting a mock ADMIN user. In production, real JWT + ADMIN role required.
+// See: backend/src/modules/auth/guards/jwt-auth.guard.ts
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class AdminController {
   constructor(private adminService: AdminService) {}
 
@@ -43,6 +45,16 @@ export class AdminController {
   @Put('config')
   async updateSystemConfig(@Body() dto: UpdateNoticeDto) {
     return this.adminService.updateSystemConfig(dto);
+  }
+
+  @Get('config/shipping-messages')
+  async getShippingMessages() {
+    return this.adminService.getShippingMessages();
+  }
+
+  @Put('config/shipping-messages')
+  async updateShippingMessages(@Body() body: Record<string, string>) {
+    return this.adminService.updateShippingMessages(body);
   }
 
   @Get('orders/:id')

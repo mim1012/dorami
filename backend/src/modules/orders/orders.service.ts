@@ -13,6 +13,7 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.events';
 import { PointsService } from '../points/points.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PointTransactionType, Order, OrderItem } from '@prisma/client';
 
 // Type for Order with items
@@ -52,6 +53,7 @@ export class OrdersService {
     private redisService: RedisService,
     private inventoryService: InventoryService,
     private pointsService: PointsService,
+    private notificationsService: NotificationsService,
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
   ) {
@@ -517,6 +519,65 @@ export class OrdersService {
       }
     } catch (error) {
       this.logger.error('Failed to cancel expired orders', error.stack);
+    }
+  }
+
+  /**
+   * Cron job: Send payment reminders for unpaid orders older than 6 hours
+   * Runs every 6 hours
+   */
+  @Cron('0 */6 * * *')
+  async sendPaymentReminders() {
+    try {
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+
+      // Find pending payment orders created more than 6 hours ago
+      const unpaidOrders = await this.prisma.order.findMany({
+        where: {
+          paymentStatus: 'PENDING',
+          status: 'PENDING_PAYMENT',
+          createdAt: { lte: sixHoursAgo },
+        },
+        select: {
+          id: true,
+          userId: true,
+          total: true,
+          depositorName: true,
+        },
+      });
+
+      if (unpaidOrders.length === 0) {
+        return;
+      }
+
+      this.logger.log(`Sending payment reminders for ${unpaidOrders.length} unpaid orders`);
+
+      for (const order of unpaidOrders) {
+        try {
+          // Check if we already sent a reminder (use Redis to avoid duplicates)
+          const reminderKey = `order:reminder:${order.id}`;
+          const alreadySent = await this.redisService.exists(reminderKey);
+          if (alreadySent) {
+            continue;
+          }
+
+          await this.notificationsService.sendPaymentReminderNotification(
+            order.userId,
+            order.id,
+            Number(order.total),
+            order.depositorName,
+          );
+
+          // Mark as sent, expire after 24 hours
+          await this.redisService.set(reminderKey, '1', 60 * 60 * 24);
+
+          this.logger.log(`Payment reminder sent for order ${order.id}`);
+        } catch (error) {
+          this.logger.error(`Failed to send payment reminder for order ${order.id}`, error.stack);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Failed to process payment reminders', error.stack);
     }
   }
 

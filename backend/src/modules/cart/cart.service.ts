@@ -137,9 +137,26 @@ export class CartService {
 
     this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${expiresAt}`);
 
-    // 5. Emit cart added event for WebSocket broadcast
+    // 5. Emit cart added event for WebSocket broadcast (with user info for real-time display)
+    // Fetch user name for broadcast
+    let userName = '익명';
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+      userName = user?.name || '익명';
+    } catch {
+      // Fallback to anonymous
+    }
+
+    // Generate consistent color from userId hash
+    const userColor = this.generateUserColor(userId);
+
     this.eventEmitter.emit('cart:added', {
       userId,
+      userName,
+      userColor,
       cartItemId: cartItem.id,
       productId,
       productName: product.name,
@@ -373,6 +390,24 @@ export class CartService {
       grandTotal: subtotal + totalShippingFee,
       earliestExpiration,
     };
+  }
+
+  /**
+   * Generate a consistent color from userId hash
+   * Returns a bright, readable hex color
+   */
+  private generateUserColor(userId: string): string {
+    const COLORS = [
+      '#FF007A', '#FF6B35', '#7928CA', '#0070F3',
+      '#00C853', '#FF3D00', '#AA00FF', '#00BFA5',
+      '#FFD600', '#FF1744', '#651FFF', '#00B8D4',
+      '#F50057', '#D500F9', '#00E5FF', '#76FF03',
+    ];
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return COLORS[Math.abs(hash) % COLORS.length];
   }
 
   /**

@@ -8,14 +8,14 @@ export function AdminDashboardCard() {
   const router = useRouter();
 
   return (
-    <div className="bg-content-bg rounded-button p-6 mb-6 border-2 border-hot-pink">
+    <div className="bg-white shadow-sm border border-gray-200 rounded-button p-6 mb-6 border-2 border-hot-pink">
       <div className="flex items-center justify-between mb-4">
-        <Heading2 className="text-hot-pink">판매자 전용</Heading2>
-        <div className="bg-hot-pink text-primary-text px-3 py-1 rounded-button text-caption font-bold">
+        <Heading2 className="text-pink-600">판매자 전용</Heading2>
+        <div className="bg-hot-pink text-gray-900 px-3 py-1 rounded-button text-caption font-bold">
           ADMIN
         </div>
       </div>
-      <Body className="text-secondary-text mb-4">
+      <Body className="text-gray-500 mb-4">
         라이브 방송 관리, 주문 처리, 채팅 모더레이션 등 판매자 전용 기능에 접근할 수 있습니다.
       </Body>
       <Button variant="primary" fullWidth onClick={() => router.push('/admin')}>

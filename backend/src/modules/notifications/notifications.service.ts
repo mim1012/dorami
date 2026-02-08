@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { KakaoTalkClient } from './clients/kakao-talk.client';
+import { PushNotificationService } from './push-notification.service';
 import { LoggerService } from '../../common/logger/logger.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -12,6 +13,8 @@ export class NotificationsService {
 
   constructor(
     private kakaoTalkClient: KakaoTalkClient,
+    @Inject(forwardRef(() => PushNotificationService))
+    private pushNotificationService: PushNotificationService,
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
@@ -70,6 +73,23 @@ export class NotificationsService {
       depositorName,
     });
 
+    // 1순위: 웹 푸시
+    try {
+      const pushResult = await this.pushNotificationService.sendNotificationToUser(
+        userId,
+        '입금 안내',
+        message,
+        { type: 'payment_reminder', orderId, url: `/orders/${orderId}` },
+      );
+      if (pushResult.sent > 0) {
+        this.logger.log(`Payment reminder sent via web push to user ${userId}`);
+        return;
+      }
+    } catch (error) {
+      this.logger.warn(`Web push failed for user ${userId}: ${error.message}`);
+    }
+
+    // 2순위: 카카오톡
     await this.retryableNotification(async () => {
       await this.kakaoTalkClient.sendCustomMessage(userId, '결제 알림', message);
     });
@@ -83,6 +103,23 @@ export class NotificationsService {
     const template = await this.getTemplate('SHIPPING_STARTED');
     const message = this.replaceVariables(template, { orderId, trackingNumber });
 
+    // 1순위: 웹 푸시
+    try {
+      const pushResult = await this.pushNotificationService.sendNotificationToUser(
+        userId,
+        '배송 시작',
+        message,
+        { type: 'shipping', orderId, trackingNumber, url: `/orders/${orderId}` },
+      );
+      if (pushResult.sent > 0) {
+        this.logger.log(`Shipping notification sent via web push to user ${userId}`);
+        return;
+      }
+    } catch (error) {
+      this.logger.warn(`Web push failed for user ${userId}: ${error.message}`);
+    }
+
+    // 2순위: 카카오톡
     await this.retryableNotification(async () => {
       await this.kakaoTalkClient.sendCustomMessage(userId, '배송 시작', message);
     });

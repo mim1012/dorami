@@ -368,7 +368,7 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-primary-text mb-2">
-            상품 관리 <span className="text-hot-pink">📦</span>
+            상품 관리
           </h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>

@@ -530,6 +530,54 @@ export class AdminService {
   }
 
   /**
+   * Get shipping message templates
+   */
+  async getShippingMessages() {
+    let config = await this.prisma.systemConfig.findFirst({
+      where: { id: 'system' },
+    });
+
+    if (!config) {
+      config = await this.prisma.systemConfig.create({
+        data: {
+          id: 'system',
+          noticeText: null,
+          noticeFontSize: 14,
+          noticeFontFamily: 'Pretendard',
+        },
+      });
+    }
+
+    const defaultMessages = {
+      preparing: '{customerName}님, 주문번호 {orderId}의 상품을 준비 중입니다.',
+      shipped: '{customerName}님, 주문번호 {orderId}의 상품이 발송되었습니다. 운송장번호: {trackingNumber}',
+      inTransit: '{customerName}님, 주문번호 {orderId}의 상품이 배송 중입니다. 운송장번호: {trackingNumber}',
+      delivered: '{customerName}님, 주문번호 {orderId}의 상품이 배송 완료되었습니다.',
+    };
+
+    return (config.shippingMessages as Record<string, string>) || defaultMessages;
+  }
+
+  /**
+   * Update shipping message templates
+   */
+  async updateShippingMessages(messages: Record<string, string>) {
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: { shippingMessages: messages },
+      create: {
+        id: 'system',
+        noticeText: null,
+        noticeFontSize: 14,
+        noticeFontFamily: 'Pretendard',
+        shippingMessages: messages,
+      },
+    });
+
+    return config.shippingMessages as Record<string, string>;
+  }
+
+  /**
    * Epic 8 Story 8.4: Get order detail (admin only)
    */
   async getOrderDetail(orderId: string) {

@@ -189,7 +189,7 @@ export default function SettlementPage() {
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">📊 정산 관리</Display>
+          <Display className="text-hot-pink mb-2">정산 관리</Display>
           <Body className="text-secondary-text">입금 확인된 주문의 정산 리포트를 조회하고 다운로드하세요</Body>
         </div>
 
@@ -259,12 +259,12 @@ export default function SettlementPage() {
             </div>
 
             <div className="mb-6 p-3 bg-info/10 border border-info rounded-button">
-              <Caption className="text-info">💡 입금 확인된 주문만 포함됩니다</Caption>
+              <Caption className="text-info">입금 확인된 주문만 포함됩니다</Caption>
             </div>
 
             {report.dailyRevenue && report.dailyRevenue.length > 0 && (
               <div className="bg-content-bg rounded-button p-6 mb-6">
-                <Heading2 className="text-hot-pink mb-4">📈 일별 매출 추이</Heading2>
+                <Heading2 className="text-hot-pink mb-4">일별 매출 추이</Heading2>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={report.dailyRevenue}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -420,7 +420,7 @@ export default function SettlementPage() {
 
         {!report && !isLoading && (
           <div className="bg-content-bg rounded-button p-12 text-center">
-            <div className="text-6xl mb-4">📊</div>
+            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg></div>
             <Heading2 className="text-secondary-text mb-2">정산 리포트를 조회해주세요</Heading2>
             <Body className="text-secondary-text">조회 기간을 선택하고 조회하기 버튼을 눌러주세요</Body>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
@@ -12,9 +12,89 @@ import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { useNotifications } from '@/hooks/useNotifications';
+
+// ── Fallback mock data ──
+const MOCK_PRODUCTS = [
+  {
+    id: '1',
+    name: 'Chic Evening Bag',
+    price: 129000,
+    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+    isNew: true,
+    discount: 0,
+  },
+  {
+    id: '2',
+    name: 'Pro Audio Pods',
+    price: 89000,
+    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+    isNew: false,
+    discount: 30,
+  },
+  {
+    id: '3',
+    name: 'Handmade Tableware',
+    price: 45000,
+    imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
+    isNew: false,
+    discount: 0,
+  },
+  {
+    id: '4',
+    name: 'Smart Fitness Watch',
+    price: 199000,
+    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+    isNew: false,
+    discount: 0,
+  },
+  {
+    id: '5',
+    name: 'Premium Leather Wallet',
+    price: 79000,
+    imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+    isNew: true,
+    discount: 15,
+  },
+  {
+    id: '6',
+    name: 'Wireless Keyboard',
+    price: 149000,
+    imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
+    isNew: false,
+    discount: 20,
+  },
+];
+
+function getMockUpcomingLives(now: number) {
+  return [
+    {
+      id: '1',
+      title: '신상 뷰티 제품 특집 라이브',
+      scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
+      thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
+      isLive: true,
+    },
+    {
+      id: '2',
+      title: '겨울 패션 아이템 특가 방송',
+      scheduledTime: new Date(now + 5 * 60 * 60 * 1000),
+      thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+      isLive: false,
+    },
+    {
+      id: '3',
+      title: '프리미엄 전자기기 특별 할인',
+      scheduledTime: new Date(now + 24 * 60 * 60 * 1000),
+      thumbnailUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800&q=80',
+      isLive: false,
+    },
+  ];
+}
 
 export default function Home() {
   const router = useRouter();
+  const { isSubscribed, subscribe, unsubscribe } = useNotifications();
   const [featuredProducts, setFeaturedProducts] = useState<Array<{
     id: string;
     name: string;
@@ -34,92 +114,74 @@ export default function Home() {
   const [isNextLiveActive, setIsNextLiveActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [subscribing, setSubscribing] = useState(false);
+  const liveSectionRef = useRef<HTMLDivElement>(null);
+  const [heroVisible, setHeroVisible] = useState(false);
 
-  // Fetch data from API
+  const categories = [
+    { id: 'all', label: '전체' },
+    { id: 'fashion', label: '패션' },
+    { id: 'electronics', label: '전자기기' },
+    { id: 'home', label: '홈/리빙' },
+    { id: 'beauty', label: '뷰티' },
+  ];
+
   useEffect(() => {
+    setHeroVisible(true);
     async function fetchData() {
       try {
         setLoading(true);
         setError(null);
-
         const now = Date.now();
-        
-        // Use mock data for demo
-        setFeaturedProducts([
-          {
-            id: '1',
-            name: 'Chic Evening Bag',
-            price: 129000,
-            imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
-            isNew: true,
-            discount: 0,
-          },
-          {
-            id: '2',
-            name: 'Pro Audio Pods',
-            price: 89000,
-            imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-            isNew: false,
-            discount: 30,
-          },
-          {
-            id: '3',
-            name: 'Handmade Tableware',
-            price: 45000,
-            imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
-            isNew: false,
-            discount: 0,
-          },
-          {
-            id: '4',
-            name: 'Smart Fitness Watch',
-            price: 199000,
-            imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-            isNew: false,
-            discount: 0,
-          },
-          {
-            id: '5',
-            name: 'Premium Leather Wallet',
-            price: 79000,
-            imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
-            isNew: true,
-            discount: 15,
-          },
-          {
-            id: '6',
-            name: 'Wireless Keyboard',
-            price: 149000,
-            imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
-            isNew: false,
-            discount: 20,
-          },
-        ]);
 
-        setUpcomingLives([
-          {
-            id: '1',
-            title: '신상 뷰티 제품 특집 라이브',
-            scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
-            thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
-            isLive: true,
-          },
-          {
-            id: '2',
-            title: '겪울 패션 아이템 특가 방송',
-            scheduledTime: new Date(now + 5 * 60 * 60 * 1000),
-            thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
-            isLive: false,
-          },
-          {
-            id: '3',
-            title: '프리미엄 전자기기 특별 할인',
-            scheduledTime: new Date(now + 24 * 60 * 60 * 1000),
-            thumbnailUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800&q=80',
-            isLive: false,
-          },
-        ]);
-        setNextLiveTime(new Date(now + 2 * 60 * 60 * 1000));
+        // Fetch products from API
+        let products: typeof MOCK_PRODUCTS;
+        try {
+          const apiProducts = await getFeaturedProducts(6);
+          if (apiProducts && apiProducts.length > 0) {
+            products = apiProducts.map((p) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+              isNew: p.isNew || false,
+              discount: p.discountRate || 0,
+            }));
+          } else {
+            products = MOCK_PRODUCTS;
+          }
+        } catch {
+          console.warn('API /products/featured failed, using mock data');
+          products = MOCK_PRODUCTS;
+        }
+        setFeaturedProducts(products);
+
+        // Fetch upcoming lives from API
+        let lives: typeof upcomingLives;
+        try {
+          const apiStreams = await getUpcomingStreams(3);
+          if (apiStreams && apiStreams.length > 0) {
+            lives = apiStreams.map((s) => ({
+              id: s.id,
+              title: s.title,
+              scheduledTime: new Date(s.scheduledTime || s.scheduledStartTime || now + 3600000),
+              thumbnailUrl: s.thumbnailUrl || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+              isLive: s.isLive || false,
+            }));
+          } else {
+            lives = getMockUpcomingLives(now);
+          }
+        } catch {
+          console.warn('API /streaming/upcoming failed, using mock data');
+          lives = getMockUpcomingLives(now);
+        }
+        setUpcomingLives(lives);
+
+        if (lives.length > 0) {
+          setNextLiveTime(new Date(lives[0].scheduledTime));
+          setIsNextLiveActive(lives[0].isLive);
+        }
       } catch (err) {
         console.error('Failed to fetch homepage data:', err);
         setError('데이터를 불러오는데 실패했습니다.');
@@ -138,24 +200,33 @@ export default function Home() {
   };
 
   const handleLiveClick = (liveId: string) => {
-    console.log('Live clicked:', liveId);
-    // TODO: Implement live detail navigation
     router.push(`/live/${liveId}`);
   };
 
   const handleProductClick = (productId: string) => {
-    console.log('Product clicked:', productId);
-    // TODO: Implement product detail navigation
-    router.push(`/product/${productId}`);
+    router.push(`/products/${productId}`);
   };
 
   const handleLiveBannerClick = () => {
     if (isNextLiveActive && upcomingLives.length > 0) {
-      // If live is active, navigate to the first live
       router.push(`/live/${upcomingLives[0].id}`);
     } else if (upcomingLives.length > 0) {
-      // If live is upcoming, show notification setup
-      alert('라이브 알림이 설정되었습니다!');
+      handleNotifyToggle();
+    }
+  };
+
+  const handleNotifyToggle = async () => {
+    setSubscribing(true);
+    try {
+      if (isSubscribed) {
+        await unsubscribe();
+      } else {
+        await subscribe();
+      }
+    } catch {
+      // useNotifications handles error logging internally
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -163,8 +234,12 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hot-pink mx-auto mb-4"></div>
-          <p>로딩 중...</p>
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-hot-pink/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-hot-pink animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-[#7928CA] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
+          </div>
+          <p className="text-secondary-text animate-pulse text-lg font-medium">로딩 중...</p>
         </div>
       </div>
     );
@@ -173,11 +248,19 @@ export default function Home() {
   if (error) {
     return (
       <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-error mb-4">{error}</p>
+        <div className="text-center px-6">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-red-50 flex items-center justify-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <p className="text-error mb-2 font-bold text-xl">{error}</p>
+          <p className="text-secondary-text mb-6 text-sm">네트워크 연결을 확인해주세요</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-hot-pink rounded-lg hover:opacity-90 text-white"
+            className="px-8 py-3.5 bg-hot-pink rounded-full hover:opacity-90 text-white font-bold transition-all active:scale-95 shadow-hot-pink"
           >
             다시 시도
           </button>
@@ -188,18 +271,62 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-primary-black text-primary-text pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-primary-black border-b border-border-color">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-2xl font-bold text-hot-pink">DoReMi</h1>
+      {/* HERO SECTION */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#FF007A]/25 via-[#7928CA]/20 to-[#FF4500]/15 animate-gradient" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,0,122,0.2),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(121,40,202,0.15),transparent_60%)]" />
+
+        <div className={`relative z-10 p-4 pt-6 pb-8 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {/* Brand header */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
+                <span className="text-white font-black text-xl">D</span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
+                  DoRaMi
+                </h1>
+                <p className="text-[10px] text-secondary-text -mt-0.5 tracking-[0.2em] uppercase font-semibold">Live Shopping Experience</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <ThemeToggle />
-              <button className="w-10 h-10 rounded-full bg-content-bg border border-border-color flex items-center justify-center" title="알림">
-                🔔
+              <button
+                onClick={handleNotifyToggle}
+                disabled={subscribing}
+                className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                  isSubscribed
+                    ? 'bg-hot-pink/15 border border-hot-pink/30'
+                    : 'glass hover:border-hot-pink/50'
+                }`}
+                title={isSubscribed ? '알림받는중' : '알림받기'}
+              >
+                {subscribing ? (
+                  <div className="w-5 h-5 border-2 border-hot-pink/30 border-t-hot-pink rounded-full animate-spin" />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill={isSubscribed ? 'var(--hot-pink)' : 'none'} stroke={isSubscribed ? 'var(--hot-pink)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                )}
+                {!isSubscribed && !subscribing && (
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-hot-pink rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-hot-pink animate-pulse">3</span>
+                )}
               </button>
             </div>
           </div>
+
+          {/* Hero text */}
+          <div className="mb-5">
+            <h2 className="text-2xl font-black text-primary-text leading-tight mb-2">
+              라이브로 만나는<br/>
+              <span className="bg-gradient-to-r from-hot-pink to-[#7928CA] bg-clip-text text-transparent">특별한 쇼핑</span>
+            </h2>
+            <p className="text-sm text-secondary-text">실시간 방송에서 최저가로 만나보세요</p>
+          </div>
+
           <SearchBar onSubmit={handleSearch} />
         </div>
       </header>
@@ -214,52 +341,131 @@ export default function Home() {
       {/* Social Proof */}
       <SocialProof followerCount={6161} />
 
-      {/* Upcoming Lives Section */}
-      <section className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">예정된 라이브</h2>
-          <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
-        </div>
-        <div className="space-y-3">
-          {upcomingLives.map((live) => (
-            <UpcomingLiveCard
-              key={live.id}
-              id={live.id}
-              title={live.title}
-              scheduledTime={new Date(live.scheduledTime)}
-              thumbnailUrl={live.thumbnailUrl}
-              isLive={live.isLive}
-              onClick={() => handleLiveClick(live.id)}
-              size="small"
-            />
+      {/* Category Quick Filter */}
+      <section className="px-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+                activeCategory === cat.id
+                  ? 'bg-gradient-to-r from-hot-pink to-[#7928CA] text-white shadow-hot-pink scale-105'
+                  : 'bg-content-bg text-secondary-text border border-[var(--border-color)] hover:border-hot-pink/40 hover:text-primary-text hover:bg-hot-pink/5'
+              }`}
+            >
+              <span>{cat.label}</span>
+            </button>
           ))}
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      <section className="p-4">
+      {/* UPCOMING LIVES */}
+      <section className="px-4 mb-8" ref={liveSectionRef}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">지난 추천 상품</h2>
-          <button className="text-sm text-secondary-text hover:text-hot-pink transition-colors">더보기 →</button>
-        </div>
-        {featuredProducts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            등록된 상품이 없습니다
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-7 rounded-full bg-gradient-to-b from-hot-pink to-[#7928CA]"></div>
+            <h2 className="text-xl font-black">예정된 라이브</h2>
+            <span className="px-2.5 py-1 text-xs font-bold bg-hot-pink/15 text-hot-pink rounded-full border border-hot-pink/20">
+              {upcomingLives.length}
+            </span>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {featuredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                price={product.price}
-                imageUrl={product.imageUrl}
-                isNew={product.isNew}
-                discount={product.discount}
-                onClick={() => handleProductClick(product.id)}
+          <button 
+            onClick={() => router.push('/live')}
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
+          >
+            전체보기 &rarr;
+          </button>
+        </div>
+        
+        <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 -mx-4 px-4 snap-x snap-mandatory">
+          {upcomingLives.map((live, index) => (
+            <div key={live.id} className="min-w-[280px] max-w-[300px] snap-start flex-shrink-0 animate-stagger-fade" style={{ animationDelay: `${index * 150}ms` }}>
+              <UpcomingLiveCard
+                id={live.id}
+                title={live.title}
+                scheduledTime={new Date(live.scheduledTime)}
+                thumbnailUrl={live.thumbnailUrl}
+                isLive={live.isLive}
+                onClick={() => handleLiveClick(live.id)}
                 size="small"
               />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* WEEKLY PICK BANNER */}
+      <section className="px-4 mb-8">
+        <div className="relative overflow-hidden rounded-3xl p-7 mb-8" style={{ background: 'linear-gradient(135deg, #FF007A 0%, #7928CA 50%, #FF4500 100%)' }}>
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-sm" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4 blur-sm" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-white/80 text-xs font-bold uppercase tracking-[0.15em] bg-white/10 px-3 py-1 rounded-full">Weekly Pick</span>
+            </div>
+            <h3 className="text-white text-2xl font-black mt-2 mb-3 leading-tight">
+              이번 주<br/>인기 상품
+            </h3>
+            <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도라미 에디터 추천!</p>
+            <button 
+              onClick={() => router.push('/shop')}
+              className="bg-white text-[#FF007A] px-7 py-3 rounded-full text-sm font-black hover:bg-white/90 transition-all active:scale-95 shadow-lg"
+            >
+              지금 확인하기 &rarr;
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURED PRODUCTS */}
+      <section className="px-4 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-7 rounded-full bg-gradient-to-b from-[#7928CA] to-[#FF4500]"></div>
+            <h2 className="text-xl font-black">추천 상품</h2>
+          </div>
+          <button 
+            onClick={() => router.push('/shop')}
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
+          >
+            더보기 &rarr;
+          </button>
+        </div>
+        {featuredProducts.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <p className="font-medium">등록된 상품이 없습니다</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3.5" style={{
+            gridTemplateRows: 'auto',
+          }}>
+            {featuredProducts.map((product, index) => (
+              <div
+                key={product.id}
+                className="animate-stagger-fade"
+                style={{
+                  animationDelay: `${index * 80}ms`,
+                  ...(index === 0 ? { gridColumn: '1 / -1' } : {}),
+                }}
+              >
+                <ProductCard
+                  id={product.id}
+                  name={product.name}
+                  price={product.price}
+                  imageUrl={product.imageUrl}
+                  isNew={product.isNew}
+                  discount={product.discount}
+                  onClick={() => handleProductClick(product.id)}
+                  size={index === 0 ? 'normal' : 'small'}
+                />
+              </div>
             ))}
           </div>
         )}
