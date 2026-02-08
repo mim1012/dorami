@@ -98,22 +98,22 @@ export default function BulkNotifyPage() {
         </div>
 
         {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
-          <Heading2 className="text-blue-900 mb-3 flex items-center gap-2">
+        <div className="bg-info-bg border border-info/20 rounded-2xl p-6 mb-6">
+          <Heading2 className="text-primary-text mb-3 flex items-center gap-2">
             <FileText className="w-5 h-5" />
             How to use
           </Heading2>
           <div className="space-y-2">
-            <Body className="text-blue-800 text-sm">
+            <Body className="text-info text-sm">
               1. Download the sample CSV template below
             </Body>
-            <Body className="text-blue-800 text-sm">
+            <Body className="text-info text-sm">
               2. Fill in your Order IDs and Tracking Numbers
             </Body>
-            <Body className="text-blue-800 text-sm">
+            <Body className="text-info text-sm">
               3. Upload the CSV file and click &quot;Send Notifications&quot;
             </Body>
-            <Body className="text-blue-800 text-sm font-semibold mt-3">
+            <Body className="text-info text-sm font-semibold mt-3">
               Note: Only orders with confirmed payment status will receive notifications
             </Body>
           </div>
@@ -121,7 +121,7 @@ export default function BulkNotifyPage() {
             variant="outline"
             size="sm"
             onClick={downloadSampleCSV}
-            className="mt-4 border-blue-600 text-blue-600 hover:bg-blue-100"
+            className="mt-4 border-info text-info hover:bg-info/10"
           >
             <Download className="w-4 h-4 mr-2" />
             Download Sample CSV
@@ -156,9 +156,9 @@ export default function BulkNotifyPage() {
             </div>
 
             {selectedFile && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <Body className="text-green-800 text-sm">
+              <div className="bg-success-bg border border-success/20 rounded-lg p-3 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-success" />
+                <Body className="text-success text-sm">
                   Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
                 </Body>
               </div>
@@ -199,13 +199,13 @@ export default function BulkNotifyPage() {
                 <Body className="text-secondary-text text-sm mb-1">Total</Body>
                 <Display className="text-primary-text">{result.total}</Display>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
-                <Body className="text-green-700 text-sm mb-1">Successful</Body>
-                <Display className="text-green-600">{result.successful}</Display>
+              <div className="bg-success-bg rounded-lg p-4 text-center border border-success/20">
+                <Body className="text-success text-sm mb-1">Successful</Body>
+                <Display className="text-success">{result.successful}</Display>
               </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center border border-red-200">
-                <Body className="text-red-700 text-sm mb-1">Failed</Body>
-                <Display className="text-red-600">{result.failed}</Display>
+              <div className="bg-error-bg rounded-lg p-4 text-center border border-error/20">
+                <Body className="text-error text-sm mb-1">Failed</Body>
+                <Display className="text-error">{result.failed}</Display>
               </div>
             </div>
 

@@ -50,7 +50,7 @@ export function ProductCard({
             </span>
           )}
           {discount !== undefined && discount > 0 && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-error text-white">
               -{discount}%
             </span>
           )}
@@ -58,13 +58,14 @@ export function ProductCard({
 
         {/* Quick add button — scale + slide on hover */}
         <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-3 group-hover:translate-y-0">
-          <button 
-            className="w-10 h-10 rounded-full bg-hot-pink text-white flex items-center justify-center shadow-hot-pink hover:scale-110 active:scale-95 transition-transform"
+          <button
+            className="w-11 h-11 rounded-full bg-hot-pink text-white flex items-center justify-center shadow-hot-pink hover:scale-110 active:scale-95 transition-transform"
             onClick={(e) => {
               e.stopPropagation();
             }}
+            aria-label={`${name} 빠른 추가`}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
@@ -78,16 +79,16 @@ export function ProductCard({
         </h3>
         <div className="flex flex-col gap-0.5">
           {discount !== undefined && discount > 0 && (
-            <span className="text-xs text-gray-500 line-through">
-              {price.toLocaleString()}원
+            <span className="text-xs text-secondary-text line-through">
+              <span className="sr-only">정가 </span>{price.toLocaleString()}원
             </span>
           )}
           <div className="flex items-baseline gap-1">
             {discount !== undefined && discount > 0 && (
-              <span className="text-sm font-black text-[#FF3B30]">{discount}%</span>
+              <span className="text-sm font-black text-error"><span className="sr-only">할인율 </span>{discount}%</span>
             )}
             <span className="text-lg font-black text-hot-pink tracking-tight">
-              {discountedPrice.toLocaleString()}
+              <span className="sr-only">판매가 </span>{discountedPrice.toLocaleString()}
               <span className="text-sm font-bold">원</span>
             </span>
           </div>

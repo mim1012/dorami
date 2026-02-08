@@ -249,7 +249,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
         <div className="text-center px-6">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-red-50 flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-error-bg flex items-center justify-center">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
@@ -270,7 +270,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 pb-20">
+    <div className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
       {/* HERO SECTION */}
       <header className="relative overflow-hidden bg-gray-50">
 
@@ -298,7 +298,7 @@ export default function Home() {
                     ? 'bg-hot-pink/15 border border-hot-pink/30'
                     : 'bg-gray-100 border border-gray-200 hover:border-hot-pink/50'
                 }`}
-                title={isSubscribed ? '알림받는중' : '알림받기'}
+                aria-label={isSubscribed ? '알림받는중' : '알림받기'}
               >
                 {subscribing ? (
                   <div className="w-5 h-5 border-2 border-hot-pink/30 border-t-hot-pink rounded-full animate-spin" />

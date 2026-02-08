@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useToast } from '@/components/common/Toast';
 
 // Kakao SDK types
 declare global {
@@ -27,6 +28,7 @@ interface OrderShareData {
 
 export function useKakaoShare() {
   const [isInitialized, setIsInitialized] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     // Check if Kakao SDK is loaded
@@ -55,7 +57,7 @@ export function useKakaoShare() {
    */
   const shareOrder = (orderData: OrderShareData) => {
     if (!isInitialized || !window.Kakao) {
-      alert('카카오톡 공유 기능을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      showToast('카카오톡 공유 기능을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'error');
       return;
     }
 
@@ -103,7 +105,7 @@ export function useKakaoShare() {
       console.log('[useKakaoShare] Order shared successfully');
     } catch (error) {
       console.error('[useKakaoShare] Failed to share order:', error);
-      alert('카카오톡 공유 중 오류가 발생했습니다.');
+      showToast('카카오톡 공유 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -116,7 +118,7 @@ export function useKakaoShare() {
     thumbnailUrl?: string;
   }) => {
     if (!isInitialized || !window.Kakao) {
-      alert('카카오톡 공유 기능을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      showToast('카카오톡 공유 기능을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'error');
       return;
     }
 
@@ -148,7 +150,7 @@ export function useKakaoShare() {
       console.log('[useKakaoShare] Live stream shared successfully');
     } catch (error) {
       console.error('[useKakaoShare] Failed to share live stream:', error);
-      alert('카카오톡 공유 중 오류가 발생했습니다.');
+      showToast('카카오톡 공유 중 오류가 발생했습니다.', 'error');
     }
   };
 

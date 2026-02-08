@@ -44,7 +44,7 @@ export default function CartActivityFeed({ activities }: CartActivityFeedProps) 
   if (visibleActivities.length === 0) return null;
 
   return (
-    <div className="absolute top-24 left-3 right-20 z-20 flex flex-col gap-2 pointer-events-none">
+    <div className="absolute top-24 left-3 right-20 z-20 flex flex-col gap-2 pointer-events-none" aria-live="polite" role="log" aria-label="장바구니 활동">
       {visibleActivities.map((activity, index) => (
         <div
           key={activity.id}

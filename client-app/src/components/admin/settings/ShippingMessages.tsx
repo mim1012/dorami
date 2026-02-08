@@ -186,9 +186,9 @@ export function ShippingMessages() {
 
             {/* Preview */}
             {previewKey === key && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <Caption className="text-blue-600 block mb-1 font-semibold">미리보기 (샘플 데이터)</Caption>
-                <Body className="text-blue-900 text-sm">{renderPreview(key)}</Body>
+              <div className="mt-3 p-3 bg-info-bg border border-info/20 rounded-lg">
+                <Caption className="text-info block mb-1 font-semibold">미리보기 (샘플 데이터)</Caption>
+                <Body className="text-primary-text text-sm">{renderPreview(key)}</Body>
               </div>
             )}
           </div>
@@ -208,14 +208,14 @@ export function ShippingMessages() {
       </div>
 
       {mutation.isSuccess && (
-        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <Caption className="text-green-700">배송문구가 저장되었습니다.</Caption>
+        <div className="mt-3 p-3 bg-success-bg border border-success/20 rounded-lg">
+          <Caption className="text-success">배송문구가 저장되었습니다.</Caption>
         </div>
       )}
 
       {mutation.isError && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <Caption className="text-red-700">저장에 실패했습니다. 다시 시도해주세요.</Caption>
+        <div className="mt-3 p-3 bg-error-bg border border-error/20 rounded-lg">
+          <Caption className="text-error">저장에 실패했습니다. 다시 시도해주세요.</Caption>
         </div>
       )}
     </div>

@@ -165,7 +165,7 @@ export function ProductOptionModal({
               </button>
             </div>
             {quantity >= maxQuantity && (
-              <Body className="text-yellow-500 text-xs text-center">
+              <Body className="text-warning text-xs text-center">
                 최대 구매 가능 수량입니다
               </Body>
             )}

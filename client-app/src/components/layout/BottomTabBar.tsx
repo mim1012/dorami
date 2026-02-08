@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, ShoppingCart, Video, User } from 'lucide-react';
+import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
 import { useCart } from '@/lib/contexts/CartContext';
 
 interface TabItem {
@@ -25,7 +25,7 @@ const tabs: TabItem[] = [
   {
     id: 'inquiry',
     label: '문의',
-    emoji: '💬',
+    icon: MessageCircle,
     onClick: () => {
       window.open(KAKAO_INQUIRY_URL, '_blank');
     }
@@ -48,7 +48,7 @@ export function BottomTabBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 z-50 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#1E1E1E]/95 backdrop-blur-sm border-t border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]" role="navigation" aria-label="메인 내비게이션">
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-around h-16 px-2">
           {tabs.map((tab) => {
@@ -61,13 +61,16 @@ export function BottomTabBar() {
                 key={tab.id}
                 onClick={() => handleTabClick(tab)}
                 className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors relative min-h-[44px] min-w-[44px]"
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={tab.label}
               >
-                {Icon ? (
+                {Icon && (
                   <div className="relative">
                     <Icon
                       className={`w-6 h-6 ${
                         isActive ? 'text-hot-pink' : 'text-gray-500'
                       }`}
+                      aria-hidden="true"
                     />
                     {showBadge && (
                       <div className="absolute -top-2 -right-2 w-5 h-5 bg-hot-pink rounded-full flex items-center justify-center">
@@ -77,8 +80,6 @@ export function BottomTabBar() {
                       </div>
                     )}
                   </div>
-                ) : (
-                  <span className="text-2xl">{tab.emoji}</span>
                 )}
                 <span
                   className={`text-[11px] font-medium ${

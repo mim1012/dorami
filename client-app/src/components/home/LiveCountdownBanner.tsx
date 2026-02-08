@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useToast } from '@/components/common/Toast';
 
 interface LiveCountdownBannerProps {
   liveStartTime?: Date;
@@ -18,13 +19,14 @@ export function LiveCountdownBanner({
 }: LiveCountdownBannerProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const { isSupported, permission, subscribe } = useNotifications();
+  const { showToast } = useToast();
 
   const handleNotificationClick = async () => {
     const success = await subscribe(liveStreamId);
     if (success) {
-      alert('라이브 알림이 설정되었습니다!');
+      showToast('라이브 알림이 설정되었습니다!', 'success');
     } else {
-      alert('알림 설정에 실패했습니다. 브라우저 설정을 확인해주세요.');
+      showToast('알림 설정에 실패했습니다. 브라우저 설정을 확인해주세요.', 'error');
     }
   };
 
@@ -90,10 +92,10 @@ export function LiveCountdownBanner({
   }
 
   return (
-    <div className="mx-4 mb-6 p-6 rounded-2xl gradient-hot-pink text-white" style={{ boxShadow: '0 4px 16px rgba(255, 107, 53, 0.3)' }}>
-      <p className="text-sm font-semibold mb-2 opacity-90">NEXT LIVE</p>
-      <p className="text-5xl font-bold mb-4 tracking-wider">{timeLeft}</p>
-      <p className="text-sm mb-4 opacity-90">Live starts in</p>
+    <div className="mx-4 mb-6 p-6 rounded-2xl gradient-hot-pink text-white shadow-hot-pink" aria-live="polite">
+      <p className="text-sm font-semibold mb-2 opacity-90">다음 라이브</p>
+      <p className="text-5xl font-bold mb-4 tracking-wider" aria-label={`남은 시간 ${timeLeft}`}>{timeLeft}</p>
+      <p className="text-sm mb-4 opacity-90">라이브 시작까지</p>
       <button
         onClick={handleNotificationClick}
         disabled={!isSupported}

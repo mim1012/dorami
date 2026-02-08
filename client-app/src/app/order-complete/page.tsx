@@ -198,7 +198,7 @@ function OrderCompleteContent() {
 
             <div className="bg-white/80 rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">입금 기한</Body>
-              <Heading2 className="text-yellow-500">
+              <Heading2 className="text-warning">
                 {new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', {
                   year: 'numeric',
                   month: 'long',

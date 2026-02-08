@@ -56,7 +56,7 @@ export default function HeartAnimation() {
   }, [addHeart]);
 
   return (
-    <div className="absolute bottom-28 right-3 w-20 h-72 pointer-events-none overflow-hidden z-20">
+    <div className="absolute bottom-28 right-3 w-20 h-72 pointer-events-none overflow-hidden z-20" aria-hidden="true">
       {hearts.map(heart => (
         <div
           key={heart.id}

@@ -55,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
 
       {/* Modal */}
       <div
-        className={`relative bg-content-bg rounded-button p-6 w-full ${maxWidthClasses[maxWidth]} mx-4 max-h-[90vh] overflow-y-auto`}
+        className={`relative bg-content-bg rounded-button p-6 w-full ${maxWidthClasses[maxWidth]} mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto pb-[env(safe-area-inset-bottom)]`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -68,7 +68,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
           <button
             onClick={onClose}
             className="text-secondary-text hover:text-hot-pink transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink rounded-button p-1"
-            aria-label="Close modal"
+            aria-label="모달 닫기"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

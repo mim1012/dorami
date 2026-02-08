@@ -116,7 +116,7 @@ function AdminUsersContent() {
         setTotalPages(response.data.totalPages);
       } catch (err: any) {
         console.error('Failed to fetch users:', err);
-        setError(err.response?.data?.message || 'Failed to load users');
+        setError(err.response?.data?.message || '회원 목록을 불러오지 못했습니다');
       } finally {
         setIsLoading(false);
       }
@@ -162,7 +162,7 @@ function AdminUsersContent() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -172,9 +172,10 @@ function AdminUsersContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -187,51 +188,56 @@ function AdminUsersContent() {
 
     const color = colors[status as keyof typeof colors] || colors.INACTIVE;
 
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
+    const statusLabels: Record<string, string> = {
+      ACTIVE: '활성',
+      INACTIVE: '비활성',
+      SUSPENDED: '정지',
+    };
+    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{statusLabels[status] || status}</span>;
   };
 
   const columns: Column<UserListItem>[] = [
     {
       key: 'instagramId',
-      label: 'Instagram ID',
+      label: '인스타그램 ID',
       sortable: true,
       render: (user) => user.instagramId || '-',
     },
     {
       key: 'email',
-      label: 'Email',
+      label: '이메일',
       sortable: true,
     },
     {
       key: 'name',
-      label: 'Name',
+      label: '이름',
       sortable: true,
     },
     {
       key: 'createdAt',
-      label: 'Registration Date',
+      label: '가입일',
       sortable: true,
       render: (user) => formatDate(user.createdAt),
     },
     {
       key: 'lastLoginAt',
-      label: 'Last Login',
+      label: '최근 로그인',
       sortable: true,
       render: (user) => formatDate(user.lastLoginAt),
     },
     {
       key: 'totalOrders',
-      label: 'Total Orders',
+      label: '총 주문수',
       render: (user) => user.totalOrders.toString(),
     },
     {
       key: 'totalPurchaseAmount',
-      label: 'Total Purchase',
+      label: '총 구매액',
       render: (user) => formatCurrency(user.totalPurchaseAmount),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: '상태',
       render: (user) => getStatusBadge(user.status),
     },
   ];
@@ -252,8 +258,8 @@ function AdminUsersContent() {
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Display className="text-hot-pink mb-2">User Management</Display>
-          <Body className="text-secondary-text">View and manage all registered users</Body>
+          <Display className="text-hot-pink mb-2">회원 관리</Display>
+          <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
         </div>
 
         {error && (
@@ -267,7 +273,7 @@ function AdminUsersContent() {
           {/* Search Input */}
           <div className="flex gap-4">
             <Input
-              placeholder="Search by name, email, or Instagram ID..."
+              placeholder="이름, 이메일 또는 인스타그램 ID로 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               fullWidth
@@ -277,11 +283,11 @@ function AdminUsersContent() {
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="whitespace-nowrap"
             >
-              {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
+              {isFilterOpen ? '필터 숨기기' : '필터 보기'}
             </Button>
             {hasActiveFilters && (
               <Button variant="ghost" onClick={handleClearFilters}>
-                Clear All
+                전체 초기화
               </Button>
             )}
           </div>
@@ -289,12 +295,12 @@ function AdminUsersContent() {
           {/* Filter Panel */}
           {isFilterOpen && (
             <div className="pt-4 border-t border-gray-200 space-y-4">
-              <Heading2 className="text-hot-pink text-body">Filters</Heading2>
+              <Heading2 className="text-hot-pink text-body">필터</Heading2>
 
               {/* Date Range */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Registration Date From"
+                  label="가입일 시작"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => {
@@ -304,7 +310,7 @@ function AdminUsersContent() {
                   fullWidth
                 />
                 <Input
-                  label="Registration Date To"
+                  label="가입일 종료"
                   type="date"
                   value={dateTo}
                   onChange={(e) => {
@@ -317,9 +323,15 @@ function AdminUsersContent() {
 
               {/* Status Filter */}
               <div>
-                <Body className="text-primary-text font-medium mb-2">Status</Body>
+                <Body className="text-primary-text font-medium mb-2">상태</Body>
                 <div className="flex gap-2">
-                  {['ACTIVE', 'INACTIVE', 'SUSPENDED'].map((status) => (
+                  {(['ACTIVE', 'INACTIVE', 'SUSPENDED'] as const).map((status) => {
+                    const statusLabelsFilter: Record<string, string> = {
+                      ACTIVE: '활성',
+                      INACTIVE: '비활성',
+                      SUSPENDED: '정지',
+                    };
+                    return (
                     <button
                       key={status}
                       onClick={() => handleStatusToggle(status)}
@@ -329,14 +341,15 @@ function AdminUsersContent() {
                           : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
-                      {status}
+                      {statusLabelsFilter[status]}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               <Body className="text-secondary-text text-caption">
-                Note: Order count and purchase amount filters will be available in Epic 8
+                참고: 주문수 및 구매액 필터는 Epic 8에서 추가될 예정입니다
               </Body>
             </div>
           )}
@@ -344,7 +357,7 @@ function AdminUsersContent() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Body className="text-secondary-text">Loading users...</Body>
+            <Body className="text-secondary-text">회원 목록을 불러오는 중...</Body>
           </div>
         ) : (
           <>
@@ -354,7 +367,7 @@ function AdminUsersContent() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
-              emptyMessage="No users found matching your filters"
+              emptyMessage="필터 조건에 맞는 회원이 없습니다"
             />
 
             <Pagination
@@ -377,7 +390,7 @@ export default function AdminUsersPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Body>Loading...</Body>
+          <Body>불러오는 중...</Body>
         </div>
       }
     >

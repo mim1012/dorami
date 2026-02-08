@@ -7,7 +7,9 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
-import { Plus, Edit, Trash2, Package, AlertCircle, Upload, X, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertCircle, Upload, X, CheckCircle, Timer } from 'lucide-react';
+import { useToast } from '@/components/common/Toast';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface Product {
   id: string;
@@ -43,6 +45,8 @@ interface ProductFormData {
 
 export default function AdminProductsPage() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const confirmAction = useConfirm();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,10 +232,10 @@ export default function AdminProductsPage() {
       const imageUrl = `http://localhost:3001${result.data.url}`;
 
       setFormData({ ...formData, imageUrl });
-      alert('이미지가 업로드되었습니다!');
+      showToast('이미지가 업로드되었습니다!', 'success');
     } catch (err: any) {
       console.error('Failed to upload image:', err);
-      alert('이미지 업로드에 실패했습니다.');
+      showToast('이미지 업로드에 실패했습니다.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -308,47 +312,49 @@ export default function AdminProductsPage() {
 
       fetchProducts();
       setIsModalOpen(false);
-      alert(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!');
+      showToast(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!', 'success');
     } catch (err: any) {
       console.error('Failed to save product:', err);
-      alert(`상품 저장에 실패했습니다: ${err.message}`);
+      showToast(`상품 저장에 실패했습니다: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleMarkAsSoldOut = async (productId: string) => {
-    if (!confirm('이 상품을 품절 처리하시겠습니까?')) return;
+    const confirmed = await confirmAction({ title: '품절 처리', message: '이 상품을 품절 처리하시겠습니까?', confirmText: '품절 처리', variant: 'warning' });
+    if (!confirmed) return;
 
     try {
       await apiClient.patch(`/products/${productId}/sold-out`, {});
       fetchProducts();
-      alert('상품이 품절 처리되었습니다.');
+      showToast('상품이 품절 처리되었습니다.', 'success');
     } catch (err: any) {
       console.error('Failed to mark as sold out:', err);
-      alert('품절 처리에 실패했습니다.');
+      showToast('품절 처리에 실패했습니다.', 'error');
     }
   };
 
   const handleDelete = async (productId: string) => {
-    if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    const confirmed = await confirmAction({ title: '상품 삭제', message: '정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', confirmText: '삭제', variant: 'danger' });
+    if (!confirmed) return;
 
     try {
       await apiClient.delete(`/products/${productId}`);
       fetchProducts();
-      alert('상품이 삭제되었습니다.');
+      showToast('상품이 삭제되었습니다.', 'success');
     } catch (err: any) {
       console.error('Failed to delete product:', err);
-      alert(`상품 삭제에 실패했습니다: ${err.message}`);
+      showToast(`상품 삭제에 실패했습니다: ${err.message}`, 'error');
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'AVAILABLE':
-        return { text: '판매중', color: 'bg-green-500/20 text-green-500' };
+        return { text: '판매중', color: 'bg-success/20 text-success' };
       case 'SOLD_OUT':
-        return { text: '품절', color: 'bg-red-500/20 text-red-500' };
+        return { text: '품절', color: 'bg-error/20 text-error' };
       default:
         return { text: status, color: 'bg-gray-500/20 text-gray-500' };
     }
@@ -459,7 +465,7 @@ export default function AdminProductsPage() {
                             </Body>
                             <div className="flex gap-2 mt-1">
                               {product.colorOptions.length > 0 && (
-                                <span className="text-xs bg-blue-500/20 text-blue-500 px-2 py-0.5 rounded">
+                                <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
                                   {product.colorOptions.length} 색상
                                 </span>
                               )}
@@ -470,7 +476,7 @@ export default function AdminProductsPage() {
                               )}
                               {product.timerEnabled && (
                                 <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
-                                  ⏱️ {product.timerDuration}분
+                                  <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> {product.timerDuration}분
                                 </span>
                               )}
                             </div>
@@ -518,7 +524,7 @@ export default function AdminProductsPage() {
                           {product.status === 'AVAILABLE' && (
                             <button
                               onClick={() => handleMarkAsSoldOut(product.id)}
-                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-orange-500"
+                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-warning"
                               title="품절 처리"
                             >
                               <CheckCircle className="w-4 h-4" />

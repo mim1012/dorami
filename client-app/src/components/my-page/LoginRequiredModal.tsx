@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Modal } from '@/components/common/Modal';
 import { Body } from '@/components/common/Typography';
+import { useToast } from '@/components/common/Toast';
 
 interface LoginRequiredModalProps {
   isOpen: boolean;
@@ -10,12 +11,13 @@ interface LoginRequiredModalProps {
 }
 
 export function LoginRequiredModal({ isOpen, onClose }: LoginRequiredModalProps) {
+  const { showToast } = useToast();
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   const handleKakaoLogin = () => {
     if (!agreedToTerms || !agreedToPrivacy) {
-      alert('이용약관과 개인정보처리방침에 동의해주세요.');
+      showToast('이용약관과 개인정보처리방침에 동의해주세요.', 'error');
       return;
     }
 

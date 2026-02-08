@@ -18,11 +18,11 @@ const TRANSACTION_TYPE_LABELS: Record<string, string> = {
 };
 
 const TRANSACTION_TYPE_BADGE_COLORS: Record<string, string> = {
-  EARNED_ORDER: 'bg-green-500/20 text-green-400 border-green-500/30',
-  USED_ORDER: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  REFUND_CANCELLED: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  MANUAL_ADD: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  MANUAL_SUBTRACT: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  EARNED_ORDER: 'bg-success/20 text-success border-success/30',
+  USED_ORDER: 'bg-info/20 text-info border-info/30',
+  REFUND_CANCELLED: 'bg-warning/20 text-warning border-warning/30',
+  MANUAL_ADD: 'bg-warning/20 text-warning border-warning/30',
+  MANUAL_SUBTRACT: 'bg-warning/20 text-warning border-warning/30',
   EXPIRED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
@@ -76,7 +76,7 @@ export default function PointsHistoryPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+      <div className="min-h-screen bg-[#121212] py-12 px-4 pb-bottom-nav">
         <div className="w-full md:max-w-4xl md:mx-auto">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
@@ -191,7 +191,7 @@ export default function PointsHistoryPage() {
                       </div>
                       <p
                         className={`text-lg font-bold ${
-                          tx.amount > 0 ? 'text-green-400' : 'text-red-400'
+                          tx.amount > 0 ? 'text-success' : 'text-error'
                         }`}
                       >
                         {tx.amount > 0 ? '+' : ''}
@@ -245,7 +245,7 @@ export default function PointsHistoryPage() {
                         <td className="p-4 text-right">
                           <span
                             className={`font-bold ${
-                              tx.amount > 0 ? 'text-green-400' : 'text-red-400'
+                              tx.amount > 0 ? 'text-success' : 'text-error'
                             }`}
                           >
                             {tx.amount > 0 ? '+' : ''}

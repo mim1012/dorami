@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { Timer } from 'lucide-react';
 
 interface UpcomingLiveCardProps {
   id: string;
@@ -77,7 +78,7 @@ export function UpcomingLiveCard({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                 </span>
-                LIVE
+                LIVE<span className="sr-only"> 현재 생방송 중</span>
               </div>
             </div>
             {/* Viewer count */}
@@ -90,7 +91,7 @@ export function UpcomingLiveCard({
           </>
         ) : (
           <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-mono font-bold tracking-wider">
-            ⏱ {countdown}
+            <Timer className="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />{countdown}
           </div>
         )}
 

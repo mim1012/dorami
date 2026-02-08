@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { Megaphone, Inbox } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 
 interface NoticeData {
@@ -30,7 +31,7 @@ export function NoticeBox() {
       <aside className="notice-box bg-content-bg rounded-2xl p-6 h-full">
         <div className="notice-header mb-4">
           <h3 className="text-lg font-semibold text-hot-pink flex items-center gap-2">
-            📢 공지
+            <Megaphone className="w-5 h-5" aria-hidden="true" /> 공지
           </h3>
         </div>
         <div className="notice-content">
@@ -47,7 +48,7 @@ export function NoticeBox() {
       {/* Header - Fixed */}
       <div className="notice-header mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold text-hot-pink flex items-center gap-2">
-          📢 공지
+          <Megaphone className="w-5 h-5" aria-hidden="true" /> 공지
         </h3>
       </div>
 
@@ -65,7 +66,7 @@ export function NoticeBox() {
           </p>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="text-5xl mb-3 opacity-50">📭</div>
+            <div className="mb-3"><Inbox className="w-12 h-12 text-secondary-text/50" aria-hidden="true" /></div>
             <p className="text-secondary-text text-sm">현재 공지가 없습니다</p>
           </div>
         )}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createReservation } from '@/lib/api/reservations';
 import { CreateReservationDto } from '@/lib/types/reservation';
+import { useToast } from '@/components/common/Toast';
 
 interface CreateReservationButtonProps {
   productId: string;
@@ -19,6 +20,7 @@ export function CreateReservationButton({
   className = '',
 }: CreateReservationButtonProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,9 +37,7 @@ export function CreateReservationButton({
       const reservation = await createReservation(data);
 
       // Show success message
-      alert(
-        `예약이 완료되었습니다!\n예약 번호: #${reservation.reservationNumber}\n\n마이페이지에서 예약 상태를 확인할 수 있습니다.`
-      );
+      showToast(`예약이 완료되었습니다! 예약 번호: #${reservation.reservationNumber}`, 'success');
 
       // Redirect to reservations page
       router.push('/my-page/reservations');
@@ -47,7 +47,7 @@ export function CreateReservationButton({
         err.message ||
         '예약 생성에 실패했습니다.';
       setError(errorMessage);
-      alert(`예약 실패: ${errorMessage}`);
+      showToast(`예약 실패: ${errorMessage}`, 'error');
     } finally {
       setIsCreating(false);
     }
@@ -99,7 +99,7 @@ export function CreateReservationButton({
       </button>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
+        <p className="mt-2 text-sm text-error text-center">{error}</p>
       )}
 
       <p className="mt-3 text-xs text-gray-600 text-center">

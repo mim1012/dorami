@@ -18,6 +18,18 @@ export function Heading2({ children, className = '', as: Component = 'h2' }: Typ
   return <Component className={`text-h2 text-primary-text ${className}`}>{children}</Component>;
 }
 
+export function Heading3({ children, className = '', as: Component = 'h3' }: TypographyProps) {
+  return <Component className={`text-h3 text-primary-text ${className}`}>{children}</Component>;
+}
+
+export function Subtitle({ children, className = '', as: Component = 'p' }: TypographyProps) {
+  return <Component className={`text-subtitle text-primary-text ${className}`}>{children}</Component>;
+}
+
+export function Overline({ children, className = '', as: Component = 'span' }: TypographyProps) {
+  return <Component className={`text-overline text-secondary-text uppercase tracking-wider ${className}`}>{children}</Component>;
+}
+
 export function Body({ children, className = '', as: Component = 'p' }: TypographyProps) {
   return <Component className={`text-body text-primary-text ${className}`}>{children}</Component>;
 }

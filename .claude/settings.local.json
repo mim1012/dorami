@@ -49,7 +49,12 @@
       "Bash(npx eslint:*)",
       "Bash(npm install:*)",
       "Bash(del \"D:\\Project\\dorami\\client-app\\eslint.config.mjs\")",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Bash(git -c core.editor=true rebase --continue)",
+      "Bash(git -c core.editor=\"echo\" rebase:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

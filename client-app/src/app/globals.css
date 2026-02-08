@@ -13,8 +13,9 @@
   /* Light Mode Colors (default) */
   --primary-black: #FFFFFF;
   --content-bg: #F8F9FA;
-  --hot-pink: #FF6B35;
-  --hot-pink-secondary: #FF007A;
+  --hot-pink: #FF007A;
+  --hot-pink-secondary: #FF6B35;
+  --hot-pink-dark: #CC0062;
   --primary-text: #212529;
   --secondary-text: #6C757D;
   --border-color: #DEE2E6;
@@ -23,6 +24,15 @@
   --error: #DC2626;
   --warning: #EA580C;
   --info: #0284C7;
+
+  /* Semantic Background Colors */
+  --success-bg: #F0FDF4;
+  --error-bg: #FEF2F2;
+  --warning-bg: #FFF7ED;
+  --info-bg: #EFF6FF;
+
+  /* Bottom Nav */
+  --bottom-nav-height: 80px;
 
   /* Border Radius */
   --radius-card: 12px;
@@ -44,6 +54,7 @@
   --content-bg: #1A1A1A;
   --hot-pink: #FF007A;
   --hot-pink-secondary: #FF6B35;
+  --hot-pink-dark: #CC0062;
   --primary-text: #FFFFFF;
   --secondary-text: #A0A0A0;
   --border-color: #2A2A2A;
@@ -52,6 +63,12 @@
   --error: #FF3B30;
   --warning: #FF9500;
   --info: #5AC8FA;
+
+  /* Semantic Background Colors */
+  --success-bg: rgba(52, 199, 89, 0.1);
+  --error-bg: rgba(255, 59, 48, 0.1);
+  --warning-bg: rgba(255, 149, 0, 0.1);
+  --info-bg: rgba(90, 200, 250, 0.1);
   
   /* Shadows */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);

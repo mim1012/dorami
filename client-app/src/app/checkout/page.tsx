@@ -169,7 +169,7 @@ export default function CheckoutPage() {
             {effectivePointsUsed > 0 && (
               <div className="flex justify-between items-center">
                 <Body className="text-secondary-text">포인트 할인</Body>
-                <Body className="text-green-400">-{formatPrice(effectivePointsUsed)}</Body>
+                <Body className="text-success">-{formatPrice(effectivePointsUsed)}</Body>
               </div>
             )}
             <div className="h-px bg-white/10 my-3" />

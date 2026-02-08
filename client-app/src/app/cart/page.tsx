@@ -12,6 +12,8 @@ import { CartSummaryCard } from '@/components/cart/CartSummaryCard';
 import { CartEmptyState } from '@/components/cart/CartEmptyState';
 import { formatPrice } from '@/lib/utils/format';
 import { ShoppingCart, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/components/common/Toast';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface CartItem {
   id: string;
@@ -38,6 +40,8 @@ interface CartSummary {
 
 export default function CartPage() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const confirm = useConfirm();
   const [cart, setCart] = useState<CartSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,29 +70,31 @@ export default function CartPage() {
       await fetchCart();
     } catch (err: any) {
       console.error('Failed to update quantity:', err);
-      alert(`수량 변경에 실패했습니다: ${err.message}`);
+      showToast(`수량 변경에 실패했습니다: ${err.message}`, 'error');
     }
   };
 
   const handleRemoveItem = async (cartItemId: string) => {
-    if (!confirm('이 상품을 장바구니에서 삭제하시겠습니까?')) return;
+    const confirmed = await confirm({ title: '상품 삭제', message: '이 상품을 장바구니에서 삭제하시겠습니까?', confirmText: '삭제', variant: 'danger' });
+    if (!confirmed) return;
     try {
       await apiClient.delete(`/cart/${cartItemId}`);
       await fetchCart();
     } catch (err: any) {
       console.error('Failed to remove item:', err);
-      alert('삭제에 실패했습니다.');
+      showToast('삭제에 실패했습니다.', 'error');
     }
   };
 
   const handleClearCart = async () => {
-    if (!confirm('장바구니를 비우시겠습니까?')) return;
+    const confirmed = await confirm({ title: '장바구니 비우기', message: '장바구니를 비우시겠습니까?', confirmText: '비우기', variant: 'danger' });
+    if (!confirmed) return;
     try {
       await apiClient.delete('/cart');
       await fetchCart();
     } catch (err: any) {
       console.error('Failed to clear cart:', err);
-      alert('장바구니 비우기에 실패했습니다.');
+      showToast('장바구니 비우기에 실패했습니다.', 'error');
     }
   };
 
@@ -107,7 +113,7 @@ export default function CartPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-primary-black pb-28">
+      <div className="min-h-screen bg-primary-black pb-bottom-nav">
         {/* Header */}
         <div className="bg-content-bg border-b border-gray-800 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">

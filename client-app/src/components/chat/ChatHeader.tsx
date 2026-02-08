@@ -19,7 +19,7 @@ export default function ChatHeader({ userCount, isConnected, compact = false }: 
         {/* Connection Status */}
         <div
           className={`w-2 h-2 rounded-full ${
-            isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+            isConnected ? 'bg-success animate-pulse' : 'bg-secondary-text'
           }`}
           title={isConnected ? 'Connected' : 'Disconnected'}
         />

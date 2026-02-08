@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import { X, Timer } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Product, ProductStatus } from '@/lib/types/product';
 
@@ -89,8 +89,8 @@ export default function ProductDetailModal({
 
           {/* Free Shipping Message */}
           {product.freeShippingMessage && (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-              <Body className="text-green-500">{product.freeShippingMessage}</Body>
+            <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+              <Body className="text-success">{product.freeShippingMessage}</Body>
             </div>
           )}
 
@@ -98,7 +98,7 @@ export default function ProductDetailModal({
           {product.timerEnabled && (
             <div className="bg-hot-pink/10 border border-hot-pink/20 rounded-lg p-3">
               <Body className="text-hot-pink">
-                ⏱️ 장바구니 담기 후 {product.timerDuration}분 내 결제 필요
+                <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> 장바구니 담기 후 {product.timerDuration}분 내 결제 필요
               </Body>
             </div>
           )}
@@ -106,7 +106,7 @@ export default function ProductDetailModal({
           {/* Stock Info */}
           <div className="flex items-center justify-between p-3 bg-primary-black rounded-lg">
             <Caption className="text-secondary-text">재고</Caption>
-            <Body className={`font-medium ${product.stock < 5 ? 'text-orange-500' : 'text-primary-text'}`}>
+            <Body className={`font-medium ${product.stock < 5 ? 'text-warning' : 'text-primary-text'}`}>
               {product.stock}개 남음
             </Body>
           </div>

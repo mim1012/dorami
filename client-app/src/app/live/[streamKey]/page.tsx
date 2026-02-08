@@ -14,6 +14,8 @@ import ProductBottomSheet from '@/components/live/ProductBottomSheet';
 import { useCartActivity } from '@/hooks/useCartActivity';
 import { Body, Heading2 } from '@/components/common/Typography';
 import { ProductStatus } from '@live-commerce/shared-types';
+import { MonitorOff, Loader } from 'lucide-react';
+import { useToast } from '@/components/common/Toast';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -54,6 +56,7 @@ export default function LiveStreamPage() {
   const { activities: cartActivities } = useCartActivity(streamKey);
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchStreamStatus();
@@ -119,15 +122,14 @@ export default function LiveStreamPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center px-6 animate-bounce-in">
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center" style={{ boxShadow: '0 0 40px rgba(255,0,122,0.1)' }}>
-            <span className="text-5xl">📺</span>
+          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center shadow-hot-pink">
+            <MonitorOff className="w-14 h-14 text-white/40" aria-hidden="true" />
           </div>
           <Heading2 className="text-white mb-3 text-2xl">{error || 'Stream not found'}</Heading2>
           <p className="text-white/40 text-sm mb-8">스트림을 찾을 수 없거나 종료되었습니다</p>
           <button
             onClick={() => router.push('/')}
-            className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #FF007A, #7928CA)' }}
+            className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg gradient-hot-pink"
           >
             홈으로 돌아가기
           </button>
@@ -141,14 +143,13 @@ export default function LiveStreamPage() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center px-6 animate-bounce-in">
           <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center animate-pulse">
-            <span className="text-5xl">⏳</span>
+            <Loader className="w-14 h-14 text-white/40 animate-spin" aria-hidden="true" />
           </div>
           <Heading2 className="text-white mb-3 text-2xl">아직 방송 전이에요</Heading2>
           <Body className="text-white/40 mb-8">곧 시작됩니다. 잠시만 기다려주세요!</Body>
           <button
             onClick={() => router.push('/')}
-            className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #FF007A, #7928CA)' }}
+            className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg gradient-hot-pink"
           >
             홈으로 돌아가기
           </button>
@@ -171,22 +172,10 @@ export default function LiveStreamPage() {
         size: selectedSize,
       });
       
-      // Animated toast
-      const toast = document.createElement('div');
-      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-2xl text-white text-sm font-bold animate-cart-toast-in';
-      toast.style.background = 'linear-gradient(135deg, rgba(255,0,122,0.9), rgba(121,40,202,0.9))';
-      toast.style.backdropFilter = 'blur(20px)';
-      toast.style.boxShadow = '0 8px 32px rgba(255,0,122,0.3)';
-      toast.innerHTML = '🛒 장바구니에 담았어요!';
-      document.body.appendChild(toast);
-      setTimeout(() => {
-        toast.classList.remove('animate-cart-toast-in');
-        toast.classList.add('animate-cart-toast-out');
-        setTimeout(() => toast.remove(), 300);
-      }, 2200);
+      showToast('장바구니에 담았어요!', 'success');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      alert(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`);
+      showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
     }
   };
 
@@ -220,10 +209,10 @@ export default function LiveStreamPage() {
             {/* Back button */}
             <button
               onClick={() => router.push('/')}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90"
-              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+              aria-label="뒤로가기"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
@@ -231,16 +220,16 @@ export default function LiveStreamPage() {
             {/* LIVE badge + Viewer count */}
             <div className="flex items-center gap-2">
               {/* LIVE badge with glow */}
-              <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full" style={{ boxShadow: '0 0 20px rgba(255,59,48,0.4)' }}>
-                <span className="relative flex h-2.5 w-2.5">
+              <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+                <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                 </span>
-                <span className="text-white text-xs font-black tracking-wider">LIVE</span>
+                <span className="text-white text-xs font-black tracking-wider">LIVE<span className="sr-only"> 현재 생방송 중</span></span>
               </div>
 
               {/* Viewer count with pulse on increase */}
-              <div className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`} style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
@@ -250,11 +239,11 @@ export default function LiveStreamPage() {
             </div>
 
             {/* Share button */}
-            <button 
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90"
-              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+            <button
+              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+              aria-label="공유하기"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16,6 12,2 8,6" /><line x1="12" y1="2" x2="12" y2="15" />
               </svg>
             </button>

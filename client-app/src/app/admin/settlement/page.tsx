@@ -6,7 +6,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Inbox } from 'lucide-react';
 
 interface SettlementSummary {
   totalOrders: number;
@@ -164,9 +164,10 @@ export default function SettlementPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -274,7 +275,7 @@ export default function SettlementPage() {
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis
-                      tickFormatter={(value) => `$${value}`}
+                      tickFormatter={(value) => `${value.toLocaleString()}원`}
                       style={{ fontSize: '12px' }}
                     />
                     <Tooltip
@@ -410,7 +411,7 @@ export default function SettlementPage() {
               </>
             ) : (
               <div className="bg-content-bg rounded-button p-12 text-center">
-                <div className="text-6xl mb-4">📭</div>
+                <div className="mb-4"><Inbox className="w-16 h-16 text-secondary-text/50" aria-hidden="true" /></div>
                 <Heading2 className="text-secondary-text mb-2">선택한 기간에 입금 확인된 주문이 없습니다</Heading2>
                 <Body className="text-secondary-text">다른 기간을 선택해주세요</Body>
               </div>

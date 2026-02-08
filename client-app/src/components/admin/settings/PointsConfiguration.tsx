@@ -86,8 +86,8 @@ export function PointsConfiguration() {
       </div>
 
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-button p-3 mb-4">
-          <Caption className="text-green-800">{successMessage}</Caption>
+        <div className="bg-success-bg border border-success/20 rounded-button p-3 mb-4">
+          <Caption className="text-success">{successMessage}</Caption>
         </div>
       )}
 
@@ -207,10 +207,10 @@ export function PointsConfiguration() {
               </Caption>
               <div className="mt-2 space-y-1">
                 <Caption className="text-primary-text">
-                  적립 포인트: <span className="text-green-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleEarning)} P</span>
+                  적립 포인트: <span className="text-success font-medium">{new Intl.NumberFormat('ko-KR').format(exampleEarning)} P</span>
                 </Caption>
                 <Caption className="text-primary-text">
-                  최대 사용 가능: <span className="text-blue-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P</span>
+                  최대 사용 가능: <span className="text-info font-medium">{new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P</span>
                 </Caption>
               </div>
             </div>

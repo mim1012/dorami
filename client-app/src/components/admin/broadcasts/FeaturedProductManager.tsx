@@ -10,6 +10,7 @@ import {
   getStreamProducts,
   FeaturedProduct,
 } from '@/lib/api/featured-products';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 
 interface FeaturedProductManagerProps {
   streamKey: string;
@@ -20,6 +21,7 @@ export default function FeaturedProductManager({
   streamKey,
   streamTitle,
 }: FeaturedProductManagerProps) {
+  const confirm = useConfirm();
   const [currentFeatured, setCurrentFeatured] = useState<FeaturedProduct | null>(null);
   const [availableProducts, setAvailableProducts] = useState<FeaturedProduct[]>([]);
   const [showProductSelector, setShowProductSelector] = useState(false);
@@ -70,7 +72,13 @@ export default function FeaturedProductManager({
   };
 
   const handleClearFeatured = async () => {
-    if (!confirm('추천 상품을 해제하시겠습니까?')) {
+    const confirmed = await confirm({
+      title: '추천 해제',
+      message: '추천 상품을 해제하시겠습니까?',
+      confirmText: '해제',
+      variant: 'warning',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -144,11 +152,11 @@ export default function FeaturedProductManager({
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="bg-error-bg border border-error/20 rounded-lg p-4 flex items-center justify-between">
+          <p className="text-sm text-error">{error}</p>
           <button
             onClick={() => setError(null)}
-            className="text-red-600 hover:text-red-700"
+            className="text-error hover:text-error/80"
           >
             <X className="w-4 h-4" />
           </button>
@@ -180,7 +188,7 @@ export default function FeaturedProductManager({
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       currentFeatured.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-success/10 text-success'
                         : 'bg-gray-100 text-gray-600'
                     }`}
                   >
