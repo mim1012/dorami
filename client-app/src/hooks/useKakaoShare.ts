@@ -60,59 +60,41 @@ export function useKakaoShare() {
     }
 
     try {
-      // Build item list for display
-      const itemsText = orderData.items
-        .map((item) => `${item.productName} x${item.quantity}`)
-        .join(', ');
+      const orderUrl = `${window.location.origin}/order-complete?orderId=${orderData.orderId}`;
 
-      const itemsForFeed = orderData.items.slice(0, 3).map((item) => ({
-        item: item.productName,
-        itemOp: `${item.price.toLocaleString('ko-KR')}원 x ${item.quantity}`,
-      }));
+      // Build description with bank info
+      const description = [
+        `주문번호: ${orderData.orderId}`,
+        `${orderData.bankName} ${orderData.accountNumber}`,
+        `예금주: ${orderData.accountHolder}`,
+        `입금자명: ${orderData.depositorName}`,
+        `입금 기한: ${orderData.deadlineDate}`,
+      ].join('\n');
 
-      // Share using Kakao Link API
+      // Use commerce template for order sharing
       window.Kakao.Share.sendDefault({
-        objectType: 'feed',
+        objectType: 'commerce',
         content: {
-          title: '🎉 주문이 완료되었습니다!',
-          description: `주문번호: ${orderData.orderId}\n입금 기한: ${orderData.deadlineDate}`,
+          title: '주문이 완료되었습니다',
+          description,
           imageUrl:
             'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
           link: {
-            mobileWebUrl: `${window.location.origin}/order-complete?orderId=${orderData.orderId}`,
-            webUrl: `${window.location.origin}/order-complete?orderId=${orderData.orderId}`,
+            mobileWebUrl: orderUrl,
+            webUrl: orderUrl,
           },
         },
-        itemContent: {
-          profileText: '라이브 커머스',
-          profileImageUrl:
-            'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=200&q=80',
-          titleImageUrl:
-            'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
-          titleImageText: '입금 정보',
-          titleImageCategory: '주문 완료',
-          items: itemsForFeed,
-          sum: `총 ${orderData.totalAmount.toLocaleString('ko-KR')}원`,
-          sumOp: `입금자명: ${orderData.depositorName}`,
-        },
-        social: {
-          likeCount: 0,
-          commentCount: 0,
-          sharedCount: 0,
+        commerce: {
+          regularPrice: orderData.totalAmount,
+          currencyUnit: '원',
+          currencyUnitPosition: 1,
         },
         buttons: [
           {
             title: '입금 정보 확인',
             link: {
-              mobileWebUrl: `${window.location.origin}/order-complete?orderId=${orderData.orderId}`,
-              webUrl: `${window.location.origin}/order-complete?orderId=${orderData.orderId}`,
-            },
-          },
-          {
-            title: '홈으로 이동',
-            link: {
-              mobileWebUrl: window.location.origin,
-              webUrl: window.location.origin,
+              mobileWebUrl: orderUrl,
+              webUrl: orderUrl,
             },
           },
         ],

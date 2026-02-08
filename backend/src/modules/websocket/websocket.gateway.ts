@@ -250,4 +250,38 @@ export class WebsocketGateway
       product: payload.product,
     });
   }
+
+  /**
+   * Handle cart item added event
+   * Broadcast to all viewers in the stream so they see real-time cart activity
+   */
+  @OnEvent('cart:added')
+  handleCartItemAdded(payload: {
+    userId: string;
+    userName: string;
+    userColor: string;
+    productName: string;
+    quantity: number;
+    streamKey: string;
+  }) {
+    if (!payload.streamKey) return;
+
+    const roomName = `stream:${payload.streamKey}`;
+
+    this.logger.log(
+      `Broadcasting cart activity to room ${roomName}: ${payload.userName} added ${payload.productName}`
+    );
+
+    this.server.to(roomName).emit('cart:item-added', {
+      type: 'cart:item-added',
+      data: {
+        userId: payload.userId,
+        userName: payload.userName,
+        userColor: payload.userColor,
+        productName: payload.productName,
+        quantity: payload.quantity,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
 }

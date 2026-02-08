@@ -322,6 +322,9 @@ model SystemConfig {
   noticeFontSize   Int      @default(14) @map("notice_font_size") // Range: 10-24px
   noticeFontFamily String   @default("Pretendard") @map("notice_font_family")
 
+  // Shipping Messages Configuration
+  shippingMessages Json? @map("shipping_messages") // JSON: {preparing, shipped, inTransit, delivered}
+
   // Points Configuration (Epic 13)
   pointsEnabled          Boolean @default(false) @map("points_enabled")
   pointEarningRate       Int     @default(5) @map("point_earning_rate") // % of order total

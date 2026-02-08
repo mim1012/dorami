@@ -16,7 +16,7 @@ export default function ReservationsPage() {
 
         {/* Info Box */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">💡 예약 시스템 안내</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">예약 시스템 안내</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• 품절된 상품에 대해 예약을 신청할 수 있습니다.</li>
             <li>• 재고가 확보되면 예약 순서대로 구매 기회가 제공됩니다.</li>

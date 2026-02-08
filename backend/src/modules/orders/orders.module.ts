@@ -5,9 +5,10 @@ import { InventoryService } from './inventory.service';
 import { ReservationService } from './reservation.service';
 import { OrderEventsListener } from './listeners/order-events.listener';
 import { PointsModule } from '../points/points.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PointsModule],
+  imports: [PointsModule, NotificationsModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

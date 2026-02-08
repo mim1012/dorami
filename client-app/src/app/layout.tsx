@@ -20,6 +20,12 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link
+          rel="stylesheet"
+          as="style"
+          crossOrigin="anonymous"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
+        />
       </head>
       <body className="bg-white text-gray-900 [--primary-black:#FFFFFF] [--primary-text:#111827] [--secondary-text:#6B7280] [--content-bg:#F9FAFB]" suppressHydrationWarning>
         {/* Kakao SDK */}

@@ -19,9 +19,9 @@ const KAKAO_INQUIRY_URL = 'https://pf.kakao.com/_your_kakao_channel'; // 실제 
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development';
 
 const tabs: TabItem[] = [
-  { id: 'home', label: 'Home', icon: Home, path: '/' },
-  { id: 'shop', label: 'Shop', icon: ShoppingCart, path: '/shop' },
-  { id: 'live', label: 'Live', icon: Video, path: '/live' },
+  { id: 'home', label: '홈', icon: Home, path: '/' },
+  { id: 'shop', label: '상품', icon: ShoppingCart, path: '/shop' },
+  { id: 'live', label: '라이브', icon: Video, path: '/live' },
   {
     id: 'inquiry',
     label: '문의',
@@ -30,7 +30,7 @@ const tabs: TabItem[] = [
       window.open(KAKAO_INQUIRY_URL, '_blank');
     }
   },
-  { id: 'mypage', label: 'My Page', icon: User, path: isDevelopment ? '/admin' : '/my-page' },
+  { id: 'mypage', label: '마이', icon: User, path: isDevelopment ? '/admin' : '/my-page' },
 ];
 
 export function BottomTabBar() {

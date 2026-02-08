@@ -99,13 +99,13 @@ export default function MyPagePage() {
   const handleAddressSubmit = async (data: AddressFormData) => {
     const response = await apiClient.patch<ProfileData>('/users/profile/address', data);
     setProfile(response.data);
-    setSuccessMessage('Address updated successfully');
+    setSuccessMessage('배송지가 저장되었습니다');
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   if (authLoading || (user && isLoadingProfile)) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Body>Loading...</Body>
       </div>
     );
@@ -115,11 +115,11 @@ export default function MyPagePage() {
   if (!user) {
     return (
       <>
-        <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28">
           <div className="w-full md:max-w-4xl md:mx-auto">
             <div className="text-center mb-8">
-              <Display className="text-hot-pink mb-2">My Page</Display>
-              <Body className="text-secondary-text">로그인하여 프로필을 확인하세요</Body>
+              <Display className="text-gray-900 mb-2">마이페이지</Display>
+              <Body className="text-gray-500">로그인하여 프로필을 확인하세요</Body>
             </div>
           </div>
         </div>
@@ -132,8 +132,8 @@ export default function MyPagePage() {
   if (!profile) {
     return (
       <>
-        <div className="min-h-screen bg-[#121212] flex items-center justify-center pb-28">
-          <Body className="text-error">Failed to load profile</Body>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-28">
+          <Body className="text-error">프로필을 불러올 수 없습니다</Body>
         </div>
         <BottomTabBar />
       </>
@@ -142,11 +142,11 @@ export default function MyPagePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#121212] py-12 px-4 pb-28">
+      <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28">
         <div className="w-full md:max-w-4xl md:mx-auto">
           <div className="text-center mb-8">
-            <Display className="text-hot-pink mb-2">My Page</Display>
-            <Body className="text-secondary-text">Manage your profile and view orders</Body>
+            <Display className="text-gray-900 mb-2">마이페이지</Display>
+            <Body className="text-gray-500">프로필 관리 및 주문 내역 확인</Body>
           </div>
 
           {successMessage && (

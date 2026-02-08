@@ -13,12 +13,14 @@ export class CartEventsListener {
   }
 
   /**
-   * Epic 6: Handle cart:added event
-   * Broadcast cart activity to stream viewers
+   * Handle cart:added event
+   * Broadcast cart activity to stream viewers with user info
    */
   @OnEvent('cart:added')
   handleCartAdded(payload: {
     userId: string;
+    userName: string;
+    userColor: string;
     cartItemId: string;
     productId: string;
     productName: string;
@@ -26,10 +28,23 @@ export class CartEventsListener {
     streamKey: string;
   }) {
     this.logger.log(
-      `Cart added: User ${payload.userId}, Product ${payload.productName} x${payload.quantity}`,
+      `Cart added: User ${payload.userName} (${payload.userId}), Product ${payload.productName} x${payload.quantity}`,
     );
 
     // Broadcast to all viewers in the stream (for real-time cart activity feed)
+    this.websocketGateway.broadcastToStream(payload.streamKey, 'cart:item-added', {
+      type: 'cart:item-added',
+      data: {
+        userId: payload.userId,
+        userName: payload.userName,
+        userColor: payload.userColor,
+        productName: payload.productName,
+        quantity: payload.quantity,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    // Also emit the legacy event for backward compatibility
     this.websocketGateway.broadcastToStream(payload.streamKey, 'live:cart:activity', {
       type: 'live:cart:activity',
       data: {
@@ -43,7 +58,7 @@ export class CartEventsListener {
   }
 
   /**
-   * Epic 6: Handle cart:expired event
+   * Handle cart:expired event
    * Log expired carts for monitoring
    */
   @OnEvent('cart:expired')

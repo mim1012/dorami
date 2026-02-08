@@ -52,17 +52,16 @@ export function PointsConfiguration() {
 
       const response = await apiClient.put<PointsConfig>('/admin/config/points', config);
       setConfig(response.data);
-      setSuccessMessage('Points configuration saved successfully');
+      setSuccessMessage('포인트 설정이 저장되었습니다');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Failed to save points config:', err);
-      setError(err.message || 'Failed to save configuration');
+      setError(err.message || '설정 저장에 실패했습니다');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Example calculation
   const exampleOrderTotal = 50000;
   const exampleEarning = Math.floor(exampleOrderTotal * config.pointEarningRate / 100);
   const exampleMaxUsage = Math.floor(exampleOrderTotal * config.pointMaxRedemptionPct / 100);
@@ -83,7 +82,7 @@ export function PointsConfiguration() {
     <div className="bg-content-bg rounded-button p-6">
       <div className="flex items-center gap-3 mb-4">
         <Coins className="w-6 h-6 text-hot-pink" />
-        <Heading2 className="text-primary-text">Reward Points System</Heading2>
+        <Heading2 className="text-primary-text">적립 포인트 설정</Heading2>
       </div>
 
       {successMessage && (
@@ -99,7 +98,6 @@ export function PointsConfiguration() {
       )}
 
       <div className="space-y-6">
-        {/* Enable/Disable Toggle */}
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -109,19 +107,18 @@ export function PointsConfiguration() {
             className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
           />
           <label htmlFor="pointsEnabled" className="cursor-pointer">
-            <Body className="text-primary-text font-medium">Enable Points System</Body>
+            <Body className="text-primary-text font-medium">포인트 시스템 활성화</Body>
             <Caption className="text-secondary-text">
-              When enabled, customers earn points on purchases and can redeem them
+              활성화하면 구매 시 포인트가 적립되고 사용할 수 있습니다
             </Caption>
           </label>
         </div>
 
         {config.pointsEnabled && (
           <>
-            {/* Earning Rate */}
             <div>
               <Input
-                label="Point Earning Rate (%)"
+                label="포인트 적립률 (%)"
                 type="number"
                 min={0}
                 max={100}
@@ -132,14 +129,13 @@ export function PointsConfiguration() {
                 fullWidth
               />
               <Caption className="text-secondary-text mt-1">
-                Percentage of order total earned as points (0-100%)
+                주문 금액 대비 적립 비율 (0~100%)
               </Caption>
             </div>
 
-            {/* Minimum Redemption */}
             <div>
               <Input
-                label="Minimum Points for Redemption"
+                label="최소 사용 포인트"
                 type="number"
                 min={0}
                 value={config.pointMinRedemption}
@@ -149,14 +145,13 @@ export function PointsConfiguration() {
                 fullWidth
               />
               <Caption className="text-secondary-text mt-1">
-                Minimum points required to use at checkout
+                결제 시 사용 가능한 최소 포인트
               </Caption>
             </div>
 
-            {/* Max Redemption Percentage */}
             <div>
               <Input
-                label="Maximum Redemption (% of Order)"
+                label="최대 사용 비율 (% / 주문금액)"
                 type="number"
                 min={1}
                 max={100}
@@ -167,11 +162,10 @@ export function PointsConfiguration() {
                 fullWidth
               />
               <Caption className="text-secondary-text mt-1">
-                Maximum percentage of order total that can be paid with points (1-100%)
+                주문 금액 대비 포인트 최대 사용 비율 (1~100%)
               </Caption>
             </div>
 
-            {/* Expiration Toggle */}
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -183,14 +177,14 @@ export function PointsConfiguration() {
                 className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
               />
               <label htmlFor="pointExpirationEnabled" className="cursor-pointer">
-                <Body className="text-primary-text">Enable Point Expiration</Body>
+                <Body className="text-primary-text">포인트 만료 활성화</Body>
               </label>
             </div>
 
             {config.pointExpirationEnabled && (
               <div>
                 <Input
-                  label="Expiration Period (months)"
+                  label="만료 기간 (개월)"
                   type="number"
                   min={1}
                   max={120}
@@ -201,23 +195,22 @@ export function PointsConfiguration() {
                   fullWidth
                 />
                 <Caption className="text-secondary-text mt-1">
-                  Points will expire after this many months from earning
+                  적립일로부터 해당 기간이 지나면 포인트가 소멸됩니다
                 </Caption>
               </div>
             )}
 
-            {/* Preview Calculation */}
             <div className="bg-gray-50 rounded-button p-4 border border-gray-200">
-              <Body className="text-primary-text font-medium mb-2">Example Calculation</Body>
+              <Body className="text-primary-text font-medium mb-2">적용 예시</Body>
               <Caption className="text-secondary-text">
-                For an order of {new Intl.NumberFormat('ko-KR').format(exampleOrderTotal)} KRW:
+                {new Intl.NumberFormat('ko-KR').format(exampleOrderTotal)}원 주문 시:
               </Caption>
               <div className="mt-2 space-y-1">
                 <Caption className="text-primary-text">
-                  Points earned: <span className="text-green-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleEarning)} P</span>
+                  적립 포인트: <span className="text-green-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleEarning)} P</span>
                 </Caption>
                 <Caption className="text-primary-text">
-                  Max points usable: <span className="text-blue-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P</span>
+                  최대 사용 가능: <span className="text-blue-600 font-medium">{new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P</span>
                 </Caption>
               </div>
             </div>
@@ -227,7 +220,7 @@ export function PointsConfiguration() {
         <div className="flex justify-end">
           <Button variant="primary" onClick={handleSave} disabled={isSaving}>
             <Save className="w-4 h-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Points Settings'}
+            {isSaving ? '저장 중...' : '포인트 설정 저장'}
           </Button>
         </div>
       </div>
