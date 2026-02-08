@@ -29,14 +29,14 @@ export function SocialProof({ followerCount, message = '믿고 머물 수 있는
   }, [followerCount]);
 
   return (
-    <div className="mx-4 mb-6 p-5 rounded-2xl bg-content-bg/50 backdrop-blur-sm border border-border-color/50 relative overflow-hidden">
+    <div className="mx-4 mb-6 p-5 rounded-2xl bg-gray-100/50 backdrop-blur-sm border border-gray-200 relative overflow-hidden">
       {/* Decorative gradient */}
       <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-hot-pink/5 blur-2xl" />
       <div className="absolute -bottom-10 -left-10 w-24 h-24 rounded-full bg-[#7928CA]/5 blur-2xl" />
       
       <div className="relative flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs text-secondary-text mb-1 font-medium">{message}</p>
+          <p className="text-xs text-gray-500 mb-1 font-medium">{message}</p>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-black bg-gradient-to-r from-hot-pink to-[#FF4500] bg-clip-text text-transparent">
               {displayCount.toLocaleString()}
@@ -48,13 +48,13 @@ export function SocialProof({ followerCount, message = '믿고 머물 수 있는
           {['😊', '🥰', '😎', '🤗'].map((emoji, i) => (
             <div
               key={i}
-              className="w-8 h-8 rounded-full bg-content-bg border-2 border-[var(--primary-black)] flex items-center justify-center text-sm"
+              className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-sm"
               style={{ zIndex: 4 - i }}
             >
               {emoji}
             </div>
           ))}
-          <div className="w-8 h-8 rounded-full bg-hot-pink/10 border-2 border-[var(--primary-black)] flex items-center justify-center text-[10px] font-bold text-hot-pink">
+          <div className="w-8 h-8 rounded-full bg-hot-pink/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-hot-pink">
             +6K
           </div>
         </div>

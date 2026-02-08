@@ -27,10 +27,10 @@ export function ProductCard({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl overflow-hidden bg-[var(--card-bg)] border border-[var(--border-color)] card-magazine active:scale-[0.97]"
+      className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm active:scale-[0.97]"
     >
       {/* Image container */}
-      <div className="relative aspect-[4/3] bg-content-bg overflow-hidden">
+      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
         <Image
           src={imageUrl}
           alt={name}
@@ -73,12 +73,12 @@ export function ProductCard({
 
       {/* Info section */}
       <div className="p-3.5">
-        <h3 className="text-sm text-primary-text font-bold mb-2 line-clamp-2 leading-snug group-hover:text-hot-pink transition-colors duration-300">
+        <h3 className="text-sm text-gray-900 font-bold mb-2 line-clamp-2 leading-snug group-hover:text-hot-pink transition-colors duration-300">
           {name}
         </h3>
         <div className="flex flex-col gap-0.5">
           {discount !== undefined && discount > 0 && (
-            <span className="text-xs text-secondary-text line-through">
+            <span className="text-xs text-gray-500 line-through">
               {price.toLocaleString()}원
             </span>
           )}
