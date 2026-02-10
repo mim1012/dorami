@@ -7,6 +7,7 @@ import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { getFeaturedProducts } from '@/lib/api/products';
 import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
@@ -93,6 +94,7 @@ function getMockUpcomingLives(now: number) {
 
 export default function Home() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<Array<{
     id: string;
     name: string;
@@ -296,6 +298,24 @@ export default function Home() {
           </div>
 
           <SearchBar onSubmit={handleSearch} />
+
+          {/* 비로그인 사용자 CTA */}
+          {!authLoading && !isAuthenticated && (
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => router.push('/login')}
+                className="flex-1 py-3 bg-gradient-to-r from-hot-pink to-[#7928CA] text-white font-bold text-sm rounded-full shadow-hot-pink active:scale-95 transition-all"
+              >
+                카카오로 시작하기
+              </button>
+              <button
+                onClick={() => router.push('/login')}
+                className="px-5 py-3 border border-gray-300 text-gray-600 font-semibold text-sm rounded-full hover:border-hot-pink/50 transition-all"
+              >
+                로그인
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

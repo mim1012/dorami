@@ -47,9 +47,14 @@ function LoginContent() {
         setDevError(data.message || '로그인 실패');
         return;
       }
-      // Refresh auth state and redirect
+      // Refresh auth state and redirect based on profile completion
       await refreshProfile();
-      router.push('/');
+      const userData = data.data?.user;
+      if (userData && (!userData.instagramId || !userData.depositorName)) {
+        router.push('/profile/register');
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       setDevError(err.message || '서버 연결 실패');
     } finally {

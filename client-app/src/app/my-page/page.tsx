@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
 import { apiClient } from '@/lib/api/client';
 import { Display, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -13,7 +14,6 @@ import {
   OrderHistoryCard,
   PointsBalanceCard,
   AddressEditModal,
-  LoginRequiredModal,
   type AddressFormData,
 } from '@/components/my-page';
 
@@ -43,12 +43,12 @@ interface ProfileData {
 
 export default function MyPagePage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
+  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
@@ -103,36 +103,27 @@ export default function MyPagePage() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  if (authLoading || (user && isLoadingProfile)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Body>Loading...</Body>
-      </div>
-    );
-  }
-
-  // Not logged in state
-  if (!user) {
+  // Loading state (auth + profile guard + profile data)
+  if (authLoading || guardLoading || (user && isLoadingProfile)) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-bottom-nav">
-          <div className="w-full md:max-w-4xl md:mx-auto">
-            <div className="text-center mb-8">
-              <Display className="text-gray-900 mb-2">마이페이지</Display>
-              <Body className="text-gray-500">로그인하여 프로필을 확인하세요</Body>
-            </div>
-          </div>
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
         </div>
-        <LoginRequiredModal isOpen={isLoginModalOpen} onClose={() => router.push('/')} />
         <BottomTabBar />
       </>
     );
   }
 
+  // useProfileGuard handles redirect for non-authenticated and incomplete profile
+  if (!user || !isProfileComplete) {
+    return null;
+  }
+
   if (!profile) {
     return (
       <>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-bottom-nav">
+        <div className="min-h-screen bg-primary-black flex items-center justify-center pb-bottom-nav">
           <Body className="text-error">프로필을 불러올 수 없습니다</Body>
         </div>
         <BottomTabBar />
@@ -142,15 +133,15 @@ export default function MyPagePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-12 px-4 pb-bottom-nav">
+      <div className="min-h-screen bg-primary-black py-12 px-4 pb-bottom-nav">
         <div className="w-full md:max-w-4xl md:mx-auto">
           <div className="text-center mb-8">
-            <Display className="text-gray-900 mb-2">마이페이지</Display>
-            <Body className="text-gray-500">프로필 관리 및 주문 내역 확인</Body>
+            <Display className="text-hot-pink mb-2">마이페이지</Display>
+            <Body className="text-secondary-text">프로필 관리 및 주문 내역 확인</Body>
           </div>
 
           {successMessage && (
-            <div className="bg-success/10 border border-success rounded-button p-4 mb-6">
+            <div className="bg-success/10 border border-success rounded-lg p-4 mb-6">
               <Body className="text-success">{successMessage}</Body>
             </div>
           )}
@@ -172,6 +163,16 @@ export default function MyPagePage() {
           {profile.role === 'ADMIN' && <AdminDashboardCard />}
 
           <OrderHistoryCard />
+
+          {/* 로그아웃 버튼 */}
+          <div className="mt-6">
+            <button
+              onClick={logout}
+              className="w-full py-3 text-secondary-text text-sm border border-border-color rounded-lg hover:bg-content-bg transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
 
         <AddressEditModal
