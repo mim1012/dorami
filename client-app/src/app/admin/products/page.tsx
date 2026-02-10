@@ -7,7 +7,17 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
-import { Plus, Edit, Trash2, Package, AlertCircle, Upload, X, CheckCircle, Timer } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Package,
+  AlertCircle,
+  Upload,
+  X,
+  CheckCircle,
+  Timer,
+} from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 
@@ -81,111 +91,13 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      // Use mock data for demo
-      const mockProducts: Product[] = [
-        {
-          id: 'prod-001',
-          streamKey: 'live-001',
-          name: 'Chic Evening Bag',
-          price: 129000,
-          stock: 10,
-          colorOptions: ['Black', 'Brown', 'Beige'],
-          sizeOptions: [],
-          shippingFee: 3000,
-          freeShippingMessage: '50,000원 이상 무료배송',
-          timerEnabled: false,
-          timerDuration: 10,
-          imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
-          status: 'AVAILABLE',
-          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'prod-002',
-          streamKey: 'live-001',
-          name: 'Pro Audio Pods',
-          price: 89000,
-          stock: 25,
-          colorOptions: ['White', 'Black'],
-          sizeOptions: [],
-          shippingFee: 0,
-          freeShippingMessage: '무료배송',
-          timerEnabled: true,
-          timerDuration: 15,
-          imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-          status: 'AVAILABLE',
-          createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'prod-003',
-          streamKey: 'live-002',
-          name: 'Handmade Tableware',
-          price: 45000,
-          stock: 15,
-          colorOptions: ['White', 'Gray', 'Blue'],
-          sizeOptions: [],
-          shippingFee: 3000,
-          timerEnabled: false,
-          timerDuration: 10,
-          imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
-          status: 'AVAILABLE',
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'prod-004',
-          streamKey: 'live-002',
-          name: 'Smart Fitness Watch',
-          price: 199000,
-          stock: 0,
-          colorOptions: ['Black', 'Silver', 'Gold'],
-          sizeOptions: ['S', 'M', 'L'],
-          shippingFee: 0,
-          freeShippingMessage: '무료배송',
-          timerEnabled: true,
-          timerDuration: 20,
-          imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-          status: 'SOLD_OUT',
-          createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'prod-005',
-          streamKey: 'live-003',
-          name: 'Premium Leather Wallet',
-          price: 79000,
-          stock: 20,
-          colorOptions: ['Brown', 'Black', 'Navy'],
-          sizeOptions: [],
-          shippingFee: 3000,
-          freeShippingMessage: '50,000원 이상 무료배송',
-          timerEnabled: false,
-          timerDuration: 10,
-          imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
-          status: 'AVAILABLE',
-          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: 'prod-006',
-          streamKey: 'live-003',
-          name: 'Wireless Keyboard',
-          price: 149000,
-          stock: 12,
-          colorOptions: ['White', 'Black'],
-          sizeOptions: [],
-          shippingFee: 0,
-          freeShippingMessage: '무료배송',
-          timerEnabled: true,
-          timerDuration: 12,
-          imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
-          status: 'AVAILABLE',
-          createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ];
-      setProducts(mockProducts);
+      const params = new URLSearchParams();
+      if (filterStreamKey) {
+        params.set('streamKey', filterStreamKey);
+      }
+      const url = `/products${params.toString() ? `?${params}` : ''}`;
+      const response = await apiClient.get(url);
+      setProducts(response.data || []);
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
       setError('상품 목록을 불러오는데 실패했습니다.');
@@ -291,13 +203,18 @@ export default function AdminProductsPage() {
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        streamKey: formData.streamKey,
+      const basePayload = {
         name: formData.name,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
-        colorOptions: formData.colorOptions.split(',').map(s => s.trim()).filter(Boolean),
-        sizeOptions: formData.sizeOptions.split(',').map(s => s.trim()).filter(Boolean),
+        colorOptions: formData.colorOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        sizeOptions: formData.sizeOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         shippingFee: parseFloat(formData.shippingFee),
         freeShippingMessage: formData.freeShippingMessage || undefined,
         timerEnabled: formData.timerEnabled,
@@ -306,9 +223,9 @@ export default function AdminProductsPage() {
       };
 
       if (editingProduct) {
-        await apiClient.patch(`/products/${editingProduct.id}`, payload);
+        await apiClient.patch(`/products/${editingProduct.id}`, basePayload);
       } else {
-        await apiClient.post('/products', payload);
+        await apiClient.post('/products', { streamKey: formData.streamKey, ...basePayload });
       }
 
       fetchProducts();
@@ -323,7 +240,12 @@ export default function AdminProductsPage() {
   };
 
   const handleMarkAsSoldOut = async (productId: string) => {
-    const confirmed = await confirmAction({ title: '품절 처리', message: '이 상품을 품절 처리하시겠습니까?', confirmText: '품절 처리', variant: 'warning' });
+    const confirmed = await confirmAction({
+      title: '품절 처리',
+      message: '이 상품을 품절 처리하시겠습니까?',
+      confirmText: '품절 처리',
+      variant: 'warning',
+    });
     if (!confirmed) return;
 
     try {
@@ -337,7 +259,12 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (productId: string) => {
-    const confirmed = await confirmAction({ title: '상품 삭제', message: '정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', confirmText: '삭제', variant: 'danger' });
+    const confirmed = await confirmAction({
+      title: '상품 삭제',
+      message: '정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      confirmText: '삭제',
+      variant: 'danger',
+    });
     if (!confirmed) return;
 
     try {
@@ -374,9 +301,7 @@ export default function AdminProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary-text mb-2">
-            상품 관리
-          </h1>
+          <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
         <Button
@@ -461,9 +386,7 @@ export default function AdminProductsPage() {
                             </div>
                           )}
                           <div>
-                            <Body className="text-primary-text font-semibold">
-                              {product.name}
-                            </Body>
+                            <Body className="text-primary-text font-semibold">{product.name}</Body>
                             <div className="flex gap-2 mt-1">
                               {product.colorOptions.length > 0 && (
                                 <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
@@ -477,7 +400,8 @@ export default function AdminProductsPage() {
                               )}
                               {product.timerEnabled && (
                                 <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
-                                  <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> {product.timerDuration}분
+                                  <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" />{' '}
+                                  {product.timerDuration}분
                                 </span>
                               )}
                             </div>
@@ -648,7 +572,9 @@ export default function AdminProductsPage() {
                 onChange={(e) => setFormData({ ...formData, timerEnabled: e.target.checked })}
                 className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
               />
-              <span className="text-sm font-medium text-primary-text">장바구니 예약 타이머 활성화</span>
+              <span className="text-sm font-medium text-primary-text">
+                장바구니 예약 타이머 활성화
+              </span>
             </label>
             {formData.timerEnabled && (
               <Input

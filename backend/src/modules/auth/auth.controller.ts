@@ -9,15 +9,17 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { KakaoAuthGuard } from './guards/kakao-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { SkipCsrf } from '../../common/guards/csrf.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { RefreshTokenDto, TokenPayload } from './dto/auth.dto';
+import { TokenPayload } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
 import { User } from '@prisma/client';
 
@@ -38,9 +40,10 @@ export class AuthController {
     this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
     // Allow overriding cookie secure flag for HTTP staging environments
     const cookieSecureOverride = this.configService.get<string>('COOKIE_SECURE');
-    this.isProduction = cookieSecureOverride !== undefined
-      ? cookieSecureOverride === 'true'
-      : this.configService.get<string>('NODE_ENV') === 'production';
+    this.isProduction =
+      cookieSecureOverride !== undefined
+        ? cookieSecureOverride === 'true'
+        : this.configService.get<string>('NODE_ENV') === 'production';
 
     // Parse JWT expiration times from environment (e.g., "15m" -> 900000ms)
     this.accessTokenMaxAge = this.parseJwtExpiration(
@@ -66,11 +69,16 @@ export class AuthController {
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 15 * 60 * 1000;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 15 * 60 * 1000;
     }
   }
 
@@ -101,7 +109,10 @@ export class AuthController {
   @Public()
   @Get('kakao')
   @UseGuards(KakaoAuthGuard)
-  @ApiOperation({ summary: '카카오 로그인', description: '카카오 OAuth 로그인 페이지로 리다이렉트합니다.' })
+  @ApiOperation({
+    summary: '카카오 로그인',
+    description: '카카오 OAuth 로그인 페이지로 리다이렉트합니다.',
+  })
   @ApiResponse({ status: 302, description: '카카오 로그인 페이지로 리다이렉트' })
   async kakaoLogin() {
     // This route initiates Kakao OAuth flow
@@ -121,19 +132,20 @@ export class AuthController {
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
       // Check if user needs to complete profile per Story 2.1 AC1
-      const needsProfileCompletion =
-        !user.instagramId || !user.depositorName;
+      const needsProfileCompletion = !user.instagramId || !user.depositorName;
 
       // Redirect based on profile completion status
       const redirectUrl = needsProfileCompletion
         ? `${this.frontendUrl}/profile/register`
         : `${this.frontendUrl}/`;
 
-      res.redirect(redirectUrl); return;
+      res.redirect(redirectUrl);
+      return;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.stack : String(error);
       this.logger.error('Kakao callback error:', errorMessage);
-      res.redirect(`${this.frontendUrl}/login?error=auth_failed`); return;
+      res.redirect(`${this.frontendUrl}/login?error=auth_failed`);
+      return;
     }
   }
 
@@ -170,10 +182,7 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(
-    @CurrentUser('userId') userId: string,
-    @Res() res: Response,
-  ) {
+  async logout(@CurrentUser('userId') userId: string, @Res() res: Response) {
     await this.authService.logout(userId);
 
     // Clear cookies per Story 2.1
@@ -197,6 +206,8 @@ export class AuthController {
    * Only available when ENABLE_DEV_AUTH=true.
    */
   @Public()
+  @SkipCsrf()
+  @SkipThrottle({ short: true, medium: true, long: true })
   @Post('dev-login')
   async devLogin(
     @Body() body: { email: string; name?: string; role?: 'USER' | 'ADMIN' },
@@ -212,30 +223,23 @@ export class AuthController {
       return res.status(400).json({ message: 'email is required' });
     }
 
-    // Find or create user
-    let user = await this.prisma.user.findFirst({ where: { email } });
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          kakaoId: `dev_${Date.now()}`,
-          email,
-          name: name || email.split('@')[0],
-          role: role || 'USER',
-          status: 'ACTIVE',
-          lastLoginAt: new Date(),
-        },
-      });
-      this.logger.log(`[Dev Auth] Created user: ${user.id} (${email}, ${user.role})`);
-    } else {
-      // Update role if specified
-      if (role && user.role !== role) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: { role, lastLoginAt: new Date() },
-        });
-      }
-      this.logger.log(`[Dev Auth] Login user: ${user.id} (${email}, ${user.role})`);
-    }
+    // Upsert user to avoid race conditions with parallel test workers
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        role: role || undefined,
+        lastLoginAt: new Date(),
+      },
+      create: {
+        kakaoId: `dev_${Date.now()}`,
+        email,
+        name: name || email.split('@')[0],
+        role: role || 'USER',
+        status: 'ACTIVE',
+        lastLoginAt: new Date(),
+      },
+    });
+    this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
 
     const loginResponse = await this.authService.login(user);
 

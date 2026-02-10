@@ -19,9 +19,13 @@ export class RedisService implements OnModuleInit {
       host: redisHost,
       port: redisPort,
       password: redisPassword,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
       retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
+        if (times > 3) {
+          return null;
+        }
+        return Math.min(times * 200, 2000);
       },
     });
 

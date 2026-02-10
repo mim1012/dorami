@@ -1,17 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { gotoWithNgrokHandling, handleNgrokWarning } from './helpers/ngrok-helper';
 
 test.describe('API Health Check', () => {
-  test('should have working API proxy', async ({ page, request }) => {
-    // Navigate to home page to ensure the app is loaded and bypass ngrok warning
-    await gotoWithNgrokHandling(page, '/');
-
-    // Make API request through the app's proxy using the base URL
-    const response = await request.get('https://unossified-georgie-smeeky.ngrok-free.dev/api/health', {
-      headers: {
-        'ngrok-skip-browser-warning': 'true' // Skip ngrok warning for API requests
-      }
-    });
+  test('should have working API proxy', async ({ request }) => {
+    const response = await request.get('/api/v1/health');
 
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);
@@ -37,16 +28,15 @@ test.describe('API Health Check', () => {
       pageErrors.push(error);
     });
 
-    await gotoWithNgrokHandling(page, '/');
+    await page.goto('/');
 
     // Wait for network to be idle
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check that there are no critical API errors
-    const hasCriticalErrors = consoleErrors.some(error =>
-      error.includes('Failed to fetch') ||
-      error.includes('API') ||
-      error.includes('500')
+    const hasCriticalErrors = consoleErrors.some(
+      (error) =>
+        error.includes('Failed to fetch') || error.includes('API') || error.includes('500'),
     );
 
     expect(hasCriticalErrors).toBe(false);

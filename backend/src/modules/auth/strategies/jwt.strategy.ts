@@ -18,7 +18,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         (request: Request) => {
           // Extract from cookie first (HTTP-only cookie)
           const token = request?.cookies?.accessToken;
-          if (token) {return token;}
+          if (token) {
+            return token;
+          }
 
           // Fallback to Authorization header
           return ExtractJwt.fromAuthHeaderAsBearerToken()(request);
@@ -36,20 +38,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // Check if token is blacklisted by jti (preferred) or userId (fallback)
-    if (payload.jti) {
-      const isBlacklisted = await this.redisService.exists(
-        `blacklist:${payload.jti}`,
-      );
+    // Gracefully handle Redis unavailability — assume not blacklisted if Redis is down
+    try {
+      const blacklistKey = payload.jti ? `blacklist:${payload.jti}` : `blacklist:${payload.sub}`;
+      const isBlacklisted = await this.redisService.exists(blacklistKey);
       if (isBlacklisted) {
         throw new UnauthorizedException('Token has been revoked');
       }
-    } else {
-      const isBlacklisted = await this.redisService.exists(
-        `blacklist:${payload.sub}`,
-      );
-      if (isBlacklisted) {
-        throw new UnauthorizedException('Token has been revoked');
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
       }
+      // Redis unavailable — skip blacklist check rather than blocking all requests
     }
 
     return {
