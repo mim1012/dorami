@@ -19,6 +19,9 @@ export function useProfileGuard() {
       return;
     }
 
+    // Admin users skip profile completion
+    if (user.role === 'ADMIN') return;
+
     // Check if profile is complete
     const needsProfileCompletion = !user.instagramId || !user.depositorName;
 
