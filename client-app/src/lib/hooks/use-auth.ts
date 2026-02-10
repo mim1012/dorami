@@ -21,11 +21,11 @@ export function useAuth() {
   }, [setLoading, setUser]);
 
   useEffect(() => {
-    // Fetch user profile on mount if not loaded
-    if (isLoading && !user) {
+    // Always verify session on mount (handles stale localStorage user)
+    if (isLoading) {
       fetchProfile();
     }
-  }, [isLoading, user, fetchProfile]);
+  }, []);
 
   const handleLogout = async () => {
     try {
