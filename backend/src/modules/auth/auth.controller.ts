@@ -7,9 +7,11 @@ import {
   Req,
   Res,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { KakaoAuthGuard } from './guards/kakao-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -31,9 +33,14 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
+    private prisma: PrismaService,
   ) {
     this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
-    this.isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    // Allow overriding cookie secure flag for HTTP staging environments
+    const cookieSecureOverride = this.configService.get<string>('COOKIE_SECURE');
+    this.isProduction = cookieSecureOverride !== undefined
+      ? cookieSecureOverride === 'true'
+      : this.configService.get<string>('NODE_ENV') === 'production';
 
     // Parse JWT expiration times from environment (e.g., "15m" -> 900000ms)
     this.accessTokenMaxAge = this.parseJwtExpiration(
@@ -182,5 +189,64 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@CurrentUser() user: TokenPayload) {
     return user;
+  }
+
+  /**
+   * Dev-only login endpoint for staging/testing.
+   * Creates or finds a user by email and issues JWT tokens without Kakao OAuth.
+   * Only available when ENABLE_DEV_AUTH=true.
+   */
+  @Public()
+  @Post('dev-login')
+  async devLogin(
+    @Body() body: { email: string; name?: string; role?: 'USER' | 'ADMIN' },
+    @Res() res: Response,
+  ) {
+    const devAuthEnabled = this.configService.get<string>('ENABLE_DEV_AUTH');
+    if (devAuthEnabled !== 'true') {
+      throw new ForbiddenException('Dev login is disabled');
+    }
+
+    const { email, name, role } = body;
+    if (!email) {
+      return res.status(400).json({ message: 'email is required' });
+    }
+
+    // Find or create user
+    let user = await this.prisma.user.findFirst({ where: { email } });
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          kakaoId: `dev_${Date.now()}`,
+          email,
+          name: name || email.split('@')[0],
+          role: role || 'USER',
+          status: 'ACTIVE',
+          lastLoginAt: new Date(),
+        },
+      });
+      this.logger.log(`[Dev Auth] Created user: ${user.id} (${email}, ${user.role})`);
+    } else {
+      // Update role if specified
+      if (role && user.role !== role) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role, lastLoginAt: new Date() },
+        });
+      }
+      this.logger.log(`[Dev Auth] Login user: ${user.id} (${email}, ${user.role})`);
+    }
+
+    const loginResponse = await this.authService.login(user);
+
+    res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
+    res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
+
+    return res.json({
+      data: {
+        message: 'Dev login successful',
+        user: loginResponse.user,
+      },
+    });
   }
 }
