@@ -33,9 +33,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=builder /app/client-app/.next/standalone ./
-COPY --from=builder /app/client-app/.next/static ./.next/static
-COPY --from=builder /app/client-app/public ./public
+COPY --from=builder /app/client-app/.next/static ./client-app/.next/static
+COPY --from=builder /app/client-app/public ./client-app/public
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "client-app/server.js"]
