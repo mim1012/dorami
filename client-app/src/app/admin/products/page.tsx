@@ -97,7 +97,7 @@ export default function AdminProductsPage() {
       }
       const url = `/products${params.toString() ? `?${params}` : ''}`;
       const response = await apiClient.get(url);
-      setProducts(response.data || []);
+      setProducts((response.data as Product[]) || []);
     } catch (err: any) {
       console.error('Failed to fetch products:', err);
       setError('상품 목록을 불러오는데 실패했습니다.');
