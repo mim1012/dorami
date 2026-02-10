@@ -35,8 +35,7 @@ function LoginContent() {
     setDevError('');
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-      const baseUrl = apiUrl.replace(/\/api.*/, '');
-      const res = await fetch(`${baseUrl}/auth/dev-login`, {
+      const res = await fetch(`${apiUrl}/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
