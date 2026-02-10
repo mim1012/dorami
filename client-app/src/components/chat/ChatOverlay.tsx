@@ -43,7 +43,7 @@ export default function ChatOverlay({
   const positionClasses =
     position === 'right'
       ? 'absolute top-0 right-0 w-[320px] h-full' // Desktop
-      : 'absolute bottom-0 left-0 w-full h-[40vh]'; // Mobile
+      : 'absolute bottom-0 left-0 w-full h-[40vh] pointer-events-none [&_form]:pointer-events-auto [&_button]:pointer-events-auto [&_input]:pointer-events-auto'; // Mobile
 
   const compact = position === 'bottom';
 
@@ -51,9 +51,6 @@ export default function ChatOverlay({
     <div
       className={`
         ${positionClasses}
-        bg-black/50
-        backdrop-blur-md
-        border-l border-white/10
         flex flex-col
         ${className}
       `}

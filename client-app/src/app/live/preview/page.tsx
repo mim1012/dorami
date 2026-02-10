@@ -346,8 +346,8 @@ export default function LivePreviewPage() {
           {/* Cart Activity Feed */}
           <CartActivityFeed activities={cartActivities} />
 
-          {/* Heart Animation */}
-          <HeartAnimation />
+          {/* Heart Animation (auto only, no button) */}
+          <HeartAnimation showButton={false} />
 
           {/* Product Bottom Sheet - Mobile */}
           <div className="lg:hidden">
@@ -359,7 +359,7 @@ export default function LivePreviewPage() {
           </div>
 
           {/* ═══ CHAT - Desktop (Right Side) ═══ */}
-          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full bg-black/50 backdrop-blur-md border-l border-white/10 flex-col">
+          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={false} />
             <ChatMessageList messages={messages} compact={false} />
             {showEmojiPicker && (
@@ -379,7 +379,7 @@ export default function LivePreviewPage() {
           </div>
 
           {/* ═══ CHAT - Mobile (Bottom) ═══ */}
-          <div className="lg:hidden absolute bottom-0 left-0 w-full h-[40vh] bg-black/50 backdrop-blur-md border-l border-white/10 flex flex-col">
+          <div className="lg:hidden absolute bottom-0 left-0 w-full h-[40vh] flex flex-col">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={true} />
             <ChatMessageList messages={messages} compact={true} maxMessages={20} />
             {showEmojiPicker && (

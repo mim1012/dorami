@@ -12,10 +12,23 @@ interface FloatingHeart {
   wobble: number;
 }
 
-const HEART_COLORS = ['#FF007A', '#FF3B80', '#FF69B4', '#FF1493', '#FF6EB4', '#FFB6C1', '#7928CA', '#FF4500'];
+const HEART_COLORS = [
+  '#FF007A',
+  '#FF3B80',
+  '#FF69B4',
+  '#FF1493',
+  '#FF6EB4',
+  '#FFB6C1',
+  '#7928CA',
+  '#FF4500',
+];
 const HEART_EMOJIS = ['❤️', '💖', '💗', '💕', '🩷', '💜', '🧡'];
 
-export default function HeartAnimation() {
+interface HeartAnimationProps {
+  showButton?: boolean;
+}
+
+export default function HeartAnimation({ showButton = true }: HeartAnimationProps) {
   const [hearts, setHearts] = useState<FloatingHeart[]>([]);
   const [tapScale, setTapScale] = useState(1);
 
@@ -30,11 +43,11 @@ export default function HeartAnimation() {
       duration: Math.random() * 1200 + 2000,
       wobble: Math.random() * 30 - 15,
     };
-    
-    setHearts(prev => [...prev.slice(-20), newHeart]);
+
+    setHearts((prev) => [...prev.slice(-20), newHeart]);
 
     setTimeout(() => {
-      setHearts(prev => prev.filter(h => h.id !== id));
+      setHearts((prev) => prev.filter((h) => h.id !== id));
     }, newHeart.duration);
   }, []);
 
@@ -56,8 +69,11 @@ export default function HeartAnimation() {
   }, [addHeart]);
 
   return (
-    <div className="absolute bottom-28 right-3 w-20 h-72 pointer-events-none overflow-hidden z-20" aria-hidden="true">
-      {hearts.map(heart => (
+    <div
+      className="absolute bottom-28 right-3 w-20 h-72 pointer-events-none overflow-hidden z-20"
+      aria-hidden="true"
+    >
+      {hearts.map((heart) => (
         <div
           key={heart.id}
           className="absolute bottom-0 animate-float-up"
@@ -74,18 +90,22 @@ export default function HeartAnimation() {
         </div>
       ))}
       {/* Heart button */}
-      <button
-        onClick={handleTap}
-        className="absolute bottom-0 right-2 w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto active:scale-90 transition-transform z-30"
-        style={{ 
-          background: 'linear-gradient(135deg, #FF007A, #FF4500)',
-          boxShadow: '0 4px 20px rgba(255, 0, 122, 0.4)',
-          transform: `scale(${tapScale})`,
-          transition: 'transform 0.15s ease-out',
-        }}
-      >
-        <span className="text-2xl" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>❤️</span>
-      </button>
+      {showButton && (
+        <button
+          onClick={handleTap}
+          className="absolute bottom-0 right-2 w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto active:scale-90 transition-transform z-30"
+          style={{
+            background: 'linear-gradient(135deg, #FF007A, #FF4500)',
+            boxShadow: '0 4px 20px rgba(255, 0, 122, 0.4)',
+            transform: `scale(${tapScale})`,
+            transition: 'transform 0.15s ease-out',
+          }}
+        >
+          <span className="text-2xl" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+            ❤️
+          </span>
+        </button>
+      )}
     </div>
   );
 }

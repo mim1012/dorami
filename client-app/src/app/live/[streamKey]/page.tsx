@@ -67,7 +67,7 @@ export default function LiveStreamPage() {
     if (!streamStatus || streamStatus.status !== 'LIVE') return;
     setViewerCount(streamStatus.viewerCount || Math.floor(Math.random() * 200 + 50));
     const interval = setInterval(() => {
-      setViewerCount(prev => {
+      setViewerCount((prev) => {
         const change = Math.floor(Math.random() * 7) - 2;
         const newVal = Math.max(1, prev + change);
         if (change > 2) setShowViewerPulse(true);
@@ -87,9 +87,7 @@ export default function LiveStreamPage() {
 
   const fetchStreamStatus = async () => {
     try {
-      const response = await apiClient.get<StreamStatus>(
-        `/streaming/key/${streamKey}/status`,
-      );
+      const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
       setStreamStatus(response.data);
 
       if (response.data.status === 'OFFLINE') {
@@ -110,7 +108,10 @@ export default function LiveStreamPage() {
           <div className="relative w-20 h-20 mx-auto mb-5">
             <div className="absolute inset-0 rounded-full border-4 border-[#FF007A]/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FF007A] animate-spin"></div>
-            <div className="absolute inset-3 rounded-full border-3 border-transparent border-b-[#7928CA] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.7s' }}></div>
+            <div
+              className="absolute inset-3 rounded-full border-3 border-transparent border-b-[#7928CA] animate-spin"
+              style={{ animationDirection: 'reverse', animationDuration: '0.7s' }}
+            ></div>
           </div>
           <Body className="text-white/60 text-lg font-medium">스트림 로딩 중...</Body>
         </div>
@@ -163,7 +164,11 @@ export default function LiveStreamPage() {
     setIsModalOpen(true);
   };
 
-  const handleAddToCart = async (productId: string, selectedColor?: string, selectedSize?: string) => {
+  const handleAddToCart = async (
+    productId: string,
+    selectedColor?: string,
+    selectedSize?: string,
+  ) => {
     try {
       await apiClient.post('/cart', {
         productId,
@@ -171,7 +176,7 @@ export default function LiveStreamPage() {
         color: selectedColor,
         size: selectedSize,
       });
-      
+
       showToast('장바구니에 담았어요!', 'success');
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
@@ -200,7 +205,7 @@ export default function LiveStreamPage() {
 
           {/* Top gradient overlay — stronger */}
           <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
-          
+
           {/* Bottom gradient overlay */}
           <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10" />
 
@@ -212,7 +217,15 @@ export default function LiveStreamPage() {
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
               aria-label="뒤로가기"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                aria-hidden="true"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
@@ -225,12 +238,23 @@ export default function LiveStreamPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                 </span>
-                <span className="text-white text-xs font-black tracking-wider">LIVE<span className="sr-only"> 현재 생방송 중</span></span>
+                <span className="text-white text-xs font-black tracking-wider">
+                  LIVE<span className="sr-only"> 현재 생방송 중</span>
+                </span>
               </div>
 
               {/* Viewer count with pulse on increase */}
-              <div className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <div
+                className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                >
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
@@ -243,8 +267,18 @@ export default function LiveStreamPage() {
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
               aria-label="공유하기"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16,6 12,2 8,6" /><line x1="12" y1="2" x2="12" y2="15" />
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                <polyline points="16,6 12,2 8,6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
               </svg>
             </button>
           </div>
@@ -260,14 +294,28 @@ export default function LiveStreamPage() {
           <CartActivityFeed activities={cartActivities} />
 
           {/* ═══════════ HEART ANIMATION ═══════════ */}
-          <HeartAnimation />
+          <HeartAnimation showButton={false} />
 
           {/* Product Bottom Sheet - Mobile */}
           <div className="lg:hidden">
             <ProductBottomSheet
               products={[
-                { id: '1', name: 'Chic Evening Bag', price: 129000, imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80', stock: 10 },
-                { id: '2', name: 'Pro Audio Pods', price: 62300, imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80', stock: 25 },
+                {
+                  id: '1',
+                  name: 'Chic Evening Bag',
+                  price: 129000,
+                  imageUrl:
+                    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80',
+                  stock: 10,
+                },
+                {
+                  id: '2',
+                  name: 'Pro Audio Pods',
+                  price: 62300,
+                  imageUrl:
+                    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80',
+                  stock: 25,
+                },
               ]}
               onAddToCart={(id) => handleAddToCart(id)}
               streamKey={streamKey}
