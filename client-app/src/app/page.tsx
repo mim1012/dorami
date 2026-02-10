@@ -12,7 +12,6 @@ import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { useNotifications } from '@/hooks/useNotifications';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS = [
@@ -94,7 +93,6 @@ function getMockUpcomingLives(now: number) {
 
 export default function Home() {
   const router = useRouter();
-  const { isSubscribed, subscribe, unsubscribe } = useNotifications();
   const [featuredProducts, setFeaturedProducts] = useState<Array<{
     id: string;
     name: string;
@@ -115,7 +113,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [subscribing, setSubscribing] = useState(false);
   const liveSectionRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
 
@@ -211,22 +208,7 @@ export default function Home() {
     if (isNextLiveActive && upcomingLives.length > 0) {
       router.push(`/live/${upcomingLives[0].id}`);
     } else if (upcomingLives.length > 0) {
-      handleNotifyToggle();
-    }
-  };
-
-  const handleNotifyToggle = async () => {
-    setSubscribing(true);
-    try {
-      if (isSubscribed) {
-        await unsubscribe();
-      } else {
-        await subscribe();
-      }
-    } catch {
-      // useNotifications handles error logging internally
-    } finally {
-      setSubscribing(false);
+      router.push('/alerts');
     }
   };
 
@@ -291,26 +273,15 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <button
-                onClick={handleNotifyToggle}
-                disabled={subscribing}
-                className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${
-                  isSubscribed
-                    ? 'bg-hot-pink/15 border border-hot-pink/30'
-                    : 'bg-gray-100 border border-gray-200 hover:border-hot-pink/50'
-                }`}
-                aria-label={isSubscribed ? '알림받는중' : '알림받기'}
+                onClick={() => router.push('/alerts')}
+                className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 bg-gray-100 border border-gray-200 hover:border-hot-pink/50"
+                aria-label="알림"
               >
-                {subscribing ? (
-                  <div className="w-5 h-5 border-2 border-hot-pink/30 border-t-hot-pink rounded-full animate-spin" />
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill={isSubscribed ? 'var(--hot-pink)' : 'none'} stroke={isSubscribed ? 'var(--hot-pink)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                  </svg>
-                )}
-                {!isSubscribed && !subscribing && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-hot-pink rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-hot-pink animate-pulse">3</span>
-                )}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-hot-pink rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-hot-pink animate-pulse">3</span>
               </button>
             </div>
           </div>
