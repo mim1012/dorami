@@ -69,11 +69,11 @@ export class StreamingService {
       this.logger.error(`Failed to get upcoming streams: ${error.message}`, error.stack);
       throw new BusinessException(
         'FAILED_TO_GET_UPCOMING_STREAMS',
-        { 
+        {
           statusCode: 500,
-          error: 'Internal Server Error'
+          error: 'Internal Server Error',
         },
-        `Failed to retrieve upcoming streams: ${error.message}`
+        `Failed to retrieve upcoming streams: ${error.message}`,
       );
     }
   }
@@ -93,7 +93,7 @@ export class StreamingService {
     if (existingStream) {
       throw new BusinessException(
         'STREAM_ALREADY_ACTIVE',
-        { streamId: existingStream.id },
+        { streamId: existingStream.id, streamKey: existingStream.streamKey },
         'You already have an active streaming session',
       );
     }
@@ -112,16 +112,20 @@ export class StreamingService {
       },
     });
 
-    // Store stream metadata in Redis for quick access
-    await this.redisService.set(
-      `stream:${session.id}`,
-      JSON.stringify({
-        userId: session.userId,
-        streamKey: session.streamKey,
-        status: session.status,
-      }),
-      3600 * 24, // 24 hour TTL
-    );
+    // Store stream metadata in Redis for quick access (non-critical)
+    try {
+      await this.redisService.set(
+        `stream:${session.id}`,
+        JSON.stringify({
+          userId: session.userId,
+          streamKey: session.streamKey,
+          status: session.status,
+        }),
+        3600 * 24, // 24 hour TTL
+      );
+    } catch {
+      this.logger.warn(`Failed to cache stream ${session.id} in Redis`);
+    }
 
     this.eventEmitter.emit('stream:created', { streamId: session.id });
 
@@ -191,11 +195,15 @@ export class StreamingService {
   }
 
   async getStreamStatus(streamId: string): Promise<StreamingSessionResponseDto> {
-    // Try Redis cache first
-    const cached = await this.redisService.get(`stream:${streamId}`);
-    if (cached) {
-      const data = JSON.parse(cached);
-      return this.mapToResponseDto({ id: streamId, ...data });
+    // Try Redis cache first (non-critical)
+    try {
+      const cached = await this.redisService.get(`stream:${streamId}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        return this.mapToResponseDto({ id: streamId, ...data });
+      }
+    } catch {
+      this.logger.warn(`Redis unavailable for stream status ${streamId}, falling back to DB`);
     }
 
     // Fallback to database
@@ -256,22 +264,27 @@ export class StreamingService {
       },
     });
 
-    // Store stream metadata in Redis for quick access
-    await this.redisService.set(
-      `stream:${session.streamKey}:meta`,
-      JSON.stringify({
-        userId: session.userId,
-        title: session.title,
-        status: session.status,
-        streamId: session.id,
-      }),
-      3600 * 24, // 24 hour TTL
-    );
+    // Store stream metadata in Redis for quick access (non-critical)
+    try {
+      await this.redisService.set(
+        `stream:${session.streamKey}:meta`,
+        JSON.stringify({
+          userId: session.userId,
+          title: session.title,
+          status: session.status,
+          streamId: session.id,
+        }),
+        3600 * 24, // 24 hour TTL
+      );
+      await this.redisService.set(`stream:${session.streamKey}:viewers`, '0', 3600 * 24);
+    } catch {
+      this.logger.warn(`Failed to cache stream ${session.streamKey} metadata in Redis`);
+    }
 
-    // Initialize viewer count to 0
-    await this.redisService.set(`stream:${session.streamKey}:viewers`, '0', 3600 * 24);
-
-    this.eventEmitter.emit('stream:created', { streamId: session.id, streamKey: session.streamKey });
+    this.eventEmitter.emit('stream:created', {
+      streamId: session.id,
+      streamKey: session.streamKey,
+    });
 
     return this.mapToResponseDto(session);
   }
@@ -488,7 +501,9 @@ export class StreamingService {
 
     // Check if stream is in valid state (PENDING)
     if (session.status !== 'PENDING') {
-      this.logger.warn(`RTMP auth failed: Stream not in PENDING state - ${streamKey}, status: ${session.status}`);
+      this.logger.warn(
+        `RTMP auth failed: Stream not in PENDING state - ${streamKey}, status: ${session.status}`,
+      );
       return false;
     }
 
@@ -606,11 +621,7 @@ export class StreamingService {
    * Set featured product for a live stream (Admin only)
    * Broadcasts update to all viewers via WebSocket
    */
-  async setFeaturedProduct(
-    streamKey: string,
-    productId: string,
-    userId: string,
-  ): Promise<any> {
+  async setFeaturedProduct(streamKey: string, productId: string, _userId: string): Promise<any> {
     // Verify stream exists and user is admin
     const stream = await this.prisma.liveStream.findUnique({
       where: { streamKey },
@@ -674,7 +685,7 @@ export class StreamingService {
   /**
    * Clear featured product for a live stream (Admin only)
    */
-  async clearFeaturedProduct(streamKey: string, userId: string): Promise<void> {
+  async clearFeaturedProduct(streamKey: string, _userId: string): Promise<void> {
     // Verify stream exists
     const stream = await this.prisma.liveStream.findUnique({
       where: { streamKey },

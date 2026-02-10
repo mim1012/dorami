@@ -1,60 +1,64 @@
 import { test, expect } from '@playwright/test';
-import { gotoWithNgrokHandling } from './helpers/ngrok-helper';
 
 test.describe('Home Page', () => {
   test('should load the home page successfully', async ({ page }) => {
-    await gotoWithNgrokHandling(page, '/');
+    await page.goto('/');
 
     // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000); // Extra wait for React hydration
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if the page title contains "Live Commerce"
     await expect(page).toHaveTitle(/Live Commerce/, { timeout: 10000 });
   });
 
   test('should display navigation tabs', async ({ page }) => {
-    await gotoWithNgrokHandling(page, '/');
+    await page.goto('/');
 
     // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000); // Extra wait for React hydration
+    await page.waitForLoadState('domcontentloaded');
 
-    // Check for bottom navigation tabs with increased timeout
-    await expect(page.getByRole('button', { name: /Home/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: /Shop/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: /Live/i })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('button', { name: /My Page/i })).toBeVisible({ timeout: 10000 });
+    // Check for bottom navigation tabs (Korean labels, exact match to avoid category button conflicts)
+    await expect(page.getByRole('button', { name: '홈', exact: true })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole('button', { name: '상품', exact: true })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole('button', { name: '라이브', exact: true })).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByRole('button', { name: '마이', exact: true })).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should navigate to different tabs', async ({ page }) => {
-    await gotoWithNgrokHandling(page, '/');
+    await page.goto('/');
 
     // Wait for page to fully load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000); // Extra wait for React hydration
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for navigation to be visible
-    const shopButton = page.getByRole('button', { name: /Shop/i });
+    const shopButton = page.getByRole('button', { name: '상품', exact: true });
     await expect(shopButton).toBeVisible({ timeout: 10000 });
 
     // Navigate to Shop
     await shopButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/shop/);
 
     // Navigate to Live
-    const liveButton = page.getByRole('button', { name: /Live/i });
+    const liveButton = page.getByRole('button', { name: '라이브', exact: true });
     await expect(liveButton).toBeVisible({ timeout: 10000 });
     await liveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/live/);
 
     // Navigate back to Home
-    const homeButton = page.getByRole('button', { name: /Home/i });
+    const homeButton = page.getByRole('button', { name: '홈', exact: true });
     await expect(homeButton).toBeVisible({ timeout: 10000 });
     await homeButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     // Match home page URL (either just "/" or with query params)
     await expect(page).toHaveURL(/\/$/);
   });

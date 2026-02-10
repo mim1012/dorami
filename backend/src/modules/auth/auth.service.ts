@@ -99,11 +99,11 @@ export class AuthService {
 
     // Store refresh token in Redis (TTL: 7 days)
     const refreshTokenTTL = 7 * 24 * 60 * 60; // 7 days in seconds
-    await this.redisService.set(
-      `refresh_token:${user.id}`,
-      refreshToken,
-      refreshTokenTTL,
-    );
+    try {
+      await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
+    } catch (error) {
+      this.logger.warn(`Failed to store refresh token in Redis: ${error.message}`);
+    }
 
     return {
       accessToken,
@@ -128,9 +128,7 @@ export class AuthService {
       }
 
       // Verify refresh token exists in Redis
-      const storedToken = await this.redisService.get(
-        `refresh_token:${payload.sub}`,
-      );
+      const storedToken = await this.redisService.get(`refresh_token:${payload.sub}`);
 
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -151,7 +149,7 @@ export class AuthService {
 
       // Issue new tokens (this will store new refresh token in Redis)
       return this.login(user);
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }

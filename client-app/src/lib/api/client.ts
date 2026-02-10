@@ -16,7 +16,7 @@ function getCsrfToken(): string | null {
 
 async function request<T>(
   endpoint: string,
-  options?: RequestInit & { params?: Record<string, any> }
+  options?: RequestInit & { params?: Record<string, any> },
 ): Promise<ApiResponse<T>> {
   let url = `${API_BASE_URL}${endpoint}`;
 
@@ -47,7 +47,9 @@ async function request<T>(
 
   // Don't set Content-Type for FormData (browser sets multipart boundary automatically)
   const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
-  const contentTypeHeader: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const contentTypeHeader: Record<string, string> = isFormData
+    ? {}
+    : { 'Content-Type': 'application/json' };
 
   const defaultOptions: RequestInit = {
     headers: {
@@ -73,7 +75,12 @@ async function request<T>(
     throw new Error(error.message || `HTTP ${response.status}`);
   }
 
-  const result = await response.json();
+  const text = await response.text();
+  if (!text) {
+    return { data: undefined as any };
+  }
+
+  const result = JSON.parse(text);
 
   // Backend wraps responses in { data: ..., success: true, timestamp: "..." }
   // Extract the actual data from the wrapper
