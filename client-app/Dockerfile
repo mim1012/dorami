@@ -2,13 +2,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# shared-types 빌드
+# 루트 package.json + workspaces 구조 복사
+COPY package.json ./
 COPY packages/shared-types ./packages/shared-types
-RUN cd packages/shared-types && npm install && npm run build
+COPY client-app/package.json ./client-app/
 
-# client-app 의존성 설치
-COPY client-app/package*.json ./client-app/
-RUN cd client-app && npm install --legacy-peer-deps
+# workspace 기반으로 의존성 설치 (shared-types + client-app)
+RUN npm install --legacy-peer-deps --ignore-scripts
+
+# shared-types 빌드
+RUN npm run build:shared
 
 # client-app 소스 복사
 COPY client-app ./client-app
