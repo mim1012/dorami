@@ -49,7 +49,9 @@ function LoginContent() {
       // Refresh auth state and redirect based on profile completion
       await refreshProfile();
       const userData = data.data?.user;
-      if (userData && (!userData.instagramId || !userData.depositorName)) {
+      if (userData?.role === 'ADMIN') {
+        router.push('/admin');
+      } else if (userData && (!userData.instagramId || !userData.depositorName)) {
         router.push('/profile/register');
       } else {
         router.push('/');
@@ -77,9 +79,7 @@ function LoginContent() {
             <span className="text-white font-black text-2xl">D</span>
           </div>
           <Display className="text-hot-pink mb-2">DoRaMi</Display>
-          <Body className="text-secondary-text">
-            라이브 쇼핑의 새로운 경험
-          </Body>
+          <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
         </div>
 
         {error && (
@@ -98,7 +98,7 @@ function LoginContent() {
             className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] py-3.5 rounded-lg font-bold text-base hover:bg-[#FEE500]/90 transition-all active:scale-[0.98]"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#191919">
-              <path d="M12 3C6.48 3 2 6.48 2 10.5c0 2.55 1.69 4.8 4.24 6.12-.18.67-.67 2.42-.77 2.8-.12.47.17.46.36.34.15-.1 2.37-1.6 3.34-2.25.6.09 1.21.13 1.83.13 5.52 0 10-3.48 10-7.64C22 6.48 17.52 3 12 3z"/>
+              <path d="M12 3C6.48 3 2 6.48 2 10.5c0 2.55 1.69 4.8 4.24 6.12-.18.67-.67 2.42-.77 2.8-.12.47.17.46.36.34.15-.1 2.37-1.6 3.34-2.25.6.09 1.21.13 1.83.13 5.52 0 10-3.48 10-7.64C22 6.48 17.52 3 12 3z" />
             </svg>
             카카오로 로그인
           </button>
@@ -119,7 +119,9 @@ function LoginContent() {
 
           {showDevLogin && (
             <div className="mt-3 p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
-              <p className="text-xs text-secondary-text">스테이징 테스트 전용 (ENABLE_DEV_AUTH=true 필요)</p>
+              <p className="text-xs text-secondary-text">
+                스테이징 테스트 전용 (ENABLE_DEV_AUTH=true 필요)
+              </p>
 
               <input
                 type="email"
@@ -155,22 +157,26 @@ function LoginContent() {
               {/* Quick login buttons */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setDevEmail('buyer@test.com'); setDevRole('USER'); }}
+                  onClick={() => {
+                    setDevEmail('buyer@test.com');
+                    setDevRole('USER');
+                  }}
                   className="flex-1 py-1.5 text-xs rounded bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors"
                 >
                   구매자 계정
                 </button>
                 <button
-                  onClick={() => { setDevEmail('admin@dorami.shop'); setDevRole('ADMIN'); }}
+                  onClick={() => {
+                    setDevEmail('admin@dorami.shop');
+                    setDevRole('ADMIN');
+                  }}
                   className="flex-1 py-1.5 text-xs rounded bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
                 >
                   관리자 계정
                 </button>
               </div>
 
-              {devError && (
-                <p className="text-xs text-error">{devError}</p>
-              )}
+              {devError && <p className="text-xs text-error">{devError}</p>}
 
               <button
                 onClick={handleDevLogin}
