@@ -34,18 +34,18 @@ function LoginContent() {
     setDevLoading(true);
     setDevError('');
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
-      const res = await fetch(`${apiUrl}/auth/dev-login`, {
+      const res = await fetch('/api/v1/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email: devEmail, role: devRole }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setDevError(data.message || '로그인 실패');
+        const errData = await res.json().catch(() => ({}));
+        setDevError(errData.message || `로그인 실패 (${res.status})`);
         return;
       }
+      const data = await res.json();
       // Refresh auth state and redirect based on profile completion
       await refreshProfile();
       const userData = data.data?.user;
