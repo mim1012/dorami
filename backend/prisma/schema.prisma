@@ -39,6 +39,7 @@ model User {
   auditLogs                AuditLog[]                 @relation("AdminAuditLogs")
   notificationSubscriptions NotificationSubscription[]
   pointBalance             PointBalance?
+  settlements              Settlement[]               @relation("UserSettlements")
 
   @@index([email])
   @@index([kakaoId])
@@ -61,7 +62,7 @@ model LiveStream {
   id            String       @id @default(uuid())
   streamKey     String       @unique @map("stream_key")
   userId        String       @map("user_id")
-  user          User         @relation(fields: [userId], references: [id])
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String       @default("Live Stream")
   status        StreamStatus @default(PENDING)
   startedAt     DateTime?    @map("started_at")
@@ -92,9 +93,9 @@ enum StreamStatus {
 model ChatMessage {
   id         String     @id @default(uuid())
   streamKey  String     @map("stream_key")
-  liveStream LiveStream @relation(fields: [streamKey], references: [streamKey])
-  userId     String     @map("user_id")
-  user       User       @relation(fields: [userId], references: [id])
+  liveStream LiveStream @relation(fields: [streamKey], references: [streamKey], onDelete: Cascade)
+  userId     String?    @map("user_id")
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   content    String     @db.Text
   timestamp  DateTime   @default(now())
   isDeleted  Boolean    @default(false) @map("is_deleted")
@@ -105,8 +106,8 @@ model ChatMessage {
 
 model ModerationLog {
   id        String           @id @default(uuid())
-  adminId   String           @map("admin_id")
-  admin     User             @relation(fields: [adminId], references: [id])
+  adminId   String?          @map("admin_id")
+  admin     User?            @relation(fields: [adminId], references: [id], onDelete: SetNull)
   action    ModerationAction
   targetId  String           @map("target_id") // ChatMessage ID
   reason    String?
@@ -127,7 +128,7 @@ enum ModerationAction {
 model Product {
   id                  String        @id @default(uuid())
   streamKey           String        @map("stream_key")
-  liveStream          LiveStream    @relation(fields: [streamKey], references: [streamKey])
+  liveStream          LiveStream    @relation(fields: [streamKey], references: [streamKey], onDelete: Cascade)
   name                String
   price               Decimal       @db.Decimal(10, 2)
   quantity            Int
@@ -166,9 +167,9 @@ enum ProductStatus {
 model Cart {
   id           String     @id @default(uuid())
   userId       String     @map("user_id")
-  user         User       @relation(fields: [userId], references: [id])
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId    String     @map("product_id")
-  product      Product    @relation(fields: [productId], references: [id])
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   productName  String     @map("product_name") // Denormalized for history
   price        Decimal    @db.Decimal(10, 2)
   quantity     Int
@@ -198,9 +199,9 @@ enum CartStatus {
 model Reservation {
   id                String            @id @default(uuid())
   userId            String            @map("user_id")
-  user              User              @relation(fields: [userId], references: [id])
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId         String            @map("product_id")
-  product           Product           @relation(fields: [productId], references: [id])
+  product           Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
   productName       String            @map("product_name") // Denormalized for history
   quantity          Int
   reservationNumber Int               @map("reservation_number") // Sequential number per product
@@ -228,7 +229,7 @@ enum ReservationStatus {
 model Order {
   id              String         @id // ORD-YYYYMMDD-XXXXX format
   userId          String         @map("user_id")
-  user            User           @relation(fields: [userId], references: [id])
+  user            User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   userEmail       String         @map("user_email") // Denormalized for history
   depositorName   String         @map("depositor_name") // For bank transfer matching
   shippingAddress Json           @map("shipping_address") // Decrypted US address
@@ -263,7 +264,7 @@ model Order {
 model OrderItem {
   id          String  @id @default(uuid())
   orderId     String  @map("order_id")
-  order       Order   @relation(fields: [orderId], references: [id])
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId   String  @map("product_id")
   productName String  @map("product_name") // Denormalized
   price       Decimal @db.Decimal(10, 2)
@@ -341,8 +342,8 @@ model SystemConfig {
 
 model AuditLog {
   id        String   @id @default(uuid())
-  adminId   String   @map("admin_id")
-  admin     User     @relation(fields: [adminId], references: [id], name: "AdminAuditLogs")
+  adminId   String?  @map("admin_id")
+  admin     User?    @relation(fields: [adminId], references: [id], name: "AdminAuditLogs", onDelete: SetNull)
   action    String
   entity    String // User, Product, Order, etc.
   entityId  String   @map("entity_id")
@@ -358,6 +359,7 @@ model AuditLog {
 model Settlement {
   id               String           @id @default(uuid())
   sellerId         String           @map("seller_id")
+  seller           User             @relation("UserSettlements", fields: [sellerId], references: [id])
   periodStart      DateTime         @map("period_start")
   periodEnd        DateTime         @map("period_end")
   totalSales       Decimal          @map("total_sales") @db.Decimal(10, 2)
@@ -400,7 +402,7 @@ enum PointTransactionType {
 model PointBalance {
   id              String   @id @default(uuid())
   userId          String   @unique @map("user_id")
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentBalance  Int      @default(0) @map("current_balance")
   lifetimeEarned  Int      @default(0) @map("lifetime_earned")
   lifetimeUsed    Int      @default(0) @map("lifetime_used")
@@ -418,7 +420,7 @@ model PointBalance {
 model PointTransaction {
   id              String               @id @default(uuid())
   balanceId       String               @map("balance_id")
-  balance         PointBalance         @relation(fields: [balanceId], references: [id])
+  balance         PointBalance         @relation(fields: [balanceId], references: [id], onDelete: Cascade)
   transactionType PointTransactionType @map("transaction_type")
   amount          Int
   balanceAfter    Int                  @map("balance_after")

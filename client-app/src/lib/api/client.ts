@@ -45,9 +45,13 @@ async function request<T>(
     csrfHeader['X-CSRF-Token'] = csrfToken;
   }
 
+  // Don't set Content-Type for FormData (browser sets multipart boundary automatically)
+  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
+  const contentTypeHeader: Record<string, string> = isFormData ? {} : { 'Content-Type': 'application/json' };
+
   const defaultOptions: RequestInit = {
     headers: {
-      'Content-Type': 'application/json',
+      ...contentTypeHeader,
       ...csrfHeader,
     },
     credentials: 'include',
@@ -87,19 +91,19 @@ export const apiClient = {
   post: <T>(endpoint: string, body?: any) =>
     request<T>(endpoint, {
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
 
   patch: <T>(endpoint: string, body?: any) =>
     request<T>(endpoint, {
       method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
 
   put: <T>(endpoint: string, body?: any) =>
     request<T>(endpoint, {
       method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     }),
 
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),

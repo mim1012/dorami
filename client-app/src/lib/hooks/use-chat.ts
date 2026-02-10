@@ -37,7 +37,7 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
       return;
     }
 
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       setError('No authentication token found');
       return;

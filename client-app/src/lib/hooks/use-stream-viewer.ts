@@ -8,7 +8,8 @@ interface UseStreamViewerReturn {
 }
 
 export function useStreamViewer(streamKey: string, enabled: boolean = true): UseStreamViewerReturn {
-  const { socket, isConnected } = useSocket('/streaming');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  const { socket, isConnected } = useSocket(token, '/streaming');
   const [viewerCount, setViewerCount] = useState(0);
 
   useEffect(() => {

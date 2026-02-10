@@ -30,18 +30,31 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: TokenPayload) {
-    // Check if token is blacklisted (logged out)
-    const isBlacklisted = await this.redisService.exists(
-      `blacklist:${payload.sub}`,
-    );
+    // Reject non-access tokens (e.g., refresh tokens)
+    if (payload.type && payload.type !== 'access') {
+      throw new UnauthorizedException('Invalid token type');
+    }
 
-    if (isBlacklisted) {
-      throw new UnauthorizedException('Token has been revoked');
+    // Check if token is blacklisted by jti (preferred) or userId (fallback)
+    if (payload.jti) {
+      const isBlacklisted = await this.redisService.exists(
+        `blacklist:${payload.jti}`,
+      );
+      if (isBlacklisted) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
+    } else {
+      const isBlacklisted = await this.redisService.exists(
+        `blacklist:${payload.sub}`,
+      );
+      if (isBlacklisted) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
     }
 
     return {
       userId: payload.sub,
-      email: payload.email, // Include email per Story 2.1 spec
+      email: payload.email,
       kakaoId: payload.kakaoId,
       role: payload.role,
     };

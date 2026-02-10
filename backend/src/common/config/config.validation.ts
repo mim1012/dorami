@@ -23,17 +23,13 @@ export const configValidationSchema = Joi.object({
   REDIS_PORT: Joi.number().default(6379),
   REDIS_PASSWORD: Joi.string().optional().allow(''),
 
-  // JWT - Required in production
+  // JWT - Required in all environments
   JWT_SECRET: Joi.string()
     .min(32)
-    .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    })
+    .required()
     .messages({
       'string.min': 'JWT_SECRET must be at least 32 characters',
-      'any.required': 'JWT_SECRET is required in production',
+      'any.required': 'JWT_SECRET is required',
     }),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
@@ -58,16 +54,13 @@ export const configValidationSchema = Joi.object({
   // Admin
   ADMIN_EMAILS: Joi.string().optional().allow(''),
 
-  // Encryption
+  // Encryption - Required in all environments
   PROFILE_ENCRYPTION_KEY: Joi.string()
     .length(64)
-    .when('NODE_ENV', {
-      is: 'production',
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    })
+    .required()
     .messages({
       'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
+      'any.required': 'PROFILE_ENCRYPTION_KEY is required',
     }),
 
   // Cart/Order Settings
@@ -77,4 +70,9 @@ export const configValidationSchema = Joi.object({
   // Streaming (Optional)
   RTMP_SERVER_URL: Joi.string().optional(),
   HLS_SERVER_URL: Joi.string().optional(),
+
+  // Web Push (VAPID) - Optional
+  VAPID_PUBLIC_KEY: Joi.string().optional(),
+  VAPID_PRIVATE_KEY: Joi.string().optional(),
+  VAPID_SUBJECT: Joi.string().optional(),
 });

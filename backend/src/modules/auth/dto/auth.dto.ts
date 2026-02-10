@@ -24,6 +24,8 @@ export class TokenPayload {
   email: string; // User email
   kakaoId: string;
   role: string;
+  type?: string; // 'access' or 'refresh'
+  jti?: string; // unique token ID for blacklisting
   iat?: number;
   exp?: number;
 }

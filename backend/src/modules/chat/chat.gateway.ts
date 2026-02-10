@@ -132,21 +132,44 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: ChatMessagePayload,
   ) {
+    // Validate message exists and is a string
+    if (!payload.message || typeof payload.message !== 'string') {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'INVALID_MESSAGE',
+        message: 'Message is required and must be a string',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Sanitize: strip HTML tags to prevent XSS
+    const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
+
+    // Validate length (max 500 characters)
+    if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'MESSAGE_TOO_LONG',
+        message: 'Message must be between 1 and 500 characters',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
     const roomName = `live:${payload.liveId}`;
 
     // Broadcast to all clients in room (including sender)
     this.server.to(roomName).emit('chat:message', {
       type: 'chat:message',
       data: {
-        id: Date.now().toString(), // TODO: Generate proper ID
+        id: Date.now().toString(),
         liveId: payload.liveId,
         userId: client.user.userId,
-        message: payload.message,
+        message: sanitizedMessage,
         timestamp: new Date().toISOString(),
       },
     });
-
-    console.log(`💬 Message sent in ${roomName} by user ${client.user.userId}`);
 
     return {
       type: 'chat:send-message:success',
