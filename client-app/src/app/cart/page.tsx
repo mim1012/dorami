@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
 import { apiClient } from '@/lib/api/client';
 import { Heading1, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
@@ -40,6 +41,7 @@ interface CartSummary {
 
 export default function CartPage() {
   const router = useRouter();
+  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [cart, setCart] = useState<CartSummary | null>(null);
@@ -47,8 +49,10 @@ export default function CartPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCart();
-  }, []);
+    if (!guardLoading && isProfileComplete) {
+      fetchCart();
+    }
+  }, [guardLoading, isProfileComplete]);
 
   const fetchCart = async () => {
     try {

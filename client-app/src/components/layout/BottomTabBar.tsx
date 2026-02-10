@@ -15,9 +15,6 @@ interface TabItem {
 
 const KAKAO_INQUIRY_URL = 'https://pf.kakao.com/_your_kakao_channel'; // 실제 카카오톡 채널 URL로 변경 필요
 
-// 개발/테스트 모드에서는 My Page를 관리자 페이지로 연결
-const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development';
-
 const tabs: TabItem[] = [
   { id: 'home', label: '홈', icon: Home, path: '/' },
   { id: 'shop', label: '상품', icon: ShoppingCart, path: '/shop' },
@@ -30,7 +27,7 @@ const tabs: TabItem[] = [
       window.open(KAKAO_INQUIRY_URL, '_blank');
     }
   },
-  { id: 'mypage', label: '마이', icon: User, path: isDevelopment ? '/admin' : '/my-page' },
+  { id: 'mypage', label: '마이', icon: User, path: '/my-page' },
 ];
 
 export function BottomTabBar() {

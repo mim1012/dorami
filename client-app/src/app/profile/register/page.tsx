@@ -58,7 +58,6 @@ export default function ProfileRegisterPage() {
   const { isChecking: checkingInstagram, isAvailable: instagramAvailable } =
     useInstagramCheck(formData.instagramId);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -70,7 +69,6 @@ export default function ProfileRegisterPage() {
 
     let formattedValue = value;
 
-    // Apply auto-formatting
     if (name === 'phone') {
       formattedValue = formatPhoneNumber(value);
     } else if (name === 'zip') {
@@ -83,7 +81,6 @@ export default function ProfileRegisterPage() {
 
     setFormData((prev) => ({ ...prev, [name]: formattedValue }));
 
-    // Clear error for this field
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -92,52 +89,44 @@ export default function ProfileRegisterPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Depositor Name
     if (!formData.depositorName.trim()) {
-      newErrors.depositorName = 'Depositor name is required';
+      newErrors.depositorName = '입금자명을 입력해주세요';
     }
 
-    // Instagram ID
     if (!formData.instagramId.trim() || formData.instagramId === '@') {
-      newErrors.instagramId = 'Instagram ID is required';
+      newErrors.instagramId = '인스타그램 ID를 입력해주세요';
     } else if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
-      newErrors.instagramId = 'Invalid Instagram ID format';
+      newErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
     } else if (instagramAvailable === false) {
-      newErrors.instagramId = 'This Instagram ID is already registered';
+      newErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
     }
 
-    // Full Name
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
+      newErrors.fullName = '수령인 이름을 입력해주세요';
     }
 
-    // Address
     if (!formData.address1.trim()) {
-      newErrors.address1 = 'Address is required';
+      newErrors.address1 = '주소를 입력해주세요';
     }
 
-    // City
     if (!formData.city.trim()) {
-      newErrors.city = 'City is required';
+      newErrors.city = '도시명을 입력해주세요';
     }
 
-    // State
     if (!formData.state) {
-      newErrors.state = 'State is required';
+      newErrors.state = 'State를 선택해주세요';
     }
 
-    // ZIP
     if (!formData.zip) {
-      newErrors.zip = 'ZIP code is required';
+      newErrors.zip = 'ZIP Code를 입력해주세요';
     } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-      newErrors.zip = 'ZIP code must be in format 12345 or 12345-6789';
+      newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
     }
 
-    // Phone
     if (!formData.phone) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = '전화번호를 입력해주세요';
     } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must be complete';
+      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
     }
 
     setErrors(newErrors);
@@ -161,7 +150,7 @@ export default function ProfileRegisterPage() {
       console.error('Profile completion error:', error);
       setSubmitError(
         error.response?.data?.message ||
-          'Failed to complete profile. Please check your information and try again.',
+          '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
       );
     } finally {
       setIsSubmitting(false);
@@ -170,47 +159,47 @@ export default function ProfileRegisterPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Body>Loading...</Body>
+      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+        <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen bg-primary-black py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
-          <Display className="text-hot-pink mb-2">Complete Your Profile</Display>
+          <Display className="text-hot-pink mb-2">프로필 등록</Display>
           <Body className="text-secondary-text">
-            We need a few more details to complete your registration
+            서비스 이용을 위해 추가 정보를 입력해주세요
           </Body>
         </div>
 
         {submitError && (
-          <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
+          <div className="bg-error/10 border border-error rounded-lg p-4 mb-6">
             <Body className="text-error">{submitError}</Body>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information Section */}
-          <div className="bg-content-bg rounded-button p-6 space-y-4">
-            <Heading2 className="text-hot-pink mb-4">Basic Information</Heading2>
+          {/* 기본 정보 */}
+          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+            <Heading2 className="text-hot-pink mb-4">기본 정보</Heading2>
 
             <Input
-              label="Depositor Name (입금자명)"
+              label="입금자명"
               name="depositorName"
               value={formData.depositorName}
               onChange={handleChange}
               error={errors.depositorName}
-              placeholder="Name used for bank transfers"
+              placeholder="계좌이체 시 사용하는 이름"
               fullWidth
               required
             />
 
             <div>
               <Input
-                label="Instagram ID"
+                label="인스타그램 ID"
                 name="instagramId"
                 value={formData.instagramId}
                 onChange={handleChange}
@@ -220,25 +209,25 @@ export default function ProfileRegisterPage() {
                 required
               />
               {checkingInstagram && (
-                <Body className="text-secondary-text text-caption mt-1">
-                  Checking availability...
+                <Body className="text-secondary-text text-xs mt-1">
+                  확인 중...
                 </Body>
               )}
               {!checkingInstagram && instagramAvailable === true && formData.instagramId.length > 1 && (
-                <Body className="text-success text-caption mt-1">✓ Available</Body>
+                <Body className="text-success text-xs mt-1">사용 가능</Body>
               )}
               {!checkingInstagram && instagramAvailable === false && (
-                <Body className="text-error text-caption mt-1">✗ Already taken</Body>
+                <Body className="text-error text-xs mt-1">이미 사용 중인 ID입니다</Body>
               )}
             </div>
           </div>
 
-          {/* Shipping Address Section */}
-          <div className="bg-content-bg rounded-button p-6 space-y-4">
-            <Heading2 className="text-hot-pink mb-4">Shipping Address</Heading2>
+          {/* 미국 배송지 정보 */}
+          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+            <Heading2 className="text-hot-pink mb-4">미국 배송지</Heading2>
 
             <Input
-              label="Full Name"
+              label="수령인 (Full Name)"
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
@@ -249,28 +238,28 @@ export default function ProfileRegisterPage() {
             />
 
             <Input
-              label="Address Line 1"
+              label="주소 (Address Line 1)"
               name="address1"
               value={formData.address1}
               onChange={handleChange}
               error={errors.address1}
-              placeholder="Street address, P.O. box, company name"
+              placeholder="Street address, P.O. box"
               fullWidth
               required
             />
 
             <Input
-              label="Address Line 2 (Optional)"
+              label="상세 주소 (Address Line 2)"
               name="address2"
               value={formData.address2}
               onChange={handleChange}
-              placeholder="Apartment, suite, unit, building, floor, etc."
+              placeholder="Apt, Suite, Unit, Floor (선택)"
               fullWidth
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="City"
+                label="도시 (City)"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
@@ -281,7 +270,7 @@ export default function ProfileRegisterPage() {
               />
 
               <Select
-                label="State"
+                label="주 (State)"
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
@@ -290,7 +279,7 @@ export default function ProfileRegisterPage() {
                   value: state.code,
                   label: `${state.code} - ${state.name}`,
                 }))}
-                placeholder="Select state"
+                placeholder="State 선택"
                 fullWidth
                 required
               />
@@ -303,13 +292,13 @@ export default function ProfileRegisterPage() {
                 value={formData.zip}
                 onChange={handleChange}
                 error={errors.zip}
-                placeholder="12345 or 12345-6789"
+                placeholder="12345 또는 12345-6789"
                 fullWidth
                 required
               />
 
               <Input
-                label="Phone Number"
+                label="전화번호 (미국)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
@@ -321,7 +310,7 @@ export default function ProfileRegisterPage() {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* 등록 버튼 */}
           <Button
             type="submit"
             variant="primary"
@@ -329,7 +318,7 @@ export default function ProfileRegisterPage() {
             fullWidth
             disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >
-            {isSubmitting ? 'Completing Profile...' : 'Complete Profile'}
+            {isSubmitting ? '등록 중...' : '프로필 등록 완료'}
           </Button>
         </form>
       </div>

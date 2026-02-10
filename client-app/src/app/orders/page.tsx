@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -38,16 +39,14 @@ interface Order {
 export default function OrdersPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
+    if (guardLoading || !isProfileComplete) return;
 
     const fetchOrders = async () => {
       try {
