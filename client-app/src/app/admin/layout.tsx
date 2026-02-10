@@ -11,7 +11,7 @@ export default function AdminLayout({
 }) {
     return (
         <ProtectedRoute requiredRole="ADMIN">
-            <div className="flex min-h-screen bg-primary-black text-primary-text font-sans antialiased selection:bg-hot-pink selection:text-white">
+            <div className="admin-layout flex min-h-screen bg-primary-black text-primary-text font-sans antialiased selection:bg-hot-pink selection:text-white">
                 <Sidebar />
                 <div className="flex-1 flex flex-col">
                     <Header />

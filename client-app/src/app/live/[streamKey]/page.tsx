@@ -180,7 +180,7 @@ export default function LiveStreamPage() {
   };
 
   return (
-    <div className="w-full h-screen flex bg-black overflow-hidden">
+    <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
       {/* Left: Product List - Desktop Only */}
       <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
