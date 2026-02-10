@@ -74,6 +74,7 @@ services:
         NEXT_PUBLIC_API_URL: ${FRONTEND_URL}/api/v1
         NEXT_PUBLIC_WS_URL: ${WS_URL}
         NEXT_PUBLIC_KAKAO_JS_KEY: ${KAKAO_JS_KEY}
+        NEXT_PUBLIC_PREVIEW_ENABLED: "true"
     restart: always
     depends_on:
       - backend
