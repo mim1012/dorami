@@ -64,8 +64,11 @@ export class OrdersController {
   }
 
   @Get(':id')
-  async getOrderById(@Param('id') orderId: string) {
-    return this.ordersService.findById(orderId);
+  async getOrderById(
+    @Param('id') orderId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.ordersService.findById(orderId, userId);
   }
 
   // Reservation endpoints

@@ -428,9 +428,14 @@ export class OrdersService {
   /**
    * Epic 8 Story 8.2: Get order with bank transfer info
    */
-  async findById(orderId: string): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
+  async findById(orderId: string, userId?: string): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
+    const whereClause: any = { id: orderId };
+    if (userId) {
+      whereClause.userId = userId;
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: whereClause,
       include: { orderItems: true },
     });
 

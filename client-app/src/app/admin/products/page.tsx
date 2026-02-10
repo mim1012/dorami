@@ -218,7 +218,8 @@ export default function AdminProductsPage() {
       const formDataToUpload = new FormData();
       formDataToUpload.append('file', selectedFile);
 
-      const response = await fetch('http://localhost:3001/api/upload/image', {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const response = await fetch(`${apiBase}/upload/image`, {
         method: 'POST',
         body: formDataToUpload,
         credentials: 'include',
@@ -229,7 +230,7 @@ export default function AdminProductsPage() {
       }
 
       const result = await response.json();
-      const imageUrl = `http://localhost:3001${result.data.url}`;
+      const imageUrl = result.data.url;
 
       setFormData({ ...formData, imageUrl });
       showToast('이미지가 업로드되었습니다!', 'success');

@@ -272,7 +272,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
       {/* HERO SECTION */}
-      <header className="relative overflow-hidden bg-gray-50">
+      <header className="relative overflow-hidden bg-white">
 
         <div className={`relative z-10 p-4 pt-6 pb-8 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {/* Brand header */}

@@ -15,6 +15,8 @@ import { UpdateUserDto } from './dto/user.dto';
 import { CompleteProfileDto, CheckInstagramDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto } from './dto/profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('users')
@@ -40,6 +42,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async getUserById(@Param('id') id: string) {
     return this.usersService.findById(id);
   }

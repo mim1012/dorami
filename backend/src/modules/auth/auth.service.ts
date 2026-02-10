@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { LoginResponseDto, TokenPayload } from './dto/auth.dto';
@@ -86,13 +87,15 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m', // 15 minutes
-    });
+    const accessToken = this.jwtService.sign(
+      { ...payload, type: 'access', jti: randomUUID() },
+      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m' },
+    );
 
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN') || '7d', // 7 days
-    });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, type: 'refresh', jti: randomUUID() },
+      { expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN') || '7d' },
+    );
 
     // Store refresh token in Redis (TTL: 7 days)
     const refreshTokenTTL = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -118,6 +121,11 @@ export class AuthService {
   async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
     try {
       const payload = this.jwtService.verify<TokenPayload>(refreshToken);
+
+      // Reject access tokens used as refresh tokens
+      if (payload.type && payload.type !== 'refresh') {
+        throw new UnauthorizedException('Invalid token type');
+      }
 
       // Verify refresh token exists in Redis
       const storedToken = await this.redisService.get(
@@ -148,15 +156,28 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string): Promise<void> {
-    // Add user to blacklist (prevent token reuse)
-    // TTL should match access token expiration time
-    const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900); // Default: 900s = 15min
-    await this.redisService.set(
-      `blacklist:${userId}`,
-      'true',
-      blacklistTTL,
-    );
+  async logout(userId: string, accessToken?: string): Promise<void> {
+    // Blacklist the specific token by jti if available
+    if (accessToken) {
+      try {
+        const decoded = this.jwtService.decode(accessToken) as TokenPayload & { exp: number };
+        if (decoded?.jti) {
+          const now = Math.floor(Date.now() / 1000);
+          const ttl = decoded.exp > now ? decoded.exp - now : 0;
+          if (ttl > 0) {
+            await this.redisService.set(`blacklist:${decoded.jti}`, 'true', ttl);
+          }
+        }
+      } catch {
+        // Fallback: blacklist by userId
+        const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900);
+        await this.redisService.set(`blacklist:${userId}`, 'true', blacklistTTL);
+      }
+    } else {
+      // Fallback: blacklist by userId
+      const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900);
+      await this.redisService.set(`blacklist:${userId}`, 'true', blacklistTTL);
+    }
 
     // Remove refresh token from Redis
     await this.redisService.del(`refresh_token:${userId}`);

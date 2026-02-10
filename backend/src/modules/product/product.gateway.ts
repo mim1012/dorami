@@ -4,10 +4,13 @@ import {
   SubscribeMessage,
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ProductResponseDto } from './dto/product.dto';
+import { AuthenticatedSocket, authenticateSocket } from '../../common/middleware/ws-jwt-auth.middleware';
 
 /**
  * WebSocket Gateway for real-time product updates
@@ -20,11 +23,24 @@ import { ProductResponseDto } from './dto/product.dto';
   },
   namespace: '/',
 })
-export class ProductGateway {
+export class ProductGateway implements OnGatewayConnection {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(ProductGateway.name);
+
+  constructor(private readonly jwtService: JwtService) {}
+
+  async handleConnection(client: Socket) {
+    try {
+      await authenticateSocket(client, this.jwtService);
+      this.logger.log(`Client authenticated: ${client.id}`);
+    } catch (error) {
+      this.logger.warn(`Connection rejected: ${client.id} - ${error.message}`);
+      client.emit('error', { type: 'error', errorCode: 'AUTH_FAILED', message: 'Authentication failed' });
+      client.disconnect();
+    }
+  }
 
   /**
    * Broadcast when a new product is added to a stream
