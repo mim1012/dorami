@@ -42,6 +42,7 @@ async function bootstrap() {
           objectSrc: ["'none'"],
           mediaSrc: ["'self'", 'https:'],
           frameSrc: ["'none'"],
+          upgradeInsecureRequests: null, // Disable for HTTP staging; enable when HTTPS is configured
         },
       },
       crossOriginEmbedderPolicy: false, // Required for loading external resources
