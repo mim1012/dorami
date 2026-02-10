@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/* Register custom colors with Tailwind v4 so utility classes (bg-*, text-*, border-*) are generated */
+@theme inline {
+  --color-primary-black: var(--primary-black);
+  --color-content-bg: var(--content-bg);
+  --color-hot-pink: #FF007A;
+  --color-hot-pink-secondary: #FF6B35;
+  --color-hot-pink-dark: #CC0062;
+  --color-primary-text: var(--primary-text);
+  --color-secondary-text: var(--secondary-text);
+  --color-border-color: var(--border-color);
+  --color-card-bg: var(--card-bg);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-success-bg: var(--success-bg);
+  --color-error-bg: var(--error-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-info-bg: var(--info-bg);
+
+  --shadow-hot-pink: 0 0 20px rgba(255, 0, 122, 0.3);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-floating: var(--shadow-floating);
+
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-small: 4px;
+  --radius-input: 8px;
+
+  --spacing-bottom-nav: var(--bottom-nav-height);
+}
+
 /* Pretendard Font */
 @font-face {
   font-family: 'Pretendard';
@@ -413,4 +446,27 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* ═══ PC Desktop: Mobile app frame ═══ */
+@media (min-width: 1024px) {
+  /* Constrain user-facing pages to mobile-width frame */
+  #main-content {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.08);
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* Admin & Live pages break out to full width */
+  #main-content:has(.admin-layout),
+  #main-content:has(.live-fullscreen) {
+    max-width: none;
+    border: none;
+    box-shadow: none;
+  }
 }
