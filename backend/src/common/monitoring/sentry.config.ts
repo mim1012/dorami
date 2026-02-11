@@ -88,7 +88,7 @@ export async function initSentry(): Promise<boolean> {
 export async function captureException(error: Error, context?: Record<string, any>): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    Sentry.captureException(error, { extra: context });
+    (Sentry as any).captureException(error, { extra: context });
   } catch {
     // Sentry not available, just log
     console.error('Error:', error.message, context);
@@ -101,7 +101,7 @@ export async function captureException(error: Error, context?: Record<string, an
 export async function setUser(user: { id: string; email?: string; role?: string }): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    Sentry.setUser({
+    (Sentry as any).setUser({
       id: user.id,
       email: user.email,
       // Don't include sensitive data
@@ -117,7 +117,7 @@ export async function setUser(user: { id: string; email?: string; role?: string 
 export async function clearUser(): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    Sentry.setUser(null);
+    (Sentry as any).setUser(null);
   } catch {
     // Sentry not available
   }

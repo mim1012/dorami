@@ -5,7 +5,7 @@ import { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/share
 // Re-export for backward compatibility
 export { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
 
-class OrderItemDto {
+export class OrderItemDto {
   @IsString()
   @IsNotEmpty()
   productId: string;

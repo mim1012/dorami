@@ -18,9 +18,7 @@ import {
   InsufficientStockException,
 } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Product } from '@prisma/client';
-
-import { ProductStatus as PrismaProductStatus } from '@prisma/client';
+import { Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
 
 // Type for product update data
 interface ProductUpdateData {
@@ -222,7 +220,7 @@ export class ProductsService {
       if (updateDto.timerEnabled !== undefined) {updateData.timerEnabled = updateDto.timerEnabled;}
       if (updateDto.timerDuration !== undefined) {updateData.timerDuration = updateDto.timerDuration;}
       if (updateDto.imageUrl !== undefined) {updateData.imageUrl = updateDto.imageUrl;}
-      if (updateDto.status !== undefined) {updateData.status = updateDto.status;}
+      if (updateDto.status !== undefined) {updateData.status = updateDto.status as PrismaProductStatus;}
 
       const product = await this.prisma.product.update({
         where: { id },
