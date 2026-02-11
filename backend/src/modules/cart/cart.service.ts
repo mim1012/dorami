@@ -15,7 +15,7 @@ import {
   CartStatus,
 } from './dto/cart.dto';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Prisma, Cart } from '@prisma/client';
+import { Prisma, Cart, PrismaClient } from '@prisma/client';
 
 // Type for Prisma transaction client
 type PrismaTransactionClient = Omit<

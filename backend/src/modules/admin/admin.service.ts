@@ -21,6 +21,12 @@ import {
   ShippingAddressDto,
   UserStatisticsDto,
 } from './dto/admin.dto';
+import {
+  UserStatus as PrismaUserStatus,
+  OrderStatus as PrismaOrderStatus,
+  PaymentStatus as PrismaPaymentStatus,
+  ShippingStatus as PrismaShippingStatus,
+} from '@prisma/client';
 
 import { UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
 

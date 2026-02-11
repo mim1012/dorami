@@ -54,7 +54,21 @@
       "Bash(GIT_EDITOR=true git rebase:*)",
       "Bash(git -c core.editor=true rebase --continue)",
       "Bash(git -c core.editor=\"echo\" rebase:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npm run dev:all:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx jest:*)",
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(npm run dev:backend:*)",
+      "Bash(npm run dev:client:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
