@@ -9,6 +9,7 @@
 ## 기술 스택
 
 ### Frontend (Client App)
+
 - **Framework**: Next.js 16.1+ with Turbopack
 - **React**: 19.0.0
 - **Language**: TypeScript 5.7+ (strict mode)
@@ -19,6 +20,7 @@
 - **Admin Tools**: React Datepicker, ExcelJS (for `/admin` routes)
 
 ### Backend API
+
 - **Framework**: NestJS 11.1.12+
 - **Language**: TypeScript 5.7+ (strict mode)
 - **Database ORM**: Prisma 6.19.0+
@@ -27,6 +29,7 @@
 - **Logging**: Winston, nest-winston
 
 ### Infrastructure
+
 - **Database**: PostgreSQL 16
 - **Cache**: Redis 7
 - **Container**: Docker & Docker Compose
@@ -94,43 +97,51 @@ npm run dev:backend
 ## NPM Scripts
 
 ### 개발
+
 - `npm run dev:all` - 모든 앱 동시 실행 (concurrently)
 - `npm run dev:client` - 클라이언트 앱 실행 (일반 사용자 + 관리자 대시보드)
 - `npm run dev:backend` - 백엔드 API 실행
 
 ### 빌드
+
 - `npm run build:all` - 모든 워크스페이스 빌드
 - `npm run build:client` - 클라이언트 앱 빌드
 - `npm run build:backend` - 백엔드 API 빌드
 - `npm run build:shared` - 공유 타입 빌드
 
 ### 타입 체크
+
 - `npm run type-check:all` - 모든 워크스페이스 타입 체크
 - `npm run type-check:client` - 클라이언트 타입 체크
 - `npm run type-check:backend` - 백엔드 타입 체크
 - `npm run type-check:shared` - 공유 타입 체크
 
 ### 테스트
+
 - `npm run test:all` - 모든 테스트 실행
 - `npm run test:backend` - 백엔드 유닛 테스트
 - `npm run test:e2e` - E2E 테스트
 
 ### Lint
+
 - `npm run lint:all` - 모든 워크스페이스 린트
 - `npm run lint:client` - 클라이언트 린트
 - `npm run lint:backend` - 백엔드 린트
 
 ### Docker
+
 - `npm run docker:up` - Docker 서비스 시작 (백그라운드)
 - `npm run docker:down` - Docker 서비스 중지
 - `npm run docker:logs` - Docker 로그 확인
 
 ### Prisma
+
 - `npm run prisma:generate` - Prisma Client 생성
 - `npm run prisma:migrate` - 마이그레이션 실행
 - `npm run prisma:studio` - Prisma Studio 실행
 
 ### 기타
+
 - `npm run clean` - node_modules 및 빌드 아티팩트 삭제
 
 ## 포트 구성
@@ -144,6 +155,7 @@ npm run dev:backend
 ## 디자인 시스템
 
 ### 컬러 팔레트 (Hot Pink Theme)
+
 - **Hot Pink**: `#FF007A` - Primary accent
 - **Primary Black**: `#121212` - Background
 - **Content BG**: `#1E1E1E` - Cards, panels
@@ -153,6 +165,7 @@ npm run dev:backend
 - **Error**: `#FF3B30` - Error states
 
 ### 타이포그래피
+
 - **Font**: Pretendard (via CDN)
 - **Display**: 28px / Bold
 - **H1**: 22px / Bold
@@ -163,6 +176,7 @@ npm run dev:backend
 ## 개발 가이드라인
 
 ### 코딩 스타일
+
 - TypeScript strict mode 사용
 - Feature-based 컴포넌트 구조
 - 테스트 파일은 소스 파일과 함께 위치
@@ -172,6 +186,7 @@ npm run dev:backend
 - 상수: UPPER_SNAKE_CASE
 
 ### Prisma 네이밍 규칙
+
 - **Models**: PascalCase (User, Product)
 - **Fields**: camelCase (userId, productName)
 - **DB Tables**: snake_case plural (users, products)
@@ -179,6 +194,7 @@ npm run dev:backend
 - `@@map()` 및 `@map()` 사용하여 매핑
 
 ### Git 커밋 규칙
+
 ```
 feat(scope): 새로운 기능 추가
 fix(scope): 버그 수정
@@ -191,12 +207,17 @@ chore(scope): 빌드/설정 변경
 
 ## 문서
 
-상세한 프로젝트 문서는 `/docs` 폴더를 참고하세요:
-- PRD (Product Requirements Document)
-- 아키텍처 문서
-- API 설계 문서
-- UX 디자인 가이드
-- 개발 가이드
+상세한 프로젝트 문서는 [`docs/README.md`](docs/README.md)를 참고하세요.
+
+| 카테고리                                 | 설명                                           |
+| ---------------------------------------- | ---------------------------------------------- |
+| [Getting Started](docs/getting-started/) | 환경 설정, 코드베이스 구조, 프론트/백엔드 분리 |
+| [Architecture](docs/architecture/)       | API 레퍼런스, DB 스키마, 라이브 스트리밍       |
+| [Guides](docs/guides/)                   | 카카오 공유, 푸시 알림, ngrok, 카카오 인증     |
+| [Deployment](docs/deployment/)           | 배포 개요, Staging, Production, AWS, CI/CD     |
+| [Process](docs/process/)                 | 브랜치 전략, 테스트 전략, MVP 체크리스트       |
+| [Spec](docs/spec/)                       | PRD, 디자인 시스템, UI/UX, 기술 스택           |
+| [Reports](docs/reports/)                 | 코드 리뷰, 구현 상태, 테스트 리포트            |
 
 ## 라이선스
 
