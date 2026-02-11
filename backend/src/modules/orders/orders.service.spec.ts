@@ -5,6 +5,8 @@ import { OrdersService } from './orders.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
+import { PointsService } from '../points/points.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -159,6 +161,19 @@ describe('OrdersService - createOrderFromCart', () => {
           useValue: {
             batchDecreaseStock: jest.fn(),
             restoreStock: jest.fn(),
+          },
+        },
+        {
+          provide: PointsService,
+          useValue: {
+            validateRedemption: jest.fn(),
+            deductPoints: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            sendPaymentReminderNotification: jest.fn(),
           },
         },
         {
@@ -353,12 +368,8 @@ describe('OrdersService - createOrderFromCart', () => {
       prismaService.$transaction = mockTransaction as any;
 
       // Act & Assert
-      await expect(service.createOrderFromCart('invalid-user')).rejects.toThrow(
-        BusinessException,
-      );
-      await expect(service.createOrderFromCart('invalid-user')).rejects.toThrow(
-        'USER_NOT_FOUND',
-      );
+      await expect(service.createOrderFromCart('invalid-user')).rejects.toThrow(BusinessException);
+      await expect(service.createOrderFromCart('invalid-user')).rejects.toThrow('USER_NOT_FOUND');
     });
 
     it('should throw BusinessException when cart is empty', async () => {
@@ -375,12 +386,8 @@ describe('OrdersService - createOrderFromCart', () => {
       prismaService.$transaction = mockTransaction as any;
 
       // Act & Assert
-      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(
-        BusinessException,
-      );
-      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(
-        'CART_EMPTY',
-      );
+      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(BusinessException);
+      await expect(service.createOrderFromCart('user-123')).rejects.toThrow('CART_EMPTY');
     });
 
     it('should throw BusinessException when cart items are expired', async () => {
@@ -405,12 +412,8 @@ describe('OrdersService - createOrderFromCart', () => {
       prismaService.$transaction = mockTransaction as any;
 
       // Act & Assert
-      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(
-        BusinessException,
-      );
-      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(
-        'CART_ITEMS_EXPIRED',
-      );
+      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(BusinessException);
+      await expect(service.createOrderFromCart('user-123')).rejects.toThrow('CART_ITEMS_EXPIRED');
     });
 
     it('should rollback transaction on database error', async () => {
@@ -431,9 +434,7 @@ describe('OrdersService - createOrderFromCart', () => {
       prismaService.$transaction = mockTransaction as any;
 
       // Act & Assert
-      await expect(service.createOrderFromCart('user-123')).rejects.toThrow(
-        'Database error',
-      );
+      await expect(service.createOrderFromCart('user-123')).rejects.toThrow('Database error');
 
       // Verify transaction was attempted
       expect(mockTransaction).toHaveBeenCalledTimes(1);
