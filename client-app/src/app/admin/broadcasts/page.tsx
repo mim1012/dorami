@@ -4,8 +4,21 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
-import { Radio, Eye, Clock, TrendingUp, Play, StopCircle, Plus, X, Copy, Check, Star } from 'lucide-react';
+import {
+  Radio,
+  Eye,
+  Clock,
+  TrendingUp,
+  Play,
+  StopCircle,
+  Plus,
+  X,
+  Copy,
+  Check,
+  Star,
+} from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
+import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
 
 interface LiveStream {
   id: string;
@@ -69,7 +82,9 @@ export default function BroadcastsPage() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Featured product modal state
-  const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(null);
+  const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(
+    null,
+  );
 
   // [DEV] Auth check disabled for development
   // useEffect(() => {
@@ -116,7 +131,9 @@ export default function BroadcastsPage() {
           limit: pageSize,
         };
 
-        const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', { params });
+        const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
+          params,
+        });
 
         setStreams(response.data.streams);
         setTotal(response.data.total);
@@ -164,13 +181,22 @@ export default function BroadcastsPage() {
       OFFLINE: StopCircle,
     };
 
+    const labels: Record<string, string> = {
+      LIVE: '방송중',
+      PENDING: '대기',
+      OFFLINE: '오프라인',
+    };
+
     const color = colors[status as keyof typeof colors] || colors.OFFLINE;
     const Icon = icons[status as keyof typeof icons] || StopCircle;
+    const label = labels[status] || status;
 
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${color}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${color}`}
+      >
         <Icon className="w-3.5 h-3.5" />
-        {status}
+        {label}
       </span>
     );
   };
@@ -225,14 +251,15 @@ export default function BroadcastsPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-primary-text mb-2">
             방송 관리 <span className="text-hot-pink">Broadcasts</span>
           </h1>
-          <p className="text-sm md:text-base text-secondary-text">실시간 방송 현황 및 기록을 관리하세요.</p>
+          <p className="text-sm md:text-base text-secondary-text">
+            실시간 방송 현황 및 기록을 관리하세요.
+          </p>
         </div>
         <button
           onClick={() => setShowGenerateModal(true)}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
         >
-          <Plus className="w-5 h-5" />
-          새 방송 시작
+          <Plus className="w-5 h-5" />새 방송 시작
         </button>
       </div>
 
@@ -271,9 +298,7 @@ export default function BroadcastsPage() {
               <TrendingUp className="w-6 h-6 text-success" />
             </div>
           </div>
-          <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">
-            {total}
-          </h3>
+          <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">{total}</h3>
           <p className="text-sm text-secondary-text">총 방송 기록</p>
         </div>
       </div>
@@ -299,9 +324,7 @@ export default function BroadcastsPage() {
               >
                 <div className="flex-1">
                   <h3 className="font-semibold text-primary-text mb-1">{stream.title}</h3>
-                  <p className="text-sm text-secondary-text">
-                    Stream Key: {stream.streamKey}
-                  </p>
+                  <p className="text-sm text-secondary-text">Stream Key: {stream.streamKey}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
@@ -325,6 +348,14 @@ export default function BroadcastsPage() {
           </div>
         </div>
       )}
+
+      {/* ReStream Manager */}
+      <div className="bg-content-bg border border-gray-200 rounded-card p-6">
+        <ReStreamManager
+          liveStreamId={liveStatus?.activeStreams?.[0]?.id || null}
+          isLive={!!liveStatus?.activeStreams?.length}
+        />
+      </div>
 
       {/* Stream History Table */}
       <div className="bg-content-bg border border-gray-200 rounded-card overflow-hidden">
@@ -377,19 +408,27 @@ export default function BroadcastsPage() {
                         <div className="text-sm font-medium text-primary-text">{stream.title}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text font-mono">{stream.streamKey}</div>
+                        <div className="text-sm text-secondary-text font-mono">
+                          {stream.streamKey}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(stream.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">{formatDate(stream.startedAt)}</div>
+                        <div className="text-sm text-secondary-text">
+                          {formatDate(stream.startedAt)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">{formatDate(stream.endedAt)}</div>
+                        <div className="text-sm text-secondary-text">
+                          {formatDate(stream.endedAt)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">{formatDuration(stream.totalDuration)}</div>
+                        <div className="text-sm text-secondary-text">
+                          {formatDuration(stream.totalDuration)}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-sm text-info">
@@ -407,18 +446,19 @@ export default function BroadcastsPage() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
                 <div className="text-sm text-secondary-text">
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} results
+                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of{' '}
+                  {total} results
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
                   <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
@@ -474,7 +514,9 @@ export default function BroadcastsPage() {
                 <div className="space-y-6">
                   <div className="p-4 bg-success/10 border border-success rounded-lg">
                     <p className="text-success font-medium">스트림 키가 발급되었습니다!</p>
-                    <p className="text-sm text-secondary-text mt-1">아래 정보를 OBS에 입력하세요.</p>
+                    <p className="text-sm text-secondary-text mt-1">
+                      아래 정보를 OBS에 입력하세요.
+                    </p>
                   </div>
 
                   <div>
@@ -495,7 +537,12 @@ export default function BroadcastsPage() {
                         {generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, '')}
                       </div>
                       <button
-                        onClick={() => handleCopyToClipboard(generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, ''), 'rtmpUrl')}
+                        onClick={() =>
+                          handleCopyToClipboard(
+                            generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, ''),
+                            'rtmpUrl',
+                          )
+                        }
                         className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="복사"
                       >
@@ -517,7 +564,9 @@ export default function BroadcastsPage() {
                         {generatedStream.streamKey}
                       </div>
                       <button
-                        onClick={() => handleCopyToClipboard(generatedStream.streamKey, 'streamKey')}
+                        onClick={() =>
+                          handleCopyToClipboard(generatedStream.streamKey, 'streamKey')
+                        }
                         className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="복사"
                       >

@@ -9,11 +9,11 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { createAdapter } from '@socket.io/redis-adapter';
+// import { createAdapter } from '@socket.io/redis-adapter';
 import { RedisService } from '../../common/redis/redis.service';
 import { LoggerService } from '../../common/logger/logger.service';
 import { JwtService } from '@nestjs/jwt';
-import { UseGuards } from '@nestjs/common';
+// import { UseGuards } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
@@ -26,9 +26,7 @@ import { OnEvent } from '@nestjs/event-emitter';
   },
   namespace: '/',
 })
-export class WebsocketGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -42,7 +40,7 @@ export class WebsocketGateway
     this.logger.setContext('WebSocketGateway');
   }
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     // Temporarily disabled Redis Adapter to allow server to start
     // TODO: Fix Redis adapter connection hanging issue
     // const pubClient = this.redisService.getPubClient();
@@ -55,7 +53,8 @@ export class WebsocketGateway
   async handleConnection(client: Socket) {
     try {
       // Extract and verify JWT token
-      const token = client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
+      const token =
+        client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
 
       if (!token) {
         this.logger.warn(`Client ${client.id} connected without token`);
@@ -85,19 +84,16 @@ export class WebsocketGateway
     this.logger.log(`Client disconnected: ${client.id}`);
     // Cleanup: Leave all rooms
     const rooms = Array.from(client.rooms).filter((room) => room !== client.id);
-    rooms.forEach((room) => {
-      client.leave(room);
+    for (const room of rooms) {
+      void client.leave(room);
       this.logger.log(`Client ${client.id} left room: ${room}`);
-    });
+    }
   }
 
   @SubscribeMessage('join:stream')
-  handleJoinStream(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { streamId: string },
-  ) {
+  handleJoinStream(@ConnectedSocket() client: Socket, @MessageBody() data: { streamId: string }) {
     const roomName = `stream:${data.streamId}`;
-    client.join(roomName);
+    void client.join(roomName);
 
     this.logger.log(`Client ${client.id} joined room: ${roomName}`);
 
@@ -112,12 +108,9 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('leave:stream')
-  handleLeaveStream(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { streamId: string },
-  ) {
+  handleLeaveStream(@ConnectedSocket() client: Socket, @MessageBody() data: { streamId: string }) {
     const roomName = `stream:${data.streamId}`;
-    client.leave(roomName);
+    void client.leave(roomName);
 
     this.logger.log(`Client ${client.id} left room: ${roomName}`);
 
@@ -194,10 +187,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('typing:start')
-  handleTypingStart(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { streamId: string },
-  ) {
+  handleTypingStart(@ConnectedSocket() client: Socket, @MessageBody() data: { streamId: string }) {
     const roomName = `stream:${data.streamId}`;
 
     this.server.to(roomName).emit('typing:user', {
@@ -209,10 +199,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('typing:stop')
-  handleTypingStop(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { streamId: string },
-  ) {
+  handleTypingStop(@ConnectedSocket() client: Socket, @MessageBody() data: { streamId: string }) {
     const roomName = `stream:${data.streamId}`;
 
     this.server.to(roomName).emit('typing:user', {
@@ -242,13 +229,31 @@ export class WebsocketGateway
     const roomName = `stream:${payload.streamKey}`;
 
     this.logger.log(
-      `Broadcasting featured product update to room ${roomName}: ${payload.productId || 'cleared'}`
+      `Broadcasting featured product update to room ${roomName}: ${payload.productId || 'cleared'}`,
     );
 
     this.server.to(roomName).emit('stream:featured-product:updated', {
       streamKey: payload.streamKey,
       product: payload.product,
     });
+  }
+
+  /**
+   * Handle restream status update event
+   * Broadcast to all connected admin clients
+   */
+  @OnEvent('restream:status:updated')
+  handleReStreamStatusUpdated(payload: {
+    liveStreamId: string;
+    targetId: string;
+    status: string;
+    logId: string;
+  }) {
+    this.logger.log(
+      `Broadcasting restream status update: target ${payload.targetId} → ${payload.status}`,
+    );
+
+    this.server.emit('restream:status:updated', payload);
   }
 
   /**
@@ -264,12 +269,14 @@ export class WebsocketGateway
     quantity: number;
     streamKey: string;
   }) {
-    if (!payload.streamKey) return;
+    if (!payload.streamKey) {
+      return;
+    }
 
     const roomName = `stream:${payload.streamKey}`;
 
     this.logger.log(
-      `Broadcasting cart activity to room ${roomName}: ${payload.userName} added ${payload.productName}`
+      `Broadcasting cart activity to room ${roomName}: ${payload.userName} added ${payload.productName}`,
     );
 
     this.server.to(roomName).emit('cart:item-added', {
