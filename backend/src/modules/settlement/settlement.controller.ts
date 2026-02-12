@@ -1,14 +1,11 @@
-import { Controller, Get, Query, UseGuards, Response } from '@nestjs/common';
+import { Controller, Get, Query, Response } from '@nestjs/common';
 import { SettlementService } from './settlement.service';
 import { GetSettlementQueryDto } from './dto/settlement.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { Response as ExpressResponse } from 'express';
 
 @Controller('admin/settlement')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@AdminOnly()
 export class SettlementController {
   constructor(private settlementService: SettlementService) {}
 
@@ -18,10 +15,7 @@ export class SettlementController {
   }
 
   @Get('download')
-  async downloadExcel(
-    @Query() query: GetSettlementQueryDto,
-    @Response() res: ExpressResponse,
-  ) {
+  async downloadExcel(@Query() query: GetSettlementQueryDto, @Response() res: ExpressResponse) {
     const buffer = await this.settlementService.generateExcelReport(query);
 
     const filename = `settlement_${query.from}_${query.to}.xlsx`;

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
 
 const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_your_kakao_channel';
 const INSTAGRAM_URL = 'https://www.instagram.com/_your_instagram';
@@ -12,14 +12,7 @@ interface InquiryBottomSheetProps {
 }
 
 export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  useModalBehavior({ isOpen, onClose, lockScroll: false });
 
   if (!isOpen) return null;
 

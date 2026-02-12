@@ -2,10 +2,20 @@
   "cookies": [
     {
       "name": "accessToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwdy11c2VyLWlkIiwiZW1haWwiOiJwdy11c2VyQHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJrYWthb0lkIjoicHctdXNlciIsImlhdCI6MTc3MDQ4NDUwNiwiZXhwIjoxNzcwNDg4MTA2fQ.rdD3psHjFDede0gvoFkfSY-tD90KUl8Eg0oxRXqzcXI",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJ1c2VySWQiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcwODY5MDU3MzYyIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYzdlYTkwNzctMjNmZC00NzNiLWE5NjEtMmU5YjFhMWE1YmUyIiwiaWF0IjoxNzcwODk4MzQ0LCJleHAiOjE3NzA4OTkyNDR9.K_o7eh7jEQBf9ZEiciogMmd2cJOl3Z1DDNjzzFPDqZA",
       "domain": "localhost",
       "path": "/",
-      "expires": -1,
+      "expires": 1770899244,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "refreshToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJ1c2VySWQiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcwODY5MDU3MzYyIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6ImVhYThjMzFjLTlmYTYtNDkxMC05YTY1LWRkM2M2ODhjOWMxMiIsImlhdCI6MTc3MDg5ODM0NCwiZXhwIjoxNzcxNTAzMTQ0fQ.j92-77IOr64JcyeL3SbdTQU3UiR3f1mftM_mc0-jzbs",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1771503144,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -16,8 +26,8 @@
       "origin": "http://localhost:3000",
       "localStorage": [
         {
-          "name": "accessToken",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwdy11c2VyLWlkIiwiZW1haWwiOiJwdy11c2VyQHRlc3QuY29tIiwicm9sZSI6IlVTRVIiLCJrYWthb0lkIjoicHctdXNlciIsImlhdCI6MTc3MDQ4NDUwNiwiZXhwIjoxNzcwNDg4MTA2fQ.rdD3psHjFDede0gvoFkfSY-tD90KUl8Eg0oxRXqzcXI"
+          "name": "auth-storage",
+          "value": "{\"state\":{\"user\":{\"id\":\"a601f45c-2375-4020-afe3-7e90e9eec6b7\",\"kakaoId\":\"dev_1770869057362\",\"email\":\"e2e-user@test.com\",\"nickname\":\"E2E USER\",\"role\":\"USER\",\"depositorName\":\"테스트사용자\",\"instagramId\":\"@e2e_reg_1770878379342\",\"createdAt\":\"2026-02-12T04:04:17.365Z\",\"updatedAt\":\"2026-02-12T12:12:24.612Z\"},\"isAuthenticated\":true,\"isLoading\":false},\"version\":0}"
         }
       ]
     }

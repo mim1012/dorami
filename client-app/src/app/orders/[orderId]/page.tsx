@@ -55,11 +55,11 @@ export default function OrderConfirmationPage() {
 
   const getStatusSteps = () => {
     const steps = [
-      { label: 'Order Created', icon: CheckCircle, status: 'ORDER_CREATED' },
-      { label: 'Payment Pending', icon: Clock, status: 'PENDING_PAYMENT' },
-      { label: 'Payment Confirmed', icon: CheckCircle, status: 'PAYMENT_CONFIRMED' },
-      { label: 'Shipped', icon: Truck, status: 'SHIPPED' },
-      { label: 'Delivered', icon: Home, status: 'DELIVERED' },
+      { label: '주문 완료', icon: CheckCircle, status: 'ORDER_CREATED' },
+      { label: '입금 대기', icon: Clock, status: 'PENDING_PAYMENT' },
+      { label: '결제 확인', icon: CheckCircle, status: 'PAYMENT_CONFIRMED' },
+      { label: '배송중', icon: Truck, status: 'SHIPPED' },
+      { label: '배송 완료', icon: Home, status: 'DELIVERED' },
     ];
 
     const statusOrder: OrderStatus[] = [
@@ -73,10 +73,14 @@ export default function OrderConfirmationPage() {
 
     return steps.map((step, index) => {
       if (index === 0) return { ...step, completed: true, current: false };
-      if (index === 1) return { ...step, completed: currentIndex >= 0, current: currentIndex === 0 };
-      if (index === 2) return { ...step, completed: currentIndex >= 1, current: currentIndex === 1 };
-      if (index === 3) return { ...step, completed: currentIndex >= 2, current: currentIndex === 2 };
-      if (index === 4) return { ...step, completed: currentIndex >= 3, current: currentIndex === 3 };
+      if (index === 1)
+        return { ...step, completed: currentIndex >= 0, current: currentIndex === 0 };
+      if (index === 2)
+        return { ...step, completed: currentIndex >= 1, current: currentIndex === 1 };
+      if (index === 3)
+        return { ...step, completed: currentIndex >= 2, current: currentIndex === 2 };
+      if (index === 4)
+        return { ...step, completed: currentIndex >= 3, current: currentIndex === 3 };
       return { ...step, completed: false, current: false };
     });
   };
@@ -94,13 +98,13 @@ export default function OrderConfirmationPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
-            <p className="text-gray-600 mb-6">{error || 'Unable to load order details'}</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">주문을 찾을 수 없습니다</h1>
+            <p className="text-gray-600 mb-6">{error || '주문 정보를 불러올 수 없습니다'}</p>
             <button
               onClick={() => router.push('/orders')}
               className="px-6 py-2 bg-info text-white rounded-lg hover:bg-info/80"
             >
-              View All Orders
+              주문 목록 보기
             </button>
           </div>
         </div>
@@ -118,9 +122,9 @@ export default function OrderConfirmationPage() {
           <div className="flex items-center">
             <CheckCircle className="w-8 h-8 text-success mr-3" />
             <div>
-              <h1 className="text-2xl font-bold text-primary-text">Order Placed Successfully!</h1>
+              <h1 className="text-2xl font-bold text-primary-text">주문이 완료되었습니다!</h1>
               <p className="text-success mt-1">
-                Order ID: {order.id} • {new Date(order.createdAt).toLocaleString('ko-KR')}
+                주문번호: {order.id} • {new Date(order.createdAt).toLocaleString('ko-KR')}
               </p>
             </div>
           </div>
@@ -128,7 +132,7 @@ export default function OrderConfirmationPage() {
 
         {/* Status Timeline */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Status</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">주문 상태</h2>
           <div className="relative">
             <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200"></div>
             <div className="relative flex justify-between">
@@ -139,8 +143,8 @@ export default function OrderConfirmationPage() {
                       step.completed
                         ? 'bg-success border-success'
                         : step.current
-                        ? 'bg-pink-500 border-pink-500 animate-pulse'
-                        : 'bg-white border-gray-300'
+                          ? 'bg-pink-500 border-pink-500 animate-pulse'
+                          : 'bg-white border-gray-300'
                     }`}
                   >
                     <step.icon
@@ -165,18 +169,16 @@ export default function OrderConfirmationPage() {
         {/* Bank Transfer Instructions */}
         {order.bankTransferInfo && (
           <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-lg shadow-md p-6 mb-6 border-2 border-pink-200">
-            <h2 className="text-xl font-semibold text-pink-900 mb-4">
-              💳 Bank Transfer Instructions
-            </h2>
+            <h2 className="text-xl font-semibold text-pink-900 mb-4">💳 무통장 입금 안내</h2>
             <div className="bg-white rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Bank Name</span>
+                <span className="text-gray-600">은행명</span>
                 <span className="font-semibold text-gray-900">
                   {order.bankTransferInfo.bankName}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Account Number</span>
+                <span className="text-gray-600">계좌번호</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-semibold text-gray-900">
                     {formatAccountNumber(order.bankTransferInfo.accountNumber)}
@@ -194,19 +196,19 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Account Holder</span>
+                <span className="text-gray-600">예금주</span>
                 <span className="font-semibold text-gray-900">
                   {order.bankTransferInfo.accountHolder}
                 </span>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                <span className="text-gray-900 font-semibold">Transfer Amount</span>
+                <span className="text-gray-900 font-semibold">입금 금액</span>
                 <span className="text-2xl font-bold text-pink-600">
                   {formatPrice(order.bankTransferInfo.amount)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Depositor Name</span>
+                <span className="text-gray-600">입금자명</span>
                 <span className="font-semibold text-gray-900">
                   {order.bankTransferInfo.depositorName}
                 </span>
@@ -214,13 +216,13 @@ export default function OrderConfirmationPage() {
             </div>
             <div className="mt-4 bg-warning-bg border border-warning/20 rounded-lg p-3">
               <p className="text-sm text-primary-text">
-                ⚠️ <strong>Important:</strong> Please use your registered depositor name (
-                {order.bankTransferInfo.depositorName}) for transfer verification.
+                ⚠️ <strong>주의:</strong> 입금 시 등록된 입금자명(
+                {order.bankTransferInfo.depositorName})으로 입금해 주세요.
               </p>
             </div>
             {copied && (
               <div className="mt-3 text-center text-sm text-success font-medium">
-                ✓ Account number copied to clipboard!
+                ✓ 계좌번호가 복사되었습니다!
               </div>
             )}
           </div>
@@ -228,7 +230,7 @@ export default function OrderConfirmationPage() {
 
         {/* Order Items */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Items</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">주문 상품</h2>
           <div className="space-y-3">
             {order.items.map((item) => (
               <div
@@ -238,7 +240,7 @@ export default function OrderConfirmationPage() {
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">{item.productName}</p>
                   <p className="text-sm text-gray-600">
-                    Quantity: {item.quantity} × {formatPrice(item.price)}
+                    수량: {item.quantity} × {formatPrice(item.price)}
                   </p>
                 </div>
                 <p className="font-semibold text-gray-900">
@@ -249,15 +251,15 @@ export default function OrderConfirmationPage() {
           </div>
           <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
             <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
+              <span>소계</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Shipping Fee</span>
+              <span>배송비</span>
               <span>{formatPrice(order.shippingFee)}</span>
             </div>
             <div className="flex justify-between text-xl font-bold text-gray-900 pt-2">
-              <span>Total</span>
+              <span>합계</span>
               <span>{formatPrice(order.total)}</span>
             </div>
           </div>
@@ -269,13 +271,13 @@ export default function OrderConfirmationPage() {
             onClick={() => router.push('/orders')}
             className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors"
           >
-            View My Orders
+            내 주문 보기
           </button>
           <button
             onClick={() => router.push('/')}
             className="px-6 py-3 bg-info text-white rounded-lg hover:bg-info/80 font-medium transition-colors"
           >
-            Continue Shopping
+            쇼핑 계속하기
           </button>
         </div>
       </div>

@@ -116,7 +116,8 @@ export default function MyPagePage() {
   }
 
   // useProfileGuard handles redirect for non-authenticated and incomplete profile
-  if (!user || !isProfileComplete) {
+  // Admin users skip profile completion requirement
+  if (!user || (user.role !== 'ADMIN' && !isProfileComplete)) {
     return null;
   }
 

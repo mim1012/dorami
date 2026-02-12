@@ -5,6 +5,23 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Custom API error that includes backend error details
+ */
+export class ApiError extends Error {
+  statusCode: number;
+  errorCode: string;
+  details?: any;
+
+  constructor(statusCode: number, message: string, errorCode: string, details?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    this.details = details;
+  }
+}
+
+/**
  * Get CSRF token from cookie
  */
 function getCsrfToken(): string | null {
@@ -12,6 +29,60 @@ function getCsrfToken(): string | null {
 
   const match = document.cookie.match(/csrf-token=([^;]+)/);
   return match ? match[1] : null;
+}
+
+// Token refresh state - prevents multiple concurrent refresh calls
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Execute a fetch request with the given merged options.
+ * Factored out so the retry path can reuse it without rebuilding options.
+ */
+async function executeFetch(
+  url: string,
+  options?: RequestInit & { params?: Record<string, any> },
+): Promise<Response> {
+  // Include CSRF token for non-GET requests
+  const csrfToken = getCsrfToken();
+  const csrfHeader: Record<string, string> = {};
+  if (csrfToken && options?.method && options.method !== 'GET') {
+    csrfHeader['X-CSRF-Token'] = csrfToken;
+  }
+
+  // Don't set Content-Type for FormData (browser sets multipart boundary automatically)
+  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
+  const contentTypeHeader: Record<string, string> = isFormData
+    ? {}
+    : { 'Content-Type': 'application/json' };
+
+  const defaultOptions: RequestInit = {
+    headers: {
+      ...contentTypeHeader,
+      ...csrfHeader,
+    },
+    credentials: 'include',
+  };
+
+  return fetch(url, {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options?.headers,
+    },
+  });
 }
 
 async function request<T>(
@@ -38,41 +109,42 @@ async function request<T>(
     }
   }
 
-  // Include CSRF token for non-GET requests
-  const csrfToken = getCsrfToken();
-  const csrfHeader: Record<string, string> = {};
-  if (csrfToken && options?.method && options.method !== 'GET') {
-    csrfHeader['X-CSRF-Token'] = csrfToken;
+  let response = await executeFetch(url, options);
+
+  // On 401, attempt to refresh the access token and retry once
+  if (response.status === 401 && endpoint !== '/auth/refresh') {
+    // Coalesce concurrent refresh calls into a single request
+    if (!refreshPromise) {
+      refreshPromise = refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const refreshed = await refreshPromise;
+
+    if (refreshed) {
+      // Retry the original request with fresh token
+      response = await executeFetch(url, options);
+    } else {
+      // Refresh failed — throw error (let caller handle redirect)
+      // Do NOT hard-redirect here: it causes infinite loops when
+      // useAuth() calls /auth/me on the login page itself.
+      throw new ApiError(401, 'Session expired', 'SESSION_EXPIRED');
+    }
   }
-
-  // Don't set Content-Type for FormData (browser sets multipart boundary automatically)
-  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
-  const contentTypeHeader: Record<string, string> = isFormData
-    ? {}
-    : { 'Content-Type': 'application/json' };
-
-  const defaultOptions: RequestInit = {
-    headers: {
-      ...contentTypeHeader,
-      ...csrfHeader,
-    },
-    credentials: 'include',
-  };
-
-  const response = await fetch(url, {
-    ...defaultOptions,
-    ...options,
-    headers: {
-      ...defaultOptions.headers,
-      ...options?.headers,
-    },
-  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
+      statusCode: response.status,
       message: 'An error occurred',
+      error: response.statusText,
     }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    throw new ApiError(
+      error.statusCode || response.status,
+      error.message || `HTTP ${response.status}`,
+      error.error || response.statusText,
+      error.details,
+    );
   }
 
   const text = await response.text();

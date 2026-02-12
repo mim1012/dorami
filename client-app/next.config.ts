@@ -13,9 +13,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    // Extract base URL without /api suffix for rewrite destination
-    const backendUrl = apiUrl.replace(/\/api(\/.*)?$/, '');
+    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
 
     return [
       {

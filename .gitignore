@@ -62,7 +62,18 @@ BMAD-METHOD/
 _bmad-output/
 _bmad/
 
+# Private keys
+*.pem
+*.key
+
+# Playwright
+e2e/.auth/
+test-results/
+playwright-report/
+screenshots/
+
 # Temporary
+test_output.txt
 temp/
 tmp/
 *.tmp

@@ -36,9 +36,14 @@ export function useChatConnection(streamKey: string) {
       setIsConnected(false);
     });
 
-    // User count updates
-    socket.on('chat:user-count', (count: number) => {
-      setUserCount(count);
+    // Track user count locally via join/leave events
+    // (backend emits 'chat:user-joined' and 'chat:user-left', not 'chat:user-count')
+    socket.on('chat:user-joined', () => {
+      setUserCount((prev) => prev + 1);
+    });
+
+    socket.on('chat:user-left', () => {
+      setUserCount((prev) => Math.max(0, prev - 1));
     });
 
     return () => {

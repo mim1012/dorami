@@ -1,16 +1,31 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../store/auth';
 import { apiClient } from '../api/client';
 
 export function useAuth() {
   const { user, isAuthenticated, isLoading, setUser, setLoading, logout } = useAuthStore();
+  const pathname = usePathname();
+  const fetchedRef = useRef(false);
 
   const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Staging/Production 환경에서는 실제 API 호출
-      const response = await apiClient.get<{ id: string; kakaoId: string; email?: string; nickname?: string; profileImage?: string; role: string; depositorName?: string; instagramId?: string; shippingAddress?: object; createdAt: string; updatedAt: string }>('/auth/me');
+      // /users/me는 depositorName, instagramId 등 프로필 필드 포함 (auth/me는 JWT payload만 반환)
+      const response = await apiClient.get<{
+        id: string;
+        kakaoId: string;
+        email?: string;
+        nickname?: string;
+        profileImage?: string;
+        role: string;
+        depositorName?: string;
+        instagramId?: string;
+        shippingAddress?: object;
+        createdAt: string;
+        updatedAt: string;
+      }>('/users/me');
       setUser(response.data);
     } catch {
       // API 실패 시 인증 해제 (mock user 사용하지 않음)
@@ -21,11 +36,20 @@ export function useAuth() {
   }, [setLoading, setUser]);
 
   useEffect(() => {
+    // Skip fetching on login page — no session expected, avoids 401 loop
+    if (pathname === '/login') {
+      if (isLoading) {
+        setLoading(false);
+      }
+      return;
+    }
+
     // Always verify session on mount (handles stale localStorage user)
-    if (isLoading) {
+    if (isLoading && !fetchedRef.current) {
+      fetchedRef.current = true;
       fetchProfile();
     }
-  }, []);
+  }, [pathname, isLoading, fetchProfile, setLoading]);
 
   const handleLogout = async () => {
     try {

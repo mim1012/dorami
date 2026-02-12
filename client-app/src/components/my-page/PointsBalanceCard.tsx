@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePointBalance } from '@/lib/hooks/use-points';
+import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Body, Heading2 } from '@/components/common/Typography';
 import { Coins, ChevronRight } from 'lucide-react';
 
@@ -10,7 +10,7 @@ function formatPoints(value: number): string {
 }
 
 export function PointsBalanceCard() {
-  const { balance, isLoading, error } = usePointBalance();
+  const { data: balance, isLoading, error } = usePointBalance();
 
   if (isLoading) {
     return (

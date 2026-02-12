@@ -47,8 +47,8 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
     setError(null);
 
     // Connect to chat namespace
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    const wsUrl = apiUrl.replace('/api', '').replace('http', 'ws');
+    const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const wsUrl = wsBaseUrl.replace(/^http/, 'ws');
 
     const socket = io(`${wsUrl}/chat`, {
       auth: { token },
@@ -119,22 +119,25 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
     };
   }, [liveId, user, enabled]);
 
-  const sendMessage = useCallback((message: string) => {
-    if (!socketRef.current || !socketRef.current.connected) {
-      console.error('❌ Cannot send message: not connected');
-      setError('Not connected to chat server');
-      return;
-    }
+  const sendMessage = useCallback(
+    (message: string) => {
+      if (!socketRef.current || !socketRef.current.connected) {
+        console.error('❌ Cannot send message: not connected');
+        setError('Not connected to chat server');
+        return;
+      }
 
-    if (!message.trim()) {
-      return;
-    }
+      if (!message.trim()) {
+        return;
+      }
 
-    socketRef.current.emit('chat:send-message', {
-      liveId,
-      message: message.trim(),
-    });
-  }, [liveId]);
+      socketRef.current.emit('chat:send-message', {
+        liveId,
+        message: message.trim(),
+      });
+    },
+    [liveId],
+  );
 
   return {
     messages,

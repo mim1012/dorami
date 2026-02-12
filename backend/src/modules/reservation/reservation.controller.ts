@@ -9,13 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ReservationService } from './reservation.service';
 import {
   CreateReservationDto,
@@ -44,9 +38,8 @@ export class ReservationController {
   async createReservation(
     @CurrentUser('userId') userId: string,
     @Body() createDto: CreateReservationDto,
-  ): Promise<{ data: ReservationResponseDto }> {
-    const reservation = await this.reservationService.createReservation(userId, createDto);
-    return { data: reservation };
+  ): Promise<ReservationResponseDto> {
+    return this.reservationService.createReservation(userId, createDto);
   }
 
   /**
@@ -56,11 +49,8 @@ export class ReservationController {
   @ApiOperation({ summary: 'Get current user reservations' })
   @ApiResponse({ status: 200, description: 'Reservations retrieved', type: ReservationListDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUserReservations(
-    @CurrentUser('userId') userId: string,
-  ): Promise<{ data: ReservationListDto }> {
-    const reservations = await this.reservationService.getUserReservations(userId);
-    return { data: reservations };
+  async getUserReservations(@CurrentUser('userId') userId: string): Promise<ReservationListDto> {
+    return this.reservationService.getUserReservations(userId);
   }
 
   /**

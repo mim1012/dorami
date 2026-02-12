@@ -10,13 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import {
   AddToCartDto,
@@ -46,9 +40,8 @@ export class CartController {
   async addToCart(
     @CurrentUser('userId') userId: string,
     @Body() addToCartDto: AddToCartDto,
-  ): Promise<{ data: CartItemResponseDto }> {
-    const cartItem = await this.cartService.addToCart(userId, addToCartDto);
-    return { data: cartItem };
+  ): Promise<CartItemResponseDto> {
+    return this.cartService.addToCart(userId, addToCartDto);
   }
 
   /**
@@ -58,11 +51,8 @@ export class CartController {
   @ApiOperation({ summary: 'Get current user cart with summary' })
   @ApiResponse({ status: 200, description: 'Cart retrieved successfully', type: CartSummaryDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getCart(
-    @CurrentUser('userId') userId: string,
-  ): Promise<{ data: CartSummaryDto }> {
-    const cart = await this.cartService.getCart(userId);
-    return { data: cart };
+  async getCart(@CurrentUser('userId') userId: string): Promise<CartSummaryDto> {
+    return this.cartService.getCart(userId);
   }
 
   /**
@@ -79,9 +69,8 @@ export class CartController {
     @CurrentUser('userId') userId: string,
     @Param('id') cartItemId: string,
     @Body() updateDto: UpdateCartItemDto,
-  ): Promise<{ data: CartItemResponseDto }> {
-    const cartItem = await this.cartService.updateCartItem(userId, cartItemId, updateDto);
-    return { data: cartItem };
+  ): Promise<CartItemResponseDto> {
+    return this.cartService.updateCartItem(userId, cartItemId, updateDto);
   }
 
   /**

@@ -12,11 +12,10 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
-import { CompleteProfileDto, CheckInstagramDto } from './dto/complete-profile.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto } from './dto/profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('users')
@@ -37,22 +36,18 @@ export class UsersController {
     @Query('instagramId') instagramId: string,
     @CurrentUser('userId') userId: string,
   ) {
-    const isAvailable = await this.usersService.isInstagramIdAvailable(instagramId, userId);
-    return { data: { available: isAvailable } };
+    const available = await this.usersService.isInstagramIdAvailable(instagramId, userId);
+    return { available };
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @AdminOnly()
   async getUserById(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
 
   @Patch('me')
-  async updateMyProfile(
-    @CurrentUser('userId') userId: string,
-    @Body() updateDto: UpdateUserDto,
-  ) {
+  async updateMyProfile(@CurrentUser('userId') userId: string, @Body() updateDto: UpdateUserDto) {
     return this.usersService.updateProfile(userId, updateDto);
   }
 
@@ -64,10 +59,7 @@ export class UsersController {
 
   @Post('complete-profile')
   @HttpCode(200)
-  async completeProfile(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: CompleteProfileDto,
-  ) {
+  async completeProfile(@CurrentUser('userId') userId: string, @Body() dto: CompleteProfileDto) {
     return this.usersService.completeProfile(userId, dto);
   }
 
@@ -81,10 +73,7 @@ export class UsersController {
   }
 
   @Patch('profile/address')
-  async updateMyAddress(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: UpdateAddressDto,
-  ) {
+  async updateMyAddress(@CurrentUser('userId') userId: string, @Body() dto: UpdateAddressDto) {
     return this.usersService.updateAddress(userId, dto);
   }
 }
