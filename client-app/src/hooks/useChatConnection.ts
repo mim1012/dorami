@@ -57,8 +57,17 @@ export function useChatConnection(streamKey: string) {
   const sendMessage = (message: string) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit('chat:send-message', {
-        streamKey,
+        liveId: streamKey,
         message,
+      });
+    }
+  };
+
+  const deleteMessage = (messageId: string) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('chat:delete-message', {
+        liveId: streamKey,
+        messageId,
       });
     }
   };
@@ -68,5 +77,6 @@ export function useChatConnection(streamKey: string) {
     isConnected,
     userCount,
     sendMessage,
+    deleteMessage,
   };
 }

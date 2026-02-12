@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatInput, { ChatInputHandle } from './ChatInput';
@@ -20,10 +20,27 @@ export default function ChatOverlay({
   className = '',
 }: ChatOverlayProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const inputRef = useRef<ChatInputHandle>(null);
 
-  const { socket, isConnected, userCount, sendMessage } = useChatConnection(streamKey);
+  const { socket, isConnected, userCount, sendMessage, deleteMessage } = useChatConnection(streamKey);
   const { messages } = useChatMessages(socket);
+
+  // Check if user is admin
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        try {
+          const parsed = JSON.parse(authStorage);
+          const role = parsed?.state?.user?.role;
+          setIsAdmin(role === 'ADMIN');
+        } catch (e) {
+          console.error('Failed to parse auth storage:', e);
+        }
+      }
+    }
+  }, []);
 
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
@@ -61,6 +78,8 @@ export default function ChatOverlay({
         messages={messages}
         compact={compact}
         maxMessages={compact ? 20 : undefined}
+        isAdmin={isAdmin}
+        onDeleteMessage={deleteMessage}
       />
 
       {showEmojiPicker && (
