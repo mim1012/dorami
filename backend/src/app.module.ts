@@ -28,6 +28,7 @@ import { NoticesModule } from './modules/notices/notices.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './modules/health/health.module';
 import { PointsModule } from './modules/points/points.module';
+import { ReStreamModule } from './modules/restream/restream.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -80,6 +81,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     UploadModule,
     HealthModule,
     PointsModule,
+    ReStreamModule,
   ],
   controllers: [AppController],
   providers: [

@@ -40,6 +40,7 @@ model User {
   notificationSubscriptions NotificationSubscription[]
   pointBalance             PointBalance?
   settlements              Settlement[]               @relation("UserSettlements")
+  restreamTargets          ReStreamTarget[]
 
   @@index([email])
   @@index([kakaoId])
@@ -76,6 +77,7 @@ model LiveStream {
   chatMessages              ChatMessage[]
   products                  Product[]
   notificationSubscriptions NotificationSubscription[]
+  restreamLogs              ReStreamLog[]
 
   @@index([streamKey])
   @@index([userId])
@@ -434,6 +436,60 @@ model PointTransaction {
   @@index([expiresAt])
   @@index([transactionType])
   @@map("point_transactions")
+}
+
+// ReStream (Multi-platform Simultaneous Broadcasting)
+enum ReStreamPlatform {
+  YOUTUBE
+  INSTAGRAM
+  TIKTOK
+  CUSTOM
+}
+
+enum ReStreamStatus {
+  IDLE
+  CONNECTING
+  ACTIVE
+  FAILED
+  STOPPED
+}
+
+model ReStreamTarget {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  ReStreamPlatform
+  name      String
+  rtmpUrl   String           @map("rtmp_url")
+  streamKey String           @map("stream_key")
+  enabled   Boolean          @default(true)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  restreamLogs ReStreamLog[]
+
+  @@index([userId])
+  @@map("restream_targets")
+}
+
+model ReStreamLog {
+  id           String         @id @default(uuid())
+  targetId     String         @map("target_id")
+  target       ReStreamTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  liveStreamId String         @map("live_stream_id")
+  liveStream   LiveStream     @relation(fields: [liveStreamId], references: [id], onDelete: Cascade)
+  status       ReStreamStatus @default(IDLE)
+  startedAt    DateTime?      @map("started_at")
+  endedAt      DateTime?      @map("ended_at")
+  errorMessage String?        @map("error_message")
+  restartCount Int            @default(0) @map("restart_count")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([targetId])
+  @@index([liveStreamId])
+  @@index([status])
+  @@map("restream_logs")
 }
 
 // Push Notification Subscriptions

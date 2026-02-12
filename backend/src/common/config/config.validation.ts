@@ -6,9 +6,7 @@ import * as Joi from 'joi';
  */
 export const configValidationSchema = Joi.object({
   // Node Environment
-  NODE_ENV: Joi.string()
-    .valid('development', 'production', 'test')
-    .default('development'),
+  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
 
   // Server
   PORT: Joi.number().default(3001),
@@ -24,13 +22,10 @@ export const configValidationSchema = Joi.object({
   REDIS_PASSWORD: Joi.string().optional().allow(''),
 
   // JWT - Required in all environments
-  JWT_SECRET: Joi.string()
-    .min(32)
-    .required()
-    .messages({
-      'string.min': 'JWT_SECRET must be at least 32 characters',
-      'any.required': 'JWT_SECRET is required',
-    }),
+  JWT_SECRET: Joi.string().min(32).required().messages({
+    'string.min': 'JWT_SECRET must be at least 32 characters',
+    'any.required': 'JWT_SECRET is required',
+  }),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
@@ -55,13 +50,10 @@ export const configValidationSchema = Joi.object({
   ADMIN_EMAILS: Joi.string().optional().allow(''),
 
   // Encryption - Required in all environments
-  PROFILE_ENCRYPTION_KEY: Joi.string()
-    .length(64)
-    .required()
-    .messages({
-      'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
-      'any.required': 'PROFILE_ENCRYPTION_KEY is required',
-    }),
+  PROFILE_ENCRYPTION_KEY: Joi.string().length(64).required().messages({
+    'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
+    'any.required': 'PROFILE_ENCRYPTION_KEY is required',
+  }),
 
   // Cart/Order Settings
   CART_TIMER_MINUTES: Joi.number().default(10),
@@ -70,6 +62,7 @@ export const configValidationSchema = Joi.object({
   // Streaming (Optional)
   RTMP_SERVER_URL: Joi.string().optional(),
   HLS_SERVER_URL: Joi.string().optional(),
+  RTMP_INTERNAL_URL: Joi.string().optional().default('rtmp://nginx-rtmp:1935/live'),
 
   // Web Push (VAPID) - Optional
   VAPID_PUBLIC_KEY: Joi.string().optional(),
