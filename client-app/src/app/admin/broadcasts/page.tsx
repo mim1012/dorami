@@ -39,9 +39,13 @@ interface LiveStream {
 }
 
 interface LiveStatusResponse {
-  currentLiveCount: number;
-  totalViewers: number;
-  activeStreams: LiveStream[];
+  isLive: boolean;
+  streamId: string | null;
+  title: string | null;
+  duration: string | null;
+  viewerCount: number;
+  thumbnailUrl: string | null;
+  startedAt: string | null;
 }
 
 interface StreamHistoryResponse {
@@ -270,12 +274,12 @@ export default function BroadcastsPage() {
             <div className="p-3 bg-error/10 rounded-lg">
               <Radio className="w-6 h-6 text-error" />
             </div>
-            {liveStatus && liveStatus.currentLiveCount > 0 && (
+            {liveStatus && liveStatus.isLive && (
               <div className="w-3 h-3 rounded-full bg-error animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
             )}
           </div>
           <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">
-            {liveStatus?.currentLiveCount || 0}
+            {liveStatus?.isLive ? 1 : 0}
           </h3>
           <p className="text-sm text-secondary-text">현재 라이브 중</p>
         </div>
@@ -287,7 +291,7 @@ export default function BroadcastsPage() {
             </div>
           </div>
           <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">
-            {liveStatus?.totalViewers.toLocaleString() || 0}
+            {(liveStatus?.viewerCount ?? 0).toLocaleString()}
           </h3>
           <p className="text-sm text-secondary-text">총 시청자</p>
         </div>
@@ -309,42 +313,49 @@ export default function BroadcastsPage() {
         </div>
       )}
 
-      {/* Active Streams */}
-      {liveStatus && liveStatus.activeStreams.length > 0 && (
+      {/* Active Stream */}
+      {liveStatus && liveStatus.isLive && liveStatus.streamId && (
         <div className="bg-content-bg border border-gray-200 rounded-card p-6">
           <h2 className="text-xl font-bold text-primary-text mb-4 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-error animate-pulse" />
             현재 라이브 방송
           </h2>
           <div className="space-y-3">
-            {liveStatus.activeStreams.map((stream) => (
-              <div
-                key={stream.id}
-                className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-hot-pink transition-colors"
-              >
-                <div className="flex-1">
-                  <h3 className="font-semibold text-primary-text mb-1">{stream.title}</h3>
-                  <p className="text-sm text-secondary-text">Stream Key: {stream.streamKey}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="flex items-center gap-1.5 text-info">
-                      <Eye className="w-4 h-4" />
-                      <span className="font-semibold">{stream.peakViewers}</span>
-                    </div>
-                    <p className="text-xs text-secondary-text">시청자</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedStreamForFeatured(stream)}
-                    className="px-3 py-1.5 bg-hot-pink/10 text-hot-pink rounded-lg hover:bg-hot-pink/20 transition-colors text-sm font-medium flex items-center gap-1.5"
-                  >
-                    <Star className="w-4 h-4" />
-                    추천 상품
-                  </button>
-                  {getStatusBadge(stream.status)}
-                </div>
+            <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-hot-pink transition-colors">
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-text mb-1">
+                  {liveStatus.title || '라이브 방송'}
+                </h3>
+                {liveStatus.duration && (
+                  <p className="text-sm text-secondary-text">방송 시간: {liveStatus.duration}</p>
+                )}
               </div>
-            ))}
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5 text-info">
+                    <Eye className="w-4 h-4" />
+                    <span className="font-semibold">{liveStatus.viewerCount}</span>
+                  </div>
+                  <p className="text-xs text-secondary-text">시청자</p>
+                </div>
+                {(() => {
+                  const activeStream = streams.find((s) => s.id === liveStatus.streamId);
+                  if (activeStream) {
+                    return (
+                      <button
+                        onClick={() => setSelectedStreamForFeatured(activeStream)}
+                        className="px-3 py-1.5 bg-hot-pink/10 text-hot-pink rounded-lg hover:bg-hot-pink/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                      >
+                        <Star className="w-4 h-4" />
+                        추천 상품
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
+                {getStatusBadge('LIVE')}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -352,8 +363,8 @@ export default function BroadcastsPage() {
       {/* ReStream Manager */}
       <div className="bg-content-bg border border-gray-200 rounded-card p-6">
         <ReStreamManager
-          liveStreamId={liveStatus?.activeStreams?.[0]?.id || null}
-          isLive={!!liveStatus?.activeStreams?.length}
+          liveStreamId={liveStatus?.streamId || null}
+          isLive={!!liveStatus?.isLive}
         />
       </div>
 

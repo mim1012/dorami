@@ -1,19 +1,30 @@
-import { Controller, Get, Put, Patch, Post, Body, Query, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Patch,
+  Post,
+  Body,
+  Query,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
-import { GetUsersQueryDto, UpdateNoticeDto, GetOrdersQueryDto, UpdateUserStatusDto } from './dto/admin.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Public } from '../auth/decorators/public.decorator';
+import {
+  GetUsersQueryDto,
+  UpdateNoticeDto,
+  GetOrdersQueryDto,
+  UpdateUserStatusDto,
+} from './dto/admin.dto';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { parsePagination } from '../../common/utils/pagination.util';
 import * as Papa from 'papaparse';
 
 @Controller('admin')
-// Authentication: JwtAuthGuard auto-bypasses in development (NODE_ENV !== 'production')
-// injecting a mock ADMIN user. In production, real JWT + ADMIN role required.
-// See: backend/src/modules/auth/guards/jwt-auth.guard.ts
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@AdminOnly()
 export class AdminController {
   constructor(private adminService: AdminService) {}
 
@@ -88,10 +99,7 @@ export class AdminController {
   }
 
   @Patch('notification-templates/:id')
-  async updateNotificationTemplate(
-    @Param('id') id: string,
-    @Body() dto: { template: string },
-  ) {
+  async updateNotificationTemplate(@Param('id') id: string, @Body() dto: { template: string }) {
     return this.adminService.updateNotificationTemplate(id, dto.template);
   }
 
@@ -117,26 +125,24 @@ export class AdminController {
       Papa.parse(csvContent, {
         header: true,
         skipEmptyLines: true,
-        complete: async (results) => {
-          try {
-            const items = results.data.map((row: any) => ({
-              orderId: row['Order ID'] || row.orderId || row.order_id,
-              trackingNumber: row['Tracking Number'] || row.trackingNumber || row.tracking_number,
-            }));
+        complete: (results) => {
+          const items = results.data.map((row: any) => ({
+            orderId: row['Order ID'] || row.orderId || row.order_id,
+            trackingNumber: row['Tracking Number'] || row.trackingNumber || row.tracking_number,
+          }));
 
-            // Validate data
-            const invalidItems = items.filter((item) => !item.orderId || !item.trackingNumber);
-            if (invalidItems.length > 0) {
-              throw new BadRequestException(
+          // Validate data
+          const invalidItems = items.filter((item) => !item.orderId || !item.trackingNumber);
+          if (invalidItems.length > 0) {
+            reject(
+              new BadRequestException(
                 `Invalid CSV format. Missing Order ID or Tracking Number in ${invalidItems.length} rows`,
-              );
-            }
-
-            const result = await this.adminService.sendBulkShippingNotifications(items);
-            resolve(result);
-          } catch (error) {
-            reject(error);
+              ),
+            );
+            return;
           }
+
+          this.adminService.sendBulkShippingNotifications(items).then(resolve).catch(reject);
         },
         error: (error) => {
           reject(new BadRequestException(`Failed to parse CSV: ${error.message}`));
@@ -153,16 +159,8 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    // Validate and sanitize pagination inputs
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const { page: pageNum, limit: limitNum } = parsePagination(page, limit, { limit: 50 });
 
-    return this.adminService.getAuditLogs(
-      from,
-      to,
-      action,
-      pageNum,
-      limitNum,
-    );
+    return this.adminService.getAuditLogs(from, to, action, pageNum, limitNum);
   }
 }

@@ -7,30 +7,20 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import {
   CreateProductDto,
   UpdateProductDto,
   UpdateStockDto,
   ProductResponseDto,
-  GetProductsQueryDto,
   ProductStatus,
 } from './dto/product.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { parsePagination } from '../../common/utils/pagination.util';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Products')
@@ -42,18 +32,19 @@ export class ProductsController {
    * Epic 5 Story 5.1: Create a new product (Admin only)
    */
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @ApiOperation({ summary: 'Create a new product (Admin only)' })
-  @ApiResponse({ status: 201, description: 'Product created successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Product created successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
   @ApiResponse({ status: 404, description: 'LiveStream not found' })
-  async create(@Body() createDto: CreateProductDto): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productsService.create(createDto);
-    return { data: product };
+  async create(@Body() createDto: CreateProductDto): Promise<ProductResponseDto> {
+    return this.productsService.create(createDto);
   }
 
   /**
@@ -63,14 +54,20 @@ export class ProductsController {
   @Public()
   @Get('featured')
   @ApiOperation({ summary: 'Get featured products for homepage (Public)' })
-  @ApiQuery({ name: 'limit', description: 'Number of products to return', required: false, example: 6 })
-  @ApiResponse({ status: 200, description: 'Featured products retrieved successfully', type: [ProductResponseDto] })
-  async getFeaturedProducts(
-    @Query('limit') limit?: string,
-  ): Promise<{ data: ProductResponseDto[] }> {
-    const limitNum = Math.min(20, Math.max(1, parseInt(limit, 10) || 6));
-    const products = await this.productsService.getFeaturedProducts(limitNum);
-    return { data: products };
+  @ApiQuery({
+    name: 'limit',
+    description: 'Number of products to return',
+    required: false,
+    example: 6,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Featured products retrieved successfully',
+    type: [ProductResponseDto],
+  })
+  async getFeaturedProducts(@Query('limit') limit?: string): Promise<ProductResponseDto[]> {
+    const { limit: limitNum } = parsePagination(1, limit, { limit: 6, maxLimit: 20 });
+    return this.productsService.getFeaturedProducts(limitNum);
   }
 
   /**
@@ -90,9 +87,7 @@ export class ProductsController {
     data: ProductResponseDto[];
     meta: { total: number; page: number; totalPages: number };
   }> {
-    // Validate and sanitize pagination inputs
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
+    const { page: pageNum, limit: limitNum } = parsePagination(page, limit);
 
     const result = await this.productsService.getStoreProducts(pageNum, limitNum);
 
@@ -113,9 +108,23 @@ export class ProductsController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'Get all products for a stream (Public)' })
-  @ApiQuery({ name: 'streamKey', description: 'Stream key', required: true, example: 'abc123def456' })
-  @ApiQuery({ name: 'status', description: 'Filter by status', enum: ProductStatus, required: false })
-  @ApiResponse({ status: 200, description: 'Products retrieved successfully', type: [ProductResponseDto] })
+  @ApiQuery({
+    name: 'streamKey',
+    description: 'Stream key',
+    required: true,
+    example: 'abc123def456',
+  })
+  @ApiQuery({
+    name: 'status',
+    description: 'Filter by status',
+    enum: ProductStatus,
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+    type: [ProductResponseDto],
+  })
   @ApiResponse({ status: 400, description: 'Invalid query parameters' })
   async findAll(
     @Query('streamKey') streamKey?: string,
@@ -137,23 +146,28 @@ export class ProductsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a single product by ID (Public)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
-  @ApiResponse({ status: 200, description: 'Product retrieved successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Product retrieved successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
-  async findById(@Param('id') id: string): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productsService.findById(id);
-    return { data: product };
+  async findById(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productsService.findById(id);
   }
 
   /**
    * Epic 5 Story 5.1: Update a product (Admin only)
    */
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @ApiOperation({ summary: 'Update a product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
-  @ApiResponse({ status: 200, description: 'Product updated successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Product updated successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
@@ -161,18 +175,15 @@ export class ProductsController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateProductDto,
-  ): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productsService.update(id, updateDto);
-    return { data: product };
+  ): Promise<ProductResponseDto> {
+    return this.productsService.update(id, updateDto);
   }
 
   /**
    * Epic 5 Story 5.1: Mark product as sold out (Admin only)
    */
   @Patch(':id/sold-out')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark product as sold out (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
@@ -180,9 +191,8 @@ export class ProductsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
   @ApiResponse({ status: 404, description: 'Product not found' })
-  async markAsSoldOut(@Param('id') id: string): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productsService.markAsSoldOut(id);
-    return { data: product };
+  async markAsSoldOut(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productsService.markAsSoldOut(id);
   }
 
   /**
@@ -190,9 +200,7 @@ export class ProductsController {
    * Used by cart and order modules
    */
   @Patch(':id/stock')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @ApiOperation({ summary: 'Update product stock (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiResponse({ status: 200, description: 'Stock updated successfully', type: ProductResponseDto })
@@ -203,18 +211,15 @@ export class ProductsController {
   async updateStock(
     @Param('id') id: string,
     @Body() updateStockDto: UpdateStockDto,
-  ): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productsService.updateStock(id, updateStockDto);
-    return { data: product };
+  ): Promise<ProductResponseDto> {
+    return this.productsService.updateStock(id, updateStockDto);
   }
 
   /**
    * Delete a product (Admin only)
    */
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })

@@ -40,23 +40,13 @@ export class CartExpiredException extends BusinessException {
 
 export class OrderNotFoundException extends BusinessException {
   constructor(orderId: string) {
-    super(
-      'ORDER_NOT_FOUND',
-      { orderId },
-      `Order ${orderId} not found`,
-      HttpStatus.NOT_FOUND,
-    );
+    super('ORDER_NOT_FOUND', { orderId }, `Order ${orderId} not found`, HttpStatus.NOT_FOUND);
   }
 }
 
 export class UnauthorizedException extends BusinessException {
   constructor(reason?: string) {
-    super(
-      'UNAUTHORIZED',
-      { reason },
-      reason || 'Unauthorized access',
-      HttpStatus.UNAUTHORIZED,
-    );
+    super('UNAUTHORIZED', { reason }, reason || 'Unauthorized access', HttpStatus.UNAUTHORIZED);
   }
 }
 
@@ -73,12 +63,7 @@ export class ProductNotFoundException extends BusinessException {
 
 export class UserNotFoundException extends BusinessException {
   constructor(userId: string) {
-    super(
-      'USER_NOT_FOUND',
-      { userId },
-      `User ${userId} not found`,
-      HttpStatus.NOT_FOUND,
-    );
+    super('USER_NOT_FOUND', { userId }, `User ${userId} not found`, HttpStatus.NOT_FOUND);
   }
 }
 
@@ -100,6 +85,18 @@ export class InvalidPaymentStatusException extends BusinessException {
       { orderId, currentStatus },
       `Cannot confirm payment for order ${orderId}. Current status: ${currentStatus}`,
       HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class EntityNotFoundException extends BusinessException {
+  constructor(entityName: string, id: string | number) {
+    const idKey = `${entityName.charAt(0).toLowerCase() + entityName.slice(1)}Id`;
+    super(
+      `${entityName.toUpperCase()}_NOT_FOUND`,
+      { [idKey]: id },
+      `${entityName} ${id} not found`,
+      HttpStatus.NOT_FOUND,
     );
   }
 }

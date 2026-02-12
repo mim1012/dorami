@@ -1,28 +1,20 @@
 import { apiClient } from './client';
-import {
-  Reservation,
-  ReservationList,
-  CreateReservationDto,
-  CreateReservationResponse,
-  GetReservationsResponse,
-} from '../types/reservation';
+import { Reservation, ReservationList, CreateReservationDto } from '../types/reservation';
 
 /**
  * Create a reservation when product stock is unavailable
  */
-export async function createReservation(
-  data: CreateReservationDto
-): Promise<Reservation> {
-  const response = await apiClient.post<CreateReservationResponse>('/reservations', data);
-  return response.data.data;
+export async function createReservation(data: CreateReservationDto): Promise<Reservation> {
+  const response = await apiClient.post<Reservation>('/reservations', data);
+  return response.data;
 }
 
 /**
  * Get current user's reservations
  */
 export async function getUserReservations(): Promise<ReservationList> {
-  const response = await apiClient.get<GetReservationsResponse>('/reservations');
-  return response.data.data;
+  const response = await apiClient.get<ReservationList>('/reservations');
+  return response.data;
 }
 
 /**

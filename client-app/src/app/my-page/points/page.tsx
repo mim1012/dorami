@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePointBalance, usePointHistory } from '@/lib/hooks/use-points';
+import { usePointBalance, usePointHistory } from '@/lib/hooks/queries/use-points';
+import type { PointHistoryQuery } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -53,13 +54,14 @@ function formatDate(dateStr: string): string {
 
 export default function PointsHistoryPage() {
   const router = useRouter();
-  const { balance, isLoading: balanceLoading } = usePointBalance();
+  const { data: balance, isLoading: balanceLoading } = usePointBalance();
   const [typeFilter, setTypeFilter] = useState('');
-  const { data, isLoading: historyLoading, query, setQuery } = usePointHistory(undefined, {
+  const [query, setQuery] = useState<PointHistoryQuery>({
     page: 1,
     limit: 20,
     transactionType: undefined,
   });
+  const { data, isLoading: historyLoading } = usePointHistory(undefined, query);
 
   const handleFilterChange = (type: string) => {
     setTypeFilter(type);
@@ -146,7 +148,10 @@ export default function PointsHistoryPage() {
           {historyLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-content-bg rounded-2xl p-4 border border-white/5 animate-pulse">
+                <div
+                  key={i}
+                  className="bg-content-bg rounded-2xl p-4 border border-white/5 animate-pulse"
+                >
                   <div className="h-4 bg-white/10 rounded w-24 mb-2" />
                   <div className="h-6 bg-white/10 rounded w-32" />
                 </div>
@@ -162,28 +167,22 @@ export default function PointsHistoryPage() {
               {/* Mobile: Card Layout */}
               <div className="space-y-3 md:hidden">
                 {data.items.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="bg-content-bg rounded-2xl p-4 border border-white/5"
-                  >
+                  <div key={tx.id} className="bg-content-bg rounded-2xl p-4 border border-white/5">
                     <div className="flex justify-between items-start mb-2">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs border ${
-                          TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] || 'bg-gray-500/20 text-gray-400'
+                          TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] ||
+                          'bg-gray-500/20 text-gray-400'
                         }`}
                       >
                         {TRANSACTION_TYPE_LABELS[tx.transactionType] || tx.transactionType}
                       </span>
-                      <Caption className="text-secondary-text">
-                        {formatDate(tx.createdAt)}
-                      </Caption>
+                      <Caption className="text-secondary-text">{formatDate(tx.createdAt)}</Caption>
                     </div>
                     <div className="flex justify-between items-end">
                       <div>
                         {tx.orderId && (
-                          <Caption className="text-secondary-text">
-                            주문: {tx.orderId}
-                          </Caption>
+                          <Caption className="text-secondary-text">주문: {tx.orderId}</Caption>
                         )}
                         {tx.reason && (
                           <Caption className="text-secondary-text">{tx.reason}</Caption>
@@ -212,11 +211,21 @@ export default function PointsHistoryPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/10">
-                      <th className="text-left p-4 text-secondary-text text-sm font-normal">일시</th>
-                      <th className="text-left p-4 text-secondary-text text-sm font-normal">유형</th>
-                      <th className="text-left p-4 text-secondary-text text-sm font-normal">내용</th>
-                      <th className="text-right p-4 text-secondary-text text-sm font-normal">금액</th>
-                      <th className="text-right p-4 text-secondary-text text-sm font-normal">잔액</th>
+                      <th className="text-left p-4 text-secondary-text text-sm font-normal">
+                        일시
+                      </th>
+                      <th className="text-left p-4 text-secondary-text text-sm font-normal">
+                        유형
+                      </th>
+                      <th className="text-left p-4 text-secondary-text text-sm font-normal">
+                        내용
+                      </th>
+                      <th className="text-right p-4 text-secondary-text text-sm font-normal">
+                        금액
+                      </th>
+                      <th className="text-right p-4 text-secondary-text text-sm font-normal">
+                        잔액
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -230,7 +239,8 @@ export default function PointsHistoryPage() {
                         <td className="p-4">
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs border ${
-                              TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] || 'bg-gray-500/20 text-gray-400'
+                              TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] ||
+                              'bg-gray-500/20 text-gray-400'
                             }`}
                           >
                             {TRANSACTION_TYPE_LABELS[tx.transactionType] || tx.transactionType}
@@ -244,9 +254,7 @@ export default function PointsHistoryPage() {
                         </td>
                         <td className="p-4 text-right">
                           <span
-                            className={`font-bold ${
-                              tx.amount > 0 ? 'text-success' : 'text-error'
-                            }`}
+                            className={`font-bold ${tx.amount > 0 ? 'text-success' : 'text-error'}`}
                           >
                             {tx.amount > 0 ? '+' : ''}
                             {formatPoints(tx.amount)} P

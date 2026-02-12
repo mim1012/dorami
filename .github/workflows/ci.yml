@@ -101,15 +101,12 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Type Check
         run: npx tsc --noEmit
-        continue-on-error: true
 
       - name: Unit Tests
         run: npm test
-        continue-on-error: true
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
@@ -130,7 +127,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        continue-on-error: true
 
   # ===========================================
   # Frontend CI
@@ -158,14 +154,12 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Type Check
         run: npx tsc --noEmit
 
       - name: Build
         run: npm run build
-        continue-on-error: true
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api
           NEXT_PUBLIC_WS_URL: http://localhost:3001
@@ -253,4 +247,12 @@ jobs:
           echo "Backend CI: ${{ needs.backend-ci.result }}"
           echo "Frontend CI: ${{ needs.frontend-ci.result }}"
           echo "Docker Build: ${{ needs.docker-build.result }}"
-          echo "CI completed (failures allowed during development)"
+
+          if [[ "${{ needs.backend-ci.result }}" == "failure" || \
+                "${{ needs.frontend-ci.result }}" == "failure" || \
+                "${{ needs.docker-build.result }}" == "failure" ]]; then
+            echo "::error::One or more CI jobs failed"
+            exit 1
+          fi
+
+          echo "All CI checks passed"

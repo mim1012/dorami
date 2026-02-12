@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/contexts/CartContext';
 import { useAuth } from '@/lib/hooks/use-auth';
-import { usePointBalance } from '@/lib/hooks/use-points';
+import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
@@ -21,19 +21,21 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
-  const { balance } = usePointBalance();
+  const { data: balance } = usePointBalance();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
+  const [orderCompleted, setOrderCompleted] = useState(false);
 
   useEffect(() => {
-    if (items.length === 0) {
+    // 주문 완료 후 clearCart()로 items가 비워졌을 때 /cart로 리다이렉트 방지
+    if (items.length === 0 && !orderCompleted) {
       router.push('/cart');
     }
-  }, [items, router]);
+  }, [items, router, orderCompleted]);
 
   // Load points config
   useEffect(() => {
@@ -54,10 +56,7 @@ export default function CheckoutPage() {
     ? Math.floor(orderTotal * (pointsConfig.pointMaxRedemptionPct / 100))
     : 0;
 
-  const maxUsablePoints = Math.min(
-    balance?.currentBalance || 0,
-    maxPointsAllowed,
-  );
+  const maxUsablePoints = Math.min(balance?.currentBalance || 0, maxPointsAllowed);
 
   const canUsePoints =
     pointsConfig?.pointsEnabled &&
@@ -101,12 +100,13 @@ export default function CheckoutPage() {
 
       const response = await apiClient.post<{ id: string }>('/orders/from-cart', body);
 
+      setOrderCompleted(true);
       clearCart();
       router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
       console.error('Order creation failed:', err);
       setError(
-        err.response?.data?.message || '주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.'
+        err.response?.data?.message || '주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
       );
     } finally {
       setIsSubmitting(false);
@@ -123,9 +123,7 @@ export default function CheckoutPage() {
         {/* Header */}
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">주문하기</Display>
-          <Body className="text-secondary-text">
-            주문 정보를 확인하고 결제를 진행해주세요
-          </Body>
+          <Body className="text-secondary-text">주문 정보를 확인하고 결제를 진행해주세요</Body>
         </div>
 
         {/* Error Alert */}
@@ -190,7 +188,10 @@ export default function CheckoutPage() {
 
             <div className="flex items-center justify-between mb-3">
               <Body className="text-secondary-text">
-                보유 포인트: <span className="text-hot-pink font-bold">{new Intl.NumberFormat('ko-KR').format(balance!.currentBalance)} P</span>
+                보유 포인트:{' '}
+                <span className="text-hot-pink font-bold">
+                  {new Intl.NumberFormat('ko-KR').format(balance!.currentBalance)} P
+                </span>
               </Body>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -223,16 +224,14 @@ export default function CheckoutPage() {
                       P
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleUseAllPoints}
-                  >
+                  <Button variant="outline" size="sm" onClick={handleUseAllPoints}>
                     전액 사용
                   </Button>
                 </div>
                 <Caption className="text-secondary-text">
-                  최소 {new Intl.NumberFormat('ko-KR').format(pointsConfig!.pointMinRedemption)}P 이상 사용 가능 / 최대 주문금액의 {pointsConfig!.pointMaxRedemptionPct}% ({new Intl.NumberFormat('ko-KR').format(maxUsablePoints)}P)
+                  최소 {new Intl.NumberFormat('ko-KR').format(pointsConfig!.pointMinRedemption)}P
+                  이상 사용 가능 / 최대 주문금액의 {pointsConfig!.pointMaxRedemptionPct}% (
+                  {new Intl.NumberFormat('ko-KR').format(maxUsablePoints)}P)
                 </Caption>
               </div>
             )}

@@ -3,13 +3,17 @@ import { ProductsService } from './products.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProductStatus } from './dto/product.dto';
-import { ProductNotFoundException, InsufficientStockException } from '../../common/exceptions/business.exception';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  ProductNotFoundException,
+  InsufficientStockException,
+  EntityNotFoundException,
+} from '../../common/exceptions/business.exception';
+import { BadRequestException } from '@nestjs/common';
 
 describe('ProductsService', () => {
   let service: ProductsService;
   let prisma: PrismaService;
-  let eventEmitter: EventEmitter2;
+  let _eventEmitter: EventEmitter2;
 
   const mockPrismaService = {
     product: {
@@ -50,7 +54,7 @@ describe('ProductsService', () => {
 
     service = module.get<ProductsService>(ProductsService);
     prisma = module.get<PrismaService>(PrismaService);
-    eventEmitter = module.get<EventEmitter2>(EventEmitter2);
+    _eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
     // Reset all mocks before each test
     jest.clearAllMocks();
@@ -230,10 +234,10 @@ describe('ProductsService', () => {
       expect(result.id).toBe('product-1');
     });
 
-    it('should throw ProductNotFoundException when product does not exist', async () => {
+    it('should throw EntityNotFoundException when product does not exist', async () => {
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.findById('non-existent')).rejects.toThrow(ProductNotFoundException);
+      await expect(service.findById('non-existent')).rejects.toThrow(EntityNotFoundException);
     });
   });
 
@@ -269,10 +273,12 @@ describe('ProductsService', () => {
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('product:updated', expect.any(Object));
     });
 
-    it('should throw ProductNotFoundException when product does not exist', async () => {
+    it('should throw EntityNotFoundException when product does not exist', async () => {
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(ProductNotFoundException);
+      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(
+        EntityNotFoundException,
+      );
     });
 
     it('should throw BadRequestException when stock is negative', async () => {
@@ -336,13 +342,18 @@ describe('ProductsService', () => {
       const result = await service.updateStock('product-1', { quantity: 10 });
 
       expect(result.stock).toBe(60);
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('product:stock:updated', expect.any(Object));
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'product:stock:updated',
+        expect.any(Object),
+      );
     });
 
     it('should throw InsufficientStockException when decreasing below zero', async () => {
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
 
-      await expect(service.updateStock('product-1', { quantity: -100 })).rejects.toThrow(InsufficientStockException);
+      await expect(service.updateStock('product-1', { quantity: -100 })).rejects.toThrow(
+        InsufficientStockException,
+      );
     });
   });
 
@@ -414,6 +425,7 @@ describe('ProductsService', () => {
         updatedAt: new Date(),
       };
 
+      jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest.spyOn(prisma.product, 'update').mockResolvedValue(mockProduct as any);
 
       const result = await service.markAsSoldOut('product-1');
@@ -425,23 +437,25 @@ describe('ProductsService', () => {
 
   describe('findAll', () => {
     it('should return all products', async () => {
-      const mockProducts = [{
-        id: 'product-1',
-        streamKey: 'stream-123',
-        name: 'Test Product',
-        price: { toString: () => '29000' },
-        quantity: 50,
-        colorOptions: [],
-        sizeOptions: [],
-        shippingFee: { toString: () => '3000' },
-        freeShippingMessage: null,
-        timerEnabled: false,
-        timerDuration: 10,
-        imageUrl: null,
-        status: 'AVAILABLE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }];
+      const mockProducts = [
+        {
+          id: 'product-1',
+          streamKey: 'stream-123',
+          name: 'Test Product',
+          price: { toString: () => '29000' },
+          quantity: 50,
+          colorOptions: [],
+          sizeOptions: [],
+          shippingFee: { toString: () => '3000' },
+          freeShippingMessage: null,
+          timerEnabled: false,
+          timerDuration: 10,
+          imageUrl: null,
+          status: 'AVAILABLE',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
 
       jest.spyOn(prisma.product, 'findMany').mockResolvedValue(mockProducts as any);
 

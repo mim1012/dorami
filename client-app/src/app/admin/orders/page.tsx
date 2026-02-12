@@ -103,8 +103,7 @@ function AdminOrdersContent() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
-    if (paymentStatusFilter.length > 0)
-      params.set('paymentStatus', paymentStatusFilter.join(','));
+    if (paymentStatusFilter.length > 0) params.set('paymentStatus', paymentStatusFilter.join(','));
     if (shippingStatusFilter.length > 0)
       params.set('shippingStatus', shippingStatusFilter.join(','));
 
@@ -282,10 +281,7 @@ function AdminOrdersContent() {
     setPage(1);
   };
 
-  const handleStatusToggle = (
-    status: string,
-    filterType: 'order' | 'payment' | 'shipping',
-  ) => {
+  const handleStatusToggle = (status: string, filterType: 'order' | 'payment' | 'shipping') => {
     if (filterType === 'order') {
       setOrderStatusFilter((prev) =>
         prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
@@ -407,10 +403,34 @@ function AdminOrdersContent() {
       DELIVERED: 'bg-success/10 text-success border-success',
     };
 
-    const colorMap = type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
-    const color = colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
+    const orderLabels: Record<string, string> = {
+      PENDING_PAYMENT: '입금 대기',
+      PAYMENT_CONFIRMED: '결제 완료',
+      CANCELLED: '취소됨',
+    };
 
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{status}</span>;
+    const paymentLabels: Record<string, string> = {
+      PENDING: '대기',
+      CONFIRMED: '확인',
+      FAILED: '실패',
+    };
+
+    const shippingLabels: Record<string, string> = {
+      PENDING: '대기',
+      PROCESSING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+    };
+
+    const colorMap =
+      type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
+    const labelMap =
+      type === 'order' ? orderLabels : type === 'payment' ? paymentLabels : shippingLabels;
+    const color =
+      colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
+    const label = labelMap[status] || status;
+
+    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{label}</span>;
   };
 
   const columns: Column<OrderListItem>[] = [
@@ -418,9 +438,7 @@ function AdminOrdersContent() {
       key: 'id',
       label: '주문번호',
       sortable: true,
-      render: (order) => (
-        <span className="font-mono text-caption">{order.id}</span>
-      ),
+      render: (order) => <span className="font-mono text-caption">{order.id}</span>,
     },
     {
       key: 'userEmail',
@@ -460,9 +478,7 @@ function AdminOrdersContent() {
       render: (order) => (
         <div className="flex flex-col">
           <span className="font-medium">{formatCurrency(order.total)}</span>
-          <span className="text-caption text-secondary-text">
-            {order.itemCount}개
-          </span>
+          <span className="text-caption text-secondary-text">{order.itemCount}개</span>
         </div>
       ),
     },
@@ -601,17 +617,21 @@ function AdminOrdersContent() {
               <div>
                 <Body className="text-primary-text font-medium mb-2">주문 상태</Body>
                 <div className="flex gap-2 flex-wrap">
-                  {['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'].map((status) => (
+                  {[
+                    { value: 'PENDING_PAYMENT', label: '입금 대기' },
+                    { value: 'PAYMENT_CONFIRMED', label: '결제 완료' },
+                    { value: 'CANCELLED', label: '취소됨' },
+                  ].map(({ value, label }) => (
                     <button
-                      key={status}
-                      onClick={() => handleStatusToggle(status, 'order')}
+                      key={value}
+                      onClick={() => handleStatusToggle(value, 'order')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        orderStatusFilter.includes(status)
+                        orderStatusFilter.includes(value)
                           ? 'bg-hot-pink text-white'
                           : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
-                      {status.replace(/_/g, ' ')}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -621,17 +641,21 @@ function AdminOrdersContent() {
               <div>
                 <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
                 <div className="flex gap-2 flex-wrap">
-                  {['PENDING', 'CONFIRMED', 'FAILED'].map((status) => (
+                  {[
+                    { value: 'PENDING', label: '대기' },
+                    { value: 'CONFIRMED', label: '확인' },
+                    { value: 'FAILED', label: '실패' },
+                  ].map(({ value, label }) => (
                     <button
-                      key={status}
-                      onClick={() => handleStatusToggle(status, 'payment')}
+                      key={value}
+                      onClick={() => handleStatusToggle(value, 'payment')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        paymentStatusFilter.includes(status)
+                        paymentStatusFilter.includes(value)
                           ? 'bg-hot-pink text-white'
                           : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
-                      {status}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -641,17 +665,22 @@ function AdminOrdersContent() {
               <div>
                 <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
                 <div className="flex gap-2 flex-wrap">
-                  {['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'].map((status) => (
+                  {[
+                    { value: 'PENDING', label: '대기' },
+                    { value: 'PROCESSING', label: '준비중' },
+                    { value: 'SHIPPED', label: '배송중' },
+                    { value: 'DELIVERED', label: '배송완료' },
+                  ].map(({ value, label }) => (
                     <button
-                      key={status}
-                      onClick={() => handleStatusToggle(status, 'shipping')}
+                      key={value}
+                      onClick={() => handleStatusToggle(value, 'shipping')}
                       className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        shippingStatusFilter.includes(status)
+                        shippingStatusFilter.includes(value)
                           ? 'bg-hot-pink text-white'
                           : 'bg-white text-secondary-text hover:bg-gray-100'
                       }`}
                     >
-                      {status}
+                      {label}
                     </button>
                   ))}
                 </div>

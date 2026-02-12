@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -17,6 +12,8 @@ import {
   ProductNotFoundException,
   InsufficientStockException,
 } from '../../common/exceptions/business.exception';
+import { LogErrors } from '../../common/decorators/log-errors.decorator';
+import { findOrThrow } from '../../common/prisma/find-or-throw.util';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
 
@@ -48,327 +45,277 @@ export class ProductsService {
    * Create a new product
    * Epic 5 Story 5.1
    */
+  @LogErrors('create product')
   async create(createDto: CreateProductDto): Promise<ProductResponseDto> {
-    try {
-      // Verify stream exists
-      const stream = await this.prisma.liveStream.findUnique({
-        where: { streamKey: createDto.streamKey },
-      });
+    // Verify stream exists
+    const stream = await this.prisma.liveStream.findUnique({
+      where: { streamKey: createDto.streamKey },
+    });
 
-      if (!stream) {
-        throw new NotFoundException(`LiveStream with key ${createDto.streamKey} not found`);
-      }
-
-      const product = await this.prisma.product.create({
-        data: {
-          streamKey: createDto.streamKey,
-          name: createDto.name,
-          price: new Decimal(createDto.price),
-          quantity: createDto.stock,
-          colorOptions: createDto.colorOptions || [],
-          sizeOptions: createDto.sizeOptions || [],
-          shippingFee: new Decimal(createDto.shippingFee || 0),
-          freeShippingMessage: createDto.freeShippingMessage,
-          timerEnabled: createDto.timerEnabled || false,
-          timerDuration: createDto.timerDuration || 10,
-          imageUrl: createDto.imageUrl,
-        },
-      });
-
-      this.logger.log(`Product created: ${product.id} for stream ${product.streamKey}`);
-
-      // Emit event for WebSocket broadcast
-      this.eventEmitter.emit('product:created', {
-        productId: product.id,
-        streamKey: product.streamKey,
-        product: this.mapToResponseDto(product),
-      });
-
-      return this.mapToResponseDto(product);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to create product: ${errorMessage}`, errorStack);
-      throw error;
+    if (!stream) {
+      throw new NotFoundException(`LiveStream with key ${createDto.streamKey} not found`);
     }
+
+    const product = await this.prisma.product.create({
+      data: {
+        streamKey: createDto.streamKey,
+        name: createDto.name,
+        price: new Decimal(createDto.price),
+        quantity: createDto.stock,
+        colorOptions: createDto.colorOptions || [],
+        sizeOptions: createDto.sizeOptions || [],
+        shippingFee: new Decimal(createDto.shippingFee || 0),
+        freeShippingMessage: createDto.freeShippingMessage,
+        timerEnabled: createDto.timerEnabled || false,
+        timerDuration: createDto.timerDuration || 10,
+        imageUrl: createDto.imageUrl,
+      },
+    });
+
+    this.logger.log(`Product created: ${product.id} for stream ${product.streamKey}`);
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('product:created', {
+      productId: product.id,
+      streamKey: product.streamKey,
+      product: this.mapToResponseDto(product),
+    });
+
+    return this.mapToResponseDto(product);
   }
 
   /**
    * Get all products for a stream
    * Epic 5 Story 5.2, 5.3
    */
-  async findByStreamKey(
-    streamKey: string,
-    status?: ProductStatus,
-  ): Promise<ProductResponseDto[]> {
-    try {
-      const products = await this.prisma.product.findMany({
-        where: {
-          streamKey,
-          ...(status && { status }),
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+  @LogErrors('get products by stream key')
+  async findByStreamKey(streamKey: string, status?: ProductStatus): Promise<ProductResponseDto[]> {
+    const products = await this.prisma.product.findMany({
+      where: {
+        streamKey,
+        ...(status && { status }),
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
-      return products.map((product) => this.mapToResponseDto(product));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to get products for stream ${streamKey}: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    return products.map((product) => this.mapToResponseDto(product));
   }
 
   /**
    * Get featured products for homepage
    * Returns latest available products with limit
    */
+  @LogErrors('get featured products')
   async getFeaturedProducts(limit = 6): Promise<ProductResponseDto[]> {
-    try {
-      const products = await this.prisma.product.findMany({
-        where: {
-          status: 'AVAILABLE',
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: limit,
-      });
+    const products = await this.prisma.product.findMany({
+      where: {
+        status: 'AVAILABLE',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
 
-      return products.map((p) => this.mapToResponseDto(p));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to get featured products: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    return products.map((p) => this.mapToResponseDto(p));
   }
 
   /**
    * Get all products (legacy method)
    */
+  @LogErrors('get all products')
   async findAll(status?: ProductStatus): Promise<ProductResponseDto[]> {
-    try {
-      const products = await this.prisma.product.findMany({
-        where: status ? { status } : undefined,
-        orderBy: { createdAt: 'desc' },
-      });
+    const products = await this.prisma.product.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+    });
 
-      return products.map((p) => this.mapToResponseDto(p));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to get all products: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    return products.map((p) => this.mapToResponseDto(p));
   }
 
   /**
    * Get a single product by ID
    * Epic 5 Story 5.4
    */
+  @LogErrors('get product by id')
   async findById(id: string): Promise<ProductResponseDto> {
-    try {
-      const product = await this.prisma.product.findUnique({
-        where: { id },
-      });
-
-      if (!product) {
-        throw new ProductNotFoundException(id);
-      }
-
-      return this.mapToResponseDto(product);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to get product ${id}: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    const product = await findOrThrow(
+      this.prisma.product.findUnique({ where: { id } }),
+      'Product',
+      id,
+    );
+    return this.mapToResponseDto(product);
   }
 
   /**
    * Update a product
    * Epic 5 Story 5.1
    */
+  @LogErrors('update product')
   async update(id: string, updateDto: UpdateProductDto): Promise<ProductResponseDto> {
-    try {
-      // Check if product exists
-      const existingProduct = await this.prisma.product.findUnique({
-        where: { id },
-      });
+    // Check if product exists
+    await findOrThrow(this.prisma.product.findUnique({ where: { id } }), 'Product', id);
 
-      if (!existingProduct) {
-        throw new ProductNotFoundException(id);
-      }
-
-      // Check if trying to reduce quantity below items in carts
-      if (updateDto.stock !== undefined && updateDto.stock < 0) {
-        throw new BadRequestException('Stock cannot be negative');
-      }
-
-      const updateData: ProductUpdateData = {};
-
-      if (updateDto.name !== undefined) {updateData.name = updateDto.name;}
-      if (updateDto.price !== undefined) {updateData.price = new Decimal(updateDto.price);}
-      if (updateDto.stock !== undefined) {updateData.quantity = updateDto.stock;}
-      if (updateDto.colorOptions !== undefined) {updateData.colorOptions = updateDto.colorOptions;}
-      if (updateDto.sizeOptions !== undefined) {updateData.sizeOptions = updateDto.sizeOptions;}
-      if (updateDto.shippingFee !== undefined) {updateData.shippingFee = new Decimal(updateDto.shippingFee);}
-      if (updateDto.freeShippingMessage !== undefined) {updateData.freeShippingMessage = updateDto.freeShippingMessage;}
-      if (updateDto.timerEnabled !== undefined) {updateData.timerEnabled = updateDto.timerEnabled;}
-      if (updateDto.timerDuration !== undefined) {updateData.timerDuration = updateDto.timerDuration;}
-      if (updateDto.imageUrl !== undefined) {updateData.imageUrl = updateDto.imageUrl;}
-      if (updateDto.status !== undefined) {updateData.status = updateDto.status as PrismaProductStatus;}
-
-      const product = await this.prisma.product.update({
-        where: { id },
-        data: updateData,
-      });
-
-      this.logger.log(`Product updated: ${product.id}`);
-
-      // Emit event for WebSocket broadcast
-      this.eventEmitter.emit('product:updated', {
-        productId: product.id,
-        streamKey: product.streamKey,
-        product: this.mapToResponseDto(product),
-      });
-
-      return this.mapToResponseDto(product);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to update product ${id}: ${errorMessage}`, errorStack);
-      throw error;
+    // Check if trying to reduce quantity below items in carts
+    if (updateDto.stock !== undefined && updateDto.stock < 0) {
+      throw new BadRequestException('Stock cannot be negative');
     }
+
+    const updateData: ProductUpdateData = {};
+
+    if (updateDto.name !== undefined) {
+      updateData.name = updateDto.name;
+    }
+    if (updateDto.price !== undefined) {
+      updateData.price = new Decimal(updateDto.price);
+    }
+    if (updateDto.stock !== undefined) {
+      updateData.quantity = updateDto.stock;
+    }
+    if (updateDto.colorOptions !== undefined) {
+      updateData.colorOptions = updateDto.colorOptions;
+    }
+    if (updateDto.sizeOptions !== undefined) {
+      updateData.sizeOptions = updateDto.sizeOptions;
+    }
+    if (updateDto.shippingFee !== undefined) {
+      updateData.shippingFee = new Decimal(updateDto.shippingFee);
+    }
+    if (updateDto.freeShippingMessage !== undefined) {
+      updateData.freeShippingMessage = updateDto.freeShippingMessage;
+    }
+    if (updateDto.timerEnabled !== undefined) {
+      updateData.timerEnabled = updateDto.timerEnabled;
+    }
+    if (updateDto.timerDuration !== undefined) {
+      updateData.timerDuration = updateDto.timerDuration;
+    }
+    if (updateDto.imageUrl !== undefined) {
+      updateData.imageUrl = updateDto.imageUrl;
+    }
+    if (updateDto.status !== undefined) {
+      updateData.status = updateDto.status as PrismaProductStatus;
+    }
+
+    const product = await this.prisma.product.update({
+      where: { id },
+      data: updateData,
+    });
+
+    this.logger.log(`Product updated: ${product.id}`);
+
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('product:updated', {
+      productId: product.id,
+      streamKey: product.streamKey,
+      product: this.mapToResponseDto(product),
+    });
+
+    return this.mapToResponseDto(product);
   }
 
   /**
    * Mark product as sold out
    * Epic 5 Story 5.1
    */
+  @LogErrors('mark product as sold out')
   async markAsSoldOut(id: string): Promise<ProductResponseDto> {
-    try {
-      const product = await this.prisma.product.update({
-        where: { id },
-        data: { status: 'SOLD_OUT' },
-      });
+    await findOrThrow(this.prisma.product.findUnique({ where: { id } }), 'Product', id);
 
-      this.logger.log(`Product marked as sold out: ${product.id}`);
+    const product = await this.prisma.product.update({
+      where: { id },
+      data: { status: 'SOLD_OUT' },
+    });
 
-      // Emit event for WebSocket broadcast
-      this.eventEmitter.emit('product:soldout', {
-        productId: product.id,
-        streamKey: product.streamKey,
-      });
+    this.logger.log(`Product marked as sold out: ${product.id}`);
 
-      return this.mapToResponseDto(product);
-    } catch (error) {
-      if (error.code === 'P2025') {
-        throw new ProductNotFoundException(id);
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to mark product ${id} as sold out: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    // Emit event for WebSocket broadcast
+    this.eventEmitter.emit('product:soldout', {
+      productId: product.id,
+      streamKey: product.streamKey,
+    });
+
+    return this.mapToResponseDto(product);
   }
 
   /**
    * Delete a product
    */
+  @LogErrors('delete product')
   async delete(id: string): Promise<void> {
-    try {
-      // Check if product has any active carts
-      const activeCartsCount = await this.prisma.cart.count({
-        where: {
-          productId: id,
-          status: 'ACTIVE',
-        },
-      });
+    const product = await findOrThrow(
+      this.prisma.product.findUnique({ where: { id } }),
+      'Product',
+      id,
+    );
 
-      if (activeCartsCount > 0) {
-        throw new BadRequestException(
-          `Cannot delete product with active cart items. Mark as sold out instead.`,
-        );
-      }
-
-      const product = await this.prisma.product.findUnique({ where: { id } });
-
-      await this.prisma.product.delete({
-        where: { id },
-      });
-
-      this.logger.log(`Product deleted: ${id}`);
-
-      // Emit deletion event
-      this.eventEmitter.emit('product:deleted', {
+    // Check if product has any active carts
+    const activeCartsCount = await this.prisma.cart.count({
+      where: {
         productId: id,
-        streamKey: product?.streamKey,
-      });
-    } catch (error) {
-      if (error.code === 'P2025') {
-        throw new ProductNotFoundException(id);
-      }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to delete product ${id}: ${errorMessage}`, errorStack);
-      throw error;
+        status: 'ACTIVE',
+      },
+    });
+
+    if (activeCartsCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete product with active cart items. Mark as sold out instead.`,
+      );
     }
+
+    await this.prisma.product.delete({
+      where: { id },
+    });
+
+    this.logger.log(`Product deleted: ${id}`);
+
+    // Emit deletion event
+    this.eventEmitter.emit('product:deleted', {
+      productId: id,
+      streamKey: product.streamKey,
+    });
   }
 
   /**
    * Update stock (increase/decrease)
    * Used by cart and order modules
    */
+  @LogErrors('update stock')
   async updateStock(id: string, updateStockDto: UpdateStockDto): Promise<ProductResponseDto> {
-    try {
-      const product = await this.prisma.product.findUnique({
-        where: { id },
-      });
+    const product = await findOrThrow(
+      this.prisma.product.findUnique({ where: { id } }),
+      'Product',
+      id,
+    );
 
-      if (!product) {
-        throw new ProductNotFoundException(id);
-      }
+    const newStock = product.quantity + updateStockDto.quantity;
 
-      const newStock = product.quantity + updateStockDto.quantity;
-
-      if (newStock < 0) {
-        throw new InsufficientStockException(
-          id,
-          product.quantity,
-          Math.abs(updateStockDto.quantity),
-        );
-      }
-
-      const updatedProduct = await this.prisma.product.update({
-        where: { id },
-        data: {
-          quantity: newStock,
-          status: newStock === 0 ? 'SOLD_OUT' : product.status,
-        },
-      });
-
-      this.logger.log(`Stock updated for product ${id}: ${product.quantity} → ${newStock}`);
-
-      // Emit stock update event
-      this.eventEmitter.emit('product:stock:updated', {
-        productId: updatedProduct.id,
-        streamKey: updatedProduct.streamKey,
-        oldStock: product.quantity,
-        newStock: updatedProduct.quantity,
-        product: this.mapToResponseDto(updatedProduct),
-      });
-
-      return this.mapToResponseDto(updatedProduct);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to update stock for product ${id}: ${errorMessage}`, errorStack);
-      throw error;
+    if (newStock < 0) {
+      throw new InsufficientStockException(id, product.quantity, Math.abs(updateStockDto.quantity));
     }
+
+    const updatedProduct = await this.prisma.product.update({
+      where: { id },
+      data: {
+        quantity: newStock,
+        status: newStock === 0 ? 'SOLD_OUT' : product.status,
+      },
+    });
+
+    this.logger.log(`Stock updated for product ${id}: ${product.quantity} → ${newStock}`);
+
+    // Emit stock update event
+    this.eventEmitter.emit('product:stock:updated', {
+      productId: updatedProduct.id,
+      streamKey: updatedProduct.streamKey,
+      oldStock: product.quantity,
+      newStock: updatedProduct.quantity,
+      product: this.mapToResponseDto(updatedProduct),
+    });
+
+    return this.mapToResponseDto(updatedProduct);
   }
 
   /**
@@ -411,6 +358,7 @@ export class ProductsService {
    * Get store products (from ended live streams)
    * Epic 11 Story 11.1
    */
+  @LogErrors('get store products')
   async getStoreProducts(
     page = 1,
     limit = 24,
@@ -420,57 +368,52 @@ export class ProductsService {
     page: number;
     totalPages: number;
   }> {
-    try {
-      const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-      // Get products from ended (OFFLINE) live streams
-      const products = await this.prisma.product.findMany({
-        where: {
-          liveStream: {
-            status: 'OFFLINE',
-          },
-          status: 'AVAILABLE',
+    // Get products from ended (OFFLINE) live streams
+    const products = await this.prisma.product.findMany({
+      where: {
+        liveStream: {
+          status: 'OFFLINE',
         },
-        include: {
-          liveStream: {
-            select: {
-              title: true,
-              endedAt: true,
-            },
+        status: 'AVAILABLE',
+      },
+      include: {
+        liveStream: {
+          select: {
+            title: true,
+            endedAt: true,
           },
         },
-        orderBy: {
-          liveStream: {
-            endedAt: 'desc',
-          },
+      },
+      orderBy: {
+        liveStream: {
+          endedAt: 'desc',
         },
-        skip,
-        take: limit,
-      });
+      },
+      skip,
+      take: limit,
+    });
 
-      const total = await this.prisma.product.count({
-        where: {
-          liveStream: {
-            status: 'OFFLINE',
-          },
-          status: 'AVAILABLE',
+    const total = await this.prisma.product.count({
+      where: {
+        liveStream: {
+          status: 'OFFLINE',
         },
-      });
+        status: 'AVAILABLE',
+      },
+    });
 
-      this.logger.log(`Retrieved ${products.length} store products (page ${page}/${Math.ceil(total / limit)})`);
+    this.logger.log(
+      `Retrieved ${products.length} store products (page ${page}/${Math.ceil(total / limit)})`,
+    );
 
-      return {
-        products: products.map((p) => this.mapToResponseDto(p)),
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Failed to get store products: ${errorMessage}`, errorStack);
-      throw error;
-    }
+    return {
+      products: products.map((p) => this.mapToResponseDto(p)),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**
@@ -492,7 +435,9 @@ export class ProductsService {
       imageUrl: product.imageUrl ?? undefined,
       isNew: product.isNew ?? false,
       discountRate: product.discountRate ? parseFloat(product.discountRate.toString()) : undefined,
-      originalPrice: product.originalPrice ? parseFloat(product.originalPrice.toString()) : undefined,
+      originalPrice: product.originalPrice
+        ? parseFloat(product.originalPrice.toString())
+        : undefined,
       status: product.status as ProductStatus,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,

@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { createQueryKeys } from './create-query-keys';
 
 export interface CartItem {
   id: string;
@@ -34,9 +35,10 @@ export interface CartSummary {
 }
 
 // Query Keys
+const baseKeys = createQueryKeys('cart');
 export const cartKeys = {
-  all: ['cart'] as const,
-  summary: () => [...cartKeys.all, 'summary'] as const,
+  ...baseKeys,
+  summary: () => [...baseKeys.all, 'summary'] as const,
 };
 
 // Fetch cart summary

@@ -15,7 +15,6 @@ function LoginContent() {
   const [devRole, setDevRole] = useState<'USER' | 'ADMIN'>('USER');
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
-  const [showDevLogin, setShowDevLogin] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
@@ -108,20 +107,11 @@ function LoginContent() {
           </Body>
         </div>
 
-        {/* Dev Login Section */}
-        <div className="pt-4 border-t border-border-color">
-          <button
-            onClick={() => setShowDevLogin(!showDevLogin)}
-            className="w-full text-center text-xs text-secondary-text/50 hover:text-secondary-text transition-colors py-2"
-          >
-            {showDevLogin ? '개발자 로그인 닫기' : '개발자 테스트 로그인'}
-          </button>
-
-          {showDevLogin && (
-            <div className="mt-3 p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
-              <p className="text-xs text-secondary-text">
-                스테이징 테스트 전용 (ENABLE_DEV_AUTH=true 필요)
-              </p>
+        {/* Dev Login Section — only rendered when NEXT_PUBLIC_ENABLE_DEV_AUTH=true */}
+        {process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true' && (
+          <div className="pt-4 border-t border-border-color">
+            <div className="p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
+              <p className="text-xs text-secondary-text">스테이징 테스트 전용</p>
 
               <input
                 type="email"
@@ -186,8 +176,8 @@ function LoginContent() {
                 {devLoading ? '로그인 중...' : '테스트 로그인'}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

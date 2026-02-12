@@ -7,18 +7,10 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-  ApiParam,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProductService } from './product.service';
 import { ProductGateway } from './product.gateway';
 import {
@@ -28,9 +20,7 @@ import {
   GetProductsQueryDto,
   ProductStatus,
 } from './dto/product.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 @ApiTags('Products')
 @Controller('products')
@@ -41,52 +31,67 @@ export class ProductController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @ApiOperation({ summary: 'Create a new product (Admin only)' })
-  @ApiResponse({ status: 201, description: 'Product created successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Product created successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
   @ApiResponse({ status: 404, description: 'LiveStream not found' })
-  async createProduct(@Body() createProductDto: CreateProductDto): Promise<{ data: ProductResponseDto }> {
+  async createProduct(@Body() createProductDto: CreateProductDto): Promise<ProductResponseDto> {
     const product = await this.productService.createProduct(createProductDto);
 
     // Broadcast product added event to all viewers
-    this.productGateway.broadcastProductAdded(product.streamKey, product);
+    void this.productGateway.broadcastProductAdded(product.streamKey, product);
 
-    return { data: product };
+    return product;
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all products for a stream (Public)' })
   @ApiQuery({ name: 'streamKey', description: 'Stream key', required: true })
-  @ApiQuery({ name: 'status', description: 'Filter by status', enum: ProductStatus, required: false })
-  @ApiResponse({ status: 200, description: 'Products retrieved successfully', type: [ProductResponseDto] })
+  @ApiQuery({
+    name: 'status',
+    description: 'Filter by status',
+    enum: ProductStatus,
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+    type: [ProductResponseDto],
+  })
   @ApiResponse({ status: 400, description: 'Invalid query parameters' })
-  async getProducts(@Query() query: GetProductsQueryDto): Promise<{ data: ProductResponseDto[] }> {
-    const products = await this.productService.getProductsByStream(query.streamKey, query.status);
-    return { data: products };
+  async getProducts(@Query() query: GetProductsQueryDto): Promise<ProductResponseDto[]> {
+    return this.productService.getProductsByStream(query.streamKey, query.status);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a single product by ID (Public)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
-  @ApiResponse({ status: 200, description: 'Product retrieved successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Product retrieved successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
-  async getProductById(@Param('id') id: string): Promise<{ data: ProductResponseDto }> {
-    const product = await this.productService.getProductById(id);
-    return { data: product };
+  async getProductById(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.getProductById(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @ApiOperation({ summary: 'Update a product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
-  @ApiResponse({ status: 200, description: 'Product updated successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Product updated successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
@@ -94,19 +99,17 @@ export class ProductController {
   async updateProduct(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
-  ): Promise<{ data: ProductResponseDto }> {
+  ): Promise<ProductResponseDto> {
     const product = await this.productService.updateProduct(id, updateProductDto);
 
     // Broadcast product updated event to all viewers
-    this.productGateway.broadcastProductUpdated(product.streamKey, product);
+    void this.productGateway.broadcastProductUpdated(product.streamKey, product);
 
-    return { data: product };
+    return product;
   }
 
   @Patch(':id/sold-out')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark product as sold out (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
@@ -114,19 +117,17 @@ export class ProductController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
   @ApiResponse({ status: 404, description: 'Product not found' })
-  async markAsSoldOut(@Param('id') id: string): Promise<{ data: ProductResponseDto }> {
+  async markAsSoldOut(@Param('id') id: string): Promise<ProductResponseDto> {
     const product = await this.productService.markAsSoldOut(id);
 
     // Broadcast product sold out event to all viewers
-    this.productGateway.broadcastProductSoldOut(product.streamKey, product.id);
+    void this.productGateway.broadcastProductSoldOut(product.streamKey, product.id);
 
-    return { data: product };
+    return product;
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID' })

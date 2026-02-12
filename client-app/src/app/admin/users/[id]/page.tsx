@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
 import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentModal';
-import { usePointBalance } from '@/lib/hooks/use-points';
+import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { useToast } from '@/components/common/Toast';
 
 interface ShippingAddress {
@@ -54,7 +54,7 @@ export default function AdminUserDetailPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
-  const { balance: pointBalance, refetch: refetchPoints } = usePointBalance(userId);
+  const { data: pointBalance, refetch: refetchPoints } = usePointBalance(userId);
 
   useEffect(() => {
     fetchUserDetail();
@@ -151,9 +151,7 @@ export default function AdminUserDetailPage() {
           <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
             <Body className="text-error">{error || 'User not found'}</Body>
           </div>
-          <Button onClick={() => router.push('/admin/users')}>
-            Back to User List
-          </Button>
+          <Button onClick={() => router.push('/admin/users')}>Back to User List</Button>
         </div>
       </div>
     );
@@ -166,9 +164,7 @@ export default function AdminUserDetailPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <Display className="text-hot-pink mb-2">User Details</Display>
-            <Body className="text-secondary-text">
-              {user.instagramId || user.email}
-            </Body>
+            <Body className="text-secondary-text">{user.instagramId || user.email}</Body>
           </div>
           <Button variant="outline" onClick={() => router.push('/admin/users')}>
             ← Back to User List
@@ -190,9 +186,7 @@ export default function AdminUserDetailPage() {
             <div className="space-y-4">
               <div>
                 <Body className="text-secondary-text text-caption">Instagram ID</Body>
-                <Body className="text-hot-pink font-medium">
-                  {user.instagramId || '-'}
-                </Body>
+                <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
               </div>
 
               <div>
@@ -250,9 +244,7 @@ export default function AdminUserDetailPage() {
               <div className="space-y-2">
                 <Body className="font-medium">{user.shippingAddress.fullName}</Body>
                 <Body>{user.shippingAddress.address1}</Body>
-                {user.shippingAddress.address2 && (
-                  <Body>{user.shippingAddress.address2}</Body>
-                )}
+                {user.shippingAddress.address2 && <Body>{user.shippingAddress.address2}</Body>}
                 <Body>
                   {user.shippingAddress.city}, {user.shippingAddress.state}{' '}
                   {user.shippingAddress.zip}
@@ -306,11 +298,7 @@ export default function AdminUserDetailPage() {
         <div className="bg-content-bg rounded-button p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <Heading2 className="text-hot-pink">Reward Points</Heading2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPointsModal(true)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowPointsModal(true)}>
               Adjust Points
             </Button>
           </div>
@@ -350,9 +338,7 @@ export default function AdminUserDetailPage() {
         {/* Order History Placeholder */}
         <div className="bg-content-bg rounded-button p-6">
           <Heading2 className="text-hot-pink mb-4">Order History</Heading2>
-          <Body className="text-secondary-text">
-            Order history will be available in Epic 8
-          </Body>
+          <Body className="text-secondary-text">Order history will be available in Epic 8</Body>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback, createContext, useContext } from 'react';
+import React, { useRef, useState, useCallback, createContext, useContext } from 'react';
+import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmOptions {
@@ -92,27 +93,14 @@ function ConfirmDialog({
 }: ConfirmDialogProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      confirmRef.current?.focus();
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  useModalBehavior({ isOpen, onClose: onCancel });
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onCancel();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onCancel]);
+  // Auto-focus confirm button when dialog opens
+  React.useEffect(() => {
+    if (isOpen) {
+      confirmRef.current?.focus();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -151,7 +139,9 @@ function ConfirmDialog({
         aria-describedby="confirm-message"
       >
         <div className="flex flex-col items-center text-center">
-          <div className={`w-12 h-12 rounded-full ${styles.iconBg} flex items-center justify-center mb-4`}>
+          <div
+            className={`w-12 h-12 rounded-full ${styles.iconBg} flex items-center justify-center mb-4`}
+          >
             <AlertTriangle className={`w-6 h-6 ${styles.icon}`} />
           </div>
           <h3 id="confirm-title" className="text-h3 text-primary-text mb-2">

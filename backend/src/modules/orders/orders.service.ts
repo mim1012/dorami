@@ -5,7 +5,13 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
-import { CreateOrderDto, CreateOrderFromCartDto, OrderResponseDto, OrderStatus, PaymentStatus, ShippingStatus } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  OrderResponseDto,
+  OrderStatus,
+  PaymentStatus,
+  ShippingStatus,
+} from './dto/order.dto';
 import {
   OrderNotFoundException,
   BusinessException,
@@ -57,10 +63,7 @@ export class OrdersService {
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
   ) {
-    this.orderExpirationMinutes = this.configService.get<number>(
-      'ORDER_EXPIRATION_MINUTES',
-      10,
-    );
+    this.orderExpirationMinutes = this.configService.get<number>('ORDER_EXPIRATION_MINUTES', 10);
   }
 
   /**
@@ -137,9 +140,8 @@ export class OrdersService {
       const effectivePointsUsed = pointsToUse && pointsToUse > 0 ? pointsToUse : 0;
       const finalTotal = totals.total - effectivePointsUsed;
 
-      // Prepare order items
+      // Prepare order items (Product connect으로 relation 설정, productId 직접 지정 불가)
       const orderItemsData = cartItems.map((item) => ({
-        productId: item.productId,
         productName: item.productName,
         quantity: item.quantity,
         price: item.price,
@@ -221,10 +223,7 @@ export class OrdersService {
     return this.mapToResponseDto(order);
   }
 
-  async createOrder(
-    userId: string,
-    createOrderDto: CreateOrderDto,
-  ): Promise<OrderResponseDto> {
+  async createOrder(userId: string, createOrderDto: CreateOrderDto): Promise<OrderResponseDto> {
     // Fetch user data for required fields
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -354,7 +353,8 @@ export class OrdersService {
 
     items.forEach((item) => {
       const price = typeof item.price === 'number' ? item.price : Number(item.price);
-      const shippingFee = typeof item.shippingFee === 'number' ? item.shippingFee : Number(item.shippingFee);
+      const shippingFee =
+        typeof item.shippingFee === 'number' ? item.shippingFee : Number(item.shippingFee);
       subtotal += price * item.quantity;
       totalShippingFee += shippingFee;
     });
@@ -428,7 +428,10 @@ export class OrdersService {
   /**
    * Epic 8 Story 8.2: Get order with bank transfer info
    */
-  async findById(orderId: string, userId?: string): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
+  async findById(
+    orderId: string,
+    userId?: string,
+  ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
     const whereClause: any = { id: orderId };
     if (userId) {
       whereClause.userId = userId;

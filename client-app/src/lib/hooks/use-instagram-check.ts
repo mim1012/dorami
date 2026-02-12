@@ -33,14 +33,11 @@ export function useInstagramCheck(instagramId: string): InstagramCheckResult {
       setError(null);
 
       try {
-        const response = await apiClient.get<{ data: { available: boolean } }>(
-          `/users/check-instagram`,
-          {
-            params: { instagramId: debouncedInstagramId },
-          },
-        );
+        const response = await apiClient.get<{ available: boolean }>(`/users/check-instagram`, {
+          params: { instagramId: debouncedInstagramId },
+        });
 
-        setIsAvailable(response.data.data.available);
+        setIsAvailable(response.data.available);
       } catch (err) {
         setError('Failed to check availability');
         setIsAvailable(null);

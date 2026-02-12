@@ -32,9 +32,13 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=builder /app/client-app/.next/standalone ./
-COPY --from=builder /app/client-app/.next/static ./client-app/.next/static
-COPY --from=builder /app/client-app/public ./client-app/public
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/client-app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/client-app/.next/static ./client-app/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/client-app/public ./client-app/public
+
+USER nextjs
 
 EXPOSE 3000
 
