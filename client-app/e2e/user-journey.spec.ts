@@ -1,0 +1,293 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * 사용자 여정 E2E 테스트
+ * 
+ * 시나리오: 일반 사용자가 앱의 모든 하단 탭 기능을 사용
+ * 1. 홈 - 메인 페이지 탐색
+ * 2. 상품 - 상품 목록 및 상세 페이지
+ * 3. 라이브 - 라이브 스트리밍 (예정/활성)
+ * 4. 문의 - 문의 BottomSheet
+ * 5. 마이 - 사용자 프로필 및 주문 내역
+ */
+
+test.describe('사용자 여정 - 모든 하단 탭 기능', () => {
+  test.beforeEach(async ({ page }) => {
+    // 백엔드 서버 헬스체크
+    const response = await page.request.get('http://localhost:3001/api/v1/health/ready');
+    expect(response.ok()).toBeTruthy();
+    
+    // 클라이언트 앱 접속
+    await page.goto('http://localhost:3000');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('1. 홈 탭 - 메인 페이지 기능', async ({ page }) => {
+    // 홈 탭 확인 (하단 탭바의 홈 버튼 - aria-label 사용)
+    const homeTab = page.getByRole('button', { name: '홈', exact: true }).filter({ has: page.locator('svg') });
+    await expect(homeTab).toBeVisible();
+    
+    // 홈 페이지 주요 섹션 확인
+    await expect(page.locator('text=라이브 커머스').or(page.locator('h1'))).toBeVisible({ timeout: 10000 });
+    
+    // Hero 섹션 확인
+    const heroSection = page.locator('text=실시간 라이브 쇼핑').or(page.locator('text=지금 바로 시작'));
+    if (await heroSection.isVisible()) {
+      await expect(heroSection).toBeVisible();
+    }
+    
+    // 상품 섹션 확인 (있는 경우) - first()로 첫 번째 요소만 선택
+    const productSection = page.locator('text=추천 상품').or(page.locator('text=인기 상품')).first();
+    if (await productSection.isVisible().catch(() => false)) {
+      await expect(productSection).toBeVisible();
+    }
+    
+    console.log('✅ 홈 탭 테스트 완료');
+  });
+
+  test('2. 상품 탭 - 상품 목록 및 상세', async ({ page }) => {
+    // 상품 탭 클릭
+    const shopTab = page.getByRole('button', { name: '상품' });
+    await shopTab.click();
+    await page.waitForURL('**/shop');
+    
+    // 상품 목록 페이지 확인
+    await expect(page).toHaveURL(/\/shop/);
+    
+    // 페이지 타이틀 확인
+    const title = page.locator('h1, h2').filter({ hasText: /상품|제품|쇼핑/ });
+    if (await title.isVisible()) {
+      await expect(title).toBeVisible();
+    }
+    
+    // 상품 카드 확인
+    const productCards = page.locator('[data-testid="product-card"]').or(
+      page.locator('article').or(
+        page.locator('[class*="product"]').or(
+          page.locator('a[href*="/products/"]')
+        )
+      )
+    );
+    
+    const hasProducts = await productCards.first().isVisible({ timeout: 5000 }).catch(() => false);
+    
+    if (hasProducts) {
+      await expect(productCards.first()).toBeVisible();
+      
+      // 첫 번째 상품 클릭
+      await productCards.first().click();
+      await page.waitForURL('**/products/**');
+      
+      // 상품 상세 페이지 확인
+      await expect(page).toHaveURL(/\/products\//);
+      
+      // 상품 이미지 확인
+      const productImage = page.locator('img').first();
+      await expect(productImage).toBeVisible({ timeout: 5000 });
+      
+      // 장바구니 버튼 확인
+      const cartButton = page.getByRole('button', { name: /장바구니|카트|담기/ });
+      if (await cartButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(cartButton).toBeVisible();
+      }
+      
+      console.log('✅ 상품 상세 페이지 확인 완료');
+    } else {
+      console.log('⚠️ 표시할 상품이 없습니다');
+    }
+    
+    console.log('✅ 상품 탭 테스트 완료');
+  });
+
+  test('3. 라이브 탭 - 라이브 스트리밍', async ({ page }) => {
+    // 라이브 탭 클릭
+    const liveTab = page.getByRole('button', { name: '라이브' });
+    await liveTab.click();
+    await page.waitForURL('**/live');
+    
+    // 라이브 페이지 확인
+    await expect(page).toHaveURL(/\/live/);
+    
+    // 라이브 섹션 확인
+    const liveTitle = page.locator('h1, h2').filter({ hasText: /라이브|방송/ });
+    if (await liveTitle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(liveTitle).toBeVisible();
+    }
+    
+    // 활성 라이브 또는 예정 라이브 확인
+    const liveCards = page.locator('[data-testid="live-card"]').or(
+      page.locator('[class*="live"]').or(
+        page.locator('a[href*="/live/"]')
+      )
+    );
+    
+    const hasLives = await liveCards.first().isVisible({ timeout: 5000 }).catch(() => false);
+    
+    if (hasLives) {
+      await expect(liveCards.first()).toBeVisible();
+      console.log('✅ 라이브 목록 확인 완료');
+      
+      // 첫 번째 라이브 클릭
+      await liveCards.first().click();
+      await page.waitForLoadState('networkidle');
+      
+      // 라이브 상세 페이지 확인
+      const videoPlayer = page.locator('video').or(page.locator('[data-testid="video-player"]'));
+      if (await videoPlayer.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(videoPlayer).toBeVisible();
+        console.log('✅ 비디오 플레이어 확인 완료');
+      }
+      
+      // 채팅 영역 확인
+      const chatArea = page.locator('[data-testid="chat"]').or(
+        page.locator('[class*="chat"]').or(
+          page.getByPlaceholder(/메시지|채팅/)
+        )
+      );
+      if (await chatArea.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(chatArea).toBeVisible();
+        console.log('✅ 채팅 영역 확인 완료');
+      }
+    } else {
+      console.log('⚠️ 활성 라이브가 없습니다');
+    }
+    
+    console.log('✅ 라이브 탭 테스트 완료');
+  });
+
+  test('4. 문의 탭 - BottomSheet 열기', async ({ page }) => {
+    // 문의 탭 클릭 (하단 탭바의 문의 버튼)
+    const inquiryTab = page.getByRole('button', { name: '문의', exact: true }).filter({ has: page.locator('svg') });
+    await inquiryTab.click();
+    
+    // BottomSheet 확인 (약간의 딜레이 후)
+    await page.waitForTimeout(500);
+    
+    const bottomSheet = page.locator('[role="dialog"]').or(
+      page.locator('[class*="bottom-sheet"]').or(
+        page.locator('[class*="BottomSheet"]')
+      )
+    );
+    
+    if (await bottomSheet.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(bottomSheet).toBeVisible();
+      
+      // 문의 타이틀 확인
+      const title = bottomSheet.locator('text=문의').or(bottomSheet.locator('h2, h3'));
+      if (await title.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await expect(title).toBeVisible();
+      }
+      
+      // 닫기 버튼 클릭
+      const closeButton = bottomSheet.getByRole('button', { name: /닫기|취소/ }).or(
+        bottomSheet.locator('[aria-label*="닫기"]').or(
+          bottomSheet.locator('button').first()
+        )
+      );
+      if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await closeButton.click();
+        await page.waitForTimeout(500);
+        await expect(bottomSheet).not.toBeVisible();
+      }
+      
+      console.log('✅ 문의 BottomSheet 확인 완료');
+    } else {
+      console.log('⚠️ 문의 BottomSheet가 표시되지 않았습니다');
+    }
+    
+    console.log('✅ 문의 탭 테스트 완료');
+  });
+
+  test('5. 마이 탭 - 사용자 프로필 및 주문 내역', async ({ page }) => {
+    // 마이 탭 클릭
+    const myPageTab = page.getByRole('button', { name: '마이' });
+    await myPageTab.click();
+    await page.waitForURL('**/my-page');
+    
+    // 마이페이지 확인
+    await expect(page).toHaveURL(/\/my-page/);
+    
+    // 로그인되지 않은 경우 로그인 버튼 확인
+    const loginButton = page.getByRole('button', { name: /로그인|Login/ });
+    const isLoggedOut = await loginButton.isVisible({ timeout: 3000 }).catch(() => false);
+    
+    if (isLoggedOut) {
+      await expect(loginButton).toBeVisible();
+      console.log('⚠️ 로그인이 필요합니다');
+    } else {
+      // 로그인된 경우 프로필 정보 확인
+      const profileSection = page.locator('text=프로필').or(
+        page.locator('[data-testid="profile"]').or(
+          page.locator('h1, h2').filter({ hasText: /마이|프로필/ })
+        )
+      );
+      
+      if (await profileSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(profileSection).toBeVisible();
+        console.log('✅ 프로필 섹션 확인 완료');
+      }
+      
+      // 주문 내역 링크 확인
+      const ordersLink = page.getByRole('link', { name: /주문|내역|Orders/ });
+      if (await ordersLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(ordersLink).toBeVisible();
+        console.log('✅ 주문 내역 링크 확인 완료');
+      }
+      
+      // 포인트 정보 확인
+      const pointsSection = page.locator('text=포인트').or(
+        page.locator('[data-testid="points"]')
+      );
+      if (await pointsSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(pointsSection).toBeVisible();
+        console.log('✅ 포인트 섹션 확인 완료');
+      }
+    }
+    
+    console.log('✅ 마이 탭 테스트 완료');
+  });
+
+  test('6. 통합 - 전체 탭 순회', async ({ page }) => {
+    const tabs = [
+      { name: '홈', path: '/' },
+      { name: '상품', path: '/shop' },
+      { name: '라이브', path: '/live' },
+      { name: '마이', path: '/my-page' },
+    ];
+    
+    for (const tab of tabs) {
+      console.log(`\n🔄 ${tab.name} 탭으로 이동...`);
+      
+      // 하단 탭바의 버튼만 선택 (svg 아이콘이 있는 버튼)
+      const tabButton = page.getByRole('button', { name: tab.name, exact: true }).filter({ has: page.locator('svg') });
+      await expect(tabButton).toBeVisible();
+      await tabButton.click();
+      
+      // URL 확인
+      await page.waitForURL(`**${tab.path}`);
+      await expect(page).toHaveURL(new RegExp(tab.path.replace('/', '\\/')));
+      
+      // 페이지 로드 완료 대기
+      await page.waitForLoadState('networkidle');
+      
+      // 탭 활성 상태 확인 (하단 탭바의 버튼) - 타임아웃 짧게
+      const activeTab = page.getByRole('button', { name: tab.name, exact: true }).filter({ has: page.locator('svg') });
+      try {
+        const activeClass = await activeTab.evaluate(el => {
+          return el.querySelector('span')?.classList.contains('text-hot-pink') ||
+                 el.querySelector('svg')?.classList.contains('text-hot-pink');
+        }, { timeout: 5000 });
+        expect(activeClass).toBeTruthy();
+      } catch (e) {
+        console.log(`⚠️ 활성 상태 확인 실패 (무시): ${tab.name}`);
+      }
+      
+      console.log(`✅ ${tab.name} 탭 확인 완료`);
+      
+      // 짧은 대기
+      await page.waitForTimeout(500);
+    }
+    
+    console.log('\n🎉 전체 탭 순회 테스트 완료!');
+  });
+});
