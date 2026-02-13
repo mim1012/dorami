@@ -8,6 +8,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import { CsrfGuard } from './common/guards';
 import cookieParser from 'cookie-parser';
+import { Server as SocketIOServer } from 'socket.io';
+
+// Global Socket.IO server instance (initialized in bootstrap)
+export let globalIoServer: SocketIOServer;
+
+export function setGlobalIoServer(io: SocketIOServer) {
+  globalIoServer = io;
+}
 import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
@@ -180,6 +188,10 @@ async function bootstrap() {
   
   io.adapter(createAdapter(pubClient, subClient));
   logger.log('✅ Redis adapter connected');
+  
+  // Set global io server for dependency injection
+  setGlobalIoServer(io);
+  logger.log('✅ Global Socket.IO server set for DI');
   
   // Attach to httpServer
   (httpServer as any).io = io;
