@@ -1,7 +1,7 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { SocketIoProvider } from '../socket-io.provider';
 
 /**
  * Handles admin notifications via events
@@ -11,7 +11,7 @@ import { LoggerService } from '../../../common/logger/logger.service';
 export class AdminNotificationHandler {
   private readonly logger: LoggerService;
 
-  constructor(@Inject('SOCKET_IO_SERVER') private readonly io: Server) {
+  constructor(private readonly socketIo: SocketIoProvider) {
     this.logger = new LoggerService();
     this.logger.setContext('AdminNotificationHandler');
   }
@@ -27,7 +27,7 @@ export class AdminNotificationHandler {
   }) {
     this.logger.log('Notice updated, broadcasting to all clients');
 
-    this.io.emit('notice:updated', payload);
+    this.socketIo.server.emit('notice:updated', payload);
   }
 
   /**
@@ -43,7 +43,7 @@ export class AdminNotificationHandler {
     this.logger.log(`Payment confirmed for order ${payload.orderId}`);
 
     // Broadcast to admin dashboard
-    this.io.emit('admin:order:payment-confirmed', {
+    this.socketIo.server.emit('admin:order:payment-confirmed', {
       type: 'admin:order:payment-confirmed',
       data: payload,
     });

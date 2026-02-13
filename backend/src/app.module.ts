@@ -29,7 +29,6 @@ import { HealthModule } from './modules/health/health.module';
 import { PointsModule } from './modules/points/points.module';
 import { ReStreamModule } from './modules/restream/restream.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
-import { TestModule } from './test.module';
 
 @Module({
   imports: [

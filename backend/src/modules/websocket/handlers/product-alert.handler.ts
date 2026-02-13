@@ -1,13 +1,13 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { SocketIoProvider } from '../socket-io.provider';
 
 @Injectable()
 export class ProductAlertHandler {
   private logger: LoggerService;
 
-  constructor(@Inject('SOCKET_IO_SERVER') private io: Server) {
+  constructor(private readonly socketIo: SocketIoProvider) {
     this.logger = new LoggerService();
     this.logger.setContext('ProductAlertHandler');
   }
@@ -21,7 +21,7 @@ export class ProductAlertHandler {
     this.logger.log(`Broadcasting stock update for product ${payload.productId}`);
 
     // Broadcast to all connected clients
-    this.io.emit('product:stock:changed', {
+    this.socketIo.server.emit('product:stock:changed', {
       productId: payload.productId,
       oldStock: payload.oldStock,
       newStock: payload.newStock,
@@ -33,7 +33,7 @@ export class ProductAlertHandler {
   handleProductCreated(payload: { productId: string }) {
     this.logger.log(`Broadcasting new product: ${payload.productId}`);
 
-    this.io.emit('product:new', {
+    this.socketIo.server.emit('product:new', {
       productId: payload.productId,
       timestamp: new Date().toISOString(),
     });
@@ -43,7 +43,7 @@ export class ProductAlertHandler {
   handleProductUpdated(payload: { productId: string }) {
     this.logger.log(`Broadcasting product update: ${payload.productId}`);
 
-    this.io.emit('product:updated', {
+    this.socketIo.server.emit('product:updated', {
       productId: payload.productId,
       timestamp: new Date().toISOString(),
     });

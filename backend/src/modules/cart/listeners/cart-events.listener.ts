@@ -1,13 +1,13 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { SocketIoProvider } from '../../websocket/socket-io.provider';
 
 @Injectable()
 export class CartEventsListener {
   private readonly logger: LoggerService;
 
-  constructor(@Inject('SOCKET_IO_SERVER') private readonly io: Server) {
+  constructor(private readonly socketIo: SocketIoProvider) {
     this.logger = new LoggerService();
     this.logger.setContext('CartEventsListener');
   }
@@ -34,7 +34,7 @@ export class CartEventsListener {
     const roomName = `stream:${payload.streamKey}`;
 
     // Broadcast to all viewers in the stream (for real-time cart activity feed)
-    this.io.to(roomName).emit('cart:item-added', {
+    this.socketIo.server.to(roomName).emit('cart:item-added', {
       type: 'cart:item-added',
       data: {
         userId: payload.userId,
@@ -47,7 +47,7 @@ export class CartEventsListener {
     });
 
     // Also emit the legacy event for backward compatibility
-    this.io.to(roomName).emit('live:cart:activity', {
+    this.socketIo.server.to(roomName).emit('live:cart:activity', {
       type: 'live:cart:activity',
       data: {
         productName: payload.productName,

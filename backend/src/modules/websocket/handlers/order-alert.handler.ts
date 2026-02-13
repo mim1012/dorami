@@ -1,13 +1,13 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { SocketIoProvider } from '../socket-io.provider';
 
 @Injectable()
 export class OrderAlertHandler {
   private logger: LoggerService;
 
-  constructor(@Inject('SOCKET_IO_SERVER') private io: Server) {
+  constructor(private readonly socketIo: SocketIoProvider) {
     this.logger = new LoggerService();
     this.logger.setContext('OrderAlertHandler');
   }
@@ -18,7 +18,7 @@ export class OrderAlertHandler {
 
     if (payload.streamId) {
       // Broadcast to specific stream room
-      this.io.to(`stream:${payload.streamId}`).emit('order:new', {
+      this.socketIo.server.to(`stream:${payload.streamId}`).emit('order:new', {
         orderId: payload.orderId,
         userId: payload.userId,
         timestamp: new Date().toISOString(),
@@ -31,7 +31,7 @@ export class OrderAlertHandler {
     this.logger.log(`Broadcasting order cancellation: ${payload.orderId}`);
 
     if (payload.streamId) {
-      this.io.to(`stream:${payload.streamId}`).emit('order:cancelled', {
+      this.socketIo.server.to(`stream:${payload.streamId}`).emit('order:cancelled', {
         orderId: payload.orderId,
         timestamp: new Date().toISOString(),
       });
@@ -47,7 +47,7 @@ export class OrderAlertHandler {
     this.logger.log(`Broadcasting reservation promotion for user ${payload.userId}`);
 
     if (payload.streamId) {
-      this.io.to(`stream:${payload.streamId}`).emit('reservation:promoted', {
+      this.socketIo.server.to(`stream:${payload.streamId}`).emit('reservation:promoted', {
         userId: payload.userId,
         productId: payload.productId,
         timestamp: new Date().toISOString(),
