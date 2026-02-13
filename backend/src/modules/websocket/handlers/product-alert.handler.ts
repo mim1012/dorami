@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { WebsocketGateway } from '../websocket.gateway';
+import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
 
 @Injectable()
 export class ProductAlertHandler {
   private logger: LoggerService;
 
-  constructor(private websocketGateway: WebsocketGateway) {
+  constructor(@Inject('SOCKET_IO_SERVER') private io: Server) {
     this.logger = new LoggerService();
     this.logger.setContext('ProductAlertHandler');
   }
@@ -20,9 +20,8 @@ export class ProductAlertHandler {
   }) {
     this.logger.log(`Broadcasting stock update for product ${payload.productId}`);
 
-    // Broadcast to all active streams
-    // In real implementation, you'd need to know which stream the product belongs to
-    this.websocketGateway.server.emit('product:stock:changed', {
+    // Broadcast to all connected clients
+    this.io.emit('product:stock:changed', {
       productId: payload.productId,
       oldStock: payload.oldStock,
       newStock: payload.newStock,
@@ -34,7 +33,7 @@ export class ProductAlertHandler {
   handleProductCreated(payload: { productId: string }) {
     this.logger.log(`Broadcasting new product: ${payload.productId}`);
 
-    this.websocketGateway.server.emit('product:new', {
+    this.io.emit('product:new', {
       productId: payload.productId,
       timestamp: new Date().toISOString(),
     });
@@ -44,7 +43,7 @@ export class ProductAlertHandler {
   handleProductUpdated(payload: { productId: string }) {
     this.logger.log(`Broadcasting product update: ${payload.productId}`);
 
-    this.websocketGateway.server.emit('product:updated', {
+    this.io.emit('product:updated', {
       productId: payload.productId,
       timestamp: new Date().toISOString(),
     });

@@ -17,7 +17,6 @@ import { AdminModule } from './modules/admin/admin.module';
 import { ProductsModule } from './modules/products/products.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
-import { ChatModule } from './modules/chat/chat.module';
 import { CartModule } from './modules/cart/cart.module';
 import { ReservationModule } from './modules/reservation/reservation.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -30,6 +29,7 @@ import { HealthModule } from './modules/health/health.module';
 import { PointsModule } from './modules/points/points.module';
 import { ReStreamModule } from './modules/restream/restream.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { TestModule } from './test.module';
 
 @Module({
   imports: [
@@ -70,7 +70,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ProductsModule,
     StreamingModule,
     WebsocketModule,
-    ChatModule,
+    // TestModule, // Simple WebSocket test - disabled for now
     CartModule,
     ReservationModule,
     OrdersModule,

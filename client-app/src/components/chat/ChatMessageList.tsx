@@ -7,12 +7,16 @@ interface ChatMessageListProps {
   messages: ChatMessageType[];
   compact?: boolean;
   maxMessages?: number;
+  isAdmin?: boolean;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 export default function ChatMessageList({
   messages,
   compact = false,
   maxMessages,
+  isAdmin = false,
+  onDeleteMessage,
 }: ChatMessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +75,13 @@ export default function ChatMessageList({
           </div>
         ) : (
           displayMessages.map((message) => (
-            <ChatMessage key={message.id} message={message} compact={compact} />
+            <ChatMessage 
+              key={message.id} 
+              message={message} 
+              compact={compact}
+              isAdmin={isAdmin}
+              onDelete={onDeleteMessage}
+            />
           ))
         )}
         <div ref={messagesEndRef} />

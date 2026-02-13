@@ -250,17 +250,33 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
+    const productId = cartItem.productId;
+
     await this.prisma.cart.delete({
       where: { id: cartItemId },
     });
 
     this.logger.log(`Removed cart item ${cartItemId}`);
+
+    // Emit event to trigger reservation promotion
+    this.eventEmitter.emit('cart:product:released', {
+      productId,
+      timestamp: new Date(),
+    });
   }
 
   /**
    * Clear all items from cart
    */
   async clearCart(userId: string): Promise<void> {
+    // Get cart items before deletion to emit events
+    const cartItems = await this.prisma.cart.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+      },
+    });
+
     await this.prisma.cart.deleteMany({
       where: {
         userId,
@@ -269,6 +285,15 @@ export class CartService {
     });
 
     this.logger.log(`Cleared cart for user ${userId}`);
+
+    // Emit event for each product to trigger reservation promotion
+    const productIds = [...new Set(cartItems.map((item) => item.productId))];
+    for (const productId of productIds) {
+      this.eventEmitter.emit('cart:product:released', {
+        productId,
+        timestamp: new Date(),
+      });
+    }
   }
 
   /**
