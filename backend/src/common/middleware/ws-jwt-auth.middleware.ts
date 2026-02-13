@@ -55,7 +55,7 @@ export async function authenticateSocket(
           throw new WsException('Token has been revoked');
         }
       } catch (err) {
-        if (err instanceof WsException) throw err;
+        if (err instanceof WsException) {throw err;}
         // Graceful degradation if Redis unavailable
       }
     }
@@ -68,7 +68,7 @@ export async function authenticateSocket(
 
     return socket as AuthenticatedSocket;
   } catch (error) {
-    if (error instanceof WsException) throw error;
+    if (error instanceof WsException) {throw error;}
     throw new WsException('Invalid token');
   }
 }
