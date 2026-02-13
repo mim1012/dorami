@@ -23,9 +23,7 @@ function LoginContent() {
   }, [isAuthenticated, isLoading, router]);
 
   const handleKakaoLogin = () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    const baseUrl = apiUrl.replace(/\/api.*/, '');
-    window.location.href = `${baseUrl}/auth/kakao`;
+    window.location.href = '/api/v1/auth/kakao';
   };
 
   const handleDevLogin = async () => {
