@@ -6,7 +6,7 @@ name: Deploy to Staging
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
     inputs:
       skip_tests:
@@ -116,6 +116,7 @@ jobs:
             NEXT_PUBLIC_WS_URL=${{ secrets.STAGING_WS_URL }}
             NEXT_PUBLIC_CDN_URL=${{ secrets.STAGING_CDN_URL }}
             NEXT_PUBLIC_PREVIEW_ENABLED=true
+            NEXT_PUBLIC_ENABLE_DEV_AUTH=true
 
   # ===========================================
   # Deploy to Staging Server
@@ -154,8 +155,8 @@ jobs:
             cd /opt/dorami
 
             echo "=== Pulling latest code ==="
-            git fetch origin develop
-            git reset --hard origin/develop
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Pulling new images ==="
             docker compose -f docker-compose.staging.yml pull
