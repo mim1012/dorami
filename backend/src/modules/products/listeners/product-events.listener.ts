@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
-import { WebsocketGateway } from '../../websocket/websocket.gateway';
 import { OrderCreatedEvent } from '../../../common/events/order.events';
 import { ProductStockUpdatedEvent, ProductCreatedEvent } from '../../../common/events/product.events';
 
@@ -14,7 +14,7 @@ export class ProductEventsListener {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly websocketGateway: WebsocketGateway,
+    @Inject('SOCKET_IO_SERVER') private readonly io: Server,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('ProductEventsListener');
@@ -70,7 +70,7 @@ export class ProductEventsListener {
     this.logger.log(`Product created: ${payload.productId} for stream ${payload.streamKey}`);
 
     // Broadcast to all clients in the stream room
-    this.websocketGateway.broadcastToStream(payload.streamKey, 'live:product:added', {
+    this.io.to(`stream:${payload.streamKey}`).emit('live:product:added', {
       type: 'live:product:added',
       data: payload.product,
     });
@@ -87,7 +87,7 @@ export class ProductEventsListener {
     this.logger.log(`Product updated: ${payload.productId}`);
 
     // Broadcast to all clients in the stream room
-    this.websocketGateway.broadcastToStream(payload.streamKey, 'live:product:updated', {
+    this.io.to(`stream:${payload.streamKey}`).emit('live:product:updated', {
       type: 'live:product:updated',
       data: payload.product,
     });
@@ -104,7 +104,7 @@ export class ProductEventsListener {
     this.logger.log(`Product sold out: ${payload.productId}`);
 
     // Broadcast to all clients in the stream room
-    this.websocketGateway.broadcastToStream(payload.streamKey, 'live:product:soldout', {
+    this.io.to(`stream:${payload.streamKey}`).emit('live:product:soldout', {
       type: 'live:product:soldout',
       data: { productId: payload.productId },
     });
@@ -129,14 +129,14 @@ export class ProductEventsListener {
     );
 
     // Broadcast updated product to stream viewers
-    this.websocketGateway.broadcastToStream(payload.streamKey, 'live:product:updated', {
+    this.io.to(`stream:${payload.streamKey}`).emit('live:product:updated', {
       type: 'live:product:updated',
       data: payload.product,
     });
 
     // Send low stock warning if stock is low (< 5)
     if (payload.newStock > 0 && payload.newStock < 5) {
-      this.websocketGateway.broadcastToStream(payload.streamKey, 'product:low-stock', {
+      this.io.to(`stream:${payload.streamKey}`).emit('product:low-stock', {
         type: 'product:low-stock',
         data: {
           productId: payload.productId,
@@ -158,7 +158,7 @@ export class ProductEventsListener {
 
     if (payload.streamKey) {
       // Broadcast product deletion to stream viewers
-      this.websocketGateway.broadcastToStream(payload.streamKey, 'live:product:deleted', {
+      this.io.to(`stream:${payload.streamKey}`).emit('live:product:deleted', {
         type: 'live:product:deleted',
         data: { productId: payload.productId },
       });
