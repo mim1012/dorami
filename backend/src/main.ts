@@ -47,10 +47,7 @@ async function bootstrap() {
     logger.warn('⚠️ Running in DEVELOPMENT mode');
   }
   
-  // Create app with cors enabled for WebSocket
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    cors: true,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   logger.log('AppModule created');
 
   // Serve static files from uploads directory
