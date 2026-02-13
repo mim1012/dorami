@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { globalIoServer } from '../../main';
+import { SocketIoProvider } from './socket-io.provider';
 import { ProductAlertHandler } from './handlers/product-alert.handler';
 import { OrderAlertHandler } from './handlers/order-alert.handler';
 import { AdminNotificationHandler } from './handlers/admin-notification.handler';
@@ -18,19 +18,11 @@ import { AdminNotificationHandler } from './handlers/admin-notification.handler'
     }),
   ],
   providers: [
-    {
-      provide: 'SOCKET_IO_SERVER',
-      useFactory: () => {
-        if (!globalIoServer) {
-          throw new Error('Socket.IO server not initialized. Call setGlobalIoServer() in main.ts bootstrap.');
-        }
-        return globalIoServer;
-      },
-    },
+    SocketIoProvider,
     ProductAlertHandler,
     OrderAlertHandler,
     AdminNotificationHandler,
   ],
-  exports: ['SOCKET_IO_SERVER'],
+  exports: [SocketIoProvider],
 })
 export class WebsocketModule {}
