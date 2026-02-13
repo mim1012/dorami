@@ -110,7 +110,7 @@ export class PointsExpirationService {
   }
 
   private async sendExpirationWarnings(config: { pointExpirationEnabled: boolean }) {
-    if (!config.pointExpirationEnabled) return;
+    if (!config.pointExpirationEnabled) {return;}
 
     const warningDate = new Date();
     warningDate.setDate(warningDate.getDate() + 7);
