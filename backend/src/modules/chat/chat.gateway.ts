@@ -17,6 +17,11 @@ interface ChatMessagePayload {
   message: string;
 }
 
+interface DeleteMessagePayload {
+  liveId: string;
+  messageId: string;
+}
+
 @WebSocketGateway({
   namespace: 'chat',
   cors: {
@@ -174,6 +179,57 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     return {
       type: 'chat:send-message:success',
       data: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
+
+  @SubscribeMessage('chat:delete-message')
+  async handleDeleteMessage(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: DeleteMessagePayload,
+  ) {
+    // Check if user is ADMIN
+    if (client.user.role !== 'ADMIN') {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'FORBIDDEN',
+        message: 'Only administrators can delete messages',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Validate messageId
+    if (!payload.messageId) {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'INVALID_MESSAGE_ID',
+        message: 'Message ID is required',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const roomName = `live:${payload.liveId}`;
+
+    console.log(`🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`);
+
+    // Broadcast deletion to all clients in room
+    this.server.to(roomName).emit('chat:message-deleted', {
+      type: 'chat:message-deleted',
+      data: {
+        messageId: payload.messageId,
+        liveId: payload.liveId,
+        deletedBy: client.user.userId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    return {
+      type: 'chat:delete-message:success',
+      data: {
+        messageId: payload.messageId,
         timestamp: new Date().toISOString(),
       },
     };

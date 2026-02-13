@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { WebsocketGateway } from '../websocket.gateway';
+import { Server } from 'socket.io';
 import { LoggerService } from '../../../common/logger/logger.service';
 
 /**
@@ -11,7 +11,7 @@ import { LoggerService } from '../../../common/logger/logger.service';
 export class AdminNotificationHandler {
   private readonly logger: LoggerService;
 
-  constructor(private readonly websocketGateway: WebsocketGateway) {
+  constructor(@Inject('SOCKET_IO_SERVER') private readonly io: Server) {
     this.logger = new LoggerService();
     this.logger.setContext('AdminNotificationHandler');
   }
@@ -27,9 +27,7 @@ export class AdminNotificationHandler {
   }) {
     this.logger.log('Notice updated, broadcasting to all clients');
 
-    if (this.websocketGateway.server) {
-      this.websocketGateway.server.emit('notice:updated', payload);
-    }
+    this.io.emit('notice:updated', payload);
   }
 
   /**
@@ -44,12 +42,10 @@ export class AdminNotificationHandler {
   }) {
     this.logger.log(`Payment confirmed for order ${payload.orderId}`);
 
-    // Could broadcast to admin dashboard
-    if (this.websocketGateway.server) {
-      this.websocketGateway.server.emit('admin:order:payment-confirmed', {
-        type: 'admin:order:payment-confirmed',
-        data: payload,
-      });
-    }
+    // Broadcast to admin dashboard
+    this.io.emit('admin:order:payment-confirmed', {
+      type: 'admin:order:payment-confirmed',
+      data: payload,
+    });
   }
 }

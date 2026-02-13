@@ -19,18 +19,26 @@ export async function createTestStream(): Promise<string> {
       throw new Error(`createTestStream login failed: ${loginRes.status()}`);
     }
 
-    // Extract accessToken from Set-Cookie header
-    const setCookie = loginRes.headers()['set-cookie'] || '';
-    const tokenMatch = setCookie.match(/accessToken=([^;]+)/);
-    const accessToken = tokenMatch ? tokenMatch[1] : '';
+    // Call GET /auth/me to get CSRF token cookie
+    const meRes = await apiContext.get('/api/v1/auth/me');
+    if (!meRes.ok()) {
+      throw new Error(`createTestStream /auth/me failed: ${meRes.status()}`);
+    }
+
+    // Extract cookies from Set-Cookie header
+    const setCookie = meRes.headers()['set-cookie'] || '';
+    const csrfTokenMatch = setCookie.match(/csrf-token=([^;]+)/);
+    const csrfToken = csrfTokenMatch ? csrfTokenMatch[1] : '';
+
+    if (!csrfToken) {
+      throw new Error('CSRF token not found in cookies');
+    }
 
     // Create a stream (needs CSRF token for non-GET requests)
-    const csrfToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const streamRes = await apiContext.post('/api/v1/streaming/start', {
       data: { expiresAt },
       headers: {
-        Cookie: `accessToken=${accessToken}; csrf-token=${csrfToken}`,
         'x-csrf-token': csrfToken,
       },
     });

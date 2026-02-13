@@ -45,7 +45,7 @@ export class ReservationController {
   /**
    * Epic 7: Get user's reservations
    */
-  @Get()
+  @Get('my')
   @ApiOperation({ summary: 'Get current user reservations' })
   @ApiResponse({ status: 200, description: 'Reservations retrieved', type: ReservationListDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
