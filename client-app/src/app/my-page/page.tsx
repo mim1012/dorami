@@ -121,6 +121,12 @@ export default function MyPagePage() {
     return null;
   }
 
+  // Admin users are redirected to admin dashboard
+  if (user.role === 'ADMIN') {
+    router.replace('/admin');
+    return null;
+  }
+
   if (!profile) {
     return (
       <>

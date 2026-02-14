@@ -35,7 +35,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
     const product = await page.evaluate(
       async ({ streamKey }) => {
         // 관리자로 로그인
-        const loginRes = await fetch('/api/v1/auth/dev-login', {
+        const loginRes = await fetch('/api/auth/dev-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -47,7 +47,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
         const csrf = match ? match[1] : '';
 
         // 상품 생성
-        const productRes = await fetch('/api/v1/products', {
+        const productRes = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -86,7 +86,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
 
     // 3. 다시 일반 사용자로 로그인
     await page.evaluate(async () => {
-      await fetch('/api/v1/auth/dev-login', {
+      await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -128,7 +128,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch('/api/v1/cart', {
+      await fetch('/api/cart', {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -140,7 +140,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
       async ({ productId }) => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch('/api/v1/cart', {
+        const res = await fetch('/api/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -173,7 +173,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
     await expect(page.getByText('장바구니')).toBeVisible({ timeout: 15000 });
 
     const cartData = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/cart', { credentials: 'include' });
+      const res = await fetch('/api/cart', { credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
       return data.data || data;
@@ -227,7 +227,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
       async ({ productId }) => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch('/api/v1/cart', {
+        const res = await fetch('/api/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -248,7 +248,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch('/api/v1/cart', {
+      await fetch('/api/cart', {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',

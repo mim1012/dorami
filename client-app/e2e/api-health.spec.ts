@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('API Health Check', () => {
   test('should have working API proxy', async ({ request }) => {
-    const response = await request.get('/api/v1/health');
+    const response = await request.get('/api/health');
 
     expect(response.ok()).toBeTruthy();
     expect(response.status()).toBe(200);

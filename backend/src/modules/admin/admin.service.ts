@@ -20,6 +20,7 @@ import {
   UpdateUserStatusDto,
   ShippingAddressDto,
   UserStatisticsDto,
+  UpdateSystemSettingsDto,
 } from './dto/admin.dto';
 import {
   UserStatus as PrismaUserStatus,
@@ -374,6 +375,34 @@ export class AdminService {
 
     const messagesTrend = this.calculateTrend(last7DaysMessages, previous7DaysMessages);
 
+    // 6. Daily revenue aggregation (last 7 days)
+    const dailyRevenueMap = new Map<string, { date: string; revenue: number; orderCount: number }>();
+
+    const last7DaysConfirmedOrders = await this.prisma.order.findMany({
+      where: {
+        paymentStatus: 'CONFIRMED',
+        paidAt: { gte: last7DaysStart },
+      },
+      select: { paidAt: true, total: true },
+      orderBy: { paidAt: 'asc' },
+    });
+
+    last7DaysConfirmedOrders.forEach((order) => {
+      const dateKey = order.paidAt.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      if (!dailyRevenueMap.has(dateKey)) {
+        dailyRevenueMap.set(dateKey, { date: dateKey, revenue: 0, orderCount: 0 });
+      }
+
+      const day = dailyRevenueMap.get(dateKey);
+      day.revenue += Number(order.total);
+      day.orderCount += 1;
+    });
+
+    const dailyRevenue = Array.from(dailyRevenueMap.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+
     return {
       revenue: {
         value: revenueLast7Days,
@@ -406,6 +435,7 @@ export class AdminService {
         trend: messagesTrend.formatted,
         trendUp: messagesTrend.isUp,
       },
+      dailyRevenue,
       // Legacy field for backward compatibility
       viewers: {
         value: 0,
@@ -465,6 +495,68 @@ export class AdminService {
 
     const verb = actionMap[action] || action.toLowerCase();
     return `${entity} ${verb}`;
+  }
+
+  /**
+   * Get system settings (cart timer, bank info, shipping fee, notifications)
+   */
+  async getSystemSettings() {
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: {},
+      create: { id: 'system' },
+    });
+    return {
+      defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
+      emailNotificationsEnabled: config.emailNotificationsEnabled,
+    };
+  }
+
+  /**
+   * Update system settings (cart timer, bank info, shipping fee, notifications)
+   */
+  async updateSystemSettings(dto: UpdateSystemSettingsDto) {
+    const updateData: Record<string, any> = {};
+    if (dto.defaultCartTimerMinutes !== undefined) {
+      updateData.defaultCartTimerMinutes = dto.defaultCartTimerMinutes;
+    }
+    if (dto.defaultShippingFee !== undefined) {
+      updateData.defaultShippingFee = dto.defaultShippingFee;
+    }
+    if (dto.bankName !== undefined) {
+      updateData.bankName = dto.bankName;
+    }
+    if (dto.bankAccountNumber !== undefined) {
+      updateData.bankAccountNumber = dto.bankAccountNumber;
+    }
+    if (dto.bankAccountHolder !== undefined) {
+      updateData.bankAccountHolder = dto.bankAccountHolder;
+    }
+    if (dto.emailNotificationsEnabled !== undefined) {
+      updateData.emailNotificationsEnabled = dto.emailNotificationsEnabled;
+    }
+
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: updateData,
+      create: {
+        id: 'system',
+        ...updateData,
+      },
+    });
+
+    return {
+      defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
+      emailNotificationsEnabled: config.emailNotificationsEnabled,
+    };
   }
 
   /**

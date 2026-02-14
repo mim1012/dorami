@@ -3,10 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { Bell, User, Package, MessageCircle, Share2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 export function FloatingNav() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   const navItems = [
     {
@@ -18,7 +20,7 @@ export function FloatingNav() {
     {
       icon: User,
       label: '프로필',
-      onClick: () => router.push('/my-page'),
+      onClick: () => router.push(user?.role === 'ADMIN' ? '/admin' : '/my-page'),
       title: '회원정보',
     },
     {

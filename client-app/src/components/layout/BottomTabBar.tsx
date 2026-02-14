@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
 import { useCart } from '@/lib/contexts/CartContext';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 
 interface TabItem {
@@ -27,6 +28,7 @@ export function BottomTabBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { getTotalItems } = useCart();
+  const { user } = useAuth();
   const cartItemCount = getTotalItems();
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
 
@@ -34,7 +36,8 @@ export function BottomTabBar() {
     if (tab.isInquiry) {
       setIsInquiryOpen(true);
     } else if (tab.path) {
-      router.push(tab.path);
+      const path = tab.id === 'mypage' && user?.role === 'ADMIN' ? '/admin' : tab.path;
+      router.push(path);
     }
   };
 

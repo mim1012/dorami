@@ -36,7 +36,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
 
-        const res = await fetch('/api/v1/products', {
+        const res = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -73,7 +73,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
 
     // 1. 사용자로 로그인
     await page.evaluate(async () => {
-      await fetch('/api/v1/auth/dev-login', {
+      await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -85,7 +85,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch('/api/v1/cart', {
+      await fetch('/api/cart', {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -97,7 +97,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
       async ({ productId }) => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch('/api/v1/cart', {
+        const res = await fetch('/api/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -113,7 +113,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
     const order = await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      const res = await fetch('/api/v1/orders/from-cart', {
+      const res = await fetch('/api/orders/from-cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -144,7 +144,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
     // 관리자로 다시 로그인
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.evaluate(async () => {
-      await fetch('/api/v1/auth/dev-login', {
+      await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -185,7 +185,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
 
-        const res = await fetch(`/api/v1/admin/orders/${orderId}/confirm-payment`, {
+        const res = await fetch(`/api/admin/orders/${orderId}/confirm-payment`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -193,7 +193,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
 
         if (!res.ok) {
           // 대안 엔드포인트 시도
-          const res2 = await fetch(`/api/v1/orders/${orderId}/confirm`, {
+          const res2 = await fetch(`/api/orders/${orderId}/confirm`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
             credentials: 'include',
@@ -229,7 +229,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
     // 사용자로 로그인하여 주문 상태 확인
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.evaluate(async () => {
-      await fetch('/api/v1/auth/dev-login', {
+      await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -240,7 +240,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
     // API로 주문 상태 조회
     const order = await page.evaluate(
       async ({ orderId }) => {
-        const res = await fetch(`/api/v1/orders/${orderId}`, { credentials: 'include' });
+        const res = await fetch(`/api/orders/${orderId}`, { credentials: 'include' });
         if (!res.ok) return null;
         const data = await res.json();
         return data.data || data;
@@ -311,7 +311,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
 
     // 포인트 잔액 확인
     const points = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/points/balance', { credentials: 'include' });
+      const res = await fetch('/api/points/balance', { credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
       return data.data || data;

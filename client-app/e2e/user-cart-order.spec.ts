@@ -67,7 +67,7 @@ test.describe('Cart Item Management', () => {
 
     // API로 상품 목록 가져오기
     const products = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/products', { credentials: 'include' });
+      const res = await fetch('/api/products', { credentials: 'include' });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data || [];
@@ -84,7 +84,7 @@ test.describe('Cart Item Management', () => {
     const addResult = await page.evaluate(async (productId: string) => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      const res = await fetch('/api/v1/cart', {
+      const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -134,7 +134,7 @@ test.describe('Checkout Flow', () => {
         const csrf = match ? match[1] : '';
 
         // 상품 목록 조회
-        const prodRes = await fetch('/api/v1/products', { credentials: 'include' });
+        const prodRes = await fetch('/api/products', { credentials: 'include' });
         if (!prodRes.ok) return null;
         const prodData = await prodRes.json();
         const products = prodData.data || [];
@@ -143,7 +143,7 @@ test.describe('Checkout Flow', () => {
         const product = products[0];
 
         // 첫 번째 상품 장바구니 추가 (백엔드)
-        const cartRes = await fetch('/api/v1/cart', {
+        const cartRes = await fetch('/api/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -178,7 +178,7 @@ test.describe('Checkout Flow', () => {
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      const res = await fetch('/api/v1/cart', { credentials: 'include' });
+      const res = await fetch('/api/cart', { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
       const cartData = data.data || data;
@@ -268,7 +268,7 @@ test.describe('Checkout Page Display', () => {
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch('/api/v1/cart', {
+      await fetch('/api/cart', {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',
