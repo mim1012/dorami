@@ -80,16 +80,15 @@ function AdminOrdersContent() {
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   // Redirect if not admin
-  // TEMPORARILY DISABLED FOR TESTING
-  // useEffect(() => {
-  //   if (!authLoading) {
-  //     if (!user) {
-  //       router.push('/login');
-  //     } else if (user.role !== 'ADMIN') {
-  //       router.push('/');
-  //     }
-  //   }
-  // }, [user, authLoading, router]);
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'ADMIN') {
+        router.push('/');
+      }
+    }
+  }, [user, authLoading, router]);
 
   // Update URL params
   useEffect(() => {
@@ -125,110 +124,31 @@ function AdminOrdersContent() {
   // Fetch orders
   useEffect(() => {
     const fetchOrders = async () => {
-      // TEMPORARILY DISABLED FOR TESTING
-      // if (!user || user.role !== 'ADMIN') return;
+      if (!user || user.role !== 'ADMIN') return;
 
       setIsLoading(true);
       setError(null);
 
       try {
-        // Use mock data for demo
-        const mockOrders: OrderListItem[] = [
-          {
-            id: 'ORD-001',
-            userId: 'user1',
-            userEmail: 'customer1@example.com',
-            depositorName: '김철수',
-            instagramId: '@customer1',
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-            shippingStatus: 'DELIVERED',
-            subtotal: 150000,
-            shippingFee: 3000,
-            total: 153000,
-            itemCount: 2,
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            shippedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            deliveredAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          },
-          {
-            id: 'ORD-002',
-            userId: 'user2',
-            userEmail: 'customer2@example.com',
-            depositorName: '이영희',
-            instagramId: '@customer2',
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-            shippingStatus: 'SHIPPED',
-            subtotal: 89000,
-            shippingFee: 3000,
-            total: 92000,
-            itemCount: 1,
-            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            paidAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            shippedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            deliveredAt: null,
-          },
-          {
-            id: 'ORD-003',
-            userId: 'user3',
-            userEmail: 'customer3@example.com',
-            depositorName: '박민수',
-            instagramId: '@customer3',
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-            shippingStatus: 'PREPARING',
-            subtotal: 199000,
-            shippingFee: 0,
-            total: 199000,
-            itemCount: 1,
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            paidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            shippedAt: null,
-            deliveredAt: null,
-          },
-          {
-            id: 'ORD-004',
-            userId: 'user4',
-            userEmail: 'customer4@example.com',
-            depositorName: '정수진',
-            instagramId: '@customer4',
-            status: 'PENDING',
-            paymentStatus: 'PENDING',
-            shippingStatus: 'PENDING',
-            subtotal: 67150,
-            shippingFee: 3000,
-            total: 70150,
-            itemCount: 1,
-            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            paidAt: null,
-            shippedAt: null,
-            deliveredAt: null,
-          },
-          {
-            id: 'ORD-005',
-            userId: 'user5',
-            userEmail: 'customer5@example.com',
-            depositorName: '최지우',
-            instagramId: '@customer5',
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-            shippingStatus: 'PREPARING',
-            subtotal: 119200,
-            shippingFee: 3000,
-            total: 122200,
-            itemCount: 1,
-            createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-            paidAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-            shippedAt: null,
-            deliveredAt: null,
-          },
-        ];
+        const params: any = {
+          page,
+          limit: pageSize,
+          sortBy,
+          sortOrder,
+        };
 
-        setOrders(mockOrders);
-        setTotal(mockOrders.length);
-        setTotalPages(1);
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (dateFrom) params.dateFrom = dateFrom;
+        if (dateTo) params.dateTo = dateTo;
+        if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
+        if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter;
+        if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter;
+
+        const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
+
+        setOrders(response.data.orders);
+        setTotal(response.data.total);
+        setTotalPages(response.data.totalPages);
       } catch (err: any) {
         console.error('Failed to fetch orders:', err);
         setError(err.response?.data?.message || '주문 목록을 불러오는데 실패했습니다');
@@ -385,14 +305,19 @@ function AdminOrdersContent() {
 
   const getStatusBadge = (status: string, type: 'order' | 'payment' | 'shipping') => {
     const orderColors: Record<string, string> = {
+      PENDING: 'bg-warning/10 text-warning border-warning',
       PENDING_PAYMENT: 'bg-warning/10 text-warning border-warning',
+      CONFIRMED: 'bg-success/10 text-success border-success',
       PAYMENT_CONFIRMED: 'bg-success/10 text-success border-success',
+      SHIPPED: 'bg-info/10 text-info border-info',
+      DELIVERED: 'bg-success/10 text-success border-success',
       CANCELLED: 'bg-error/10 text-error border-error',
     };
 
     const paymentColors: Record<string, string> = {
       PENDING: 'bg-warning/10 text-warning border-warning',
       CONFIRMED: 'bg-success/10 text-success border-success',
+      PAID: 'bg-success/10 text-success border-success',
       FAILED: 'bg-error/10 text-error border-error',
     };
 
@@ -404,22 +329,28 @@ function AdminOrdersContent() {
     };
 
     const orderLabels: Record<string, string> = {
+      PENDING: '입금 대기',
       PENDING_PAYMENT: '입금 대기',
+      CONFIRMED: '결제 완료',
       PAYMENT_CONFIRMED: '결제 완료',
+      SHIPPED: '배송중',
+      DELIVERED: '배송 완료',
       CANCELLED: '취소됨',
     };
 
     const paymentLabels: Record<string, string> = {
-      PENDING: '대기',
-      CONFIRMED: '확인',
-      FAILED: '실패',
+      PENDING: '입금 대기',
+      CONFIRMED: '결제 확인',
+      FAILED: '결제 실패',
+      PAID: '결제 완료',
     };
 
     const shippingLabels: Record<string, string> = {
       PENDING: '대기',
+      PREPARING: '준비중',
       PROCESSING: '준비중',
       SHIPPED: '배송중',
-      DELIVERED: '배송완료',
+      DELIVERED: '배송 완료',
     };
 
     const colorMap =
@@ -537,187 +468,186 @@ function AdminOrdersContent() {
     paymentStatusFilter.length > 0 ||
     shippingStatusFilter.length > 0;
 
-  // TEMPORARILY DISABLED FOR TESTING
-  // if (authLoading || (user && user.role !== 'ADMIN')) {
-  //   return (
-  //     <div className="min-h-screen bg-white flex items-center justify-center">
-  //       <Body>Loading...</Body>
-  //     </div>
-  //   );
-  // }
+  if (authLoading || (user && user.role !== 'ADMIN')) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Body>Loading...</Body>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Display className="text-hot-pink mb-2">주문 관리</Display>
-          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
+    <div className="space-y-6">
+      <div className="mb-8">
+        <Display className="text-hot-pink mb-2">주문 관리</Display>
+        <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
+      </div>
+
+      {error && (
+        <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
+          <Body className="text-error">{error}</Body>
         </div>
+      )}
 
-        {error && (
-          <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
-            <Body className="text-error">{error}</Body>
-          </div>
-        )}
-
-        {/* Search and Filter Section */}
-        <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
-          {/* Search Input */}
-          <div className="flex gap-4">
-            <Input
-              placeholder="주문번호, 이메일, 입금자명, 인스타그램 ID로 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-            />
-            <Button
-              variant={isFilterOpen ? 'primary' : 'outline'}
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="whitespace-nowrap"
-            >
-              {isFilterOpen ? '필터 숨기기' : '필터 보기'}
+      {/* Search and Filter Section */}
+      <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
+        {/* Search Input */}
+        <div className="flex gap-4">
+          <Input
+            placeholder="주문번호, 이메일, 입금자명, 인스타그램 ID로 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            fullWidth
+          />
+          <Button
+            variant={isFilterOpen ? 'primary' : 'outline'}
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="whitespace-nowrap"
+          >
+            {isFilterOpen ? '필터 숨기기' : '필터 보기'}
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={handleClearFilters}>
+              전체 초기화
             </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" onClick={handleClearFilters}>
-                전체 초기화
-              </Button>
-            )}
-          </div>
-
-          {/* Filter Panel */}
-          {isFilterOpen && (
-            <div className="pt-4 border-t border-gray-200 space-y-4">
-              <Heading2 className="text-hot-pink text-body">필터</Heading2>
-
-              {/* Date Range */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="주문일 시작"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setPage(1);
-                  }}
-                  fullWidth
-                />
-                <Input
-                  label="주문일 종료"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setPage(1);
-                  }}
-                  fullWidth
-                />
-              </div>
-
-              {/* Order Status Filter */}
-              <div>
-                <Body className="text-primary-text font-medium mb-2">주문 상태</Body>
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { value: 'PENDING_PAYMENT', label: '입금 대기' },
-                    { value: 'PAYMENT_CONFIRMED', label: '결제 완료' },
-                    { value: 'CANCELLED', label: '취소됨' },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={value}
-                      onClick={() => handleStatusToggle(value, 'order')}
-                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        orderStatusFilter.includes(value)
-                          ? 'bg-hot-pink text-white'
-                          : 'bg-white text-secondary-text hover:bg-gray-100'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment Status Filter */}
-              <div>
-                <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { value: 'PENDING', label: '대기' },
-                    { value: 'CONFIRMED', label: '확인' },
-                    { value: 'FAILED', label: '실패' },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={value}
-                      onClick={() => handleStatusToggle(value, 'payment')}
-                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        paymentStatusFilter.includes(value)
-                          ? 'bg-hot-pink text-white'
-                          : 'bg-white text-secondary-text hover:bg-gray-100'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Status Filter */}
-              <div>
-                <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { value: 'PENDING', label: '대기' },
-                    { value: 'PROCESSING', label: '준비중' },
-                    { value: 'SHIPPED', label: '배송중' },
-                    { value: 'DELIVERED', label: '배송완료' },
-                  ].map(({ value, label }) => (
-                    <button
-                      key={value}
-                      onClick={() => handleStatusToggle(value, 'shipping')}
-                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        shippingStatusFilter.includes(value)
-                          ? 'bg-hot-pink text-white'
-                          : 'bg-white text-secondary-text hover:bg-gray-100'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Body className="text-secondary-text">주문 목록 불러오는 중...</Body>
-          </div>
-        ) : (
-          <>
-            <Table
-              columns={columns}
-              data={orders}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              emptyMessage="필터 조건에 맞는 주문이 없습니다"
-              getRowClassName={(order) =>
-                order.paymentStatus === 'PENDING' ? 'border-l-4 border-warning bg-warning/5' : ''
-              }
-            />
+        {/* Filter Panel */}
+        {isFilterOpen && (
+          <div className="pt-4 border-t border-gray-200 space-y-4">
+            <Heading2 className="text-hot-pink text-body">필터</Heading2>
 
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={total}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </>
+            {/* Date Range */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="주문일 시작"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                fullWidth
+              />
+              <Input
+                label="주문일 종료"
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                fullWidth
+              />
+            </div>
+
+            {/* Order Status Filter */}
+            <div>
+              <Body className="text-primary-text font-medium mb-2">주문 상태</Body>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'PENDING_PAYMENT', label: '입금 대기' },
+                  { value: 'PAYMENT_CONFIRMED', label: '결제 완료' },
+                  { value: 'SHIPPED', label: '배송중' },
+                  { value: 'DELIVERED', label: '배송 완료' },
+                  { value: 'CANCELLED', label: '취소됨' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => handleStatusToggle(value, 'order')}
+                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                      orderStatusFilter.includes(value)
+                        ? 'bg-hot-pink text-white'
+                        : 'bg-white text-secondary-text hover:bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Status Filter */}
+            <div>
+              <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'PENDING', label: '대기' },
+                  { value: 'CONFIRMED', label: '확인' },
+                  { value: 'FAILED', label: '실패' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => handleStatusToggle(value, 'payment')}
+                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                      paymentStatusFilter.includes(value)
+                        ? 'bg-hot-pink text-white'
+                        : 'bg-white text-secondary-text hover:bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Shipping Status Filter */}
+            <div>
+              <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'PENDING', label: '대기' },
+                  { value: 'PROCESSING', label: '준비중' },
+                  { value: 'SHIPPED', label: '배송중' },
+                  { value: 'DELIVERED', label: '배송완료' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => handleStatusToggle(value, 'shipping')}
+                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                      shippingStatusFilter.includes(value)
+                        ? 'bg-hot-pink text-white'
+                        : 'bg-white text-secondary-text hover:bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Body className="text-secondary-text">주문 목록 불러오는 중...</Body>
+        </div>
+      ) : (
+        <>
+          <Table
+            columns={columns}
+            data={orders}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            emptyMessage="필터 조건에 맞는 주문이 없습니다"
+            getRowClassName={(order) =>
+              order.paymentStatus === 'PENDING' ? 'border-l-4 border-warning bg-warning/5' : ''
+            }
+          />
+
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={total}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </>
+      )}
     </div>
   );
 }
