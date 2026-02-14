@@ -165,7 +165,7 @@ jobs:
             docker compose -f docker-compose.staging.yml run --rm backend npx prisma migrate deploy
 
             echo "=== Restarting services ==="
-            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+            docker compose -f docker-compose.staging.yml up -d --build --remove-orphans
 
             echo "=== Cleaning up old images ==="
             docker image prune -f
