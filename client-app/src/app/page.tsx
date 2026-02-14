@@ -118,17 +118,8 @@ export default function Home() {
   const [isNextLiveActive, setIsNextLiveActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState('all');
   const liveSectionRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
-
-  const categories = [
-    { id: 'all', label: '전체' },
-    { id: 'fashion', label: '패션' },
-    { id: 'electronics', label: '전자기기' },
-    { id: 'home', label: '홈/리빙' },
-    { id: 'beauty', label: '뷰티' },
-  ];
 
   useEffect(() => {
     setHeroVisible(true);
@@ -224,7 +215,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-hot-pink/20"></div>
@@ -234,7 +225,7 @@ export default function Home() {
               style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}
             ></div>
           </div>
-          <p className="text-gray-500 animate-pulse text-lg font-medium">로딩 중...</p>
+          <p className="text-secondary-text animate-pulse text-lg font-medium">로딩 중...</p>
         </div>
       </div>
     );
@@ -242,7 +233,7 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center">
         <div className="text-center px-6">
           <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-error-bg flex items-center justify-center">
             <svg
@@ -261,7 +252,7 @@ export default function Home() {
             </svg>
           </div>
           <p className="text-error mb-2 font-bold text-xl">{error}</p>
-          <p className="text-gray-500 mb-6 text-sm">네트워크 연결을 확인해주세요</p>
+          <p className="text-secondary-text mb-6 text-sm">네트워크 연결을 확인해주세요</p>
           <button
             onClick={() => window.location.reload()}
             className="px-8 py-3.5 bg-hot-pink rounded-full hover:opacity-90 text-white font-bold transition-all active:scale-95 shadow-hot-pink"
@@ -276,7 +267,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
       {/* HERO SECTION */}
-      <header className="relative overflow-hidden bg-white">
+      <header className="relative overflow-hidden bg-primary-black">
         <div
           className={`relative z-10 p-4 pt-6 pb-8 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
         >
@@ -290,7 +281,7 @@ export default function Home() {
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
                   DoRaMi
                 </h1>
-                <p className="text-[10px] text-gray-400 -mt-0.5 tracking-[0.2em] uppercase font-semibold">
+                <p className="text-[10px] text-secondary-text -mt-0.5 tracking-[0.2em] uppercase font-semibold">
                   Live Shopping Experience
                 </p>
               </div>
@@ -299,7 +290,7 @@ export default function Home() {
               <ThemeToggle />
               <button
                 onClick={() => router.push('/alerts')}
-                className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 bg-gray-100 border border-gray-200 hover:border-hot-pink/50"
+                className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 bg-content-bg border border-border-color hover:border-hot-pink/50"
                 aria-label="알림"
               >
                 <svg
@@ -324,14 +315,14 @@ export default function Home() {
 
           {/* Hero text */}
           <div className="mb-5">
-            <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">
+            <h2 className="text-2xl font-black text-primary-text leading-tight mb-2">
               라이브로 만나는
               <br />
               <span className="bg-gradient-to-r from-hot-pink to-[#7928CA] bg-clip-text text-transparent">
                 특별한 쇼핑
               </span>
             </h2>
-            <p className="text-sm text-gray-500">실시간 방송에서 최저가로 만나보세요</p>
+            <p className="text-sm text-secondary-text">실시간 방송에서 최저가로 만나보세요</p>
           </div>
 
           <SearchBar onSubmit={handleSearch} />
@@ -347,7 +338,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="px-5 py-3 border border-gray-300 text-gray-600 font-semibold text-sm rounded-full hover:border-hot-pink/50 transition-all"
+                className="px-5 py-3 border border-border-color text-secondary-text font-semibold text-sm rounded-full hover:border-hot-pink/50 transition-all"
               >
                 로그인
               </button>
@@ -366,25 +357,6 @@ export default function Home() {
       {/* Social Proof */}
       <SocialProof followerCount={6161} />
 
-      {/* Category Quick Filter */}
-      <section className="px-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
-                activeCategory === cat.id
-                  ? 'bg-gradient-to-r from-hot-pink to-[#7928CA] text-white shadow-hot-pink scale-105'
-                  : 'bg-gray-100 text-gray-500 border border-gray-200 hover:border-hot-pink/40 hover:text-gray-900 hover:bg-hot-pink/5'
-              }`}
-            >
-              <span>{cat.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {/* UPCOMING LIVES */}
       <section className="px-4 mb-8" ref={liveSectionRef}>
         <div className="flex items-center justify-between mb-4">
@@ -397,7 +369,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => router.push('/live')}
-            className="text-sm text-gray-500 hover:text-hot-pink transition-colors font-semibold"
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
           >
             전체보기 &rarr;
           </button>
@@ -463,13 +435,13 @@ export default function Home() {
           </div>
           <button
             onClick={() => router.push('/shop')}
-            className="text-sm text-gray-500 hover:text-hot-pink transition-colors font-semibold"
+            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
           >
             더보기 &rarr;
           </button>
         </div>
         {featuredProducts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-secondary-text">
             <svg
               className="mx-auto mb-4"
               width="48"

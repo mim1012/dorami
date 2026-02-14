@@ -20,7 +20,7 @@ export function Button({
 
   const variantStyles = {
     primary: 'bg-hot-pink text-white hover:bg-hot-pink/90 active:scale-95',
-    secondary: 'bg-content-bg text-primary-text hover:bg-content-bg/80 active:scale-95 border border-gray-300',
+    secondary: 'bg-content-bg text-primary-text hover:bg-content-bg/80 active:scale-95 border border-border-color',
     outline: 'border-2 border-hot-pink text-hot-pink hover:bg-hot-pink hover:text-white active:scale-95',
     ghost: 'text-hot-pink hover:bg-hot-pink/10 active:scale-95',
   };

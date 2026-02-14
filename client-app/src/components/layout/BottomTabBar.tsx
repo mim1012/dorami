@@ -18,7 +18,7 @@ interface TabItem {
 
 const tabs: TabItem[] = [
   { id: 'home', label: '홈', icon: Home, path: '/' },
-  { id: 'shop', label: '상품', icon: ShoppingCart, path: '/shop' },
+  { id: 'cart', label: '장바구니', icon: ShoppingCart, path: '/cart' },
   { id: 'live', label: '라이브', icon: Video, path: '/live' },
   { id: 'inquiry', label: '문의', icon: MessageCircle, isInquiry: true },
   { id: 'mypage', label: '마이', icon: User, path: '/my-page' },

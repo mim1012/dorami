@@ -141,6 +141,8 @@ model Product {
   timerEnabled        Boolean       @default(false) @map("timer_enabled")
   timerDuration       Int           @default(10) @map("timer_duration") // minutes
   imageUrl            String?       @map("image_url")
+  images              String[]      @default([])
+  sortOrder           Int           @default(0) @map("sort_order")
   isNew               Boolean       @default(false) @map("is_new") // Display "NEW" badge
   discountRate        Decimal?      @map("discount_rate") @db.Decimal(5, 2) // 0.00 ~ 100.00
   originalPrice       Decimal?      @map("original_price") @db.Decimal(10, 2) // Price before discount
@@ -267,14 +269,14 @@ model OrderItem {
   id          String  @id @default(uuid())
   orderId     String  @map("order_id")
   order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String  @map("product_id")
+  productId   String?  @map("product_id")
   productName String  @map("product_name") // Denormalized
   price       Decimal @db.Decimal(10, 2)
   quantity    Int
   color       String?
   size        String?
   shippingFee Decimal @map("shipping_fee") @db.Decimal(10, 2)
-  Product     Product @relation(fields: [productId], references: [id])
+  Product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@map("order_items")

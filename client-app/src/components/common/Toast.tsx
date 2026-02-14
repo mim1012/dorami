@@ -79,7 +79,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       <p className={`text-sm font-medium ${textColors[toast.type]} flex-1`}>{toast.message}</p>
       <button
         onClick={onClose}
-        className="text-gray-400 hover:text-gray-600 transition-colors"
+        className="text-secondary-text hover:text-primary-text transition-colors"
         aria-label="알림 닫기"
       >
         <X className="w-4 h-4" />

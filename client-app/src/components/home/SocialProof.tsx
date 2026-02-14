@@ -37,7 +37,7 @@ export function SocialProof({ followerCount, message = '믿고 머물 수 있는
       
       <div className="relative flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs text-gray-500 mb-1 font-medium">{message}</p>
+          <p className="text-xs text-secondary-text mb-1 font-medium">{message}</p>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-black bg-gradient-to-r from-hot-pink to-[#FF4500] bg-clip-text text-transparent">
               {displayCount.toLocaleString()}

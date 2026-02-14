@@ -87,7 +87,7 @@ export default function OrderConfirmationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-info"></div>
       </div>
     );
@@ -95,11 +95,11 @@ export default function OrderConfirmationPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+      <div className="min-h-screen bg-primary-black flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-content-bg rounded-lg shadow-lg p-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">주문을 찾을 수 없습니다</h1>
-            <p className="text-gray-600 mb-6">{error || '주문 정보를 불러올 수 없습니다'}</p>
+            <h1 className="text-2xl font-bold text-primary-text mb-2">주문을 찾을 수 없습니다</h1>
+            <p className="text-secondary-text mb-6">{error || '주문 정보를 불러올 수 없습니다'}</p>
             <button
               onClick={() => router.push('/orders')}
               className="px-6 py-2 bg-info text-white rounded-lg hover:bg-info/80"
@@ -115,7 +115,7 @@ export default function OrderConfirmationPage() {
   const statusSteps = getStatusSteps();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-primary-black py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Success Message */}
         <div className="bg-success-bg border border-success/20 rounded-lg p-6 mb-6">
@@ -131,10 +131,10 @@ export default function OrderConfirmationPage() {
         </div>
 
         {/* Status Timeline */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">주문 상태</h2>
+        <div className="bg-content-bg rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-primary-text mb-6">주문 상태</h2>
           <div className="relative">
-            <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200"></div>
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-border-color"></div>
             <div className="relative flex justify-between">
               {statusSteps.map((step, index) => (
                 <div key={index} className="flex flex-col items-center" style={{ flex: 1 }}>
@@ -143,19 +143,19 @@ export default function OrderConfirmationPage() {
                       step.completed
                         ? 'bg-success border-success'
                         : step.current
-                          ? 'bg-pink-500 border-pink-500 animate-pulse'
-                          : 'bg-white border-gray-300'
+                          ? 'bg-hot-pink border-hot-pink animate-pulse'
+                          : 'bg-content-bg border-border-color'
                     }`}
                   >
                     <step.icon
                       className={`w-5 h-5 ${
-                        step.completed || step.current ? 'text-white' : 'text-gray-400'
+                        step.completed || step.current ? 'text-white' : 'text-secondary-text'
                       }`}
                     />
                   </div>
                   <p
                     className={`text-xs mt-2 text-center ${
-                      step.completed || step.current ? 'text-gray-900 font-medium' : 'text-gray-500'
+                      step.completed || step.current ? 'text-primary-text font-medium' : 'text-secondary-text'
                     }`}
                   >
                     {step.label}
@@ -168,48 +168,48 @@ export default function OrderConfirmationPage() {
 
         {/* Bank Transfer Instructions */}
         {order.bankTransferInfo && (
-          <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-lg shadow-md p-6 mb-6 border-2 border-pink-200">
-            <h2 className="text-xl font-semibold text-pink-900 mb-4">💳 무통장 입금 안내</h2>
-            <div className="bg-white rounded-lg p-4 space-y-3">
+          <div className="bg-hot-pink/10 rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30">
+            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 무통장 입금 안내</h2>
+            <div className="bg-content-bg rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">은행명</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-secondary-text">은행명</span>
+                <span className="font-semibold text-primary-text">
                   {order.bankTransferInfo.bankName}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">계좌번호</span>
+                <span className="text-secondary-text">계좌번호</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-gray-900">
+                  <span className="font-mono font-semibold text-primary-text">
                     {formatAccountNumber(order.bankTransferInfo.accountNumber)}
                   </span>
                   <button
                     onClick={copyAccountNumber}
-                    className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+                    className="p-1.5 rounded-md bg-content-bg hover:bg-border-color transition-colors"
                   >
                     {copied ? (
                       <Check className="w-4 h-4 text-success" />
                     ) : (
-                      <Copy className="w-4 h-4 text-gray-600" />
+                      <Copy className="w-4 h-4 text-secondary-text" />
                     )}
                   </button>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">예금주</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-secondary-text">예금주</span>
+                <span className="font-semibold text-primary-text">
                   {order.bankTransferInfo.accountHolder}
                 </span>
               </div>
-              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                <span className="text-gray-900 font-semibold">입금 금액</span>
-                <span className="text-2xl font-bold text-pink-600">
+              <div className="flex justify-between items-center pt-3 border-t border-border-color">
+                <span className="text-primary-text font-semibold">입금 금액</span>
+                <span className="text-2xl font-bold text-hot-pink">
                   {formatPrice(order.bankTransferInfo.amount)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">입금자명</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-secondary-text">입금자명</span>
+                <span className="font-semibold text-primary-text">
                   {order.bankTransferInfo.depositorName}
                 </span>
               </div>
@@ -229,36 +229,36 @@ export default function OrderConfirmationPage() {
         )}
 
         {/* Order Items */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">주문 상품</h2>
+        <div className="bg-content-bg rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-primary-text mb-4">주문 상품</h2>
           <div className="space-y-3">
             {order.items.map((item) => (
               <div
                 key={item.id}
-                className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+                className="flex justify-between items-center py-3 border-b border-border-color last:border-0"
               >
                 <div className="flex-1">
-                  <p className="font-medium text-gray-900">{item.productName}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-medium text-primary-text">{item.productName}</p>
+                  <p className="text-sm text-secondary-text">
                     수량: {item.quantity} × {formatPrice(item.price)}
                   </p>
                 </div>
-                <p className="font-semibold text-gray-900">
+                <p className="font-semibold text-primary-text">
                   {formatPrice(item.price * item.quantity)}
                 </p>
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
-            <div className="flex justify-between text-gray-600">
+          <div className="mt-4 pt-4 border-t border-border-color space-y-2">
+            <div className="flex justify-between text-secondary-text">
               <span>소계</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-secondary-text">
               <span>배송비</span>
               <span>{formatPrice(order.shippingFee)}</span>
             </div>
-            <div className="flex justify-between text-xl font-bold text-gray-900 pt-2">
+            <div className="flex justify-between text-xl font-bold text-primary-text pt-2">
               <span>합계</span>
               <span>{formatPrice(order.total)}</span>
             </div>
@@ -269,7 +269,7 @@ export default function OrderConfirmationPage() {
         <div className="flex justify-center gap-4">
           <button
             onClick={() => router.push('/orders')}
-            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+            className="px-6 py-3 bg-content-bg text-primary-text rounded-lg hover:bg-border-color font-medium transition-colors"
           >
             내 주문 보기
           </button>

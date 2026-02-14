@@ -27,10 +27,10 @@ export function ProductCard({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm active:scale-[0.97]"
+      className="group cursor-pointer rounded-2xl overflow-hidden bg-white border border-border-color shadow-sm active:scale-[0.97]"
     >
       {/* Image container */}
-      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+      <div className="relative aspect-[4/3] bg-content-bg overflow-hidden">
         <Image
           src={imageUrl}
           alt={name}
@@ -74,7 +74,7 @@ export function ProductCard({
 
       {/* Info section */}
       <div className="p-3.5">
-        <h3 className="text-sm text-gray-900 font-bold mb-2 line-clamp-2 leading-snug group-hover:text-hot-pink transition-colors duration-300">
+        <h3 className="text-sm text-primary-text font-bold mb-2 line-clamp-2 leading-snug group-hover:text-hot-pink transition-colors duration-300">
           {name}
         </h3>
         <div className="flex flex-col gap-0.5">
@@ -94,7 +94,7 @@ export function ProductCard({
           </div>
         </div>
         {/* Social proof */}
-        <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
+        <div className="flex items-center gap-3 mt-2 text-[11px] text-secondary-text">
           <span className="flex items-center gap-1">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
             {Math.floor(Math.random() * 500 + 100)}

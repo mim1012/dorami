@@ -44,18 +44,18 @@ export default function ProductDetailModal({
       {/* Modal Content */}
       <div className="relative w-full max-w-md bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-content-bg border-b border-gray-800 p-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-content-bg border-b border-border-color p-4 flex items-center justify-between">
           <Heading2 className="text-primary-text">상품 상세</Heading2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            className="p-2 hover:bg-content-bg rounded-full transition-colors"
           >
             <X className="w-6 h-6 text-secondary-text" />
           </button>
         </div>
 
         {/* Product Image */}
-        <div className="relative w-full aspect-square bg-gray-900">
+        <div className="relative w-full aspect-square bg-primary-black">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
@@ -65,7 +65,7 @@ export default function ProductDetailModal({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-gray-600">No Image</span>
+              <span className="text-secondary-text">No Image</span>
             </div>
           )}
         </div>
@@ -124,7 +124,7 @@ export default function ProductDetailModal({
                       px-4 py-2 rounded-button text-caption transition-all
                       ${selectedColor === color
                         ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-gray-800'
+                        : 'bg-primary-black text-secondary-text hover:bg-content-bg'
                       }
                     `}
                   >
@@ -148,7 +148,7 @@ export default function ProductDetailModal({
                       px-4 py-2 rounded-button text-caption transition-all
                       ${selectedSize === size
                         ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-gray-800'
+                        : 'bg-primary-black text-secondary-text hover:bg-content-bg'
                       }
                     `}
                   >
@@ -166,7 +166,7 @@ export default function ProductDetailModal({
             className={`
               w-full py-4 rounded-button font-bold text-body transition-colors
               ${product.status === ProductStatus.SOLD_OUT || product.stock === 0
-                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                ? 'bg-content-bg text-secondary-text cursor-not-allowed'
                 : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
               }
             `}

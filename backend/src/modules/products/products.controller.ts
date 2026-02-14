@@ -18,6 +18,9 @@ import {
   UpdateStockDto,
   ProductResponseDto,
   ProductStatus,
+  ReorderProductsDto,
+  BulkUpdateStatusDto,
+  BulkDeleteDto,
 } from './dto/product.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
@@ -137,6 +140,54 @@ export class ProductsController {
 
     // Otherwise return all products (legacy behavior)
     return await this.productsService.findAll(status);
+  }
+
+  /**
+   * Duplicate a product (Admin only)
+   */
+  @Post(':id/duplicate')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Duplicate a product (Admin only)' })
+  @ApiParam({ name: 'id', description: 'Product ID to duplicate' })
+  @ApiResponse({ status: 201, description: 'Product duplicated successfully', type: ProductResponseDto })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async duplicate(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productsService.duplicate(id);
+  }
+
+  /**
+   * Reorder products (Admin only)
+   */
+  @Patch('reorder')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Reorder products by ID array (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Products reordered successfully' })
+  async reorder(@Body() dto: ReorderProductsDto): Promise<void> {
+    return this.productsService.reorder(dto);
+  }
+
+  /**
+   * Bulk update product status (Admin only)
+   */
+  @Post('bulk-status')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Bulk update product status (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Products status updated' })
+  async bulkUpdateStatus(@Body() dto: BulkUpdateStatusDto): Promise<{ updated: number }> {
+    return this.productsService.bulkUpdateStatus(dto);
+  }
+
+  /**
+   * Bulk delete products (Admin only)
+   */
+  @Post('bulk-delete')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Bulk delete products (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Products deleted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async bulkDelete(@Body() dto: BulkDeleteDto): Promise<{ deleted: number; failed: string[] }> {
+    return this.productsService.bulkDelete(dto.ids);
   }
 
   /**

@@ -39,7 +39,7 @@ export function SearchBar({
   return (
     <div className={`relative w-full ${className}`}>
       <Search
-        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0A0A0] pointer-events-none"
+        className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text pointer-events-none"
         size={20}
       />
       <input
@@ -54,7 +54,7 @@ export function SearchBar({
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A0A0A0] hover:text-white transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-text hover:text-primary-text transition-colors"
         >
           <X size={18} />
         </button>

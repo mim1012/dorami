@@ -62,7 +62,7 @@ export function CreateReservationButton({
           w-full px-6 py-3 rounded-lg font-medium text-white
           bg-gradient-to-r from-orange-500 to-red-500
           hover:from-orange-600 hover:to-red-600
-          disabled:from-gray-400 disabled:to-gray-400
+          disabled:from-content-bg disabled:to-content-bg
           disabled:cursor-not-allowed
           transition-all duration-200
           shadow-md hover:shadow-lg
@@ -102,7 +102,7 @@ export function CreateReservationButton({
         <p className="mt-2 text-sm text-error text-center">{error}</p>
       )}
 
-      <p className="mt-3 text-xs text-gray-600 text-center">
+      <p className="mt-3 text-xs text-secondary-text text-center">
         재고가 확보되면 순서대로 구매 기회를 드립니다
       </p>
     </div>

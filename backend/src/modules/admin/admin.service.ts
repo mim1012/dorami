@@ -297,6 +297,84 @@ export class AdminService {
     };
   }
 
+  async exportOrdersCsv(query: GetOrdersQueryDto): Promise<string> {
+    // Reuse the same filter logic from getOrderList but without pagination
+    const {
+      sortBy,
+      sortOrder,
+      search,
+      dateFrom,
+      dateTo,
+      orderStatus,
+      paymentStatus,
+      shippingStatus,
+      minAmount,
+      maxAmount,
+    } = query;
+
+    const where: OrderWhereClause = {};
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { userEmail: { contains: search, mode: 'insensitive' } },
+        { depositorName: { contains: search, mode: 'insensitive' } },
+        { instagramId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) {
+        where.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = endDate;
+      }
+    }
+
+    if (orderStatus && orderStatus.length > 0) {
+      where.status = { in: orderStatus as OrderStatus[] };
+    }
+    if (paymentStatus && paymentStatus.length > 0) {
+      where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
+    }
+    if (shippingStatus && shippingStatus.length > 0) {
+      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
+    }
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.total = {};
+      if (minAmount !== undefined) {where.total.gte = minAmount;}
+      if (maxAmount !== undefined) {where.total.lte = maxAmount;}
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where,
+      orderBy: { [sortBy]: sortOrder },
+    });
+
+    const Papa = await import('papaparse');
+
+    const csvData = orders.map((order) => ({
+      '주문번호': order.id,
+      '고객이메일': order.userEmail,
+      '입금자명': order.depositorName,
+      '인스타그램ID': order.instagramId,
+      '주문상태': order.status,
+      '결제상태': order.paymentStatus,
+      '배송상태': order.shippingStatus,
+      '소계': Number(order.subtotal),
+      '배송비': Number(order.shippingFee),
+      '합계': Number(order.total),
+      '주문일': order.createdAt.toISOString(),
+      '결제일': order.paidAt ? order.paidAt.toISOString() : '',
+    }));
+
+    return Papa.unparse(csvData);
+  }
+
   async getDashboardStats(): Promise<DashboardStatsDto> {
     const now = new Date();
 
@@ -353,6 +431,7 @@ export class AdminService {
     // 5. Top 5 Selling Products
     const topProducts = await this.prisma.orderItem.groupBy({
       by: ['productId', 'productName'],
+      where: { productId: { not: null } },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: 'desc' } },
       take: 5,

@@ -12,6 +12,7 @@ import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
+import { Download } from 'lucide-react';
 
 interface OrderListItem {
   id: string;
@@ -284,6 +285,49 @@ function AdminOrdersContent() {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      const params: Record<string, string> = {
+        sortBy,
+        sortOrder,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
+      if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter.join(',');
+      if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter.join(',');
+      if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter.join(',');
+
+      const queryStr = new URLSearchParams(params).toString();
+
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '';
+      const response = await fetch(`${apiBase}/admin/orders/export?${queryStr}`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      a.href = url;
+      a.download = `orders_${date}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('CSV 파일이 다운로드되었습니다.', 'success');
+    } catch (err: any) {
+      console.error('Failed to export orders:', err);
+      showToast('CSV 내보내기에 실패했습니다.', 'error');
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -478,9 +522,19 @@ function AdminOrdersContent() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <Display className="text-hot-pink mb-2">주문 관리</Display>
-        <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <Display className="text-hot-pink mb-2">주문 관리</Display>
+          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          className="flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          CSV 내보내기
+        </Button>
       </div>
 
       {error && (

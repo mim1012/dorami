@@ -55,7 +55,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className={`border-t border-white/10 bg-black/30 backdrop-blur-sm ${
+      className={`border-t border-border-color bg-black/30 backdrop-blur-sm ${
         compact ? 'p-2' : 'p-3'
       }`}
     >
@@ -64,9 +64,9 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
         <button
           type="button"
           onClick={onToggleEmoji}
-          className={`flex-shrink-0 text-hot-pink hover:bg-white/10 rounded-button transition-colors ${
+          className={`flex-shrink-0 text-hot-pink hover:bg-content-bg rounded-button transition-colors ${
             compact ? 'p-1.5' : 'p-2'
-          } ${emojiPickerOpen ? 'bg-white/10' : ''}`}
+          } ${emojiPickerOpen ? 'bg-content-bg' : ''}`}
           aria-label="Open emoji picker"
           disabled={disabled}
         >
@@ -84,7 +84,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
             placeholder="메시지 입력..."
             maxLength={maxLength}
             disabled={disabled}
-            className={`w-full bg-white/10 text-primary-text border border-white/20 focus:border-hot-pink focus:outline-none transition-colors ${
+            className={`w-full bg-border-color text-primary-text border border-border-color focus:border-hot-pink focus:outline-none transition-colors ${
               compact
                 ? 'px-3 py-1.5 text-sm rounded-full'
                 : 'px-4 py-2 rounded-input text-body'

@@ -35,16 +35,16 @@ export function CartItemCard({
   return (
     <div
       className={`bg-content-bg rounded-xl p-4 border ${
-        isExpired ? 'border-error opacity-60' : 'border-gray-800'
+        isExpired ? 'border-error opacity-60' : 'border-border-color'
       }`}
     >
       <div className="flex gap-4">
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <Heading2 className="text-white mb-1">{item.productName}</Heading2>
+              <Heading2 className="text-primary-text mb-1">{item.productName}</Heading2>
               {(item.color || item.size) && (
-                <Caption className="text-gray-400">
+                <Caption className="text-secondary-text">
                   {item.color && `색상: ${item.color}`}
                   {item.color && item.size && ' · '}
                   {item.size && `사이즈: ${item.size}`}
@@ -60,7 +60,7 @@ export function CartItemCard({
             <div>
               <Body className="text-hot-pink font-bold text-lg">{formatPrice(item.price)}</Body>
               {item.shippingFee > 0 && (
-                <Caption className="text-gray-400">배송비: {formatPrice(item.shippingFee)}</Caption>
+                <Caption className="text-secondary-text">배송비: {formatPrice(item.shippingFee)}</Caption>
               )}
             </div>
 
@@ -69,19 +69,19 @@ export function CartItemCard({
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                   disabled={item.quantity <= 1}
-                  className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 bg-content-bg rounded-lg hover:bg-content-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Minus className="w-4 h-4 text-white" />
+                  <Minus className="w-4 h-4 text-primary-text" />
                 </button>
-                <span className="text-white font-bold min-w-[40px] text-center">
+                <span className="text-primary-text font-bold min-w-[40px] text-center">
                   {item.quantity}
                 </span>
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                   disabled={item.quantity >= 10}
-                  className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 bg-content-bg rounded-lg hover:bg-content-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Plus className="w-4 h-4 text-white" />
+                  <Plus className="w-4 h-4 text-primary-text" />
                 </button>
                 <button
                   onClick={() => onRemove(item.id)}
@@ -95,10 +95,10 @@ export function CartItemCard({
             {isExpired && <div className="text-error font-bold">예약 만료</div>}
           </div>
 
-          <div className="mt-2 pt-2 border-t border-gray-800">
+          <div className="mt-2 pt-2 border-t border-border-color">
             <div className="flex justify-between">
-              <Caption className="text-gray-400">소계</Caption>
-              <Body className="text-white font-bold">{formatPrice(item.total)}</Body>
+              <Caption className="text-secondary-text">소계</Caption>
+              <Body className="text-primary-text font-bold">{formatPrice(item.total)}</Body>
             </div>
           </div>
         </div>

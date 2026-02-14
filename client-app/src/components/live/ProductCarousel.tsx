@@ -44,7 +44,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
 
   if (products.length === 0) {
     return (
-      <div className="w-full bg-gradient-to-r from-white/80 to-white/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200">
+      <div className="w-full bg-gradient-to-r from-content-bg/80 to-content-bg/90 backdrop-blur-sm rounded-2xl p-6 border border-border-color">
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <ShoppingBag className="w-12 h-12 text-secondary-text mb-3 opacity-50" />
           <Body className="text-secondary-text">
@@ -56,7 +56,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
   }
 
   return (
-    <div className="w-full bg-gradient-to-r from-white/80 to-white/90 backdrop-blur-sm rounded-2xl p-4 border border-gray-200">
+    <div className="w-full bg-gradient-to-r from-content-bg/80 to-content-bg/90 backdrop-blur-sm rounded-2xl p-4 border border-border-color">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-2">
         <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
               key={product.id}
               onClick={() => !isUnavailable && onProductClick(product)}
               disabled={isUnavailable}
-              className="flex-shrink-0 w-[200px] bg-content-bg hover:bg-white/10 rounded-xl overflow-hidden transition-all hover:scale-105 disabled:hover:scale-100 disabled:opacity-60 disabled:cursor-not-allowed border border-gray-200 hover:border-hot-pink/50"
+              className="flex-shrink-0 w-[200px] bg-content-bg hover:bg-content-bg rounded-xl overflow-hidden transition-all hover:scale-105 disabled:hover:scale-100 disabled:opacity-60 disabled:cursor-not-allowed border border-border-color hover:border-hot-pink/50"
             >
               {/* Product Image */}
               <div className="relative aspect-square bg-primary-black overflow-hidden">
@@ -146,7 +146,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
           {Array.from({ length: Math.ceil(products.length / 2) }).map((_, index) => (
             <div
               key={index}
-              className="w-1.5 h-1.5 rounded-full bg-white/20"
+              className="w-1.5 h-1.5 rounded-full bg-border-color"
             />
           ))}
         </div>

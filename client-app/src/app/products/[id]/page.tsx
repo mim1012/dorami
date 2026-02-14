@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { getProductById, type Product } from '@/lib/api/products';
+import { apiClient } from '@/lib/api/client';
 import { useCart } from '@/lib/contexts/CartContext';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
@@ -69,33 +70,42 @@ export default function ProductDetailPage() {
     if (next >= 1 && next <= maxQuantity) setQuantity(next);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
-    addItem({
-      productId: product.id,
-      productName: product.name,
-      price: product.price,
-      quantity,
-      imageUrl: product.imageUrl,
-      stock: product.stock || 0,
-    });
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    try {
+      await apiClient.post('/cart', {
+        productId: product.id,
+        quantity,
+      });
+      addItem({
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        quantity,
+        imageUrl: product.imageUrl,
+        stock: product.stock || 0,
+      });
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error);
+      alert(error.response?.data?.message || '장바구니 추가에 실패했습니다.');
+    }
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
+  const handleBuyNow = async () => {
+    await handleAddToCart();
     router.push('/cart');
   };
 
   if (loading) {
     return (
       <>
-        <div className="min-h-screen bg-white pb-24">
+        <div className="min-h-screen bg-primary-black pb-24">
           <div className="flex items-center justify-center h-screen">
             <div className="text-center">
               <div className="w-12 h-12 border-4 border-hot-pink border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <Body className="text-gray-500">상품 정보를 불러오는 중...</Body>
+              <Body className="text-secondary-text">상품 정보를 불러오는 중...</Body>
             </div>
           </div>
         </div>
@@ -112,17 +122,17 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white pb-24">
+      <div className="min-h-screen bg-primary-black pb-24">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="fixed top-4 left-4 z-30 w-10 h-10 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="fixed top-4 left-4 z-30 w-10 h-10 bg-content-bg backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-border-color transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
+          <ArrowLeft className="w-5 h-5 text-primary-text" />
         </button>
 
         {/* Product Image */}
-        <div className="relative w-full aspect-[4/3] bg-gray-100">
+        <div className="relative w-full aspect-[4/3] bg-content-bg">
           <Image
             src={imageUrl}
             alt={product.name}
@@ -142,22 +152,22 @@ export default function ProductDetailPage() {
         <div className="px-4 py-6 space-y-6">
           {/* Name & Price */}
           <div>
-            <Heading2 className="text-gray-900 text-2xl mb-2">
+            <Heading2 className="text-primary-text text-2xl mb-2">
               {product.name}
             </Heading2>
             <Display className="text-hot-pink">
               {formatPrice(product.price)}
             </Display>
-            <Body className="text-gray-500 text-sm mt-1">
+            <Body className="text-secondary-text text-sm mt-1">
               재고: {product.stock}개
             </Body>
           </div>
 
           {/* Description */}
           {product.description && (
-            <div className="border-t border-gray-200 pt-4">
-              <Body className="text-gray-900 font-semibold mb-2">상품 설명</Body>
-              <Body className="text-gray-500 leading-relaxed">
+            <div className="border-t border-border-color pt-4">
+              <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
+              <Body className="text-secondary-text leading-relaxed">
                 {product.description}
               </Body>
             </div>
@@ -165,8 +175,8 @@ export default function ProductDetailPage() {
 
           {/* Color Selector */}
           {colors.length > 0 && (
-            <div className="border-t border-gray-200 pt-4">
-              <Body className="text-gray-900 font-semibold mb-3">색상</Body>
+            <div className="border-t border-border-color pt-4">
+              <Body className="text-primary-text font-semibold mb-3">색상</Body>
               <div className="flex flex-wrap gap-2">
                 {colors.map((color) => (
                   <button
@@ -175,7 +185,7 @@ export default function ProductDetailPage() {
                     className={`px-4 py-2 rounded-full border text-sm transition-colors ${
                       selectedColor === color
                         ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                        : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                        : 'border-border-color text-secondary-text hover:border-hot-pink/40'
                     }`}
                   >
                     {color}
@@ -188,7 +198,7 @@ export default function ProductDetailPage() {
           {/* Size Selector */}
           {sizes.length > 0 && (
             <div>
-              <Body className="text-gray-900 font-semibold mb-3">사이즈</Body>
+              <Body className="text-primary-text font-semibold mb-3">사이즈</Body>
               <div className="flex flex-wrap gap-2">
                 {sizes.map((size) => (
                   <button
@@ -197,7 +207,7 @@ export default function ProductDetailPage() {
                     className={`w-12 h-12 rounded-xl border text-sm font-bold transition-colors ${
                       selectedSize === size
                         ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                        : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                        : 'border-border-color text-secondary-text hover:border-hot-pink/40'
                     }`}
                   >
                     {size}
@@ -208,33 +218,33 @@ export default function ProductDetailPage() {
           )}
 
           {/* Quantity Selector */}
-          <div className="border-t border-gray-200 pt-4">
-            <Body className="text-gray-900 font-semibold mb-3">수량</Body>
+          <div className="border-t border-border-color pt-4">
+            <Body className="text-primary-text font-semibold mb-3">수량</Body>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
-                className="w-11 h-11 bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
-                <Minus className="w-5 h-5 text-gray-700" />
+                <Minus className="w-5 h-5 text-primary-text" />
               </button>
-              <Body className="text-gray-900 font-bold text-2xl w-8 text-center">
+              <Body className="text-primary-text font-bold text-2xl w-8 text-center">
                 {quantity}
               </Body>
               <button
                 onClick={() => handleQuantityChange(1)}
                 disabled={quantity >= maxQuantity}
-                className="w-11 h-11 bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
-                <Plus className="w-5 h-5 text-gray-700" />
+                <Plus className="w-5 h-5 text-primary-text" />
               </button>
             </div>
           </div>
 
           {/* Total */}
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+          <div className="bg-content-bg rounded-2xl p-4 border border-border-color">
             <div className="flex items-center justify-between">
-              <Body className="text-gray-500">총 금액</Body>
+              <Body className="text-secondary-text">총 금액</Body>
               <Display className="text-hot-pink">
                 {formatPrice(product.price * quantity)}
               </Display>
@@ -243,7 +253,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Sticky CTA */}
-        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-white/90 backdrop-blur-sm border-t border-gray-200">
+        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-primary-black/90 backdrop-blur-sm border-t border-border-color">
           <Button
             variant="primary"
             size="lg"

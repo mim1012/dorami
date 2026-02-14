@@ -7,10 +7,12 @@ import {
   Body,
   Query,
   Param,
+  Res,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import {
@@ -77,6 +79,21 @@ export class AdminController {
   @Put('config/shipping-messages')
   async updateShippingMessages(@Body() body: Record<string, string>) {
     return this.adminService.updateShippingMessages(body);
+  }
+
+  @Get('orders/export')
+  async exportOrders(@Query() query: GetOrdersQueryDto, @Res() res: Response) {
+    try {
+      const csv = await this.adminService.exportOrdersCsv(query);
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=orders_${date}.csv`);
+      // Add BOM for Excel UTF-8 compatibility
+      res.send('\uFEFF' + csv);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'CSV export failed';
+      res.status(500).json({ success: false, message });
+    }
   }
 
   @Get('orders/:id')

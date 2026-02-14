@@ -10,6 +10,8 @@ import {
   MaxLength,
   IsUrl,
   IsNotEmpty,
+  ArrayMinSize,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -118,6 +120,16 @@ export class CreateProductDto {
   @IsOptional()
   @IsUrl()
   imageUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Additional gallery images',
+    example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  images?: string[];
 
   @ApiPropertyOptional({
     description: 'Display NEW badge on product card',
@@ -258,6 +270,16 @@ export class UpdateProductDto {
   imageUrl?: string;
 
   @ApiPropertyOptional({
+    description: 'Additional gallery images',
+    example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  images?: string[];
+
+  @ApiPropertyOptional({
     description: 'Product status',
     enum: ProductStatus,
     example: ProductStatus.AVAILABLE,
@@ -329,6 +351,16 @@ export class ProductResponseDto {
   })
   imageUrl?: string;
 
+  @ApiProperty({
+    description: 'Additional gallery images',
+    example: [],
+    type: [String],
+  })
+  images: string[];
+
+  @ApiProperty({ description: 'Sort order for display', example: 0 })
+  sortOrder: number;
+
   @ApiProperty({ description: 'Display NEW badge', example: false })
   isNew: boolean;
 
@@ -368,4 +400,49 @@ export class GetProductsQueryDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+}
+
+export class BulkDeleteDto {
+  @ApiProperty({
+    description: 'Product IDs to delete',
+    example: ['id1', 'id2'],
+    type: [String],
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
+  ids: string[];
+}
+
+export class ReorderProductsDto {
+  @ApiProperty({
+    description: 'Product IDs in desired sort order',
+    example: ['id1', 'id2', 'id3'],
+    type: [String],
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @IsString({ each: true })
+  ids: string[];
+}
+
+export class BulkUpdateStatusDto {
+  @ApiProperty({
+    description: 'Product IDs to update',
+    example: ['id1', 'id2'],
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({
+    description: 'New status for all selected products',
+    enum: ProductStatus,
+    example: ProductStatus.SOLD_OUT,
+  })
+  @IsEnum(ProductStatus)
+  status: ProductStatus;
 }

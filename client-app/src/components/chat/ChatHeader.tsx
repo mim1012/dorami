@@ -8,7 +8,7 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ userCount, isConnected, compact = false }: ChatHeaderProps) {
   return (
-    <div className={`flex items-center justify-between border-b border-white/10 ${
+    <div className={`flex items-center justify-between border-b border-border-color ${
       compact ? 'px-3 py-2' : 'px-4 py-3'
     }`}>
       <h2 className={`text-hot-pink font-bold ${compact ? 'text-body' : 'text-h2'}`}>

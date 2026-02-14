@@ -69,7 +69,7 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
         );
       case 'EXPIRED':
         return (
-          <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-content-bg text-secondary-text rounded-full text-sm font-medium">
             만료됨
           </span>
         );
@@ -91,16 +91,16 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-4 border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-4 border border-border-color">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-primary-text">
             {reservation.productName}
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-secondary-text mt-1">
             예약 번호: #{reservation.reservationNumber}
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-secondary-text">
             수량: {reservation.quantity}개
           </p>
         </div>
@@ -151,14 +151,14 @@ export function ReservationCard({ reservation, onCancel }: ReservationCardProps)
           <button
             onClick={handleCancel}
             disabled={isCancelling}
-            className="px-4 py-2 bg-error text-white rounded-lg hover:bg-error/80 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-error text-white rounded-lg hover:bg-error/80 disabled:bg-content-bg disabled:cursor-not-allowed transition-colors text-sm font-medium"
           >
             {isCancelling ? '취소 중...' : '예약 취소'}
           </button>
         </div>
       )}
 
-      <div className="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
+      <div className="text-xs text-secondary-text mt-4 pt-4 border-t border-border-color">
         예약 일시: {new Date(reservation.createdAt).toLocaleString('ko-KR')}
       </div>
     </div>

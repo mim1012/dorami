@@ -37,7 +37,7 @@ interface FormErrors {
 
 export default function ProfileRegisterPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
     depositorName: '',
@@ -145,6 +145,7 @@ export default function ProfileRegisterPage() {
 
     try {
       await apiClient.post('/users/complete-profile', formData);
+      await refreshProfile();
       router.push('/');
     } catch (error: any) {
       console.error('Profile completion error:', error);

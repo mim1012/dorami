@@ -39,9 +39,9 @@ export function ReservationList() {
 
   if (!reservations || reservations.reservations.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
-        <p className="text-gray-600 text-lg">예약 내역이 없습니다.</p>
-        <p className="text-gray-500 text-sm mt-2">품절 상품 페이지에서 예약할 수 있습니다.</p>
+      <div className="bg-content-bg border border-border-color rounded-lg p-12 text-center">
+        <p className="text-primary-text text-lg">예약 내역이 없습니다.</p>
+        <p className="text-secondary-text text-sm mt-2">품절 상품 페이지에서 예약할 수 있습니다.</p>
       </div>
     );
   }
@@ -58,19 +58,19 @@ export function ReservationList() {
     <div className="space-y-6">
       {/* Summary */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-info/20">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">예약 현황</h2>
+        <h2 className="text-xl font-bold text-primary-text mb-4">예약 현황</h2>
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-lg p-4 text-center">
             <p className="text-2xl font-bold text-info">{reservations.totalCount}</p>
-            <p className="text-sm text-gray-600 mt-1">전체</p>
+            <p className="text-sm text-secondary-text mt-1">전체</p>
           </div>
           <div className="bg-white rounded-lg p-4 text-center">
             <p className="text-2xl font-bold text-warning">{reservations.waitingCount}</p>
-            <p className="text-sm text-gray-600 mt-1">대기 중</p>
+            <p className="text-sm text-secondary-text mt-1">대기 중</p>
           </div>
           <div className="bg-white rounded-lg p-4 text-center">
             <p className="text-2xl font-bold text-success">{reservations.promotedCount}</p>
-            <p className="text-sm text-gray-600 mt-1">구매 가능</p>
+            <p className="text-sm text-secondary-text mt-1">구매 가능</p>
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function ReservationList() {
       {/* Active Reservations */}
       {activeReservations.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-primary-text mb-4">
             활성 예약 ({activeReservations.length})
           </h3>
           {activeReservations.map((reservation) => (
@@ -94,7 +94,7 @@ export function ReservationList() {
       {/* Inactive Reservations */}
       {inactiveReservations.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-600 mb-4">
+          <h3 className="text-lg font-semibold text-secondary-text mb-4">
             완료/취소된 예약 ({inactiveReservations.length})
           </h3>
           {inactiveReservations.map((reservation) => (
