@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatMessage from './ChatMessage';
-import { ChatMessage as ChatMessageType } from './types';
+import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from './types';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 
 interface ChatMessageListProps {
@@ -74,15 +74,41 @@ export default function ChatMessageList({
             </p>
           </div>
         ) : (
-          displayMessages.map((message) => (
-            <ChatMessage 
-              key={message.id} 
-              message={message} 
-              compact={compact}
-              isAdmin={isAdmin}
-              onDelete={onDeleteMessage}
-            />
-          ))
+          displayMessages.map((message) => {
+            // System message rendering (e.g., cart/purchase notifications)
+            if (message.username === SYSTEM_USERNAME) {
+              return (
+                <div
+                  key={message.id}
+                  className={`animate-fade-in flex items-start gap-2 ${
+                    compact ? 'mb-1.5 px-3 py-1' : 'mb-2 px-4 py-1.5'
+                  }`}
+                >
+                  <span className="flex-shrink-0 bg-amber-500/20 text-amber-400 text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                    시스템
+                  </span>
+                  <p
+                    className={`text-amber-200/90 whitespace-pre-wrap break-words ${
+                      compact ? 'text-[13px] leading-snug' : 'text-sm'
+                    }`}
+                  >
+                    {message.message}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                compact={compact}
+                isAdmin={isAdmin}
+                onDelete={onDeleteMessage}
+              />
+            );
+          })
+
         )}
         <div ref={messagesEndRef} />
       </div>
