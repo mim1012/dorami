@@ -487,9 +487,8 @@ export default function AdminProductsPage() {
             value={formData.streamKey}
             onChange={(e) => setFormData({ ...formData, streamKey: e.target.value })}
             placeholder="예: abc123def456"
-            required
             fullWidth
-            helperText="라이브 방송의 Stream Key를 입력하세요"
+            helperText="라이브 방송에 연결하려면 Stream Key를 입력하세요 (선택사항)"
           />
 
           <Input

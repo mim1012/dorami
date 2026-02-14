@@ -47,13 +47,15 @@ export class ProductsService {
    */
   @LogErrors('create product')
   async create(createDto: CreateProductDto): Promise<ProductResponseDto> {
-    // Verify stream exists
-    const stream = await this.prisma.liveStream.findUnique({
-      where: { streamKey: createDto.streamKey },
-    });
+    // Verify stream exists (only if streamKey provided)
+    if (createDto.streamKey) {
+      const stream = await this.prisma.liveStream.findUnique({
+        where: { streamKey: createDto.streamKey },
+      });
 
-    if (!stream) {
-      throw new NotFoundException(`LiveStream with key ${createDto.streamKey} not found`);
+      if (!stream) {
+        throw new NotFoundException(`LiveStream with key ${createDto.streamKey} not found`);
+      }
     }
 
     const product = await this.prisma.product.create({

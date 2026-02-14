@@ -95,21 +95,25 @@ function getMockUpcomingLives(now: number) {
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [featuredProducts, setFeaturedProducts] = useState<Array<{
-    id: string;
-    name: string;
-    price: number;
-    imageUrl: string;
-    isNew?: boolean;
-    discount?: number;
-  }>>([]);
-  const [upcomingLives, setUpcomingLives] = useState<Array<{
-    id: string;
-    title: string;
-    scheduledTime: Date;
-    thumbnailUrl: string;
-    isLive: boolean;
-  }>>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<
+    Array<{
+      id: string;
+      name: string;
+      price: number;
+      imageUrl: string;
+      isNew?: boolean;
+      discount?: number;
+    }>
+  >([]);
+  const [upcomingLives, setUpcomingLives] = useState<
+    Array<{
+      id: string;
+      title: string;
+      scheduledTime: Date;
+      thumbnailUrl: string;
+      isLive: boolean;
+    }>
+  >([]);
   const [nextLiveTime, setNextLiveTime] = useState<Date>(new Date());
   const [isNextLiveActive, setIsNextLiveActive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -143,7 +147,9 @@ export default function Home() {
               id: p.id,
               name: p.name,
               price: p.price,
-              imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+              imageUrl:
+                p.imageUrl ||
+                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
               isNew: p.isNew || false,
               discount: p.discountRate || 0,
             }));
@@ -165,7 +171,9 @@ export default function Home() {
               id: s.id,
               title: s.title,
               scheduledTime: new Date(s.scheduledTime || s.scheduledStartTime || now + 3600000),
-              thumbnailUrl: s.thumbnailUrl || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+              thumbnailUrl:
+                s.thumbnailUrl ||
+                'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
               isLive: s.isLive || false,
             }));
           } else {
@@ -221,7 +229,10 @@ export default function Home() {
           <div className="relative w-20 h-20 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-hot-pink/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-hot-pink animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-[#7928CA] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
+            <div
+              className="absolute inset-2 rounded-full border-4 border-transparent border-b-[#7928CA] animate-spin"
+              style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}
+            ></div>
           </div>
           <p className="text-gray-500 animate-pulse text-lg font-medium">로딩 중...</p>
         </div>
@@ -234,7 +245,16 @@ export default function Home() {
       <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
         <div className="text-center px-6">
           <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-error-bg flex items-center justify-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#DC2626"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -257,8 +277,9 @@ export default function Home() {
     <div className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
       {/* HERO SECTION */}
       <header className="relative overflow-hidden bg-white">
-
-        <div className={`relative z-10 p-4 pt-6 pb-8 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div
+          className={`relative z-10 p-4 pt-6 pb-8 transition-all duration-700 ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        >
           {/* Brand header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -269,7 +290,9 @@ export default function Home() {
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
                   DoRaMi
                 </h1>
-                <p className="text-[10px] text-gray-400 -mt-0.5 tracking-[0.2em] uppercase font-semibold">Live Shopping Experience</p>
+                <p className="text-[10px] text-gray-400 -mt-0.5 tracking-[0.2em] uppercase font-semibold">
+                  Live Shopping Experience
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -279,11 +302,22 @@ export default function Home() {
                 className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 bg-gray-100 border border-gray-200 hover:border-hot-pink/50"
                 aria-label="알림"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-hot-pink rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-hot-pink animate-pulse">3</span>
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-hot-pink rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-hot-pink animate-pulse">
+                  3
+                </span>
               </button>
             </div>
           </div>
@@ -291,8 +325,11 @@ export default function Home() {
           {/* Hero text */}
           <div className="mb-5">
             <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">
-              라이브로 만나는<br/>
-              <span className="bg-gradient-to-r from-hot-pink to-[#7928CA] bg-clip-text text-transparent">특별한 쇼핑</span>
+              라이브로 만나는
+              <br />
+              <span className="bg-gradient-to-r from-hot-pink to-[#7928CA] bg-clip-text text-transparent">
+                특별한 쇼핑
+              </span>
             </h2>
             <p className="text-sm text-gray-500">실시간 방송에서 최저가로 만나보세요</p>
           </div>
@@ -358,17 +395,21 @@ export default function Home() {
               {upcomingLives.length}
             </span>
           </div>
-          <button 
+          <button
             onClick={() => router.push('/live')}
             className="text-sm text-gray-500 hover:text-hot-pink transition-colors font-semibold"
           >
             전체보기 &rarr;
           </button>
         </div>
-        
+
         <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 -mx-4 px-4 snap-x snap-mandatory">
           {upcomingLives.map((live, index) => (
-            <div key={live.id} className="min-w-[280px] max-w-[300px] snap-start flex-shrink-0 animate-stagger-fade" style={{ animationDelay: `${index * 150}ms` }}>
+            <div
+              key={live.id}
+              className="min-w-[280px] max-w-[300px] snap-start flex-shrink-0 animate-stagger-fade"
+              style={{ animationDelay: `${index * 150}ms` }}
+            >
               <UpcomingLiveCard
                 id={live.id}
                 title={live.title}
@@ -385,19 +426,25 @@ export default function Home() {
 
       {/* WEEKLY PICK BANNER */}
       <section className="px-4 mb-8">
-        <div className="relative overflow-hidden rounded-3xl p-7 mb-8" style={{ background: 'linear-gradient(135deg, #FF007A 0%, #7928CA 50%, #FF4500 100%)' }}>
+        <div
+          className="relative overflow-hidden rounded-3xl p-7 mb-8"
+          style={{ background: 'linear-gradient(135deg, #FF007A 0%, #7928CA 50%, #FF4500 100%)' }}
+        >
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4" />
-          
+
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-white/80 text-xs font-bold uppercase tracking-[0.15em] bg-white/10 px-3 py-1 rounded-full">Weekly Pick</span>
+              <span className="text-white/80 text-xs font-bold uppercase tracking-[0.15em] bg-white/10 px-3 py-1 rounded-full">
+                Weekly Pick
+              </span>
             </div>
             <h3 className="text-white text-2xl font-black mt-2 mb-3 leading-tight">
-              이번 주<br/>인기 상품
+              이번 주<br />
+              인기 상품
             </h3>
             <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도라미 에디터 추천!</p>
-            <button 
+            <button
               onClick={() => router.push('/shop')}
               className="bg-white text-[#FF007A] px-7 py-3 rounded-full text-sm font-black hover:bg-white/90 transition-all active:scale-95 shadow-lg"
             >
@@ -412,9 +459,9 @@ export default function Home() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-1.5 h-7 rounded-full bg-gradient-to-b from-[#7928CA] to-[#FF4500]"></div>
-            <h2 className="text-xl font-black">추천 상품</h2>
+            <h2 className="text-xl font-black">지난 추천 상품</h2>
           </div>
-          <button 
+          <button
             onClick={() => router.push('/shop')}
             className="text-sm text-gray-500 hover:text-hot-pink transition-colors font-semibold"
           >
@@ -423,7 +470,17 @@ export default function Home() {
         </div>
         {featuredProducts.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="mx-auto mb-4"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
               <line x1="3" y1="6" x2="21" y2="6" />
               <path d="M16 10a4 4 0 0 1-8 0" />
@@ -431,9 +488,12 @@ export default function Home() {
             <p className="font-medium">등록된 상품이 없습니다</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3.5" style={{
-            gridTemplateRows: 'auto',
-          }}>
+          <div
+            className="grid grid-cols-2 gap-3.5"
+            style={{
+              gridTemplateRows: 'auto',
+            }}
+          >
             {featuredProducts.map((product, index) => (
               <div
                 key={product.id}
