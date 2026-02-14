@@ -19,11 +19,14 @@ import { ProductStatus } from '@live-commerce/shared-types';
 export { ProductStatus } from '@live-commerce/shared-types';
 
 export class CreateProductDto {
-  @ApiProperty({ description: 'Stream key to associate product with', example: 'abc123def456' })
+  @ApiPropertyOptional({
+    description: 'Stream key to associate product with',
+    example: 'abc123def456',
+  })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(255)
-  streamKey: string;
+  streamKey?: string;
 
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt', maxLength: 100 })
   @IsString()
@@ -37,20 +40,33 @@ export class CreateProductDto {
   @Type(() => Number)
   price: number;
 
-  @ApiProperty({ description: 'Available quantity (stock)', example: 50, minimum: 1, maximum: 9999 })
+  @ApiProperty({
+    description: 'Available quantity (stock)',
+    example: 50,
+    minimum: 1,
+    maximum: 9999,
+  })
   @IsNumber()
   @Min(1)
   @Max(9999)
   @Type(() => Number)
   stock: number; // Maps to quantity in database
 
-  @ApiPropertyOptional({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
+  @ApiPropertyOptional({
+    description: 'Color options',
+    example: ['Red', 'Blue', 'Black'],
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   colorOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Size options', example: ['S', 'M', 'L', 'XL'], type: [String] })
+  @ApiPropertyOptional({
+    description: 'Size options',
+    example: ['S', 'M', 'L', 'XL'],
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -63,18 +79,31 @@ export class CreateProductDto {
   @Type(() => Number)
   shippingFee?: number;
 
-  @ApiPropertyOptional({ description: 'Free shipping message', example: 'Free shipping over ₩50,000', maxLength: 50 })
+  @ApiPropertyOptional({
+    description: 'Free shipping message',
+    example: 'Free shipping over ₩50,000',
+    maxLength: 50,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
   freeShippingMessage?: string;
 
-  @ApiPropertyOptional({ description: 'Enable cart reservation timer', example: false, default: false })
+  @ApiPropertyOptional({
+    description: 'Enable cart reservation timer',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   timerEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Reservation timer duration in minutes', example: 10, minimum: 1, maximum: 60 })
+  @ApiPropertyOptional({
+    description: 'Reservation timer duration in minutes',
+    example: 10,
+    minimum: 1,
+    maximum: 60,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -82,17 +111,29 @@ export class CreateProductDto {
   @Type(() => Number)
   timerDuration?: number;
 
-  @ApiPropertyOptional({ description: 'Product image URL', example: 'https://example.com/product.jpg' })
+  @ApiPropertyOptional({
+    description: 'Product image URL',
+    example: 'https://example.com/product.jpg',
+  })
   @IsOptional()
   @IsUrl()
   imageUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Display NEW badge on product card', example: false, default: false })
+  @ApiPropertyOptional({
+    description: 'Display NEW badge on product card',
+    example: false,
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isNew?: boolean;
 
-  @ApiPropertyOptional({ description: 'Discount rate percentage (0-100)', example: 15, minimum: 0, maximum: 100 })
+  @ApiPropertyOptional({
+    description: 'Discount rate percentage (0-100)',
+    example: 15,
+    minimum: 0,
+    maximum: 100,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -100,7 +141,11 @@ export class CreateProductDto {
   @Type(() => Number)
   discountRate?: number;
 
-  @ApiPropertyOptional({ description: 'Original price before discount', example: 35000, minimum: 0 })
+  @ApiPropertyOptional({
+    description: 'Original price before discount',
+    example: 35000,
+    minimum: 0,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -119,7 +164,11 @@ export class CreateProductDto {
 }
 
 export class UpdateProductDto {
-  @ApiPropertyOptional({ description: 'Product name', example: 'Premium Cotton T-Shirt', maxLength: 100 })
+  @ApiPropertyOptional({
+    description: 'Product name',
+    example: 'Premium Cotton T-Shirt',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -132,7 +181,12 @@ export class UpdateProductDto {
   @Type(() => Number)
   price?: number;
 
-  @ApiPropertyOptional({ description: 'Available quantity (stock)', example: 50, minimum: 1, maximum: 9999 })
+  @ApiPropertyOptional({
+    description: 'Available quantity (stock)',
+    example: 50,
+    minimum: 1,
+    maximum: 9999,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -140,13 +194,21 @@ export class UpdateProductDto {
   @Type(() => Number)
   stock?: number; // Maps to quantity in database
 
-  @ApiPropertyOptional({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
+  @ApiPropertyOptional({
+    description: 'Color options',
+    example: ['Red', 'Blue', 'Black'],
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   colorOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Size options', example: ['S', 'M', 'L', 'XL'], type: [String] })
+  @ApiPropertyOptional({
+    description: 'Size options',
+    example: ['S', 'M', 'L', 'XL'],
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -159,7 +221,11 @@ export class UpdateProductDto {
   @Type(() => Number)
   shippingFee?: number;
 
-  @ApiPropertyOptional({ description: 'Free shipping message', example: 'Free shipping over ₩50,000', maxLength: 50 })
+  @ApiPropertyOptional({
+    description: 'Free shipping message',
+    example: 'Free shipping over ₩50,000',
+    maxLength: 50,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
@@ -170,7 +236,12 @@ export class UpdateProductDto {
   @IsBoolean()
   timerEnabled?: boolean;
 
-  @ApiPropertyOptional({ description: 'Reservation timer duration in minutes', example: 10, minimum: 1, maximum: 60 })
+  @ApiPropertyOptional({
+    description: 'Reservation timer duration in minutes',
+    example: 10,
+    minimum: 1,
+    maximum: 60,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -178,12 +249,19 @@ export class UpdateProductDto {
   @Type(() => Number)
   timerDuration?: number;
 
-  @ApiPropertyOptional({ description: 'Product image URL', example: 'https://example.com/product.jpg' })
+  @ApiPropertyOptional({
+    description: 'Product image URL',
+    example: 'https://example.com/product.jpg',
+  })
   @IsOptional()
   @IsUrl()
   imageUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Product status', enum: ProductStatus, example: ProductStatus.AVAILABLE })
+  @ApiPropertyOptional({
+    description: 'Product status',
+    enum: ProductStatus,
+    example: ProductStatus.AVAILABLE,
+  })
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
@@ -200,7 +278,10 @@ export class UpdateProductDto {
 }
 
 export class UpdateStockDto {
-  @ApiProperty({ description: 'Quantity to add/subtract (positive for increase, negative for decrease)', example: -5 })
+  @ApiProperty({
+    description: 'Quantity to add/subtract (positive for increase, negative for decrease)',
+    example: -5,
+  })
   @IsNumber()
   quantity: number;
 }
@@ -209,8 +290,8 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Product ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   id: string;
 
-  @ApiProperty({ description: 'Stream key', example: 'abc123def456' })
-  streamKey: string;
+  @ApiPropertyOptional({ description: 'Stream key', example: 'abc123def456' })
+  streamKey?: string | null;
 
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt' })
   name: string;
@@ -230,7 +311,10 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Shipping fee in KRW', example: 3000 })
   shippingFee: number;
 
-  @ApiPropertyOptional({ description: 'Free shipping message', example: 'Free shipping over ₩50,000' })
+  @ApiPropertyOptional({
+    description: 'Free shipping message',
+    example: 'Free shipping over ₩50,000',
+  })
   freeShippingMessage?: string;
 
   @ApiProperty({ description: 'Timer enabled', example: false })
@@ -239,7 +323,10 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Timer duration in minutes', example: 10 })
   timerDuration: number;
 
-  @ApiPropertyOptional({ description: 'Product image URL', example: 'https://example.com/product.jpg' })
+  @ApiPropertyOptional({
+    description: 'Product image URL',
+    example: 'https://example.com/product.jpg',
+  })
   imageUrl?: string;
 
   @ApiProperty({ description: 'Display NEW badge', example: false })
@@ -251,7 +338,11 @@ export class ProductResponseDto {
   @ApiPropertyOptional({ description: 'Original price before discount', example: 35000 })
   originalPrice?: number;
 
-  @ApiProperty({ description: 'Product status', enum: ProductStatus, example: ProductStatus.AVAILABLE })
+  @ApiProperty({
+    description: 'Product status',
+    enum: ProductStatus,
+    example: ProductStatus.AVAILABLE,
+  })
   status: ProductStatus;
 
   @ApiProperty({ description: 'Created timestamp', example: '2024-01-15T10:30:00.000Z' })

@@ -129,8 +129,8 @@ enum ModerationAction {
 // Epic 5: Product Catalog & Live Product Management
 model Product {
   id                  String        @id @default(uuid())
-  streamKey           String        @map("stream_key")
-  liveStream          LiveStream    @relation(fields: [streamKey], references: [streamKey], onDelete: Cascade)
+  streamKey           String?       @map("stream_key")
+  liveStream          LiveStream?   @relation(fields: [streamKey], references: [streamKey], onDelete: Cascade)
   name                String
   price               Decimal       @db.Decimal(10, 2)
   quantity            Int
