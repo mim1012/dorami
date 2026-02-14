@@ -22,16 +22,16 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#1A1A1A] rounded-t-3xl animate-slide-up pb-[env(safe-area-inset-bottom)]">
+      <div className="absolute bottom-0 left-0 right-0 bg-content-bg rounded-t-3xl animate-slide-up pb-[env(safe-area-inset-bottom)]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="text-white font-bold text-lg">문의하기</h2>
+          <h2 className="text-primary-text font-bold text-lg">문의하기</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-white/10 transition-colors"
+            className="p-1 rounded-full hover:bg-border-color transition-colors"
             aria-label="닫기"
           >
-            <X className="w-5 h-5 text-white/60" />
+            <X className="w-5 h-5 text-secondary-text" />
           </button>
         </div>
 
@@ -39,7 +39,7 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
         <div className="px-5 pb-6 space-y-3">
           <button
             onClick={() => window.open(KAKAO_CHANNEL_URL, '_blank')}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all"
+            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-border-color hover:bg-content-bg active:scale-[0.98] transition-all"
           >
             <div className="w-10 h-10 rounded-full bg-[#FEE500] flex items-center justify-center flex-shrink-0">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#3C1E1E">
@@ -47,14 +47,14 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
               </svg>
             </div>
             <div className="text-left">
-              <p className="text-white font-semibold text-[15px]">카카오톡 채널 문의</p>
-              <p className="text-white/40 text-xs mt-0.5">카카오톡으로 간편하게 문의하세요</p>
+              <p className="text-primary-text font-semibold text-[15px]">카카오톡 채널 문의</p>
+              <p className="text-secondary-text text-xs mt-0.5">카카오톡으로 간편하게 문의하세요</p>
             </div>
           </button>
 
           <button
             onClick={() => window.open(INSTAGRAM_URL, '_blank')}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-[0.98] transition-all"
+            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-border-color hover:bg-content-bg active:scale-[0.98] transition-all"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center flex-shrink-0">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="white">
@@ -62,8 +62,8 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
               </svg>
             </div>
             <div className="text-left">
-              <p className="text-white font-semibold text-[15px]">인스타그램 문의</p>
-              <p className="text-white/40 text-xs mt-0.5">인스타그램 DM으로 문의하세요</p>
+              <p className="text-primary-text font-semibold text-[15px]">인스타그램 문의</p>
+              <p className="text-secondary-text text-xs mt-0.5">인스타그램 DM으로 문의하세요</p>
             </div>
           </button>
         </div>

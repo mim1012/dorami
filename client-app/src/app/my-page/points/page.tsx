@@ -24,7 +24,7 @@ const TRANSACTION_TYPE_BADGE_COLORS: Record<string, string> = {
   REFUND_CANCELLED: 'bg-warning/20 text-warning border-warning/30',
   MANUAL_ADD: 'bg-warning/20 text-warning border-warning/30',
   MANUAL_SUBTRACT: 'bg-warning/20 text-warning border-warning/30',
-  EXPIRED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  EXPIRED: 'bg-secondary-text/20 text-secondary-text border-secondary-text/30',
 };
 
 const FILTER_OPTIONS = [
@@ -78,7 +78,7 @@ export default function PointsHistoryPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#121212] py-12 px-4 pb-bottom-nav">
+      <div className="min-h-screen bg-primary-black py-12 px-4 pb-bottom-nav">
         <div className="w-full md:max-w-4xl md:mx-auto">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
@@ -93,7 +93,7 @@ export default function PointsHistoryPage() {
 
           {/* Balance Summary */}
           {!balanceLoading && balance && (
-            <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+            <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
               <div className="flex items-center gap-2 mb-4">
                 <Coins className="w-5 h-5 text-hot-pink" />
                 <Heading2 className="text-hot-pink">보유 포인트</Heading2>
@@ -103,7 +103,7 @@ export default function PointsHistoryPage() {
                   {formatPoints(balance.currentBalance)} <span className="text-xl">P</span>
                 </p>
               </div>
-              <div className="h-px bg-white/10 my-4" />
+              <div className="h-px bg-border-color my-4" />
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <Body className="text-secondary-text text-xs">누적 적립</Body>
@@ -136,7 +136,7 @@ export default function PointsHistoryPage() {
                 className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                   typeFilter === option.value
                     ? 'bg-hot-pink text-white border-hot-pink'
-                    : 'bg-content-bg text-secondary-text border-white/10 hover:border-hot-pink/50'
+                    : 'bg-content-bg text-secondary-text border-border-color hover:border-hot-pink/50'
                 }`}
               >
                 {option.label}
@@ -150,15 +150,15 @@ export default function PointsHistoryPage() {
               {[...Array(5)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-content-bg rounded-2xl p-4 border border-white/5 animate-pulse"
+                  className="bg-content-bg rounded-2xl p-4 border border-border-color animate-pulse"
                 >
-                  <div className="h-4 bg-white/10 rounded w-24 mb-2" />
-                  <div className="h-6 bg-white/10 rounded w-32" />
+                  <div className="h-4 bg-border-color rounded w-24 mb-2" />
+                  <div className="h-6 bg-border-color rounded w-32" />
                 </div>
               ))}
             </div>
           ) : !data || data.items.length === 0 ? (
-            <div className="bg-content-bg rounded-2xl p-8 border border-white/5 text-center">
+            <div className="bg-content-bg rounded-2xl p-8 border border-border-color text-center">
               <Coins className="w-12 h-12 text-secondary-text mx-auto mb-3" />
               <Body className="text-secondary-text">포인트 내역이 없습니다</Body>
             </div>
@@ -167,12 +167,12 @@ export default function PointsHistoryPage() {
               {/* Mobile: Card Layout */}
               <div className="space-y-3 md:hidden">
                 {data.items.map((tx) => (
-                  <div key={tx.id} className="bg-content-bg rounded-2xl p-4 border border-white/5">
+                  <div key={tx.id} className="bg-content-bg rounded-2xl p-4 border border-border-color">
                     <div className="flex justify-between items-start mb-2">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs border ${
                           TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] ||
-                          'bg-gray-500/20 text-gray-400'
+                          'bg-secondary-text/20 text-secondary-text'
                         }`}
                       >
                         {TRANSACTION_TYPE_LABELS[tx.transactionType] || tx.transactionType}
@@ -207,10 +207,10 @@ export default function PointsHistoryPage() {
               </div>
 
               {/* Desktop: Table Layout */}
-              <div className="hidden md:block bg-content-bg rounded-2xl border border-white/5 overflow-hidden">
+              <div className="hidden md:block bg-content-bg rounded-2xl border border-border-color overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/10">
+                    <tr className="border-b border-border-color">
                       <th className="text-left p-4 text-secondary-text text-sm font-normal">
                         일시
                       </th>
@@ -230,7 +230,7 @@ export default function PointsHistoryPage() {
                   </thead>
                   <tbody>
                     {data.items.map((tx) => (
-                      <tr key={tx.id} className="border-b border-white/5 last:border-b-0">
+                      <tr key={tx.id} className="border-b border-border-color last:border-b-0">
                         <td className="p-4">
                           <Caption className="text-primary-text">
                             {formatDate(tx.createdAt)}
@@ -240,7 +240,7 @@ export default function PointsHistoryPage() {
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs border ${
                               TRANSACTION_TYPE_BADGE_COLORS[tx.transactionType] ||
-                              'bg-gray-500/20 text-gray-400'
+                              'bg-secondary-text/20 text-secondary-text'
                             }`}
                           >
                             {TRANSACTION_TYPE_LABELS[tx.transactionType] || tx.transactionType}
@@ -277,7 +277,7 @@ export default function PointsHistoryPage() {
                   <button
                     onClick={() => handlePageChange(data.pagination.page - 1)}
                     disabled={data.pagination.page <= 1}
-                    className="p-2 rounded-lg bg-content-bg border border-white/10 text-secondary-text disabled:opacity-30 hover:border-hot-pink/50"
+                    className="p-2 rounded-lg bg-content-bg border border-border-color text-secondary-text disabled:opacity-30 hover:border-hot-pink/50"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -287,7 +287,7 @@ export default function PointsHistoryPage() {
                   <button
                     onClick={() => handlePageChange(data.pagination.page + 1)}
                     disabled={data.pagination.page >= data.pagination.totalPages}
-                    className="p-2 rounded-lg bg-content-bg border border-white/10 text-secondary-text disabled:opacity-30 hover:border-hot-pink/50"
+                    className="p-2 rounded-lg bg-content-bg border border-border-color text-secondary-text disabled:opacity-30 hover:border-hot-pink/50"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>

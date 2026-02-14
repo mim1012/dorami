@@ -4,12 +4,12 @@ import { ReservationList } from '@/components/reservation';
 
 export default function ReservationsPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-primary-black">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">예약 관리</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-primary-text mb-2">예약 관리</h1>
+          <p className="text-secondary-text">
             품절 상품에 대한 예약 현황을 확인하고 관리할 수 있습니다.
           </p>
         </div>

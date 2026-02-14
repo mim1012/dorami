@@ -204,8 +204,8 @@ export default function LivePreviewPage() {
   return (
     <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
       {/* Left: Product List - Desktop Only */}
-      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
-        <div className="p-4 border-b border-white/10">
+      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-primary-black border-r border-border-color">
+        <div className="p-4 border-b border-border-color">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]"></span>
             상품 목록
@@ -215,9 +215,9 @@ export default function LivePreviewPage() {
           {MOCK_PRODUCTS.map((p) => (
             <div
               key={p.id}
-              className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer"
+              className="flex items-center gap-3 p-3 rounded-2xl bg-content-bg hover:bg-border-color transition-all cursor-pointer"
             >
-              <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-800">
+              <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-content-bg">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
               </div>
@@ -401,9 +401,9 @@ export default function LivePreviewPage() {
       </div>
 
       {/* Bottom: Mock Featured Product Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/95 backdrop-blur-md border-t border-gray-800 p-4 z-20 cursor-pointer hover:bg-[#0A0A0A] transition-colors lg:block hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-primary-black/95 backdrop-blur-md border-t border-border-color p-4 z-20 cursor-pointer hover:bg-primary-black transition-colors lg:block hidden">
         <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
-          <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-900">
+          <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-content-bg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80"

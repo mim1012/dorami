@@ -115,7 +115,7 @@ function OrderCompleteContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black flex items-center justify-center">
         <Body className="text-secondary-text">주문 정보를 불러오는 중...</Body>
       </div>
     );
@@ -123,7 +123,7 @@ function OrderCompleteContent() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-primary-black flex items-center justify-center px-4">
         <div className="text-center">
           <Display className="text-error mb-4">오류</Display>
           <Body className="text-secondary-text mb-6">
@@ -138,11 +138,11 @@ function OrderCompleteContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] py-12 px-4 pb-24">
+    <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
       <div className="w-full md:max-w-3xl md:mx-auto">
         {/* Success Icon */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-20 h-20 bg-content-bg rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-12 h-12 text-hot-pink" />
           </div>
           <Display className="text-hot-pink mb-2">주문이 완료되었습니다!</Display>
@@ -152,25 +152,25 @@ function OrderCompleteContent() {
         </div>
 
         {/* Order Number */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6 text-center">
+        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6 text-center">
           <Body className="text-secondary-text text-sm mb-2">주문번호</Body>
           <Heading2 className="text-primary-text font-mono">{order.id}</Heading2>
         </div>
 
         {/* Bank Transfer Info */}
-        <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 mb-6">
+        <div className="bg-content-bg border border-border-color rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-5 h-5 text-hot-pink" />
             <Heading2 className="text-hot-pink">입금 정보</Heading2>
           </div>
 
           <div className="space-y-4">
-            <div className="bg-white/80 rounded-xl p-4">
+            <div className="bg-content-bg rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">은행</Body>
               <Heading2 className="text-primary-text">{bankInfo.bank}</Heading2>
             </div>
 
-            <div className="bg-white/80 rounded-xl p-4">
+            <div className="bg-content-bg rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
                 <Body className="text-secondary-text text-sm">계좌번호</Body>
                 <button
@@ -186,17 +186,17 @@ function OrderCompleteContent() {
               </Heading2>
             </div>
 
-            <div className="bg-white/80 rounded-xl p-4">
+            <div className="bg-content-bg rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">예금주</Body>
               <Heading2 className="text-primary-text">{bankInfo.accountHolder}</Heading2>
             </div>
 
-            <div className="bg-white/80 rounded-xl p-4">
+            <div className="bg-content-bg rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">입금 금액</Body>
               <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
             </div>
 
-            <div className="bg-white/80 rounded-xl p-4">
+            <div className="bg-content-bg rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">입금 기한</Body>
               <Heading2 className="text-warning">
                 {new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', {
@@ -210,7 +210,7 @@ function OrderCompleteContent() {
             </div>
           </div>
 
-          <div className="mt-4 p-4 bg-white/50 rounded-xl border border-hot-pink/20">
+          <div className="mt-4 p-4 bg-content-bg/80 rounded-xl border border-hot-pink/20">
             <Body className="text-secondary-text text-sm leading-relaxed">
               💡 <strong className="text-primary-text">입금 시 유의사항</strong><br />
               • 입금자명은 <strong className="text-hot-pink">{order.depositorName || '주문자명'}</strong>으로 해주세요<br />
@@ -221,7 +221,7 @@ function OrderCompleteContent() {
         </div>
 
         {/* Order Items */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
           <Heading2 className="text-hot-pink mb-4">주문 상품</Heading2>
           <div className="space-y-3">
             {order.items.map((item) => (
@@ -280,7 +280,7 @@ export default function OrderCompletePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
           <Body>Loading...</Body>
         </div>
       }

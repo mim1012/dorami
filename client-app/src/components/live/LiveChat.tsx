@@ -38,9 +38,9 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-white/80 via-white/90 to-white/95 backdrop-blur-sm rounded-t-2xl border border-gray-200">
+    <div className="flex flex-col h-full bg-gradient-to-b from-content-bg/80 via-content-bg/90 to-content-bg/95 backdrop-blur-sm rounded-t-2xl border border-border-color">
       {/* Chat Header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-border-color">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-error'}`} />
@@ -73,7 +73,7 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className="bg-white/5 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white/10 transition-colors"
+            className="bg-border-color backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-content-bg transition-colors"
           >
             <div className="flex items-baseline gap-2 mb-1">
               <Body className="text-hot-pink text-xs font-semibold">
@@ -98,7 +98,7 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
       {/* Input Form */}
       <form
         onSubmit={handleSubmit}
-        className="flex-shrink-0 px-4 py-3 border-t border-gray-200 bg-white/95 backdrop-blur-sm"
+        className="flex-shrink-0 px-4 py-3 border-t border-border-color bg-content-bg/95 backdrop-blur-sm"
       >
         <div className="flex items-center gap-2">
           <input
@@ -108,13 +108,13 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={isConnected ? '메시지를 입력하세요...' : '연결 중...'}
             disabled={!isConnected}
-            className="flex-1 bg-content-bg border border-gray-300 rounded-full px-4 py-2.5 text-sm text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 bg-content-bg border border-border-color rounded-full px-4 py-2.5 text-sm text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             maxLength={200}
           />
           <button
             type="submit"
             disabled={!isConnected || !inputValue.trim()}
-            className="flex-shrink-0 w-10 h-10 bg-hot-pink hover:bg-hot-pink/90 disabled:bg-white/10 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-all shadow-[0_0_15px_rgba(255,0,122,0.4)] disabled:shadow-none"
+            className="flex-shrink-0 w-10 h-10 bg-hot-pink hover:bg-hot-pink/90 disabled:bg-border-color disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-all shadow-[0_0_15px_rgba(255,0,122,0.4)] disabled:shadow-none"
           >
             <Send className="w-4 h-4 text-white" />
           </button>

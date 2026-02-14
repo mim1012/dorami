@@ -118,7 +118,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] py-12 px-4 pb-24">
+    <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
       <div className="w-full md:max-w-3xl md:mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -135,7 +135,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Order Summary */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
           <Heading2 className="text-hot-pink mb-4">주문 상품</Heading2>
           <div className="space-y-3">
             {items.map((item) => (
@@ -153,7 +153,7 @@ export default function CheckoutPage() {
             ))}
           </div>
 
-          <div className="h-px bg-white/10 my-4" />
+          <div className="h-px bg-border-color my-4" />
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -170,7 +170,7 @@ export default function CheckoutPage() {
                 <Body className="text-success">-{formatPrice(effectivePointsUsed)}</Body>
               </div>
             )}
-            <div className="h-px bg-white/10 my-3" />
+            <div className="h-px bg-border-color my-3" />
             <div className="flex justify-between items-center">
               <Heading2 className="text-primary-text">총 결제 금액</Heading2>
               <Display className="text-hot-pink">{formatPrice(finalTotal)}</Display>
@@ -180,7 +180,7 @@ export default function CheckoutPage() {
 
         {/* Points Usage Section */}
         {canUsePoints && (
-          <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+          <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
             <div className="flex items-center gap-2 mb-4">
               <Coins className="w-5 h-5 text-hot-pink" />
               <Heading2 className="text-hot-pink">포인트 사용</Heading2>
@@ -218,7 +218,7 @@ export default function CheckoutPage() {
                       placeholder="사용할 포인트 입력"
                       min={0}
                       max={maxUsablePoints}
-                      className="w-full px-4 py-3 bg-[#121212] border border-white/10 rounded-xl text-primary-text placeholder:text-secondary-text focus:border-hot-pink focus:outline-none"
+                      className="w-full px-4 py-3 bg-primary-black border border-border-color rounded-xl text-primary-text placeholder:text-secondary-text focus:border-hot-pink focus:outline-none"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-text text-sm">
                       P
@@ -239,9 +239,9 @@ export default function CheckoutPage() {
         )}
 
         {/* Payment Method */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
           <Heading2 className="text-hot-pink mb-4">결제 방법</Heading2>
-          <div className="bg-white/50 rounded-xl p-4 border border-hot-pink/30">
+          <div className="bg-hot-pink/10 rounded-xl p-4 border border-hot-pink/30">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-6 h-6 rounded-full bg-hot-pink flex items-center justify-center">
                 <CheckCircle className="w-4 h-4 text-white" />
@@ -255,13 +255,13 @@ export default function CheckoutPage() {
         </div>
 
         {/* Terms Agreement */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-white/5 mb-6">
+        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
           <div className="space-y-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 defaultChecked
-                className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-white checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
+                className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
               />
               <Body className="text-primary-text text-sm flex-1">
                 주문 내용을 확인했으며, 결제에 동의합니다.
@@ -271,7 +271,7 @@ export default function CheckoutPage() {
               <input
                 type="checkbox"
                 defaultChecked
-                className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-white checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
+                className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
               />
               <Body className="text-primary-text text-sm flex-1">
                 개인정보 수집 및 이용에 동의합니다.

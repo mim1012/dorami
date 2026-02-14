@@ -14,7 +14,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-6">
+    <div className="min-h-screen bg-primary-black flex items-center justify-center px-6">
       <div className="text-center max-w-md">
         {/* Error Icon */}
         <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-error-bg flex items-center justify-center">
@@ -34,8 +34,8 @@ export default function Error({
           </svg>
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">인증 페이지 오류</h2>
-        <p className="text-gray-500 mb-8 text-sm leading-relaxed">
+        <h2 className="text-2xl font-bold text-primary-text mb-2">인증 페이지 오류</h2>
+        <p className="text-secondary-text mb-8 text-sm leading-relaxed">
           인증 처리 중 오류가 발생했습니다.
           <br />
           잠시 후 다시 시도해 주세요.
@@ -44,19 +44,19 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-6 py-3 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors active:scale-[0.98]"
+            className="px-6 py-3 bg-hot-pink text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-colors active:scale-[0.98]"
           >
             다시 시도
           </button>
           <a
             href="/"
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors active:scale-[0.98]"
+            className="px-6 py-3 bg-content-bg text-primary-text rounded-lg text-sm font-semibold hover:bg-border-color transition-colors active:scale-[0.98]"
           >
             홈으로 가기
           </a>
         </div>
 
-        {error.digest && <p className="mt-6 text-xs text-gray-400">오류 코드: {error.digest}</p>}
+        {error.digest && <p className="mt-6 text-xs text-secondary-text">오류 코드: {error.digest}</p>}
       </div>
     </div>
   );

@@ -109,7 +109,7 @@ export function ContactForm({ isOpen, onClose }: ContactFormProps) {
             placeholder="문의하실 내용을 상세히 입력해주세요"
             rows={6}
             required
-            className="w-full bg-content-bg border border-white/10 rounded-lg px-4 py-3 text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink transition-colors resize-none"
+            className="w-full bg-content-bg border border-border-color rounded-lg px-4 py-3 text-primary-text placeholder:text-secondary-text focus:outline-none focus:border-hot-pink transition-colors resize-none"
           />
         </div>
 

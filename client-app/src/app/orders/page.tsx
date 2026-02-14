@@ -91,14 +91,14 @@ export default function OrdersPage() {
       case 'FAILED':
         return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
       default:
-        return { text: status, color: 'text-secondary-text', icon: Package, bgColor: 'bg-white/10' };
+        return { text: status, color: 'text-secondary-text', icon: Package, bgColor: 'bg-border-color' };
     }
   };
 
   const getShippingStatusInfo = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { text: '배송 대기', color: 'text-gray-500' };
+        return { text: '배송 대기', color: 'text-secondary-text' };
       case 'SHIPPED':
         return { text: '배송 중', color: 'text-info' };
       case 'DELIVERED':
@@ -121,14 +121,14 @@ export default function OrdersPage() {
       case 'CANCELLED':
         return { text: '취소됨', color: 'text-error', icon: XCircle };
       default:
-        return { text: status, color: 'text-gray-500', icon: Package };
+        return { text: status, color: 'text-secondary-text', icon: Package };
     }
   };
 
   if (authLoading || isLoading) {
     return (
       <>
-        <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
           <Body className="text-secondary-text">주문 내역을 불러오는 중...</Body>
         </div>
         <BottomTabBar />
@@ -139,7 +139,7 @@ export default function OrdersPage() {
   if (error) {
     return (
       <>
-        <div className="min-h-screen bg-white py-12 px-4 pb-24">
+        <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
           <div className="max-w-4xl mx-auto text-center">
             <Display className="text-error mb-4">오류</Display>
             <Body className="text-secondary-text mb-6">{error}</Body>
@@ -156,7 +156,7 @@ export default function OrdersPage() {
   if (orders.length === 0) {
     return (
       <>
-        <div className="min-h-screen bg-white py-12 px-4 pb-24">
+        <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <Display className="text-hot-pink mb-2">주문 내역</Display>
@@ -182,7 +182,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white py-6 px-4 pb-24">
+      <div className="min-h-screen bg-primary-black py-6 px-4 pb-24">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6">
@@ -200,11 +200,11 @@ export default function OrdersPage() {
               return (
                 <div
                   key={order.id}
-                  className="bg-content-bg rounded-2xl border border-white/5 overflow-hidden hover:border-hot-pink/30 transition-colors cursor-pointer"
+                  className="bg-content-bg rounded-2xl border border-border-color overflow-hidden hover:border-hot-pink/30 transition-colors cursor-pointer"
                   onClick={() => router.push(`/orders/${order.id}`)}
                 >
                   {/* Order Header */}
-                  <div className="p-4 border-b border-gray-200">
+                  <div className="p-4 border-b border-border-color">
                     <div className="flex items-center justify-between mb-2">
                       <Body className="text-secondary-text text-sm">
                         {formatDate(order.createdAt)}
@@ -222,7 +222,7 @@ export default function OrdersPage() {
                   {/* Order Items */}
                   <div className="p-4">
                     {order.items.map((item, index) => (
-                      <div key={item.id} className={index > 0 ? 'mt-3 pt-3 border-t border-white/5' : ''}>
+                      <div key={item.id} className={index > 0 ? 'mt-3 pt-3 border-t border-border-color' : ''}>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <Body className="text-primary-text font-semibold mb-1">
@@ -240,7 +240,7 @@ export default function OrdersPage() {
                     ))}
 
                     {/* Total */}
-                    <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                    <div className="mt-4 pt-4 border-t border-border-color flex justify-between items-center">
                       <div>
                         <Body className="text-secondary-text text-sm mb-1">총 결제 금액</Body>
                         {order.shippingStatus && (
@@ -259,7 +259,7 @@ export default function OrdersPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="p-4 border-t border-gray-200 bg-white/30">
+                  <div className="p-4 border-t border-border-color bg-content-bg/50">
                     <div className="flex gap-2">
                       <Button
                         variant="outline"

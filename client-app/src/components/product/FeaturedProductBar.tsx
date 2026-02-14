@@ -69,11 +69,11 @@ export default function FeaturedProductBar({
 
   return (
     <div
-      className="hidden lg:block fixed bottom-0 left-0 right-0 bg-content-bg/95 backdrop-blur-md border-t border-gray-800 p-4 z-20 cursor-pointer hover:bg-content-bg transition-colors"
+      className="hidden lg:block fixed bottom-0 left-0 right-0 bg-content-bg/95 backdrop-blur-md border-t border-border-color p-4 z-20 cursor-pointer hover:bg-content-bg transition-colors"
       onClick={() => onProductClick?.(product)}
     >
       <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
-        <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-gray-900">
+        <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-primary-black">
           {product.imageUrl && (
             <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
           )}

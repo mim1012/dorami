@@ -7,6 +7,8 @@ import {
   UpdateStockDto,
   ProductResponseDto,
   ProductStatus,
+  ReorderProductsDto,
+  BulkUpdateStatusDto,
 } from './dto/product.dto';
 import {
   ProductNotFoundException,
@@ -29,6 +31,7 @@ interface ProductUpdateData {
   timerEnabled?: boolean;
   timerDuration?: number;
   imageUrl?: string | null;
+  images?: string[];
   status?: PrismaProductStatus;
 }
 
@@ -71,6 +74,7 @@ export class ProductsService {
         timerEnabled: createDto.timerEnabled || false,
         timerDuration: createDto.timerDuration || 10,
         imageUrl: createDto.imageUrl,
+        images: createDto.images || [],
       },
     });
 
@@ -97,9 +101,7 @@ export class ProductsService {
         streamKey,
         ...(status && { status }),
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
     return products.map((product) => this.mapToResponseDto(product));
@@ -131,7 +133,7 @@ export class ProductsService {
   async findAll(status?: ProductStatus): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: status ? { status } : undefined,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
     return products.map((p) => this.mapToResponseDto(p));
@@ -197,6 +199,9 @@ export class ProductsService {
     if (updateDto.imageUrl !== undefined) {
       updateData.imageUrl = updateDto.imageUrl;
     }
+    if (updateDto.images !== undefined) {
+      updateData.images = updateDto.images;
+    }
     if (updateDto.status !== undefined) {
       updateData.status = updateDto.status as PrismaProductStatus;
     }
@@ -253,17 +258,20 @@ export class ProductsService {
       id,
     );
 
-    // Check if product has any active carts
-    const activeCartsCount = await this.prisma.cart.count({
+    // Clear active carts for this product before deleting
+    const expiredCarts = await this.prisma.cart.updateMany({
       where: {
         productId: id,
         status: 'ACTIVE',
       },
+      data: {
+        status: 'EXPIRED',
+      },
     });
 
-    if (activeCartsCount > 0) {
-      throw new BadRequestException(
-        `Cannot delete product with active cart items. Mark as sold out instead.`,
+    if (expiredCarts.count > 0) {
+      this.logger.log(
+        `Expired ${expiredCarts.count} active cart(s) for product ${id} before deletion`,
       );
     }
 
@@ -278,6 +286,28 @@ export class ProductsService {
       productId: id,
       streamKey: product.streamKey,
     });
+  }
+
+  /**
+   * Bulk delete products
+   */
+  @LogErrors('bulk delete products')
+  async bulkDelete(ids: string[]): Promise<{ deleted: number; failed: string[] }> {
+    const failed: string[] = [];
+    let deleted = 0;
+
+    for (const id of ids) {
+      try {
+        await this.delete(id);
+        deleted++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to delete product ${id}: ${message}`);
+        failed.push(id);
+      }
+    }
+
+    return { deleted, failed };
   }
 
   /**
@@ -318,6 +348,88 @@ export class ProductsService {
     });
 
     return this.mapToResponseDto(updatedProduct);
+  }
+
+  /**
+   * Duplicate an existing product
+   */
+  @LogErrors('duplicate product')
+  async duplicate(id: string): Promise<ProductResponseDto> {
+    const source = await findOrThrow(
+      this.prisma.product.findUnique({ where: { id } }),
+      'Product',
+      id,
+    );
+
+    const product = await this.prisma.product.create({
+      data: {
+        streamKey: source.streamKey,
+        name: `${source.name} (복사)`,
+        price: source.price,
+        quantity: source.quantity,
+        colorOptions: source.colorOptions,
+        sizeOptions: source.sizeOptions,
+        shippingFee: source.shippingFee,
+        freeShippingMessage: source.freeShippingMessage,
+        timerEnabled: source.timerEnabled,
+        timerDuration: source.timerDuration,
+        imageUrl: source.imageUrl,
+        images: source.images,
+        isNew: source.isNew,
+        discountRate: source.discountRate,
+        originalPrice: source.originalPrice,
+        status: 'AVAILABLE',
+      },
+    });
+
+    this.logger.log(`Product duplicated: ${source.id} → ${product.id}`);
+
+    this.eventEmitter.emit('product:created', {
+      productId: product.id,
+      streamKey: product.streamKey,
+      product: this.mapToResponseDto(product),
+    });
+
+    return this.mapToResponseDto(product);
+  }
+
+  /**
+   * Reorder products by ID array
+   */
+  @LogErrors('reorder products')
+  async reorder(dto: ReorderProductsDto): Promise<void> {
+    await this.prisma.$transaction(
+      dto.ids.map((id, index) =>
+        this.prisma.product.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    this.logger.log(`Products reordered: ${dto.ids.length} items`);
+  }
+
+  /**
+   * Bulk update product status
+   */
+  @LogErrors('bulk update product status')
+  async bulkUpdateStatus(dto: BulkUpdateStatusDto): Promise<{ updated: number }> {
+    const result = await this.prisma.product.updateMany({
+      where: { id: { in: dto.ids } },
+      data: { status: dto.status as PrismaProductStatus },
+    });
+
+    // Emit events for each product
+    for (const id of dto.ids) {
+      this.eventEmitter.emit('product:updated', {
+        productId: id,
+      });
+    }
+
+    this.logger.log(`Bulk status update: ${result.count} products → ${dto.status}`);
+
+    return { updated: result.count };
   }
 
   /**
@@ -435,6 +547,8 @@ export class ProductsService {
       timerEnabled: product.timerEnabled,
       timerDuration: product.timerDuration,
       imageUrl: product.imageUrl ?? undefined,
+      images: product.images ?? [],
+      sortOrder: product.sortOrder ?? 0,
       isNew: product.isNew ?? false,
       discountRate: product.discountRate ? parseFloat(product.discountRate.toString()) : undefined,
       originalPrice: product.originalPrice

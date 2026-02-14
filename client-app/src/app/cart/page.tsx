@@ -108,7 +108,7 @@ export default function CartPage() {
     return (
       <>
         <div className="min-h-screen bg-primary-black flex items-center justify-center">
-          <Body className="text-white">장바구니를 불러오는 중...</Body>
+          <Body className="text-primary-text">장바구니를 불러오는 중...</Body>
         </div>
         <BottomTabBar />
       </>
@@ -119,15 +119,15 @@ export default function CartPage() {
     <>
       <div className="min-h-screen bg-primary-black pb-bottom-nav">
         {/* Header */}
-        <div className="bg-content-bg border-b border-gray-800 sticky top-0 z-10">
+        <div className="bg-content-bg border-b border-border-color sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              className="p-2 hover:bg-content-bg rounded-full transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-white" />
+              <ArrowLeft className="w-6 h-6 text-primary-text" />
             </button>
-            <Heading1 className="text-white flex items-center gap-2">
+            <Heading1 className="text-primary-text flex items-center gap-2">
               <ShoppingCart className="w-8 h-8" />
               장바구니
             </Heading1>
@@ -153,7 +153,7 @@ export default function CartPage() {
                       <Body className="text-hot-pink font-bold mb-1">
                         예약 시간이 얼마 남지 않았습니다!
                       </Body>
-                      <Caption className="text-gray-400">
+                      <Caption className="text-secondary-text">
                         시간 내에 결제하지 않으면 예약이 자동으로 취소됩니다.
                       </Caption>
                     </div>
@@ -199,7 +199,7 @@ export default function CartPage() {
                     size="lg"
                     fullWidth
                     onClick={handleClearCart}
-                    className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                    className="border-border-color text-secondary-text hover:bg-content-bg"
                   >
                     장바구니 비우기
                   </Button>

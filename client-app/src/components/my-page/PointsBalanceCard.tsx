@@ -14,9 +14,9 @@ export function PointsBalanceCard() {
 
   if (isLoading) {
     return (
-      <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 border border-white/5 mb-6 animate-pulse">
-        <div className="h-6 bg-white/10 rounded w-32 mb-4" />
-        <div className="h-10 bg-white/10 rounded w-48" />
+      <div className="bg-content-bg shadow-sm rounded-2xl p-6 border border-border-color mb-6 animate-pulse">
+        <div className="h-6 bg-border-color rounded w-32 mb-4" />
+        <div className="h-10 bg-border-color rounded w-48" />
       </div>
     );
   }
@@ -26,15 +26,15 @@ export function PointsBalanceCard() {
   }
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 border border-white/5 mb-6">
+    <div className="bg-content-bg shadow-sm rounded-2xl p-6 border border-border-color mb-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Coins className="w-5 h-5 text-pink-600" />
-          <Heading2 className="text-pink-600">내 포인트</Heading2>
+          <Coins className="w-5 h-5 text-hot-pink" />
+          <Heading2 className="text-hot-pink">내 포인트</Heading2>
         </div>
         <Link
           href="/my-page/points"
-          className="flex items-center gap-1 text-pink-600 text-sm hover:underline"
+          className="flex items-center gap-1 text-hot-pink text-sm hover:underline"
         >
           <span>포인트 내역</span>
           <ChevronRight className="w-4 h-4" />
@@ -42,29 +42,29 @@ export function PointsBalanceCard() {
       </div>
 
       <div className="text-center py-2">
-        <p className="text-4xl font-bold text-pink-600">
+        <p className="text-4xl font-bold text-hot-pink">
           {formatPoints(balance.currentBalance)} <span className="text-xl">P</span>
         </p>
       </div>
 
-      <div className="h-px bg-white/10 my-4" />
+      <div className="h-px bg-border-color my-4" />
 
       <div className="grid grid-cols-3 gap-4 text-center">
         <div>
-          <Body className="text-gray-500 text-xs">누적 적립</Body>
-          <Body className="text-gray-900 font-medium text-sm">
+          <Body className="text-secondary-text text-xs">누적 적립</Body>
+          <Body className="text-primary-text font-medium text-sm">
             {formatPoints(balance.lifetimeEarned)} P
           </Body>
         </div>
         <div>
-          <Body className="text-gray-500 text-xs">누적 사용</Body>
-          <Body className="text-gray-900 font-medium text-sm">
+          <Body className="text-secondary-text text-xs">누적 사용</Body>
+          <Body className="text-primary-text font-medium text-sm">
             {formatPoints(balance.lifetimeUsed)} P
           </Body>
         </div>
         <div>
-          <Body className="text-gray-500 text-xs">만료</Body>
-          <Body className="text-gray-900 font-medium text-sm">
+          <Body className="text-secondary-text text-xs">만료</Body>
+          <Body className="text-primary-text font-medium text-sm">
             {formatPoints(balance.lifetimeExpired)} P
           </Body>
         </div>

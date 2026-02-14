@@ -156,14 +156,14 @@ export default function StorePage() {
 
   if (isLoading && products.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-primary-black flex items-center justify-center">
         <Body className="text-secondary-text">Loading store products...</Body>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen bg-primary-black py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

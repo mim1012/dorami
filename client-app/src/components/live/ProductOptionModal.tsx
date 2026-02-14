@@ -70,15 +70,15 @@ export function ProductOptionModal({
       <div className="fixed inset-x-0 bottom-0 z-50 bg-content-bg rounded-t-3xl shadow-2xl animate-slide-up max-h-[85vh] flex flex-col">
         {/* Handle Bar */}
         <div className="flex-shrink-0 flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+          <div className="w-12 h-1.5 bg-border-color rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border-color">
           <Heading2 className="text-primary-text">상품 옵션 선택</Heading2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-content-bg transition-colors"
           >
             <X className="w-5 h-5 text-secondary-text" />
           </button>
@@ -147,7 +147,7 @@ export function ProductOptionModal({
               <button
                 onClick={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-content-bg disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Minus className="w-5 h-5 text-primary-text" />
               </button>
@@ -159,7 +159,7 @@ export function ProductOptionModal({
               <button
                 onClick={() => handleQuantityChange(1)}
                 disabled={quantity >= maxQuantity}
-                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] bg-primary-black hover:bg-content-bg disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
                 <Plus className="w-5 h-5 text-primary-text" />
               </button>
@@ -173,7 +173,7 @@ export function ProductOptionModal({
         </div>
 
         {/* Footer - Fixed */}
-        <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-content-bg/90 backdrop-blur-sm">
+        <div className="flex-shrink-0 px-6 py-4 border-t border-border-color bg-content-bg/90 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <Body className="text-secondary-text">총 금액</Body>
             <Heading2 className="text-hot-pink">

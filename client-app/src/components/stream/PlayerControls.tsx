@@ -109,13 +109,13 @@ export default function PlayerControls({
               max="100"
               value={volume}
               onChange={(e) => onVolumeChange(Number(e.target.value))}
-              className="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-hot-pink"
+              className="w-24 h-1 bg-content-bg rounded-lg appearance-none cursor-pointer slider-hot-pink"
               aria-label="Volume control"
             />
           </div>
 
           {/* Latency indicator - hidden on mobile */}
-          <span className="hidden md:block text-gray-400 text-sm ml-auto">
+          <span className="hidden md:block text-secondary-text text-sm ml-auto">
             {latency > 0 && `${latency}s behind live`}
           </span>
 

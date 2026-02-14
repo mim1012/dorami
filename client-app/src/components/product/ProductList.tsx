@@ -113,7 +113,7 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
       <div className="p-4">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-gray-800 rounded-card h-32" />
+            <div key={i} className="bg-content-bg rounded-card h-32" />
           ))}
         </div>
       </div>
@@ -139,13 +139,13 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
               className={`
                 bg-primary-black rounded-card p-3 cursor-pointer transition-colors border
                 ${product.status === 'SOLD_OUT'
-                  ? 'border-gray-800 opacity-60'
-                  : 'border-gray-800 hover:border-hot-pink hover:bg-gray-800'
+                  ? 'border-border-color opacity-60'
+                  : 'border-border-color hover:border-hot-pink hover:bg-content-bg'
                 }
               `}
               onClick={() => product.status === 'AVAILABLE' && onProductClick?.(product)}
             >
-              <div className="relative w-full aspect-square mb-2 rounded overflow-hidden bg-gray-900">
+              <div className="relative w-full aspect-square mb-2 rounded overflow-hidden bg-primary-black">
                 {product.imageUrl ? (
                   <Image
                     src={product.imageUrl}
@@ -154,8 +154,8 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                    <span className="text-gray-600 text-sm">No Image</span>
+                  <div className="w-full h-full flex items-center justify-center bg-content-bg">
+                    <span className="text-secondary-text text-sm">No Image</span>
                   </div>
                 )}
                 {product.status === 'SOLD_OUT' && (
