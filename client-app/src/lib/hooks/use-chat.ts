@@ -97,7 +97,7 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
       console.log('💬 New message:', data);
       if (data.type === 'chat:message' && data.data) {
         const newMessage: ChatMessage = data.data;
-        setMessages((prev) => [...prev, newMessage]);
+        setMessages((prev) => [...prev.slice(-99), newMessage]);
       }
     });
 
