@@ -1,20 +1,27 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatOverlay from '@/components/chat/ChatOverlay';
+import ChatMessageList from '@/components/chat/ChatMessageList';
+import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
+import EmojiPicker from '@/components/chat/EmojiPicker';
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
 import HeartAnimation from '@/components/live/HeartAnimation';
 import CartActivityFeed from '@/components/live/CartActivityFeed';
-import ProductBottomSheet from '@/components/live/ProductBottomSheet';
 import { useCartActivity } from '@/hooks/useCartActivity';
+import { useChatConnection } from '@/hooks/useChatConnection';
+import { useChatMessages } from '@/hooks/useChatMessages';
+import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
 import { Body, Heading2 } from '@/components/common/Typography';
 import { ProductStatus } from '@live-commerce/shared-types';
-import { MonitorOff, Loader } from 'lucide-react';
+import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 
 interface StreamStatus {
@@ -43,6 +50,15 @@ interface Product {
   updatedAt: string;
 }
 
+interface FeaturedProduct {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl?: string;
+  stock: number;
+  status: string;
+}
+
 export default function LiveStreamPage() {
   const params = useParams();
   const router = useRouter();
@@ -57,6 +73,43 @@ export default function LiveStreamPage() {
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const { showToast } = useToast();
+
+  // Mobile chat — direct connection for standalone ChatInput + ChatMessageList
+  const { socket, isConnected, sendMessage: chatSendMessage } = useChatConnection(streamKey);
+  const { messages: chatMessages } = useChatMessages(socket);
+  const mobileInputRef = useRef<ChatInputHandle>(null);
+  const [showMobileEmoji, setShowMobileEmoji] = useState(false);
+
+  // Elapsed time timer for mobile top bar
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
+
+  // Featured product for mobile inline card
+  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
+
+  // Notice banner (reuses NoticeBox pattern)
+  const { data: notice } = useQuery<{ text: string | null }>({
+    queryKey: ['notice', 'current'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ text: string | null }>('/notices/current');
+      return response.data;
+    },
+    refetchInterval: 15000,
+  });
+
+  // Merge cart activity events as system messages into the chat stream
+  const allMessages = useMemo(() => {
+    const systemMessages: ChatMessageType[] = cartActivities.map((activity) => ({
+      id: `system-cart-${activity.id}`,
+      userId: 'system',
+      username: SYSTEM_USERNAME,
+      message: `${activity.userName}님이 ${activity.productName}을 장바구니에 담았습니다`,
+      timestamp: new Date(activity.timestamp),
+      isDeleted: false,
+    }));
+    return [...chatMessages, ...systemMessages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+  }, [chatMessages, cartActivities]);
 
   useEffect(() => {
     fetchStreamStatus();
@@ -85,6 +138,37 @@ export default function LiveStreamPage() {
     }
   }, [showViewerPulse]);
 
+  // Elapsed time calculation from streamStatus.startedAt
+  useEffect(() => {
+    if (!streamStatus?.startedAt) return;
+    const startedAt = new Date(streamStatus.startedAt);
+    const updateTimer = () => {
+      const diff = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000));
+      const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const s = String(diff % 60).padStart(2, '0');
+      setElapsedTime(`${h}:${m}:${s}`);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [streamStatus?.startedAt]);
+
+  // Fetch featured product for mobile inline card
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const response = await apiClient.get<{ product: FeaturedProduct | null }>(
+          `/streaming/key/${streamKey}/featured-product`,
+        );
+        setFeaturedProduct(response.data.product);
+      } catch {
+        // silently fail — featured product is optional
+      }
+    };
+    fetchFeatured();
+  }, [streamKey]);
+
   const fetchStreamStatus = async () => {
     try {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
@@ -99,6 +183,20 @@ export default function LiveStreamPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMobileSendMessage = (message: string) => {
+    if (message.trim()) {
+      chatSendMessage(message);
+      setShowMobileEmoji(false);
+    }
+  };
+
+  const handleMobileEmojiSelect = (emoji: string) => {
+    if (mobileInputRef.current) {
+      mobileInputRef.current.insertEmoji(emoji);
+    }
+    setShowMobileEmoji(false);
   };
 
   if (isLoading) {
@@ -159,7 +257,7 @@ export default function LiveStreamPage() {
     );
   }
 
-  const handleProductClick = (product: any) => {
+  const handleProductClick = (product: Product | FeaturedProduct) => {
     setSelectedProduct(product as Product);
     setIsModalOpen(true);
   };
@@ -197,20 +295,45 @@ export default function LiveStreamPage() {
         <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
       </aside>
 
-      {/* Center: Video Container — Instagram Live Style */}
+      {/* Center: Video Container */}
       <div className="flex-1 relative flex items-center justify-center">
-        {/* Video Player - Portrait 9:16 */}
         <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
           <VideoPlayer streamKey={streamKey} title={streamStatus.title} />
 
-          {/* Top gradient overlay — stronger */}
+          {/* Top gradient overlay */}
           <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
 
           {/* Bottom gradient overlay */}
           <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10" />
 
-          {/* ═══════════ TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
+          {/* ═══════════ MOBILE TOP BAR ═══════════ */}
+          <div className="absolute top-0 left-0 right-0 z-20 px-3 py-3 flex items-center justify-between lg:hidden">
+            {/* Brand avatar + label */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg">
+                <span className="text-white text-xs font-black">D</span>
+              </div>
+              <span className="text-white font-bold text-sm drop-shadow-lg">도라미LIVE</span>
+            </div>
+
+            {/* Live timer + Viewer count */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
+              </div>
+              <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
+                <Eye className="w-3.5 h-3.5 text-white/70" />
+                <span className="text-white text-[11px] font-bold">{viewerCount.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
+          <div className="absolute top-0 left-0 right-0 z-20 p-4 hidden lg:flex items-center justify-between">
             {/* Back button */}
             <button
               onClick={() => router.push('/')}
@@ -283,58 +406,105 @@ export default function LiveStreamPage() {
             </button>
           </div>
 
-          {/* Stream title */}
-          <div className="absolute top-[68px] left-4 right-20 z-20">
+          {/* Stream title — Desktop only */}
+          <div className="absolute top-[68px] left-4 right-20 z-20 hidden lg:block">
             <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
               {streamStatus.title}
             </h1>
           </div>
 
-          {/* ═══════════ CART ACTIVITY FEED ═══════════ */}
-          <CartActivityFeed activities={cartActivities} />
+          {/* ═══════════ MOBILE NOTICE BANNER ═══════════ */}
+          {notice?.text && (
+            <div className="absolute top-14 left-3 right-3 z-20 lg:hidden">
+              <div className="bg-amber-500/20 backdrop-blur-sm border border-amber-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <p className="text-amber-200 text-xs line-clamp-1 font-medium">{notice.text}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════ CART ACTIVITY FEED — Desktop only ═══════════ */}
+          <div className="hidden lg:block">
+            <CartActivityFeed activities={cartActivities} />
+          </div>
 
           {/* ═══════════ HEART ANIMATION ═══════════ */}
           <HeartAnimation showButton={false} />
 
-          {/* Product Bottom Sheet - Mobile */}
-          <div className="lg:hidden">
-            <ProductBottomSheet
-              products={[
-                {
-                  id: '1',
-                  name: 'Chic Evening Bag',
-                  price: 129000,
-                  imageUrl:
-                    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80',
-                  stock: 10,
-                },
-                {
-                  id: '2',
-                  name: 'Pro Audio Pods',
-                  price: 62300,
-                  imageUrl:
-                    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80',
-                  stock: 25,
-                },
-              ]}
-              onAddToCart={(id) => handleAddToCart(id)}
-              streamKey={streamKey}
-            />
+          {/* ═══════════ MOBILE BOTTOM SECTION ═══════════ */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 lg:hidden flex flex-col pointer-events-none">
+            {/* Chat messages overlay */}
+            <div className="h-[28vh] mb-1">
+              <ChatMessageList messages={allMessages} compact maxMessages={30} />
+            </div>
+
+            {/* Featured product inline card */}
+            {featuredProduct && (
+              <div className="px-3 pb-2 pointer-events-auto">
+                <div
+                  className="bg-black/60 backdrop-blur-md rounded-xl p-2.5 flex items-center gap-3 border border-white/10"
+                  onClick={() => handleProductClick(featuredProduct)}
+                >
+                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0 relative">
+                    {featuredProduct.imageUrl && (
+                      <Image
+                        src={featuredProduct.imageUrl}
+                        alt={featuredProduct.name}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{featuredProduct.name}</p>
+                    <p className="text-[#FF007A] font-bold text-sm">
+                      ₩{featuredProduct.price.toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleProductClick(featuredProduct);
+                    }}
+                    className="bg-[#FF007A] hover:bg-[#E00070] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex-shrink-0"
+                  >
+                    구매
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Emoji picker for mobile */}
+            {showMobileEmoji && (
+              <div className="pointer-events-auto">
+                <EmojiPicker
+                  onEmojiSelect={handleMobileEmojiSelect}
+                  onClose={() => setShowMobileEmoji(false)}
+                />
+              </div>
+            )}
+
+            {/* Chat input */}
+            <div className="pointer-events-auto">
+              <ChatInput
+                ref={mobileInputRef}
+                onSendMessage={handleMobileSendMessage}
+                onToggleEmoji={() => setShowMobileEmoji(!showMobileEmoji)}
+                disabled={!isConnected}
+                compact
+                emojiPickerOpen={showMobileEmoji}
+              />
+            </div>
           </div>
 
-          {/* Chat Overlay - Desktop (Right Side) */}
+          {/* Chat Overlay — Desktop Only (right side panel) */}
           <div className="hidden lg:block">
             <ChatOverlay streamKey={streamKey} position="right" />
-          </div>
-
-          {/* Chat Overlay - Mobile (Bottom, transparent) */}
-          <div className="lg:hidden">
-            <ChatOverlay streamKey={streamKey} position="bottom" />
           </div>
         </div>
       </div>
 
-      {/* Bottom: Featured Product Bar */}
+      {/* Bottom: Featured Product Bar — Desktop Only */}
       <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
 
       {/* Product Detail Modal */}

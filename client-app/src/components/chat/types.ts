@@ -1,4 +1,8 @@
 // Chat types for WebSocket communication
+
+/** Username used for system-generated messages (cart/purchase notifications) */
+export const SYSTEM_USERNAME = '시스템' as const;
+
 export interface ChatMessage {
   id: string;
   userId: string;

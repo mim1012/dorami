@@ -30,7 +30,8 @@ export default function FeaturedProductBar({
 
   useEffect(() => {
     fetchFeaturedProduct();
-    setupWebSocket();
+    const cleanupFn = setupWebSocket();
+    return () => { cleanupFn?.(); };
   }, [streamKey]);
 
   const fetchFeaturedProduct = async () => {
@@ -48,10 +49,10 @@ export default function FeaturedProductBar({
   };
 
   const setupWebSocket = () => {
-    const token = localStorage.getItem('accessToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!token) return;
 
-    const ws = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
+    const ws = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001', {
       auth: { token },
     });
 
@@ -68,7 +69,7 @@ export default function FeaturedProductBar({
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 bg-content-bg/95 backdrop-blur-md border-t border-gray-800 p-4 z-20 cursor-pointer hover:bg-content-bg transition-colors"
+      className="hidden lg:block fixed bottom-0 left-0 right-0 bg-content-bg/95 backdrop-blur-md border-t border-gray-800 p-4 z-20 cursor-pointer hover:bg-content-bg transition-colors"
       onClick={() => onProductClick?.(product)}
     >
       <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
