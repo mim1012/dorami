@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray, IsNotEmpty } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray, IsNotEmpty, IsNumber, IsBoolean } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class GetUsersQueryDto {
@@ -103,6 +103,12 @@ export class TopProductDto {
   totalSold: number;
 }
 
+export class DailyRevenueDto {
+  date: string;
+  revenue: number;
+  orderCount: number;
+}
+
 export class DashboardStatsDto {
   revenue: StatItemDto;
   viewers: StatItemDto;
@@ -112,6 +118,7 @@ export class DashboardStatsDto {
   pendingPayments: { value: number; formatted: string };
   activeLiveStreams: { value: number; formatted: string };
   topProducts: TopProductDto[];
+  dailyRevenue: DailyRevenueDto[];
 }
 
 // Live Status DTOs
@@ -299,6 +306,36 @@ export class UpdateUserStatusDto {
   @IsOptional()
   @IsString()
   suspensionReason?: string;
+}
+
+// System Settings DTO
+export class UpdateSystemSettingsDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  defaultCartTimerMinutes?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  defaultShippingFee?: number;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountHolder?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  emailNotificationsEnabled?: boolean;
 }
 
 export interface BulkShippingNotificationItem {

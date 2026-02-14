@@ -15,9 +15,11 @@ const MOCK_PRODUCT: Product = {
   name: '샘플 상품',
   description: '이 상품은 현재 서버에서 불러올 수 없어 임시로 표시됩니다.',
   price: 29900,
-  stockQuantity: 10,
+  stock: 10,
   imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
   status: 'AVAILABLE',
+  colorOptions: [],
+  sizeOptions: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -35,9 +37,8 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
 
-  // Mock options (real ones would come from product metadata)
-  const colors = ['블랙', '화이트', '네이비'];
-  const sizes = ['S', 'M', 'L', 'XL'];
+  const colors = product?.colorOptions ?? [];
+  const sizes = product?.sizeOptions ?? [];
 
   useEffect(() => {
     async function fetchProduct() {
@@ -61,7 +62,7 @@ export default function ProductDetailPage() {
     }).format(price);
   };
 
-  const maxQuantity = product ? Math.min(product.stockQuantity || product.stock || 0, 10) : 1;
+  const maxQuantity = product ? Math.min(product.stock || 0, 10) : 1;
 
   const handleQuantityChange = (delta: number) => {
     const next = quantity + delta;
@@ -76,7 +77,7 @@ export default function ProductDetailPage() {
       price: product.price,
       quantity,
       imageUrl: product.imageUrl,
-      stock: product.stockQuantity || product.stock || 0,
+      stock: product.stock || 0,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -90,11 +91,11 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <>
-        <div className="min-h-screen bg-[#121212] pb-24">
+        <div className="min-h-screen bg-white pb-24">
           <div className="flex items-center justify-center h-screen">
             <div className="text-center">
               <div className="w-12 h-12 border-4 border-hot-pink border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <Body className="text-secondary-text">상품 정보를 불러오는 중...</Body>
+              <Body className="text-gray-500">상품 정보를 불러오는 중...</Body>
             </div>
           </div>
         </div>
@@ -111,17 +112,17 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#121212] pb-24">
+      <div className="min-h-screen bg-white pb-24">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="fixed top-4 left-4 z-30 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+          className="fixed top-4 left-4 z-30 w-10 h-10 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/90 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-white" />
+          <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
 
         {/* Product Image */}
-        <div className="relative w-full aspect-[4/3] bg-primary-black">
+        <div className="relative w-full aspect-[4/3] bg-gray-100">
           <Image
             src={imageUrl}
             alt={product.name}
@@ -141,95 +142,99 @@ export default function ProductDetailPage() {
         <div className="px-4 py-6 space-y-6">
           {/* Name & Price */}
           <div>
-            <Heading2 className="text-primary-text text-2xl mb-2">
+            <Heading2 className="text-gray-900 text-2xl mb-2">
               {product.name}
             </Heading2>
             <Display className="text-hot-pink">
               {formatPrice(product.price)}
             </Display>
-            <Body className="text-secondary-text text-sm mt-1">
-              재고: {product.stockQuantity}개
+            <Body className="text-gray-500 text-sm mt-1">
+              재고: {product.stock}개
             </Body>
           </div>
 
           {/* Description */}
           {product.description && (
-            <div className="border-t border-white/10 pt-4">
-              <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
-              <Body className="text-secondary-text leading-relaxed">
+            <div className="border-t border-gray-200 pt-4">
+              <Body className="text-gray-900 font-semibold mb-2">상품 설명</Body>
+              <Body className="text-gray-500 leading-relaxed">
                 {product.description}
               </Body>
             </div>
           )}
 
           {/* Color Selector */}
-          <div className="border-t border-white/10 pt-4">
-            <Body className="text-primary-text font-semibold mb-3">색상</Body>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(selectedColor === color ? null : color)}
-                  className={`px-4 py-2 rounded-full border text-sm transition-colors ${
-                    selectedColor === color
-                      ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                      : 'border-white/20 text-secondary-text hover:border-white/40'
-                  }`}
-                >
-                  {color}
-                </button>
-              ))}
+          {colors.length > 0 && (
+            <div className="border-t border-gray-200 pt-4">
+              <Body className="text-gray-900 font-semibold mb-3">색상</Body>
+              <div className="flex flex-wrap gap-2">
+                {colors.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(selectedColor === color ? null : color)}
+                    className={`px-4 py-2 rounded-full border text-sm transition-colors ${
+                      selectedColor === color
+                        ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
+                        : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Size Selector */}
-          <div>
-            <Body className="text-primary-text font-semibold mb-3">사이즈</Body>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(selectedSize === size ? null : size)}
-                  className={`w-12 h-12 rounded-xl border text-sm font-bold transition-colors ${
-                    selectedSize === size
-                      ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
-                      : 'border-white/20 text-secondary-text hover:border-white/40'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
+          {sizes.length > 0 && (
+            <div>
+              <Body className="text-gray-900 font-semibold mb-3">사이즈</Body>
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(selectedSize === size ? null : size)}
+                    className={`w-12 h-12 rounded-xl border text-sm font-bold transition-colors ${
+                      selectedSize === size
+                        ? 'border-hot-pink bg-hot-pink/20 text-hot-pink'
+                        : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quantity Selector */}
-          <div className="border-t border-white/10 pt-4">
-            <Body className="text-primary-text font-semibold mb-3">수량</Body>
+          <div className="border-t border-gray-200 pt-4">
+            <Body className="text-gray-900 font-semibold mb-3">수량</Body>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
-                className="w-11 h-11 bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
-                <Minus className="w-5 h-5 text-primary-text" />
+                <Minus className="w-5 h-5 text-gray-700" />
               </button>
-              <Body className="text-primary-text font-bold text-2xl w-8 text-center">
+              <Body className="text-gray-900 font-bold text-2xl w-8 text-center">
                 {quantity}
               </Body>
               <button
                 onClick={() => handleQuantityChange(1)}
                 disabled={quantity >= maxQuantity}
-                className="w-11 h-11 bg-primary-black hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
               >
-                <Plus className="w-5 h-5 text-primary-text" />
+                <Plus className="w-5 h-5 text-gray-700" />
               </button>
             </div>
           </div>
 
           {/* Total */}
-          <div className="bg-content-bg rounded-2xl p-4 border border-white/5">
+          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
             <div className="flex items-center justify-between">
-              <Body className="text-secondary-text">총 금액</Body>
+              <Body className="text-gray-500">총 금액</Body>
               <Display className="text-hot-pink">
                 {formatPrice(product.price * quantity)}
               </Display>
@@ -238,7 +243,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Sticky CTA */}
-        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-[#121212]/90 backdrop-blur-sm border-t border-white/10">
+        <div className="fixed bottom-16 inset-x-0 z-20 px-4 py-3 bg-white/90 backdrop-blur-sm border-t border-gray-200">
           <Button
             variant="primary"
             size="lg"

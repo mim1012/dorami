@@ -33,7 +33,7 @@ test.describe('Reservation System (예비번호)', () => {
     const product = await page.evaluate(
       async ({ streamKey }) => {
         const baseUrl = window.location.origin;
-        const loginRes = await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+        const loginRes = await fetch(`${baseUrl}/api/auth/dev-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -44,7 +44,7 @@ test.describe('Reservation System (예비번호)', () => {
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
 
-        const res = await fetch(`${baseUrl}/api/v1/products`, {
+        const res = await fetch(`${baseUrl}/api/products`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -78,7 +78,7 @@ test.describe('Reservation System (예비번호)', () => {
     // 3. 일반 사용자로 복귀
     await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+      await fetch(`${baseUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -97,7 +97,7 @@ test.describe('Reservation System (예비번호)', () => {
       const baseUrl = window.location.origin;
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch(`${baseUrl}/api/v1/cart`, {
+      await fetch(`${baseUrl}/api/cart`, {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -110,7 +110,7 @@ test.describe('Reservation System (예비번호)', () => {
         const baseUrl = window.location.origin;
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch(`${baseUrl}/api/v1/cart`, {
+        const res = await fetch(`${baseUrl}/api/cart`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -136,7 +136,7 @@ test.describe('Reservation System (예비번호)', () => {
     // 다른 사용자 시뮬레이션 (새 사용자로 로그인)
     await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+      await fetch(`${baseUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -150,7 +150,7 @@ test.describe('Reservation System (예비번호)', () => {
         const baseUrl = window.location.origin;
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch(`${baseUrl}/api/v1/cart`, {
+        const res = await fetch(`${baseUrl}/api/cart`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -178,7 +178,7 @@ test.describe('Reservation System (예비번호)', () => {
         const baseUrl = window.location.origin;
         const match = document.cookie.match(/csrf-token=([^;]+)/);
         const csrf = match ? match[1] : '';
-        const res = await fetch(`${baseUrl}/api/v1/reservations`, {
+        const res = await fetch(`${baseUrl}/api/reservations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
@@ -214,7 +214,7 @@ test.describe('Reservation System (예비번호)', () => {
     // 사용자의 예비번호 목록 조회
     const reservations = await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      const res = await fetch(`${baseUrl}/api/v1/reservations/my`, { credentials: 'include' });
+      const res = await fetch(`${baseUrl}/api/reservations/my`, { credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
       return data.data || data;
@@ -238,7 +238,7 @@ test.describe('Reservation System (예비번호)', () => {
     // 첫 번째 사용자로 돌아가서 장바구니 비우기 (재고 반환)
     await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+      await fetch(`${baseUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -250,7 +250,7 @@ test.describe('Reservation System (예비번호)', () => {
       const baseUrl = window.location.origin;
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
-      await fetch(`${baseUrl}/api/v1/cart`, {
+      await fetch(`${baseUrl}/api/cart`, {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrf },
         credentials: 'include',
@@ -265,7 +265,7 @@ test.describe('Reservation System (예비번호)', () => {
     // 두 번째 사용자로 전환하여 예비번호 상태 확인
     await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+      await fetch(`${baseUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -275,7 +275,7 @@ test.describe('Reservation System (예비번호)', () => {
 
     const reservations = await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      const res = await fetch(`${baseUrl}/api/v1/reservations/my`, { credentials: 'include' });
+      const res = await fetch(`${baseUrl}/api/reservations/my`, { credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
       return data.data || data;
@@ -295,7 +295,7 @@ test.describe('Reservation System (예비번호)', () => {
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.evaluate(async () => {
       const baseUrl = window.location.origin;
-      await fetch(`${baseUrl}/api/v1/auth/dev-login`, {
+      await fetch(`${baseUrl}/api/auth/dev-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -75,7 +75,7 @@ export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
   // Call dev-login through the Next.js proxy (same-origin, cookies auto-set)
   const user = await page.evaluate(
     async ({ email, role }) => {
-      const res = await fetch('/api/v1/auth/dev-login', {
+      const res = await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

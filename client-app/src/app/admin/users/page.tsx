@@ -256,131 +256,129 @@ function AdminUsersContent() {
 
   return (
     <div className="min-h-screen bg-white py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Display className="text-hot-pink mb-2">회원 관리</Display>
-          <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
+      <div className="mb-8">
+        <Display className="text-hot-pink mb-2">회원 관리</Display>
+        <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
+      </div>
+
+      {error && (
+        <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
+          <Body className="text-error">{error}</Body>
         </div>
+      )}
 
-        {error && (
-          <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
-            <Body className="text-error">{error}</Body>
-          </div>
-        )}
-
-        {/* Search and Filter Section */}
-        <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
-          {/* Search Input */}
-          <div className="flex gap-4">
-            <Input
-              placeholder="이름, 이메일 또는 인스타그램 ID로 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-            />
-            <Button
-              variant={isFilterOpen ? 'primary' : 'outline'}
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="whitespace-nowrap"
-            >
-              {isFilterOpen ? '필터 숨기기' : '필터 보기'}
+      {/* Search and Filter Section */}
+      <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
+        {/* Search Input */}
+        <div className="flex gap-4">
+          <Input
+            placeholder="이름, 이메일 또는 인스타그램 ID로 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            fullWidth
+          />
+          <Button
+            variant={isFilterOpen ? 'primary' : 'outline'}
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="whitespace-nowrap"
+          >
+            {isFilterOpen ? '필터 숨기기' : '필터 보기'}
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={handleClearFilters}>
+              전체 초기화
             </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" onClick={handleClearFilters}>
-                전체 초기화
-              </Button>
-            )}
-          </div>
-
-          {/* Filter Panel */}
-          {isFilterOpen && (
-            <div className="pt-4 border-t border-gray-200 space-y-4">
-              <Heading2 className="text-hot-pink text-body">필터</Heading2>
-
-              {/* Date Range */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="가입일 시작"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setPage(1);
-                  }}
-                  fullWidth
-                />
-                <Input
-                  label="가입일 종료"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setPage(1);
-                  }}
-                  fullWidth
-                />
-              </div>
-
-              {/* Status Filter */}
-              <div>
-                <Body className="text-primary-text font-medium mb-2">상태</Body>
-                <div className="flex gap-2">
-                  {(['ACTIVE', 'INACTIVE', 'SUSPENDED'] as const).map((status) => {
-                    const statusLabelsFilter: Record<string, string> = {
-                      ACTIVE: '활성',
-                      INACTIVE: '비활성',
-                      SUSPENDED: '정지',
-                    };
-                    return (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusToggle(status)}
-                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                        statusFilter.includes(status)
-                          ? 'bg-hot-pink text-white'
-                          : 'bg-white text-secondary-text hover:bg-gray-100'
-                      }`}
-                    >
-                      {statusLabelsFilter[status]}
-                    </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Body className="text-secondary-text text-caption">
-                참고: 주문수 및 구매액 필터는 Epic 8에서 추가될 예정입니다
-              </Body>
-            </div>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Body className="text-secondary-text">회원 목록을 불러오는 중...</Body>
-          </div>
-        ) : (
-          <>
-            <Table
-              columns={columns}
-              data={users}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              emptyMessage="필터 조건에 맞는 회원이 없습니다"
-            />
+        {/* Filter Panel */}
+        {isFilterOpen && (
+          <div className="pt-4 border-t border-gray-200 space-y-4">
+            <Heading2 className="text-hot-pink text-body">필터</Heading2>
 
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={total}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          </>
+            {/* Date Range */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="가입일 시작"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                fullWidth
+              />
+              <Input
+                label="가입일 종료"
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                fullWidth
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <Body className="text-primary-text font-medium mb-2">상태</Body>
+              <div className="flex gap-2">
+                {(['ACTIVE', 'INACTIVE', 'SUSPENDED'] as const).map((status) => {
+                  const statusLabelsFilter: Record<string, string> = {
+                    ACTIVE: '활성',
+                    INACTIVE: '비활성',
+                    SUSPENDED: '정지',
+                  };
+                  return (
+                  <button
+                    key={status}
+                    onClick={() => handleStatusToggle(status)}
+                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                      statusFilter.includes(status)
+                        ? 'bg-hot-pink text-white'
+                        : 'bg-white text-secondary-text hover:bg-gray-100'
+                    }`}
+                  >
+                    {statusLabelsFilter[status]}
+                  </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Body className="text-secondary-text text-caption">
+              참고: 주문수 및 구매액 필터는 Epic 8에서 추가될 예정입니다
+            </Body>
+          </div>
         )}
       </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Body className="text-secondary-text">회원 목록을 불러오는 중...</Body>
+        </div>
+      ) : (
+        <>
+          <Table
+            columns={columns}
+            data={users}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            emptyMessage="필터 조건에 맞는 회원이 없습니다"
+          />
+
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={total}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </>
+      )}
     </div>
   );
 }

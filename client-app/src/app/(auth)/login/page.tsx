@@ -23,7 +23,7 @@ function LoginContent() {
   }, [isAuthenticated, isLoading, router]);
 
   const handleKakaoLogin = () => {
-    window.location.href = '/api/v1/auth/kakao';
+    window.location.href = '/api/auth/kakao';
   };
 
   const handleDevLogin = async () => {
@@ -31,7 +31,7 @@ function LoginContent() {
     setDevLoading(true);
     setDevError('');
     try {
-      const res = await fetch('/api/v1/auth/dev-login', {
+      const res = await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

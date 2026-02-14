@@ -3,7 +3,16 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
-import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Clock, Radio, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Clock, Radio, Package, BarChart3 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface StatItem {
   value: number;
@@ -18,6 +27,12 @@ interface TopProduct {
   totalSold: number;
 }
 
+interface DailyRevenue {
+  date: string;
+  revenue: number;
+  orderCount: number;
+}
+
 interface DashboardStats {
   revenue: StatItem;
   orders: StatItem;
@@ -25,6 +40,7 @@ interface DashboardStats {
   pendingPayments: { value: number; formatted: string };
   activeLiveStreams: { value: number; formatted: string };
   topProducts: TopProduct[];
+  dailyRevenue: DailyRevenue[];
 }
 
 export default function AdminDashboardPage() {
@@ -177,6 +193,69 @@ export default function AdminDashboardPage() {
             <Caption className="text-secondary-text">최근 7일</Caption>
           </div>
         </div>
+
+        {/* 매출 추이 차트 */}
+        {stats.dailyRevenue && stats.dailyRevenue.length > 0 && (
+          <div className="bg-content-bg rounded-button p-6 mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-hot-pink/10 rounded-button">
+                <BarChart3 className="w-5 h-5 text-hot-pink" />
+              </div>
+              <Heading2 className="text-hot-pink">일별 매출 추이 (최근 7일)</Heading2>
+            </div>
+
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={stats.dailyRevenue}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                  }}
+                  style={{ fontSize: '12px', fill: '#6B7280' }}
+                />
+                <YAxis
+                  tickFormatter={(value) => `${(value / 10000).toFixed(0)}만`}
+                  style={{ fontSize: '12px', fill: '#6B7280' }}
+                />
+                <Tooltip
+                  formatter={(value: number | undefined) => {
+                    if (value === undefined) return ['', '매출액'];
+                    return [
+                      new Intl.NumberFormat('ko-KR', {
+                        style: 'currency',
+                        currency: 'KRW',
+                        maximumFractionDigits: 0,
+                      }).format(value),
+                      '매출액',
+                    ];
+                  }}
+                  labelFormatter={(label: any) => {
+                    const date = new Date(label);
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                  }}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #FF1B8D',
+                    borderRadius: '8px',
+                    padding: '8px',
+                  }}
+                />
+                <Bar
+                  dataKey="revenue"
+                  fill="#FF1B8D"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={60}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+
+            <Caption className="text-secondary-text text-center mt-3">
+              입금 확인된 주문 기준 • 마우스를 올리면 상세 정보를 확인할 수 있습니다
+            </Caption>
+          </div>
+        )}
 
         {/* 판매 상위 상품 */}
         {stats.topProducts.length > 0 && (

@@ -18,6 +18,7 @@ import {
   UpdateNoticeDto,
   GetOrdersQueryDto,
   UpdateUserStatusDto,
+  UpdateSystemSettingsDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
@@ -46,6 +47,16 @@ export class AdminController {
   @Get('activities/recent')
   async getRecentActivities(@Query('limit') limit?: number) {
     return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
+  }
+
+  @Get('config/settings')
+  async getSystemSettings() {
+    return this.adminService.getSystemSettings();
+  }
+
+  @Put('config/settings')
+  async updateSystemSettings(@Body() dto: UpdateSystemSettingsDto) {
+    return this.adminService.updateSystemSettings(dto);
   }
 
   @Get('config')

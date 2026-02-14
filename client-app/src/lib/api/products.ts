@@ -12,6 +12,8 @@ export interface Product {
   imageUrl?: string;
   isNew?: boolean;
   discountRate?: number;
+  colorOptions?: string[];
+  sizeOptions?: string[];
   status: 'AVAILABLE' | 'SOLD_OUT';
   createdAt: string;
   updatedAt: string;
