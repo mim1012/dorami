@@ -80,6 +80,9 @@ services:
     restart: always
     depends_on:
       - backend
+    environment:
+      BACKEND_URL: http://backend:3001
+      HOSTNAME: 0.0.0.0
     ports:
       - "127.0.0.1:3000:3000"
 
