@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: staging
-      url: ${{ secrets.STAGING_URL }}
+      url: ${{ vars.STAGING_URL }}
 
     steps:
       - name: Checkout
