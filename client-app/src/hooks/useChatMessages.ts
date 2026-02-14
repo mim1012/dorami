@@ -19,16 +19,14 @@ export function useChatMessages(socket: Socket | null) {
         isDeleted: false,
       };
 
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) => [...prev.slice(-99), newMessage]);
     });
 
     // Handle message deletion
     socket.on('chat:message-deleted', (data: any) => {
       const deletedId = data.data?.messageId || data.messageId;
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === deletedId ? { ...msg, isDeleted: true } : msg
-        )
+        prev.map((msg) => (msg.id === deletedId ? { ...msg, isDeleted: true } : msg)),
       );
     });
 
