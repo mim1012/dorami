@@ -91,7 +91,7 @@ jobs:
       - name: Build and Push Backend
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
           file: ./backend/Dockerfile
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
@@ -104,7 +104,7 @@ jobs:
       - name: Build and Push Frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./client-app
+          context: .
           file: ./client-app/Dockerfile
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
