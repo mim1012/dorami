@@ -20,6 +20,8 @@ import {
   UpdateNoticeDto,
   GetOrdersQueryDto,
   UpdateUserStatusDto,
+  UpdateOrderStatusDto,
+  UpdateOrderShippingStatusDto,
   UpdateSystemSettingsDto,
   UpdateShippingMessagesDto,
   UpdateNotificationTemplateDto,
@@ -106,6 +108,23 @@ export class AdminController {
   @Patch('orders/:id/confirm-payment')
   async confirmPayment(@Param('id') orderId: string) {
     return this.adminService.confirmOrderPayment(orderId);
+  }
+
+  @Patch('orders/:id/status')
+  async updateOrderStatus(@Param('id') orderId: string, @Body() dto: UpdateOrderStatusDto) {
+    return this.adminService.updateOrderStatus(orderId, dto.status);
+  }
+
+  @Patch('orders/:id/shipping-status')
+  async updateOrderShippingStatus(
+    @Param('id') orderId: string,
+    @Body() dto: UpdateOrderShippingStatusDto,
+  ) {
+    return this.adminService.updateOrderShippingStatus(
+      orderId,
+      dto.shippingStatus,
+      dto.trackingNumber,
+    );
   }
 
   @Patch('orders/:id/send-reminder')

@@ -527,11 +527,7 @@ function AdminOrdersContent() {
           <Display className="text-hot-pink mb-2">주문 관리</Display>
           <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleExportCsv}
-          className="flex items-center gap-2"
-        >
+        <Button variant="outline" onClick={handleExportCsv} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
           CSV 내보내기
         </Button>
@@ -686,6 +682,7 @@ function AdminOrdersContent() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
+            onRowClick={(order) => router.push(`/admin/orders/${order.id}`)}
             emptyMessage="필터 조건에 맞는 주문이 없습니다"
             getRowClassName={(order) =>
               order.paymentStatus === 'PENDING' ? 'border-l-4 border-warning bg-warning/5' : ''
