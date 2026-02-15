@@ -198,12 +198,12 @@ jobs:
     name: Smoke Tests
     needs: [deploy]
     runs-on: ubuntu-latest
-    environment: staging
 
     steps:
       - name: Health Check - Backend
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.STAGING_API_URL }}/health)
+          BACKEND_URL="http://${{ secrets.STAGING_HOST }}:3001/api/v1"
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${BACKEND_URL}/health")
           if [ "$response" != "200" ]; then
             echo "Backend health check failed: $response"
             exit 1
@@ -212,7 +212,8 @@ jobs:
 
       - name: Health Check - Frontend
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ vars.STAGING_URL }})
+          FRONTEND_URL="http://${{ secrets.STAGING_HOST }}:3000"
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${FRONTEND_URL}")
           if [ "$response" != "200" ]; then
             echo "Frontend health check failed: $response"
             exit 1
@@ -221,6 +222,6 @@ jobs:
 
       - name: API Response Test
         run: |
-          # Test a basic API endpoint
-          response=$(curl -s ${{ vars.STAGING_API_URL }}/health)
+          BACKEND_URL="http://${{ secrets.STAGING_HOST }}:3001/api/v1"
+          response=$(curl -s "${BACKEND_URL}/health")
           echo "API Response: $response"
