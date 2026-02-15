@@ -345,6 +345,7 @@ function AdminUsersContent() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
+            onRowClick={(user) => router.push(`/admin/users/${user.id}`)}
             emptyMessage="필터 조건에 맞는 회원이 없습니다"
           />
 
