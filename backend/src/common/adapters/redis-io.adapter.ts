@@ -82,7 +82,7 @@ export class RedisIoAdapter extends IoAdapter {
       if (this.subClient?.isOpen) {
         await this.subClient.quit();
       }
-    } catch (_error) {
+    } catch {
       this.logger.warn('Error during Redis cleanup');
     }
     this.pubClient = null;

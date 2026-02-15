@@ -40,7 +40,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     private readonly streamingService: StreamingService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     console.log('✅ Streaming Gateway initialized');
   }
 

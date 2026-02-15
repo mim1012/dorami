@@ -45,7 +45,7 @@ describe('InventoryService', () => {
         quantity: 5,
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           product: {
             findUnique: jest.fn().mockResolvedValue(mockProduct),
@@ -67,7 +67,7 @@ describe('InventoryService', () => {
         status: 'ACTIVE',
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           product: {
             findUnique: jest.fn().mockResolvedValue(mockProduct),

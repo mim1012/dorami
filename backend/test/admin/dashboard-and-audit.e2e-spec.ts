@@ -8,7 +8,6 @@ import { TransformInterceptor } from '../../src/common/interceptors/transform.in
 describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let adminToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

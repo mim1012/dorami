@@ -5,7 +5,6 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { BusinessExceptionFilter } from './common/filters/business-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import { CsrfGuard } from './common/guards';
 import cookieParser from 'cookie-parser';
 import { SocketIoProvider } from './modules/websocket/socket-io.provider';
@@ -17,7 +16,7 @@ import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { CustomIoAdapter } from './common/adapters/custom-io.adapter';
 import { JwtService } from '@nestjs/jwt';
-import { authenticateSocket, AuthenticatedSocket } from './common/middleware/ws-jwt-auth.middleware';
+import { authenticateSocket } from './common/middleware/ws-jwt-auth.middleware';
 import { rateLimitCheck } from './common/middleware/ws-rate-limit.middleware';
 
 async function bootstrap() {
@@ -658,7 +657,7 @@ async function bootstrap() {
       socket.on('disconnect', () => {
         const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id);
         for (const room of rooms) {
-          socket.leave(room);
+          void socket.leave(room);
           logger.log(`Client ${socket.id} left room: ${room}`);
         }
         logger.log(`👋 Client disconnected from /: ${socket.id}`);
@@ -728,13 +727,16 @@ async function bootstrap() {
   // Graceful shutdown
   const gracefulShutdown = async (signal: string) => {
     logger.log(`\n⚠️  Received ${signal}, starting graceful shutdown...`);
-    
+
     // Close Socket.IO connections
     logger.log('🔌 Closing Socket.IO connections...');
-    io.close(() => {
-      logger.log('✅ Socket.IO connections closed');
+    await new Promise<void>((resolve) => {
+      void io.close(() => {
+        logger.log('✅ Socket.IO connections closed');
+        resolve();
+      });
     });
-    
+
     // Close Redis connections
     logger.log('🔌 Closing Redis connections...');
     await Promise.all([
@@ -742,28 +744,28 @@ async function bootstrap() {
       subClient.quit(),
     ]);
     logger.log('✅ Redis connections closed');
-    
+
     // Close HTTP server
     logger.log('🔌 Closing HTTP server...');
     await app.close();
     logger.log('✅ HTTP server closed');
-    
+
     logger.log('✅ Graceful shutdown complete');
     process.exit(0);
   };
-  
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  
+
+  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
+  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
+
   // Unhandled rejection handler
   process.on('unhandledRejection', (reason, promise) => {
     logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   });
-  
+
   // Uncaught exception handler
   process.on('uncaughtException', (error) => {
     logger.error('❌ Uncaught Exception:', error);
-    gracefulShutdown('UNCAUGHT_EXCEPTION');
+    void gracefulShutdown('UNCAUGHT_EXCEPTION');
   });
 }
 
