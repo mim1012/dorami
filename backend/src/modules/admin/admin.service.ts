@@ -909,10 +909,15 @@ export class AdminService {
   async updateOrderStatus(orderId: string, status: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
+      include: { orderItems: true },
     });
 
     if (!order) {
       throw new NotFoundException('Order not found');
+    }
+
+    if (order.status === 'CANCELLED') {
+      throw new BadRequestException('취소된 주문의 상태는 변경할 수 없습니다');
     }
 
     const data: any = { status };
@@ -929,12 +934,30 @@ export class AdminService {
       data.paidAt = order.paidAt || new Date();
     } else if (status === 'CANCELLED') {
       data.paymentStatus = 'FAILED';
+
+      // Restore stock for each order item
+      for (const item of order.orderItems) {
+        if (item.productId) {
+          await this.prisma.product.update({
+            where: { id: item.productId },
+            data: {
+              quantity: { increment: item.quantity },
+              status: 'AVAILABLE',
+            },
+          });
+        }
+      }
     }
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data,
     });
+
+    // Emit cancellation event for point refund + notifications
+    if (status === 'CANCELLED') {
+      this.eventEmitter.emit('order:cancelled', { orderId });
+    }
 
     return {
       success: true,
