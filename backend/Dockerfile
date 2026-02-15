@@ -37,4 +37,4 @@ EXPOSE 3001
 
 USER nestjs
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+*.log
+.env
+.env.*
+!.env.staging.example
+.vscode
+.idea
+coverage
+.nyc_output
+docs
+.claude
+.omc
