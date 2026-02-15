@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { apiClient } from '@/lib/api/client';
 import {
   LayoutDashboard,
   Radio,
@@ -17,10 +18,10 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { name: '대시보드', icon: LayoutDashboard, href: '/admin' },
+  { name: '대시보드', icon: LayoutDashboard, href: '/admin/dashboard' },
   { name: '방송 관리', icon: Radio, href: '/admin/broadcasts' },
   { name: '상품 관리', icon: ShoppingBag, href: '/admin/products' },
-  { name: '주문 관리', icon: Package, href: '/admin/orders' },
+  { name: '주문 관리', icon: Package, href: '/admin/orders', badgeKey: 'pendingPayments' },
   { name: '사용자 관리', icon: Users, href: '/admin/users' },
   { name: '설정', icon: Settings, href: '/admin/settings' },
 ];
@@ -29,6 +30,24 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { logout } = useAuth();
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+
+  // Fetch pending payments count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const { data } = await apiClient.get('/admin/dashboard/stats');
+        setPendingPaymentsCount(data.pendingPayments?.value || 0);
+      } catch (err) {
+        console.error('Failed to fetch pending payments:', err);
+      }
+    };
+
+    fetchPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
@@ -95,9 +114,16 @@ export default function Sidebar() {
                   }`}
                 />
                 <span className="font-medium">{item.name}</span>
-                {isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-hot-pink shadow-[0_0_8px_rgba(255,0,122,0.8)]" />
-                )}
+                <div className="ml-auto flex items-center gap-2">
+                  {item.badgeKey === 'pendingPayments' && pendingPaymentsCount > 0 && (
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-warning rounded-full">
+                      {pendingPaymentsCount > 99 ? '99+' : pendingPaymentsCount}
+                    </span>
+                  )}
+                  {isActive && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-hot-pink shadow-[0_0_8px_rgba(255,0,122,0.8)]" />
+                  )}
+                </div>
               </Link>
             );
           })}

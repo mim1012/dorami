@@ -1,4 +1,16 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum, IsArray, IsNumber, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsEnum,
+  IsArray,
+  IsNumber,
+  IsBoolean,
+  IsNotEmpty,
+  MaxLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class GetUsersQueryDto {
@@ -12,6 +24,7 @@ export class GetUsersQueryDto {
   @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   @Min(1)
+  @Max(100)
   limit?: number = 20;
 
   @IsOptional()
@@ -181,6 +194,7 @@ export class GetOrdersQueryDto {
   @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   @Min(1)
+  @Max(100)
   limit?: number = 20;
 
   @IsOptional()
@@ -336,6 +350,37 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   emailNotificationsEnabled?: boolean;
+}
+
+// Shipping Messages DTO
+export class UpdateShippingMessagesDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  preparing: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  shipped: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  inTransit: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  delivered: string;
+}
+
+// Notification Template DTO
+export class UpdateNotificationTemplateDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  template: string;
 }
 
 export interface BulkShippingNotificationItem {
