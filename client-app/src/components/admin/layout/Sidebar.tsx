@@ -36,8 +36,10 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const { data } = await apiClient.get('/admin/dashboard/stats');
-        setPendingPaymentsCount(data.pendingPayments?.value || 0);
+        const { data } = await apiClient.get<{ pendingPayments?: { value: number } }>(
+          '/admin/dashboard/stats',
+        );
+        setPendingPaymentsCount(data?.pendingPayments?.value || 0);
       } catch (err) {
         console.error('Failed to fetch pending payments:', err);
       }
