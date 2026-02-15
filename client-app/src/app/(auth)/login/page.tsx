@@ -75,7 +75,7 @@ function LoginContent() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
             <span className="text-white font-black text-2xl">D</span>
           </div>
-          <Display className="text-hot-pink mb-2">DoRaMi</Display>
+          <Display className="text-hot-pink mb-2">DoReMi</Display>
           <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
         </div>
 
@@ -115,7 +115,7 @@ function LoginContent() {
                 type="email"
                 value={devEmail}
                 onChange={(e) => setDevEmail(e.target.value)}
-                placeholder="이메일 (예: admin@dorami.shop)"
+                placeholder="이메일 (예: admin@doremi.shop)"
                 className="w-full px-3 py-2.5 bg-primary-black border border-border-color rounded-lg text-sm text-primary-text placeholder:text-secondary-text/50 focus:border-hot-pink focus:outline-none"
               />
 
@@ -155,7 +155,7 @@ function LoginContent() {
                 </button>
                 <button
                   onClick={() => {
-                    setDevEmail('admin@dorami.shop');
+                    setDevEmail('admin@doremi.shop');
                     setDevRole('ADMIN');
                   }}
                   className="flex-1 py-1.5 text-xs rounded bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"

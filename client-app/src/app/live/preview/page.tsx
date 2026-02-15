@@ -22,7 +22,7 @@ const MOCK_MESSAGES: ChatMessage[] = [
   {
     id: '1',
     userId: 'u1',
-    username: 'dorami_fan',
+    username: 'doremi_fan',
     message: '오 대박 이거 진짜 예쁘다 😍',
     timestamp: new Date(Date.now() - 300000),
     isDeleted: false,
@@ -54,7 +54,7 @@ const MOCK_MESSAGES: ChatMessage[] = [
   {
     id: '5',
     userId: 'u1',
-    username: 'dorami_fan',
+    username: 'doremi_fan',
     message: '바로 담았어요!! 🔥🔥',
     timestamp: new Date(Date.now() - 60000),
     isDeleted: false,
@@ -332,7 +332,7 @@ export default function LivePreviewPage() {
           {/* Stream title */}
           <div className="absolute top-[68px] left-4 right-20 z-20">
             <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
-              도라미 라이브 커머스 미리보기
+              도레미 라이브 커머스 미리보기
             </h1>
           </div>
 
