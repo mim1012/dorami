@@ -30,6 +30,7 @@ describe('ProductsService', () => {
     cart: {
       count: jest.fn(),
       aggregate: jest.fn(),
+      updateMany: jest.fn(),
     },
   };
 
@@ -296,8 +297,8 @@ describe('ProductsService', () => {
     };
 
     it('should delete a product with no active carts', async () => {
-      mockPrismaService.cart.count.mockResolvedValue(0);
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
+      mockPrismaService.cart.updateMany.mockResolvedValue({ count: 0 });
       jest.spyOn(prisma.product, 'delete').mockResolvedValue(mockProduct as any);
 
       await service.delete('product-1');
@@ -306,10 +307,18 @@ describe('ProductsService', () => {
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('product:deleted', expect.any(Object));
     });
 
-    it('should throw BadRequestException when product has active carts', async () => {
-      mockPrismaService.cart.count.mockResolvedValue(5);
+    it('should expire active carts before deleting product', async () => {
+      jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
+      mockPrismaService.cart.updateMany.mockResolvedValue({ count: 3 });
+      jest.spyOn(prisma.product, 'delete').mockResolvedValue(mockProduct as any);
 
-      await expect(service.delete('product-1')).rejects.toThrow(BadRequestException);
+      await service.delete('product-1');
+
+      expect(mockPrismaService.cart.updateMany).toHaveBeenCalledWith({
+        where: { productId: 'product-1', status: 'ACTIVE' },
+        data: { status: 'EXPIRED' },
+      });
+      expect(prisma.product.delete).toHaveBeenCalledWith({ where: { id: 'product-1' } });
     });
   });
 

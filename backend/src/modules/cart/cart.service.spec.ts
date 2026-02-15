@@ -315,7 +315,12 @@ describe('CartService', () => {
 
   describe('clearCart', () => {
     it('should clear all active cart items for user', async () => {
-      jest.spyOn(prismaService.cart, 'deleteMany').mockResolvedValue({ count: 3 });
+      const mockCartItems = [
+        { ...mockCartItem, id: 'cart-1', productId: 'product-1' },
+        { ...mockCartItem, id: 'cart-2', productId: 'product-2' },
+      ];
+      jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue(mockCartItems as any);
+      jest.spyOn(prismaService.cart, 'deleteMany').mockResolvedValue({ count: 2 });
 
       await service.clearCart('user-1');
 
