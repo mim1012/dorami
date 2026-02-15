@@ -2,8 +2,8 @@
 
 **프로젝트**: Dorami Live Commerce
 **버전**: 1.0.0 (MVP)
-**Base URL**: `https://api.dorami.com/api` (Production)
-**Base URL**: `https://api-staging.dorami.com/api` (Staging)
+**Base URL**: `https://api.doremi.com/api` (Production)
+**Base URL**: `https://api-staging.doremi.com/api` (Staging)
 **Base URL**: `http://localhost:3001/api` (Local Development)
 **작성일**: 2026-02-05
 
@@ -380,7 +380,7 @@ Content-Type: application/json
   "freeShippingMessage": "Free shipping on orders over $50",
   "timerEnabled": true,
   "timerDuration": 10,
-  "imageUrl": "https://cdn.dorami.com/products/abc123.jpg",
+  "imageUrl": "https://cdn.doremi.com/products/abc123.jpg",
   "isNew": true,
   "discountRate": 10.0,
   "originalPrice": 33.32
@@ -402,7 +402,7 @@ Content-Type: application/json
   "freeShippingMessage": "Free shipping on orders over $50",
   "timerEnabled": true,
   "timerDuration": 10,
-  "imageUrl": "https://cdn.dorami.com/products/abc123.jpg",
+  "imageUrl": "https://cdn.doremi.com/products/abc123.jpg",
   "isNew": true,
   "discountRate": 10.0,
   "originalPrice": 33.32,
@@ -439,7 +439,7 @@ Content-Type: application/json
       "shippingFee": 5.0,
       "timerEnabled": true,
       "timerDuration": 10,
-      "imageUrl": "https://cdn.dorami.com/products/abc123.jpg",
+      "imageUrl": "https://cdn.doremi.com/products/abc123.jpg",
       "isNew": true,
       "discountRate": 10.0,
       "originalPrice": 33.32,
@@ -471,7 +471,7 @@ Content-Type: application/json
   "freeShippingMessage": "Free shipping on orders over $50",
   "timerEnabled": true,
   "timerDuration": 10,
-  "imageUrl": "https://cdn.dorami.com/products/abc123.jpg",
+  "imageUrl": "https://cdn.doremi.com/products/abc123.jpg",
   "isNew": true,
   "discountRate": 10.0,
   "originalPrice": 33.32,
@@ -1139,7 +1139,7 @@ Authorization: Bearer {token}
       "name": "Product Name",
       "price": 29.99,
       "quantity": 95,
-      "imageUrl": "https://cdn.dorami.com/products/abc123.jpg",
+      "imageUrl": "https://cdn.doremi.com/products/abc123.jpg",
       "isNew": true,
       "discountRate": 10.0,
       "originalPrice": 33.32,
@@ -1239,7 +1239,7 @@ file: [binary data]
 
 ```json
 {
-  "url": "https://cdn.dorami.com/uploads/abc123def456.jpg"
+  "url": "https://cdn.doremi.com/uploads/abc123def456.jpg"
 }
 ```
 
@@ -1382,7 +1382,7 @@ X-RateLimit-Reset: 1704448800
 
 ### 연결
 
-**URL**: `wss://api.dorami.com` (Production)
+**URL**: `wss://api.doremi.com` (Production)
 **URL**: `ws://localhost:3001` (Local)
 
 ### 이벤트
@@ -1524,8 +1524,8 @@ socket.on('stream-ended', (data) => {
 
 ## 📞 문의
 
-**API 담당**: backend@dorami.com
-**기술 지원**: support@dorami.com
+**API 담당**: backend@doremi.com
+**기술 지원**: support@doremi.com
 
 ---
 

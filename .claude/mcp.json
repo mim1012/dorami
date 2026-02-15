@@ -1,0 +1,64 @@
+{
+  "mcpServers": {
+    "doremi-db-schema": {
+      "command": "npx",
+      "args": ["tsx", "src/db-schema-manager.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Prisma schema analysis, ERD generation, migration conflict detection, index optimization, N+1 query detection"
+    },
+    "doremi-api-contract": {
+      "command": "npx",
+      "args": ["tsx", "src/api-contract-validator.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Backend/Frontend API contract validation, DTO extraction, type generation, endpoint change detection"
+    },
+    "doremi-ws-monitor": {
+      "command": "npx",
+      "args": ["tsx", "src/websocket-monitor.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Socket.IO namespace/event analysis, event flow mapping, test script generation"
+    },
+    "doremi-e2e-generator": {
+      "command": "npx",
+      "args": ["tsx", "src/e2e-test-generator.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Playwright E2E test generation, coverage analysis, visual regression tests"
+    },
+    "doremi-deploy": {
+      "command": "npx",
+      "args": ["tsx", "src/deployment-pipeline.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Pre-deploy checks, deployment automation, health checks, Docker config generation"
+    },
+    "doremi-prisma-studio": {
+      "command": "npx",
+      "args": ["tsx", "src/prisma-studio-web.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Database query/insert/update/delete, table stats, test data seeding, raw SQL"
+    },
+    "doremi-image-optimizer": {
+      "command": "npx",
+      "args": ["tsx", "src/image-optimizer.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Image analysis, WebP conversion, responsive image generation, batch optimization"
+    },
+    "doremi-kakao": {
+      "command": "npx",
+      "args": ["tsx", "src/kakao-integration.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Kakao OAuth verification, AlimTalk template validation, API reference"
+    },
+    "doremi-redis": {
+      "command": "npx",
+      "args": ["tsx", "src/redis-cache-inspector.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Redis key search, TTL inspection, memory analysis, cache code analysis"
+    },
+    "doremi-perf": {
+      "command": "npx",
+      "args": ["tsx", "src/performance-monitor.ts"],
+      "cwd": "./mcp-servers",
+      "description": "Bundle size analysis, Lighthouse audits, Web Vitals setup, performance budgets"
+    }
+  }
+}

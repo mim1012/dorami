@@ -32,13 +32,13 @@ async function main() {
   console.log('Creating admin user...');
   const adminUser = await prisma.user.create({
     data: {
-      email: 'admin@dorami.shop',
+      email: 'admin@doremi.shop',
       kakaoId: 'admin_kakao_001',
-      name: 'DoRaMi Admin',
+      name: 'DoReMi Admin',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
-      depositorName: 'DoRaMi',
-      instagramId: 'dorami.shop',
+      depositorName: 'DoReMi',
+      instagramId: 'doremi.shop',
       shippingAddress: {
         street: '123 Commerce St',
         city: 'San Francisco',
@@ -80,7 +80,7 @@ async function main() {
 
   const stream1 = await prisma.liveStream.create({
     data: {
-      streamKey: 'dorami-beauty-live-001',
+      streamKey: 'doremi-beauty-live-001',
       userId: adminUser.id,
       title: '2월 뷰티 신상 특집 라이브',
       status: 'PENDING',
@@ -90,7 +90,7 @@ async function main() {
 
   const stream2 = await prisma.liveStream.create({
     data: {
-      streamKey: 'dorami-fashion-live-002',
+      streamKey: 'doremi-fashion-live-002',
       userId: adminUser.id,
       title: '겨울 패션 아이템 특가 방송',
       status: 'PENDING',
