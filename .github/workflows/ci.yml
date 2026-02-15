@@ -100,6 +100,11 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
+
       - name: Lint
         run: npm run lint
 

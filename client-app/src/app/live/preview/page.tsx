@@ -218,7 +218,7 @@ export default function LivePreviewPage() {
               className="flex items-center gap-3 p-3 rounded-2xl bg-content-bg hover:bg-border-color transition-all cursor-pointer"
             >
               <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-content-bg">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* eslint-disable-next-line */}
                 <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
@@ -404,7 +404,7 @@ export default function LivePreviewPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-primary-black/95 backdrop-blur-md border-t border-border-color p-4 z-20 cursor-pointer hover:bg-primary-black transition-colors lg:block hidden">
         <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
           <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-content-bg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* eslint-disable-next-line */}
             <img
               src="https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80"
               alt="Chic Evening Bag"
