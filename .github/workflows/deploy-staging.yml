@@ -198,6 +198,7 @@ jobs:
     name: Smoke Tests
     needs: [deploy]
     runs-on: ubuntu-latest
+    environment: staging
 
     steps:
       - name: Health Check - Backend
