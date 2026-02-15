@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 멀티 플랫폼 동시 송출 (ReStream) E2E 테스트
@@ -14,6 +15,10 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('Admin ReStream Management', () => {
   test.setTimeout(90000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   const BROADCASTS_URL = '/admin/broadcasts';
 

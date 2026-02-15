@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 사용자 관리 심화 E2E 테스트
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Users List Filters', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display users page with search and filters', async ({ page }) => {
     await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });

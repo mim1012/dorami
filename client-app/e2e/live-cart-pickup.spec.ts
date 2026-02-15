@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream } from './helpers/auth-helper';
+import { createTestStream, ensureAuth } from './helpers/auth-helper';
 
 /**
  * 라이브 방송 주워담기 + 타이머 E2E 테스트
@@ -17,6 +17,10 @@ let testProductId: string;
 
 test.describe('Live Stream Cart Pickup (주워담기)', () => {
   test.setTimeout(90000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should setup: create live stream and product', async ({ page }) => {
     // 1. 테스트용 라이브 스트림 생성

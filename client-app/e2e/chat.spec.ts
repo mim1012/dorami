@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 채팅 E2E 테스트
@@ -13,6 +14,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Live Chat', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   /**
    * 라이브 스트림 페이지 진입 시도.

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 감사 로그 E2E 테스트
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Audit Log Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display audit log page with filters', async ({ page }) => {
     await page.goto('/admin/audit-log', { waitUntil: 'domcontentloaded' });

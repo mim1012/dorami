@@ -2,20 +2,20 @@
   "cookies": [
     {
       "name": "accessToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJ1c2VySWQiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcwODY5MDU3MzYyIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYjJlMTBjMjgtMmM1YS00YmFhLTlhYTItZmUxY2ViZWViZjczIiwiaWF0IjoxNzcxMDY0Mjk1LCJleHAiOjE3NzEwNjUxOTV9.-jgwXhoWuvpbke_YRwSkXXMWoRFO5Se1a9NOnqoobTA",
-      "domain": "localhost",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzN2JhNDhmMC03NmM5LTQ1OTQtOGY4MC05NTAwMzM3NTgxOTYiLCJ1c2VySWQiOiIzN2JhNDhmMC03NmM5LTQ1OTQtOGY4MC05NTAwMzM3NTgxOTYiLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcxMTM0ODk4NTMwIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiNWE1MDBmOTktODZhZi00OWU2LTgyMDAtZDc3NjdlMjM3M2VhIiwiaWF0IjoxNzcxMTU4Njc2LCJleHAiOjE3NzExNTk1NzZ9.gXXHt90wnoamQ8UB1OVXHTpxAvch7UYxZu0y1e7Zhxo",
+      "domain": "54.180.94.30",
       "path": "/",
-      "expires": 1771065195,
+      "expires": 1771159576,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "refreshToken",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJ1c2VySWQiOiJhNjAxZjQ1Yy0yMzc1LTQwMjAtYWZlMy03ZTkwZTllZWM2YjciLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcwODY5MDU3MzYyIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6IjkyODhmNjlkLTIyYzAtNGJiYy1hNDZkLTY5YmRhNzRkOGQ1OCIsImlhdCI6MTc3MTA2NDI5NSwiZXhwIjoxNzcxNjY5MDk1fQ._n8kXqJLBrnzrUOwcT3VveJQGYt-DcnP_bYWim_g0z4",
-      "domain": "localhost",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzN2JhNDhmMC03NmM5LTQ1OTQtOGY4MC05NTAwMzM3NTgxOTYiLCJ1c2VySWQiOiIzN2JhNDhmMC03NmM5LTQ1OTQtOGY4MC05NTAwMzM3NTgxOTYiLCJlbWFpbCI6ImUyZS11c2VyQHRlc3QuY29tIiwia2FrYW9JZCI6ImRldl8xNzcxMTM0ODk4NTMwIiwicm9sZSI6IlVTRVIiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6ImVjYjZiZjRhLTkwNTItNDMwOS1iODhlLTMyNDRjOWQ2YWI1NyIsImlhdCI6MTc3MTE1ODY3NiwiZXhwIjoxNzcxNzYzNDc2fQ.S85X0aK7HEP04fnnX0o0tBiv5EFBP9fIEK-KN6d7XoI",
+      "domain": "54.180.94.30",
       "path": "/",
-      "expires": 1771669095,
+      "expires": 1771763476,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -23,11 +23,11 @@
   ],
   "origins": [
     {
-      "origin": "http://localhost:3000",
+      "origin": "http://54.180.94.30",
       "localStorage": [
         {
           "name": "auth-storage",
-          "value": "{\"state\":{\"user\":{\"id\":\"a601f45c-2375-4020-afe3-7e90e9eec6b7\",\"kakaoId\":\"dev_1770869057362\",\"email\":\"e2e-user@test.com\",\"nickname\":\"E2E USER\",\"role\":\"USER\",\"depositorName\":\"테스트사용자\",\"instagramId\":\"@e2e_reg_1771064086277\",\"createdAt\":\"2026-02-12T04:04:17.365Z\",\"updatedAt\":\"2026-02-14T10:18:15.216Z\"},\"isAuthenticated\":true,\"isLoading\":false},\"version\":0}"
+          "value": "{\"state\":{\"user\":{\"id\":\"37ba48f0-76c9-4594-8f80-950033758196\",\"kakaoId\":\"dev_1771134898530\",\"email\":\"e2e-user@test.com\",\"nickname\":\"E2E USER\",\"role\":\"USER\",\"depositorName\":\"E2E테스트\",\"instagramId\":\"@e2e_user_1771158677003\",\"createdAt\":\"2026-02-15T05:54:58.531Z\",\"updatedAt\":\"2026-02-15T12:31:16.184Z\"},\"isAuthenticated\":true,\"isLoading\":false},\"version\":0}"
         }
       ]
     }

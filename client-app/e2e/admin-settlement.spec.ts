@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 정산 페이지 E2E 테스트
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Settlement Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display settlement page with date range inputs', async ({ page }) => {
     await page.goto('/admin/settlement', { waitUntil: 'domcontentloaded' });

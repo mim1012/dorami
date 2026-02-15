@@ -4,6 +4,7 @@ import fs from 'fs';
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
+const COOKIE_DOMAIN = new URL(BASE_URL).hostname;
 
 export const AUTH_DIR = path.join(__dirname, '.auth');
 export const USER_STATE = path.join(AUTH_DIR, 'user.json');
@@ -32,7 +33,7 @@ function parseSetCookies(setCookieHeaders: string[]): Array<{
     const cookie: any = {
       name,
       value,
-      domain: 'localhost',
+      domain: COOKIE_DOMAIN,
       path: '/',
       expires: -1,
       httpOnly: false,
@@ -61,6 +62,13 @@ function parseSetCookies(setCookieHeaders: string[]): Array<{
         else if (val === 'none') cookie.sameSite = 'None';
         else cookie.sameSite = 'Lax';
       }
+    }
+
+    // Always force domain to match the test environment (backend may send domain=localhost)
+    cookie.domain = COOKIE_DOMAIN;
+    // Force secure=false for non-HTTPS environments (e.g. staging over HTTP)
+    if (!BASE_URL.startsWith('https')) {
+      cookie.secure = false;
     }
 
     return cookie;

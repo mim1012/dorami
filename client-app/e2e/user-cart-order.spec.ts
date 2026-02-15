@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 장바구니 & 주문 E2E 테스트
@@ -12,6 +13,10 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('Cart Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should display cart page (items or empty state)', async ({ page }) => {
     await page.goto('/cart', { waitUntil: 'domcontentloaded' });
@@ -59,6 +64,10 @@ test.describe('Cart Page', () => {
 
 test.describe('Cart Item Management', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should add item to cart via API and verify in cart page', async ({ page }) => {
     // 1. 먼저 상품 목록 조회
@@ -113,6 +122,10 @@ test.describe('Cart Item Management', () => {
 
 test.describe('Checkout Flow', () => {
   test.setTimeout(90000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should complete full purchase flow: cart → checkout → order with bank transfer', async ({
     page,
@@ -261,6 +274,10 @@ test.describe('Checkout Flow', () => {
 
 test.describe('Checkout Page Display', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should redirect to cart if no items in checkout', async ({ page }) => {
     // 장바구니 비우기 — 먼저 페이지 이동 후 fetch (about:blank에서는 상대 URL 불가)

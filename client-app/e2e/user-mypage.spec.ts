@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 마이페이지 & 배송지 관리 E2E 테스트
@@ -8,6 +9,10 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('My Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should display my page with profile sections', async ({ page }) => {
     await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
@@ -124,6 +129,10 @@ test.describe('My Page', () => {
 
 test.describe('Order History Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should display order history or empty state', async ({ page }) => {
     await page.goto('/orders', { waitUntil: 'domcontentloaded' });

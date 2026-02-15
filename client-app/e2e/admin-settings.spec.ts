@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 설정 페이지 E2E 테스트
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Settings Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display settings page with all sections', async ({ page }) => {
     await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
@@ -67,7 +72,7 @@ test.describe('Admin Settings Page', () => {
     });
 
     // 알림 설정
-    await expect(page.getByText('카카오톡 API 키')).toBeVisible();
+    await expect(page.getByText('알림 설정')).toBeVisible();
     await expect(page.getByText('이메일 알림 활성화')).toBeVisible();
 
     // 배송 설정

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream } from './helpers/auth-helper';
+import { createTestStream, ensureAuth } from './helpers/auth-helper';
 
 test.describe('Admin Products CRUD', () => {
   test.describe.configure({ timeout: 60000 });
@@ -8,6 +8,10 @@ test.describe('Admin Products CRUD', () => {
 
   test.beforeAll(async () => {
     testStreamKey = await createTestStream();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
   });
 
   test('should complete full product lifecycle: create, view, update, delete', async ({ page }) => {
