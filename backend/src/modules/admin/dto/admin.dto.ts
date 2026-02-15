@@ -383,6 +383,22 @@ export class UpdateNotificationTemplateDto {
   template: string;
 }
 
+export class UpdateOrderStatusDto {
+  @IsString()
+  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
+  status: string;
+}
+
+export class UpdateOrderShippingStatusDto {
+  @IsString()
+  @IsEnum(['PENDING', 'SHIPPED', 'DELIVERED'])
+  shippingStatus: string;
+
+  @IsOptional()
+  @IsString()
+  trackingNumber?: string;
+}
+
 export interface BulkShippingNotificationItem {
   orderId: string;
   trackingNumber: string;

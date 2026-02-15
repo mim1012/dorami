@@ -904,6 +904,96 @@ export class AdminService {
   }
 
   /**
+   * Update order status (admin only)
+   */
+  async updateOrderStatus(orderId: string, status: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const data: any = { status };
+
+    // Sync related fields based on status
+    if (status === 'SHIPPED') {
+      data.shippingStatus = 'SHIPPED';
+      data.shippedAt = order.shippedAt || new Date();
+    } else if (status === 'DELIVERED') {
+      data.shippingStatus = 'DELIVERED';
+      data.deliveredAt = order.deliveredAt || new Date();
+    } else if (status === 'PAYMENT_CONFIRMED') {
+      data.paymentStatus = 'CONFIRMED';
+      data.paidAt = order.paidAt || new Date();
+    } else if (status === 'CANCELLED') {
+      data.paymentStatus = 'FAILED';
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data,
+    });
+
+    return {
+      success: true,
+      data: {
+        orderId: updated.id,
+        status: updated.status,
+        paymentStatus: updated.paymentStatus,
+        shippingStatus: updated.shippingStatus,
+      },
+    };
+  }
+
+  /**
+   * Update order shipping status (admin only)
+   */
+  async updateOrderShippingStatus(
+    orderId: string,
+    shippingStatus: string,
+    trackingNumber?: string,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const data: any = { shippingStatus };
+
+    if (shippingStatus === 'SHIPPED') {
+      data.shippedAt = order.shippedAt || new Date();
+      data.status = 'SHIPPED';
+      if (trackingNumber) {
+        data.trackingNumber = trackingNumber;
+      }
+    } else if (shippingStatus === 'DELIVERED') {
+      data.deliveredAt = order.deliveredAt || new Date();
+      data.status = 'DELIVERED';
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data,
+    });
+
+    return {
+      success: true,
+      data: {
+        orderId: updated.id,
+        status: updated.status,
+        shippingStatus: updated.shippingStatus,
+        shippedAt: updated.shippedAt,
+        deliveredAt: updated.deliveredAt,
+      },
+    };
+  }
+
+  /**
    * Send payment reminder notification to customer
    */
   async sendPaymentReminder(orderId: string) {
