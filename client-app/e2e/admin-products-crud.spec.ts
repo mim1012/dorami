@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream, ensureAuth } from './helpers/auth-helper';
+import { createTestStream, ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 test.describe('Admin Products CRUD', () => {
   test.describe.configure({ timeout: 60000 });
@@ -18,7 +18,7 @@ test.describe('Admin Products CRUD', () => {
     test.setTimeout(90000);
 
     // 1. Navigate to admin products page
-    await page.goto('/admin/products', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/products');
 
     // 2. CREATE: Wait for page content and find "상품 등록" button
     const createButton = page.locator('button').filter({ hasText: '상품 등록' }).first();
@@ -28,14 +28,15 @@ test.describe('Admin Products CRUD', () => {
     // Wait for modal to open (role="dialog")
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('textbox', { name: 'Stream Key', exact: true })).toBeVisible({
-      timeout: 10000,
-    });
+
+    // Scope Stream Key input to the modal (filter bar also has a Stream Key textbox)
+    const streamKeyInput = modal.locator('input[name="streamKey"]');
+    await expect(streamKeyInput).toBeVisible({ timeout: 10000 });
 
     // Fill out the product form (use the pre-created stream key)
     const testProductName = `E2E Test Product ${Date.now()}`;
 
-    await page.getByRole('textbox', { name: 'Stream Key', exact: true }).fill(testStreamKey);
+    await streamKeyInput.fill(testStreamKey);
     await page.getByLabel('상품명').fill(testProductName);
     await page.getByLabel('가격 (원)').fill('29000');
     await page.getByLabel('재고').fill('50');
@@ -90,11 +91,14 @@ test.describe('Admin Products CRUD', () => {
       timeout: 5000,
     });
 
+    // Wait for the list to refresh after update (API call may be rate-limited on staging)
+    await page.waitForTimeout(2000);
+
     // Verify updated product in list (scoped to row)
     const updatedProductRow = page.locator('tr', { hasText: updatedProductName });
-    await expect(updatedProductRow).toBeVisible({ timeout: 10000 });
-    await expect(updatedProductRow.getByText('35,000')).toBeVisible();
-    await expect(updatedProductRow.getByText('30개')).toBeVisible();
+    await expect(updatedProductRow).toBeVisible({ timeout: 15000 });
+    await expect(updatedProductRow.getByText('35,000')).toBeVisible({ timeout: 5000 });
+    await expect(updatedProductRow.getByText('30개')).toBeVisible({ timeout: 5000 });
 
     // 5. Mark as SOLD OUT
     const soldOutButton = updatedProductRow.getByRole('button', { name: '품절 처리' });
@@ -146,10 +150,10 @@ test.describe('Admin Products CRUD', () => {
 
   test('should filter products by stream key', async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto('/admin/products', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/products');
 
-    // Find the filter input
-    const filterInput = page.getByPlaceholder('stream key 입력 (비우면 전체 조회)');
+    // Find the stream key filter input in the filter bar (not in modal)
+    const filterInput = page.locator('input[placeholder="Stream Key"]').first();
     await expect(filterInput).toBeVisible({ timeout: 15000 });
 
     // Enter a stream key to filter
@@ -162,7 +166,7 @@ test.describe('Admin Products CRUD', () => {
 
   test('should handle empty product list', async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto('/admin/products', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/products');
 
     // Check if empty state might be visible
     const emptyStateButton = page.getByRole('button', { name: '첫 상품 등록하기' });

@@ -12,8 +12,8 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 export async function createTestStream(): Promise<string> {
   const apiContext = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
-    // Login as admin to get auth cookies
-    const loginRes = await apiContext.post('/api/v1/auth/dev-login', {
+    // Login as admin to get auth cookies (through Next.js proxy: /api/* → backend /api/v1/*)
+    const loginRes = await apiContext.post('/api/auth/dev-login', {
       data: { email: 'e2e-admin@test.com', name: 'E2E ADMIN', role: 'ADMIN' },
     });
     if (!loginRes.ok()) {
@@ -23,7 +23,7 @@ export async function createTestStream(): Promise<string> {
     // Try to get CSRF token (may not exist if CSRF is disabled on staging)
     let csrfToken = '';
     try {
-      const meRes = await apiContext.get('/api/v1/auth/me');
+      const meRes = await apiContext.get('/api/auth/me');
       const setCookie = meRes.headers()['set-cookie'] || '';
       const csrfMatch = setCookie.match(/csrf-token=([^;]+)/);
       csrfToken = csrfMatch ? csrfMatch[1] : '';
@@ -36,7 +36,7 @@ export async function createTestStream(): Promise<string> {
     const headers: Record<string, string> = {};
     if (csrfToken) headers['x-csrf-token'] = csrfToken;
 
-    const streamRes = await apiContext.post('/api/v1/streaming/start', {
+    const streamRes = await apiContext.post('/api/streaming/start', {
       data: { expiresAt },
       headers,
     });
@@ -64,56 +64,189 @@ export async function createTestStream(): Promise<string> {
  * because storageState tokens may be expired.
  */
 export async function ensureAuth(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
-  // Clear stale cookies from storageState
-  await page.context().clearCookies();
+  const domain = new URL(BASE_URL).hostname;
 
-  // Navigate to login page (stable target — avoids mid-redirect state)
+  // Navigate to login page first (need a page at the right origin for localStorage)
   await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 15000 });
 
   // Clear stale localStorage (isAuthenticated: true causes redirect loops)
   await page.evaluate(() => localStorage.clear());
 
-  // Perform fresh login
+  // Expire stale cookies from storageState by overwriting with empty values.
+  // We avoid clearCookies() because clearCookies() + addCookies() causes
+  // an alternating pass/fail bug in Playwright.
+  await page.context().addCookies([
+    {
+      name: 'accessToken',
+      value: '',
+      domain,
+      path: '/',
+      expires: 1,
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax' as const,
+    },
+    {
+      name: 'refreshToken',
+      value: '',
+      domain,
+      path: '/',
+      expires: 1,
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax' as const,
+    },
+  ]);
+
+  // Perform fresh login (sets cookies + localStorage, does NOT navigate)
   await devLogin(page, role);
+
+  // Brief pause to avoid hitting the staging server's rate limiter (3 req/sec in production).
+  // Each test triggers 2-4 backend calls during page load; spacing them out prevents 429s.
+  await page.waitForTimeout(2500);
+}
+
+/**
+ * Navigate to an admin page with automatic retry on auth failure.
+ *
+ * When the staging server rate-limits API calls (HTTP 429), the app
+ * interprets the failure as an auth error and redirects to the login page.
+ * This helper detects that redirect and retries: re-authenticate → wait → navigate again.
+ *
+ * @param page  Playwright Page
+ * @param url   Target URL (e.g. '/admin/products')
+ * @param opts  Options: waitForSelector to confirm page loaded, maxRetries, role
+ */
+export async function gotoWithRetry(
+  page: Page,
+  url: string,
+  opts: {
+    waitForSelector?: string;
+    maxRetries?: number;
+    role?: 'USER' | 'ADMIN';
+  } = {},
+) {
+  const { waitForSelector, maxRetries = 2, role = 'ADMIN' } = opts;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+    // Wait for network to settle — ensures auth API calls (/users/me etc.) complete
+    // and any resulting client-side redirect (429 → auth fail → /login) has happened.
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
+    // Check if we ended up on the login page (URL check is fastest + most reliable)
+    const isLoginPage =
+      page.url().includes('/login') ||
+      (await page
+        .locator('button', { hasText: '카카오로 로그인' })
+        .isVisible({ timeout: 1000 })
+        .catch(() => false));
+
+    if (!isLoginPage) {
+      // If a specific selector was requested, wait for it
+      if (waitForSelector) {
+        try {
+          await page.locator(waitForSelector).first().waitFor({ timeout: 15000 });
+        } catch {
+          // Selector not found, but we're not on login page — let the test handle it
+        }
+      }
+      return; // Success — not on login page
+    }
+
+    if (attempt < maxRetries) {
+      console.log(
+        `gotoWithRetry: login redirect detected on attempt ${attempt + 1}, re-authenticating...`,
+      );
+      // Wait longer on each retry to let rate limiter cool down
+      await page.waitForTimeout(3000 + attempt * 2000);
+      await page.evaluate(() => localStorage.clear());
+      await devLogin(page, role);
+      await page.waitForTimeout(2500);
+    }
+  }
+
+  // All retries exhausted — proceed anyway, test assertions will catch the failure
+  console.warn(`gotoWithRetry: still on login page after ${maxRetries + 1} attempts`);
 }
 
 /**
  * Dev login helper for E2E tests.
  *
- * Calls the dev-login API directly from the browser context using fetch().
- * This avoids React hydration DOM-detach issues (clicking buttons that get
- * re-rendered during hydration) and lets the browser handle Set-Cookie
- * headers naturally — no cookie domain mismatch or proxy forwarding issues.
+ * Uses a standalone Playwright request context (isolated from the browser's
+ * cookie jar) to call dev-login, then manually injects cookies with
+ * secure=false. This solves three problems:
+ * 1. React hydration DOM-detach (no UI interaction needed)
+ * 2. Secure cookie over HTTP (backend sends Secure cookies, staging is HTTP)
+ * 3. Auth store race condition (populate Zustand localStorage)
+ *
+ * Using a standalone context prevents page.request from auto-storing
+ * Secure cookies in the browser jar, which would conflict with our
+ * addCookies(secure=false) and cause alternating pass/fail patterns.
  */
 export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
   const email = role === 'ADMIN' ? 'admin@doremi.shop' : 'buyer@test.com';
+  const domain = new URL(BASE_URL).hostname;
 
-  // Call dev-login API from within the browser — cookies set naturally
-  const result = await page.evaluate(
-    async ({ email, role }) => {
-      const res = await fetch('/api/auth/dev-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, role }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        return { ok: false as const, status: res.status, error: text };
-      }
-      const data = await res.json();
-      return { ok: true as const, user: data.data?.user };
-    },
-    { email, role },
-  );
+  // 1. Use isolated request context — avoids polluting browser cookie jar
+  const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
+  let user: any = null;
 
-  if (!result.ok) {
-    throw new Error(`devLogin failed: ${result.status} ${result.error}`);
+  try {
+    const response = await apiCtx.post('/api/auth/dev-login', {
+      data: { email, role },
+    });
+
+    if (!response.ok()) {
+      throw new Error(`devLogin failed: ${response.status()} ${await response.text()}`);
+    }
+
+    // 2. Extract Set-Cookie headers and inject into browser with secure=false
+    const allHeaders = response.headersArray();
+    const setCookieHeaders = allHeaders.filter((h) => h.name.toLowerCase() === 'set-cookie');
+
+    for (const header of setCookieHeaders) {
+      const parts = header.value.split(';');
+      const [nameValue] = parts;
+      const eqIdx = nameValue.indexOf('=');
+      if (eqIdx === -1) continue;
+      const name = nameValue.substring(0, eqIdx).trim();
+      const value = nameValue.substring(eqIdx + 1).trim();
+
+      await page.context().addCookies([
+        {
+          name,
+          value,
+          domain,
+          path: '/',
+          httpOnly: header.value.toLowerCase().includes('httponly'),
+          secure: false,
+          sameSite: 'Lax',
+        },
+      ]);
+    }
+
+    // 3. Extract user data from response
+    const body = await response.json();
+    user = body.data?.user;
+  } finally {
+    await apiCtx.dispose();
   }
 
-  // Navigate to home so the app picks up the new auth cookies
-  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+  // 4. Populate Zustand auth store in localStorage so app hydrates as authenticated
+  if (user) {
+    await page.evaluate((userData) => {
+      localStorage.setItem(
+        'auth-storage',
+        JSON.stringify({ state: { user: userData, isAuthenticated: true }, version: 0 }),
+      );
+    }, user);
+  }
 
-  // Verify auth was recognized (not redirected back to login)
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
+  // Don't navigate here — let the test's own page.goto() be the first
+  // authenticated navigation. This avoids a race condition where the home
+  // page's useAuth hook calls /users/me asynchronously, and the test's
+  // subsequent goto() fires before that call completes, leaving the app
+  // in an inconsistent auth state.
 }

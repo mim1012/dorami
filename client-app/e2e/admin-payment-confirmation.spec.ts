@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream, ensureAuth } from './helpers/auth-helper';
+import { createTestStream, ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 입금확인 전체 플로우 E2E 테스트
@@ -156,7 +156,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
       });
     });
 
-    await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/orders');
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
 
     // 주문번호로 검색
@@ -181,7 +181,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
   test('should confirm payment via admin API and verify status change', async ({ page }) => {
     test.skip(!testOrderId, 'No order available');
 
-    await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/orders');
 
     // 1. API로 입금확인 처리
     const confirmResult = await page.evaluate(

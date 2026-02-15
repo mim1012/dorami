@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 사용자 관리 심화 E2E 테스트
@@ -14,7 +14,7 @@ test.describe('Admin Users List Filters', () => {
   });
 
   test('should display users page with search and filters', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
 
     // 헤더
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
@@ -30,7 +30,7 @@ test.describe('Admin Users List Filters', () => {
   });
 
   test('should open filter panel with status filters', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
     // 필터 패널 열기
@@ -49,7 +49,7 @@ test.describe('Admin Users List Filters', () => {
   });
 
   test('should display users table with correct columns', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
     // 테이블 로딩 대기
@@ -75,7 +75,7 @@ test.describe('Admin Users List Filters', () => {
   });
 
   test('should search users by keyword', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
     const searchInput = page.getByPlaceholder('이름, 이메일 또는 인스타그램 ID로 검색...');

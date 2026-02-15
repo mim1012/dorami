@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 정산 페이지 E2E 테스트
@@ -14,7 +14,7 @@ test.describe('Admin Settlement Page', () => {
   });
 
   test('should display settlement page with date range inputs', async ({ page }) => {
-    await page.goto('/admin/settlement', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settlement');
 
     // 헤더
     await expect(page.getByRole('heading', { name: '정산 관리' })).toBeVisible({ timeout: 15000 });
@@ -37,7 +37,7 @@ test.describe('Admin Settlement Page', () => {
   });
 
   test('should generate settlement report', async ({ page }) => {
-    await page.goto('/admin/settlement', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settlement');
     await expect(page.getByRole('heading', { name: '정산 관리' })).toBeVisible({ timeout: 15000 });
 
     // 날짜 범위 설정 (최근 30일)
