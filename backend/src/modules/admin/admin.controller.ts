@@ -21,6 +21,8 @@ import {
   GetOrdersQueryDto,
   UpdateUserStatusDto,
   UpdateSystemSettingsDto,
+  UpdateShippingMessagesDto,
+  UpdateNotificationTemplateDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
@@ -77,8 +79,8 @@ export class AdminController {
   }
 
   @Put('config/shipping-messages')
-  async updateShippingMessages(@Body() body: Record<string, string>) {
-    return this.adminService.updateShippingMessages(body);
+  async updateShippingMessages(@Body() dto: UpdateShippingMessagesDto) {
+    return this.adminService.updateShippingMessages(dto);
   }
 
   @Get('orders/export')
@@ -127,7 +129,10 @@ export class AdminController {
   }
 
   @Patch('notification-templates/:id')
-  async updateNotificationTemplate(@Param('id') id: string, @Body() dto: { template: string }) {
+  async updateNotificationTemplate(
+    @Param('id') id: string,
+    @Body() dto: UpdateNotificationTemplateDto,
+  ) {
     return this.adminService.updateNotificationTemplate(id, dto.template);
   }
 

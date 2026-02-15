@@ -69,16 +69,7 @@ export class AdminService {
   ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
-    const {
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-      search,
-      dateFrom,
-      dateTo,
-      status,
-    } = query;
+    const { page, limit, sortBy, sortOrder, search, dateFrom, dateTo, status } = query;
 
     const skip = (page - 1) * limit;
 
@@ -335,30 +326,45 @@ export class AdminService {
     }
     if (minAmount !== undefined || maxAmount !== undefined) {
       where.total = {};
-      if (minAmount !== undefined) {where.total.gte = minAmount;}
-      if (maxAmount !== undefined) {where.total.lte = maxAmount;}
+      if (minAmount !== undefined) {
+        where.total.gte = minAmount;
+      }
+      if (maxAmount !== undefined) {
+        where.total.lte = maxAmount;
+      }
     }
+
+    const MAX_EXPORT_ROWS = 10000;
 
     const orders = await this.prisma.order.findMany({
       where,
       orderBy: { [sortBy]: sortOrder },
+      take: MAX_EXPORT_ROWS,
     });
+
+    // Log warning if max rows reached
+    if (orders.length === MAX_EXPORT_ROWS) {
+      this.logger.warn(
+        `CSV export reached maximum row limit (${MAX_EXPORT_ROWS}). Results may be truncated.`,
+        'ExportOrdersCsv',
+      );
+    }
 
     const Papa = await import('papaparse');
 
     const csvData = orders.map((order) => ({
-      '주문번호': order.id,
-      '고객이메일': order.userEmail,
-      '입금자명': order.depositorName,
-      '인스타그램ID': order.instagramId,
-      '주문상태': order.status,
-      '결제상태': order.paymentStatus,
-      '배송상태': order.shippingStatus,
-      '소계': Number(order.subtotal),
-      '배송비': Number(order.shippingFee),
-      '합계': Number(order.total),
-      '주문일': order.createdAt.toISOString(),
-      '결제일': order.paidAt ? order.paidAt.toISOString() : '',
+      주문번호: order.id,
+      고객이메일: order.userEmail,
+      입금자명: order.depositorName,
+      인스타그램ID: order.instagramId,
+      주문상태: order.status,
+      결제상태: order.paymentStatus,
+      배송상태: order.shippingStatus,
+      소계: Number(order.subtotal),
+      배송비: Number(order.shippingFee),
+      합계: Number(order.total),
+      주문일: order.createdAt.toISOString(),
+      결제일: order.paidAt ? order.paidAt.toISOString() : '',
     }));
 
     return Papa.unparse(csvData);
@@ -444,7 +450,10 @@ export class AdminService {
     const messagesTrend = this.calculateTrend(last7DaysMessages, previous7DaysMessages);
 
     // 6. Daily revenue aggregation (last 7 days)
-    const dailyRevenueMap = new Map<string, { date: string; revenue: number; orderCount: number }>();
+    const dailyRevenueMap = new Map<
+      string,
+      { date: string; revenue: number; orderCount: number }
+    >();
 
     const last7DaysConfirmedOrders = await this.prisma.order.findMany({
       where: {
@@ -468,7 +477,7 @@ export class AdminService {
     });
 
     const dailyRevenue = Array.from(dailyRevenueMap.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
+      a.date.localeCompare(b.date),
     );
 
     return {
@@ -716,8 +725,10 @@ export class AdminService {
 
     const defaultMessages = {
       preparing: '{customerName}님, 주문번호 {orderId}의 상품을 준비 중입니다.',
-      shipped: '{customerName}님, 주문번호 {orderId}의 상품이 발송되었습니다. 운송장번호: {trackingNumber}',
-      inTransit: '{customerName}님, 주문번호 {orderId}의 상품이 배송 중입니다. 운송장번호: {trackingNumber}',
+      shipped:
+        '{customerName}님, 주문번호 {orderId}의 상품이 발송되었습니다. 운송장번호: {trackingNumber}',
+      inTransit:
+        '{customerName}님, 주문번호 {orderId}의 상품이 배송 중입니다. 운송장번호: {trackingNumber}',
       delivered: '{customerName}님, 주문번호 {orderId}의 상품이 배송 완료되었습니다.',
     };
 
@@ -782,9 +793,14 @@ export class AdminService {
     let shippingAddress: ShippingAddressDto | null = null;
     if (order.user.shippingAddress) {
       try {
-        shippingAddress = this.encryptionService.decryptAddress(order.user.shippingAddress as string);
+        shippingAddress = this.encryptionService.decryptAddress(
+          order.user.shippingAddress as string,
+        );
       } catch (error) {
-        this.logger.error('Failed to decrypt shipping address', error instanceof Error ? error.stack : String(error));
+        this.logger.error(
+          'Failed to decrypt shipping address',
+          error instanceof Error ? error.stack : String(error),
+        );
         shippingAddress = null;
       }
     }
@@ -843,8 +859,8 @@ export class AdminService {
             select: {
               id: true,
               email: true,
-            }
-          }
+            },
+          },
         },
       });
 
@@ -926,9 +942,7 @@ export class AdminService {
   /**
    * Send bulk shipping notifications from CSV data
    */
-  async sendBulkShippingNotifications(
-    items: { orderId: string; trackingNumber: string }[],
-  ) {
+  async sendBulkShippingNotifications(items: { orderId: string; trackingNumber: string }[]) {
     const results = [];
     let successful = 0;
     let failed = 0;
@@ -1024,7 +1038,10 @@ export class AdminService {
       try {
         shippingAddress = this.encryptionService.decryptAddress(user.shippingAddress as string);
       } catch (error) {
-        this.logger.error('Failed to decrypt shipping address', error instanceof Error ? error.stack : String(error));
+        this.logger.error(
+          'Failed to decrypt shipping address',
+          error instanceof Error ? error.stack : String(error),
+        );
         // Return null if decryption fails
         shippingAddress = null;
       }
@@ -1200,9 +1217,10 @@ export class AdminService {
     const summary = {
       totalOrders: orders.length,
       totalRevenue: orders.reduce((sum, order) => sum + Number(order.total), 0),
-      avgOrderValue: orders.length > 0
-        ? orders.reduce((sum, order) => sum + Number(order.total), 0) / orders.length
-        : 0,
+      avgOrderValue:
+        orders.length > 0
+          ? orders.reduce((sum, order) => sum + Number(order.total), 0) / orders.length
+          : 0,
       totalShippingFee: orders.reduce((sum, order) => sum + Number(order.shippingFee), 0),
     };
 
@@ -1227,7 +1245,7 @@ export class AdminService {
 
     // Convert map to sorted array
     const dailyData = Array.from(dailyRevenue.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
+      a.date.localeCompare(b.date),
     );
 
     return {
@@ -1251,13 +1269,7 @@ export class AdminService {
    * Get audit logs with filters
    * Epic 12 Story 12.3
    */
-  async getAuditLogs(
-    fromDate?: string,
-    toDate?: string,
-    action?: string,
-    page = 1,
-    limit = 50,
-  ) {
+  async getAuditLogs(fromDate?: string, toDate?: string, action?: string, page = 1, limit = 50) {
     const skip = (page - 1) * limit;
 
     const where: AuditLogWhereClause = {};

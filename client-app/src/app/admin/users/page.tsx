@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/lib/hooks/use-auth';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { apiClient } from '@/lib/api/client';
 import { Table, Column } from '@/components/common/Table';
@@ -35,7 +34,6 @@ interface UserListResponse {
 function AdminUsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading } = useAuth();
 
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -61,17 +59,6 @@ function AdminUsersContent() {
     searchParams.get('status')?.split(',').filter(Boolean) || [],
   );
 
-  // [DEV] Auth check disabled for development
-  // useEffect(() => {
-  //   if (!authLoading) {
-  //     if (!user) {
-  //       router.push('/login');
-  //     } else if (user.role !== 'ADMIN') {
-  //       router.push('/');
-  //     }
-  //   }
-  // }, [user, authLoading, router]);
-
   // Update URL params
   useEffect(() => {
     const params = new URLSearchParams();
@@ -91,8 +78,6 @@ function AdminUsersContent() {
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
-      // [DEV] if (!user || user.role !== 'ADMIN') return;
-
       setIsLoading(true);
       setError(null);
 
@@ -123,7 +108,7 @@ function AdminUsersContent() {
     };
 
     fetchUsers();
-  }, [user, page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, statusFilter]);
+  }, [page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, statusFilter]);
 
   const handleSort = (key: string) => {
     if (key === sortBy) {
@@ -193,7 +178,11 @@ function AdminUsersContent() {
       INACTIVE: '비활성',
       SUSPENDED: '정지',
     };
-    return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{statusLabels[status] || status}</span>;
+    return (
+      <span className={`px-2 py-1 rounded text-caption border ${color}`}>
+        {statusLabels[status] || status}
+      </span>
+    );
   };
 
   const columns: Column<UserListItem>[] = [
@@ -242,17 +231,7 @@ function AdminUsersContent() {
     },
   ];
 
-  const hasActiveFilters =
-    debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
-
-  // [DEV] Auth check disabled for development
-  // if (authLoading || (user && user?.role !== 'ADMIN')) {
-  //   return (
-  //     <div className="min-h-screen bg-white flex items-center justify-center">
-  //       <Body>Loading...</Body>
-  //     </div>
-  //   );
-  // }
+  const hasActiveFilters = debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
 
   return (
     <div className="min-h-screen bg-white py-12 px-4">
@@ -331,17 +310,17 @@ function AdminUsersContent() {
                     SUSPENDED: '정지',
                   };
                   return (
-                  <button
-                    key={status}
-                    onClick={() => handleStatusToggle(status)}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                      statusFilter.includes(status)
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-white text-secondary-text hover:bg-gray-100'
-                    }`}
-                  >
-                    {statusLabelsFilter[status]}
-                  </button>
+                    <button
+                      key={status}
+                      onClick={() => handleStatusToggle(status)}
+                      className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                        statusFilter.includes(status)
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-white text-secondary-text hover:bg-gray-100'
+                      }`}
+                    >
+                      {statusLabelsFilter[status]}
+                    </button>
                   );
                 })}
               </div>
