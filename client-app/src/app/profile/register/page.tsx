@@ -55,8 +55,9 @@ export default function ProfileRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { isChecking: checkingInstagram, isAvailable: instagramAvailable } =
-    useInstagramCheck(formData.instagramId);
+  const { isChecking: checkingInstagram, isAvailable: instagramAvailable } = useInstagramCheck(
+    formData.instagramId,
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -171,9 +172,7 @@ export default function ProfileRegisterPage() {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">프로필 등록</Display>
-          <Body className="text-secondary-text">
-            서비스 이용을 위해 추가 정보를 입력해주세요
-          </Body>
+          <Body className="text-secondary-text">서비스 이용을 위해 추가 정보를 입력해주세요</Body>
         </div>
 
         {submitError && (
@@ -193,7 +192,7 @@ export default function ProfileRegisterPage() {
               value={formData.depositorName}
               onChange={handleChange}
               error={errors.depositorName}
-              placeholder="계좌이체 시 사용하는 이름"
+              placeholder="Zelle 입금 시 사용하는 이름"
               fullWidth
               required
             />
@@ -210,13 +209,13 @@ export default function ProfileRegisterPage() {
                 required
               />
               {checkingInstagram && (
-                <Body className="text-secondary-text text-xs mt-1">
-                  확인 중...
-                </Body>
+                <Body className="text-secondary-text text-xs mt-1">확인 중...</Body>
               )}
-              {!checkingInstagram && instagramAvailable === true && formData.instagramId.length > 1 && (
-                <Body className="text-success text-xs mt-1">사용 가능</Body>
-              )}
+              {!checkingInstagram &&
+                instagramAvailable === true &&
+                formData.instagramId.length > 1 && (
+                  <Body className="text-success text-xs mt-1">사용 가능</Body>
+                )}
               {!checkingInstagram && instagramAvailable === false && (
                 <Body className="text-error text-xs mt-1">이미 사용 중인 ID입니다</Body>
               )}
