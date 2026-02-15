@@ -618,6 +618,9 @@ describe('AdminService', () => {
         .mockResolvedValueOnce(150) // last 7 days
         .mockResolvedValueOnce(120); // previous 7 days
 
+      // Mock daily revenue orders (last 7 days confirmed orders)
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([]);
+
       const result = await service.getDashboardStats();
 
       expect(result).toBeDefined();
@@ -644,6 +647,7 @@ describe('AdminService', () => {
       jest.spyOn(prisma.liveStream, 'count').mockResolvedValue(0);
       jest.spyOn(prisma.orderItem, 'groupBy').mockResolvedValue([] as any);
       jest.spyOn(prisma.chatMessage, 'count').mockResolvedValueOnce(100).mockResolvedValueOnce(100);
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([]);
 
       const result = await service.getDashboardStats();
 
