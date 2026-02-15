@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 주문 관리 E2E 테스트
@@ -12,6 +13,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Orders Page Display', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display order management page with header and search', async ({ page }) => {
     await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
@@ -88,6 +93,10 @@ test.describe('Admin Orders Page Display', () => {
 
 test.describe('Admin Orders Filter', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should open and close filter panel', async ({ page }) => {
     await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
@@ -177,6 +186,10 @@ test.describe('Admin Orders Filter', () => {
 test.describe('Admin Orders Confirm Payment Dialog', () => {
   test.setTimeout(60000);
 
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
+
   test('should show confirm payment dialog and cancel', async ({ page }) => {
     await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
@@ -233,6 +246,10 @@ test.describe('Admin Orders Confirm Payment Dialog', () => {
 test.describe('Admin Orders Send Reminder Dialog', () => {
   test.setTimeout(60000);
 
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
+
   test('should show send reminder dialog and cancel', async ({ page }) => {
     await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
@@ -285,6 +302,10 @@ test.describe('Admin Orders Send Reminder Dialog', () => {
 
 test.describe('Bulk Notify Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should display bulk notify page with instructions', async ({ page }) => {
     await page.goto('/admin/orders/bulk-notify', { waitUntil: 'domcontentloaded' });

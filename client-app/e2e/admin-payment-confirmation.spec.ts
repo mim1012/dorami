@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream } from './helpers/auth-helper';
+import { createTestStream, ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 입금확인 전체 플로우 E2E 테스트
@@ -18,6 +18,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 test.describe('Admin Payment Confirmation Flow', () => {
   test.setTimeout(120000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should setup: create stream and product as admin', async ({ page }) => {
     // 1. 라이브 스트림 생성

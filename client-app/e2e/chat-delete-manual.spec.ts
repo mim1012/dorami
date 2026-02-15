@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 const STREAM_KEY = '42c4b2b31a39d66ad9eaac1a7d34f9b2';
-const LIVE_URL = `http://localhost:3000/live/${STREAM_KEY}`;
+const LIVE_URL = `${BASE_URL}/live/${STREAM_KEY}`;
 
 test.describe('채팅 메시지 삭제 수동 테스트', () => {
   test.setTimeout(120000); // 2분 타임아웃
@@ -16,29 +17,32 @@ test.describe('채팅 메시지 삭제 수동 테스트', () => {
     const userPage = await userContext.newPage();
 
     console.log('📋 Step 1: 관리자 로그인');
-    await adminPage.goto('http://localhost:3000/login');
+    await adminPage.goto(`${BASE_URL}/login`);
     await adminPage.waitForLoadState('networkidle');
-    
+
     // 관리자 localStorage 설정
     await adminPage.evaluate(() => {
-      localStorage.setItem('auth-storage', JSON.stringify({
-        state: {
-          user: {
-            id: 'admin-test-123',
-            email: 'admin-test@test.com',
-            nickname: 'TestAdmin',
-            role: 'ADMIN',
-            kakaoId: 'admin-kakao-123',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            depositorName: null,
-            instagramId: null
+      localStorage.setItem(
+        'auth-storage',
+        JSON.stringify({
+          state: {
+            user: {
+              id: 'admin-test-123',
+              email: 'admin-test@test.com',
+              nickname: 'TestAdmin',
+              role: 'ADMIN',
+              kakaoId: 'admin-kakao-123',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              depositorName: null,
+              instagramId: null,
+            },
+            isAuthenticated: true,
+            isLoading: false,
           },
-          isAuthenticated: true,
-          isLoading: false
-        },
-        version: 0
-      }));
+          version: 0,
+        }),
+      );
     });
 
     console.log('📺 Step 2: 관리자 라이브 페이지 이동');

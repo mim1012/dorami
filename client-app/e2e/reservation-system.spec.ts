@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestStream } from './helpers/auth-helper';
+import { createTestStream, ensureAuth } from './helpers/auth-helper';
 
 /**
  * 예비번호(Reservation) 시스템 E2E 테스트
@@ -17,6 +17,10 @@ let soldOutProductId: string = '6f0fc40e-61b0-4caa-a294-7c4157d26521'; // Manual
 
 test.describe('Reservation System (예비번호)', () => {
   test.setTimeout(90000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test.skip('should setup: create stream and sold-out product', async ({ page }) => {
     // 1. 라이브 스트림 생성

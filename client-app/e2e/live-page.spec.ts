@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 라이브 시청 페이지 E2E 테스트 (사용자)
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Live Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should display live page with header', async ({ page }) => {
     await page.goto('/live', { waitUntil: 'domcontentloaded' });

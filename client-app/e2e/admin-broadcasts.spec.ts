@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 관리자 방송 관리 E2E 테스트
@@ -8,6 +9,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Broadcasts Page', () => {
   test.setTimeout(90000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   /**
    * 방송 페이지 로드 대기 — 스트리밍 API 타임아웃이 길 수 있으므로 45초 대기

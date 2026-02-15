@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 /**
  * 사용자 알림 피드 E2E 테스트
@@ -7,6 +8,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('User Alerts Page', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'USER');
+  });
 
   test('should display alerts page with header and tabs', async ({ page }) => {
     await page.goto('/alerts', { waitUntil: 'domcontentloaded' });

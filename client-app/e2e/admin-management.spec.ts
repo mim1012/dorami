@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuth } from './helpers/auth-helper';
 
 test.describe('Admin Orders Management', () => {
   test.setTimeout(60000);
+
+  test.beforeEach(async ({ page }) => {
+    await ensureAuth(page, 'ADMIN');
+  });
 
   test('should access admin orders page', async ({ page }) => {
     await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });

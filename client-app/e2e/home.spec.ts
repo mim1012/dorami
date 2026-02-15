@@ -21,7 +21,7 @@ test.describe('Home Page', () => {
     await expect(page.getByRole('button', { name: '홈', exact: true })).toBeVisible({
       timeout: 10000,
     });
-    await expect(page.getByRole('button', { name: '상품', exact: true })).toBeVisible({
+    await expect(page.getByRole('button', { name: '장바구니', exact: true })).toBeVisible({
       timeout: 10000,
     });
     await expect(page.getByRole('button', { name: '라이브', exact: true })).toBeVisible({
@@ -39,13 +39,13 @@ test.describe('Home Page', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for navigation to be visible
-    const shopButton = page.getByRole('button', { name: '상품', exact: true });
+    const shopButton = page.getByRole('button', { name: '장바구니', exact: true });
     await expect(shopButton).toBeVisible({ timeout: 10000 });
 
     // Navigate to Shop
     await shopButton.click();
     await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveURL(/\/shop/);
+    await expect(page).toHaveURL(/\/cart/);
 
     // Navigate to Live
     const liveButton = page.getByRole('button', { name: '라이브', exact: true });
