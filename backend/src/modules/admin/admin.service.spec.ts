@@ -437,7 +437,7 @@ describe('AdminService', () => {
         paidAt: new Date('2026-01-31T10:00:00Z'),
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(mockOrder),
@@ -463,7 +463,7 @@ describe('AdminService', () => {
         paidAt: new Date('2026-01-31T10:00:00Z'),
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(mockOrder),
@@ -483,7 +483,7 @@ describe('AdminService', () => {
     });
 
     it('should throw NotFoundException when order not found', async () => {
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(null),
@@ -505,7 +505,7 @@ describe('AdminService', () => {
         paymentStatus: 'CONFIRMED',
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(confirmedOrder),
@@ -522,7 +522,7 @@ describe('AdminService', () => {
     });
 
     it('should not emit event when order not found', async () => {
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(null),
@@ -532,7 +532,7 @@ describe('AdminService', () => {
 
       try {
         await service.confirmOrderPayment(orderId);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -545,7 +545,7 @@ describe('AdminService', () => {
         paymentStatus: 'CONFIRMED',
       };
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: jest.fn().mockResolvedValue(confirmedOrder),
@@ -555,7 +555,7 @@ describe('AdminService', () => {
 
       try {
         await service.confirmOrderPayment(orderId);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -566,7 +566,7 @@ describe('AdminService', () => {
       const mockFindUnique = jest.fn().mockResolvedValue(mockOrder);
       const mockUpdate = jest.fn().mockRejectedValue(new Error('Database error'));
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, options?: any) => {
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any, _options?: any) => {
         return callback({
           order: {
             findUnique: mockFindUnique,

@@ -28,7 +28,7 @@ export class KakaoTalkClient {
     variables: Record<string, string>,
   ): Promise<{ success: boolean }> {
     try {
-      const response = await this.client.post('/v2/api/talk/memo/default/send', {
+      await this.client.post('/v2/api/talk/memo/default/send', {
         template_id: templateId,
         template_args: JSON.stringify(variables),
       });

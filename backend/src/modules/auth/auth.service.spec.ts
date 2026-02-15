@@ -8,7 +8,7 @@ import { UnauthorizedException } from '../../common/exceptions/business.exceptio
 
 describe('AuthService', () => {
   let service: AuthService;
-  let jwtService: JwtService;
+  let _jwtService: JwtService;
   let redisService: RedisService;
   let prismaService: PrismaService;
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    jwtService = module.get<JwtService>(JwtService);
+    _jwtService = module.get<JwtService>(JwtService);
     redisService = module.get<RedisService>(RedisService);
     prismaService = module.get<PrismaService>(PrismaService);
   });

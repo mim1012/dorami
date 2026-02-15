@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { TransformInterceptor } from '../../src/common/interceptors/transform.interceptor';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
@@ -8,10 +7,10 @@ import { PrismaService } from '../../src/common/prisma/prisma.service';
 describe('Cart (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let authToken: string;
   let testUserId: string;
-  let testProductId: string;
   let testStreamKey: string;
+  let _authToken: string;
+  let _testProductId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -70,10 +69,10 @@ describe('Cart (e2e)', () => {
         status: 'AVAILABLE',
       },
     });
-    testProductId = testProduct.id;
+    _testProductId = testProduct.id;
 
     // Mock auth token (in real tests, use JWT service)
-    authToken = 'Bearer test-token';
+    _authToken = 'Bearer test-token';
   });
 
   afterAll(async () => {

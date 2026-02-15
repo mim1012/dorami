@@ -240,9 +240,9 @@ export class PushNotificationService {
    * Note: Requires scheduledTime field in LiveStream model
    */
   async checkAndNotifyUpcomingStreams() {
-    const now = new Date();
-    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
-    const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
+    // const now = new Date();
+    // const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
+    // const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
 
     // Find streams starting in 5-10 minutes
     const upcomingStreams = await this.prisma.liveStream.findMany({

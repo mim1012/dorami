@@ -4,7 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { OrderCreatedEvent } from '../../../common/events/order.events';
-import { ProductStockUpdatedEvent, ProductCreatedEvent } from '../../../common/events/product.events';
+import { ProductStockUpdatedEvent } from '../../../common/events/product.events';
 import { SocketIoProvider } from '../../websocket/socket-io.provider';
 
 @Injectable()

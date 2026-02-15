@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
@@ -7,8 +7,8 @@ import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 describe('UsersService - Profile Completion', () => {
   let service: UsersService;
-  let prismaService: PrismaService;
-  let encryptionService: EncryptionService;
+  let _prismaService: PrismaService;
+  let _encryptionService: EncryptionService;
 
   const mockPrismaService = {
     user: {
@@ -41,8 +41,8 @@ describe('UsersService - Profile Completion', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    prismaService = module.get<PrismaService>(PrismaService);
-    encryptionService = module.get<EncryptionService>(EncryptionService);
+    _prismaService = module.get<PrismaService>(PrismaService);
+    _encryptionService = module.get<EncryptionService>(EncryptionService);
 
     // Reset all mocks before each test
     jest.clearAllMocks();

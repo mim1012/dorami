@@ -1,7 +1,6 @@
 import {
   IsString,
   IsNumber,
-  IsEnum,
   Min,
   Max,
 } from 'class-validator';

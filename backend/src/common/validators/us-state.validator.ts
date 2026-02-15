@@ -18,11 +18,11 @@ export function IsUSState(validationOptions?: ValidationOptions) {
       propertyName: propertyName,
       options: validationOptions,
       validator: {
-        validate(value: any, args: ValidationArguments) {
+        validate(value: any, _args: ValidationArguments) {
           if (typeof value !== 'string') {return false;}
           return US_STATES.has(value.toUpperCase());
         },
-        defaultMessage(args: ValidationArguments) {
+        defaultMessage(_args: ValidationArguments) {
           return 'State must be a valid 2-letter US state code';
         },
       },

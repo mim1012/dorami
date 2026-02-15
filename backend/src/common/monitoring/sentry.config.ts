@@ -76,7 +76,7 @@ export async function initSentry(): Promise<boolean> {
 
     console.log(`Sentry initialized for ${config.environment} environment`);
     return true;
-  } catch (error) {
+  } catch {
     console.log('Sentry package not installed - error tracking disabled');
     return false;
   }

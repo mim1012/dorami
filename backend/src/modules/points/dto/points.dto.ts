@@ -11,7 +11,7 @@ import {
   IsBoolean,
   IsIn,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { PointTransactionType } from '@prisma/client';
 
 export class GetPointHistoryQueryDto {

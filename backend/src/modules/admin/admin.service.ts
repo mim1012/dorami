@@ -8,7 +8,6 @@ import {
   UserListResponseDto,
   UserListItemDto,
   DashboardStatsDto,
-  StatItemDto,
   RecentActivitiesDto,
   ActivityLogDto,
   UpdateNoticeDto,
@@ -22,12 +21,6 @@ import {
   UserStatisticsDto,
   UpdateSystemSettingsDto,
 } from './dto/admin.dto';
-import {
-  UserStatus as PrismaUserStatus,
-  OrderStatus as PrismaOrderStatus,
-  PaymentStatus as PrismaPaymentStatus,
-  ShippingStatus as PrismaShippingStatus,
-} from '@prisma/client';
 
 import { UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
 
@@ -84,10 +77,6 @@ export class AdminService {
       search,
       dateFrom,
       dateTo,
-      minOrders,
-      maxOrders,
-      minAmount,
-      maxAmount,
       status,
     } = query;
 

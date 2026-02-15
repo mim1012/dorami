@@ -1,11 +1,10 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto, ProfileResponseDto } from './dto/profile.dto';
 import {
-  UnauthorizedException,
   UserNotFoundException,
 } from '../../common/exceptions/business.exception';
 
@@ -181,7 +180,7 @@ export class UsersService {
     const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
 
     // Update user with new address
-    const user = await this.prisma.user.update({
+    await this.prisma.user.update({
       where: { id: userId },
       data: {
         shippingAddress: encryptedAddress as any,
