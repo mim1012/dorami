@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/user.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
@@ -24,8 +25,10 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   /**
-   * Get basic user info (no sensitive data like shipping address)
+   * Get basic user info (no sensitive data like shipping address).
+   * SkipThrottle: called on every page load by useAuth hook.
    */
+  @SkipThrottle({ short: true })
   @Get('me')
   async getMyProfile(@CurrentUser('userId') userId: string) {
     return this.usersService.findById(userId);

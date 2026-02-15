@@ -14,7 +14,7 @@ export const throttlerConfig: ThrottlerModuleOptions = [
   {
     name: 'short',
     ttl: 1000, // 1 second
-    limit: isDev ? 30 : 3,
+    limit: isDev ? 30 : 10,
   },
   {
     name: 'medium',
