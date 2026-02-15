@@ -80,7 +80,7 @@ export class AdminController {
 
   @Put('config/shipping-messages')
   async updateShippingMessages(@Body() dto: UpdateShippingMessagesDto) {
-    return this.adminService.updateShippingMessages(dto);
+    return this.adminService.updateShippingMessages(dto as unknown as Record<string, string>);
   }
 
   @Get('orders/export')
