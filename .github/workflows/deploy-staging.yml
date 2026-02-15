@@ -172,7 +172,7 @@ jobs:
 
             echo "=== Checking service health ==="
             sleep 30
-            curl -f http://localhost:3001/api/health || exit 1
+            curl -f http://localhost:3001/api/v1/health || exit 1
             curl -f http://localhost:3000 || exit 1
 
             echo "=== Deployment complete ==="
