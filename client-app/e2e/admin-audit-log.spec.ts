@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 감사 로그 E2E 테스트
@@ -14,7 +14,7 @@ test.describe('Admin Audit Log Page', () => {
   });
 
   test('should display audit log page with filters', async ({ page }) => {
-    await page.goto('/admin/audit-log', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/audit-log');
 
     // 헤더
     await expect(page.getByRole('heading', { name: '관리 기록' })).toBeVisible({ timeout: 15000 });
@@ -35,7 +35,7 @@ test.describe('Admin Audit Log Page', () => {
   });
 
   test('should show audit logs or empty state', async ({ page }) => {
-    await page.goto('/admin/audit-log', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/audit-log');
     await expect(page.getByRole('heading', { name: '관리 기록' })).toBeVisible({ timeout: 15000 });
 
     // 로그 목록 또는 빈 상태 대기
@@ -63,7 +63,7 @@ test.describe('Admin Audit Log Page', () => {
   });
 
   test('should filter audit logs by action type', async ({ page }) => {
-    await page.goto('/admin/audit-log', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/audit-log');
     await expect(page.getByRole('heading', { name: '관리 기록' })).toBeVisible({ timeout: 15000 });
 
     // 작업 유형 드롭다운 선택

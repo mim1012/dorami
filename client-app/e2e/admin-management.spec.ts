@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 test.describe('Admin Orders Management', () => {
   test.setTimeout(60000);
@@ -9,7 +9,7 @@ test.describe('Admin Orders Management', () => {
   });
 
   test('should access admin orders page', async ({ page }) => {
-    await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/orders');
 
     // Verify we're on orders page (not redirected to /login)
     await expect(page).toHaveURL(/\/admin\/orders/);
@@ -28,7 +28,7 @@ test.describe('Admin Orders Management', () => {
   });
 
   test('should display order list', async ({ page }) => {
-    await page.goto('/admin/orders', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/orders');
 
     // Look for order-related elements
     const orderElements = ['주문 관리', '주문 번호', '고객', '상태'];
@@ -48,7 +48,7 @@ test.describe('Admin Users Management', () => {
   test.setTimeout(60000);
 
   test('should access admin users page', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
 
     // Verify we're on users page (not redirected to /login)
     await expect(page).toHaveURL(/\/admin\/users/);
@@ -57,7 +57,7 @@ test.describe('Admin Users Management', () => {
   });
 
   test('should display users list', async ({ page }) => {
-    await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/users');
 
     // Look for user management elements
     const userElements = ['사용자 관리', '회원', '이메일'];
@@ -89,7 +89,7 @@ test.describe('Admin Dashboard Navigation', () => {
     ];
 
     for (const { path, name } of adminPages) {
-      await page.goto(path, { waitUntil: 'domcontentloaded' });
+      await gotoWithRetry(page, path);
 
       // Verify we're on the correct page (not redirected to /login)
       expect(page.url()).toContain(path);

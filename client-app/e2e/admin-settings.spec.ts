@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 설정 페이지 E2E 테스트
@@ -14,7 +14,7 @@ test.describe('Admin Settings Page', () => {
   });
 
   test('should display settings page with all sections', async ({ page }) => {
-    await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settings');
 
     // 헤더
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
@@ -35,7 +35,7 @@ test.describe('Admin Settings Page', () => {
   });
 
   test('should display cart timer settings', async ({ page }) => {
-    await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
       timeout: 15000,
     });
@@ -52,7 +52,7 @@ test.describe('Admin Settings Page', () => {
   });
 
   test('should display bank account settings', async ({ page }) => {
-    await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
       timeout: 15000,
     });
@@ -66,7 +66,7 @@ test.describe('Admin Settings Page', () => {
   });
 
   test('should display notification and shipping settings', async ({ page }) => {
-    await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
       timeout: 15000,
     });
@@ -82,7 +82,7 @@ test.describe('Admin Settings Page', () => {
   });
 
   test('should display advanced settings sections', async ({ page }) => {
-    await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
       timeout: 15000,
     });

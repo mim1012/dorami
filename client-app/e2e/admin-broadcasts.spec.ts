@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 관리자 방송 관리 E2E 테스트
@@ -40,7 +40,7 @@ test.describe('Admin Broadcasts Page', () => {
   }
 
   test('should load broadcasts page (content or error)', async ({ page }) => {
-    await page.goto('/admin/broadcasts', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/broadcasts');
 
     const state = await waitForPageLoad(page);
 
@@ -59,13 +59,13 @@ test.describe('Admin Broadcasts Page', () => {
     await expect(page.getByText('총 방송 기록')).toBeVisible();
 
     // 방송 기록 섹션
-    await expect(page.getByText('방송 기록')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '방송 기록' })).toBeVisible();
 
     console.log('Broadcasts page loaded successfully');
   });
 
   test('should open stream key generation modal if page loads', async ({ page }) => {
-    await page.goto('/admin/broadcasts', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/broadcasts');
 
     const state = await waitForPageLoad(page);
 
@@ -85,7 +85,7 @@ test.describe('Admin Broadcasts Page', () => {
   });
 
   test('should generate stream key if page loads', async ({ page }) => {
-    await page.goto('/admin/broadcasts', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/admin/broadcasts');
 
     const state = await waitForPageLoad(page);
 
