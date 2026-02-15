@@ -30,6 +30,7 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 
 COPY --from=builder --chown=nestjs:nodejs /app/backend/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/packages/shared-types ./packages/shared-types
 COPY --from=builder --chown=nestjs:nodejs /app/backend/package*.json ./
 COPY --from=builder --chown=nestjs:nodejs /app/backend/prisma ./prisma
 
