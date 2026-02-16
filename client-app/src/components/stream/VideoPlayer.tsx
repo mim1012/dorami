@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
 import { useOrientation } from '@/hooks/useOrientation';
@@ -20,6 +20,7 @@ interface VideoPlayerProps {
 export default function VideoPlayer({ streamKey, title, onViewerCountChange }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const mpegtsPlayerRef = useRef<any>(null);
   const socketRef = useRef<Socket | null>(null);
   const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -32,16 +33,17 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
   const [streamEnded, setStreamEnded] = useState(false);
   const [latency, setLatency] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
 
   const orientation = useOrientation();
 
-  // HLS URL: use CDN if configured, otherwise use relative path through nginx proxy
+  // Stream URLs
+  const flvUrl = `/live/live/${streamKey}.flv`;
   const hlsUrl = process.env.NEXT_PUBLIC_CDN_URL
     ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}.m3u8`
     : `/hls/${streamKey}.m3u8`;
 
   useEffect(() => {
-    // Detect if device is mobile
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -53,7 +55,6 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
   }, []);
 
   useEffect(() => {
-    // Auto-fullscreen on mobile landscape
     if (isMobile && orientation === 'landscape' && !document.fullscreenElement) {
       videoRef.current?.requestFullscreen();
     } else if (isMobile && orientation === 'portrait' && document.fullscreenElement) {
@@ -61,36 +62,19 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     }
   }, [orientation, isMobile]);
 
-  useEffect(() => {
-    initializePlayer();
-    connectWebSocket();
-
-    return () => {
-      cleanupPlayer();
-      disconnectWebSocket();
-    };
-  }, [streamKey]);
-
-  const initializePlayer = () => {
+  const initializeHlsPlayer = useCallback(() => {
     if (!videoRef.current) return;
 
-    // Use video element events for accurate buffering state
-    videoRef.current.addEventListener('waiting', () => setIsBuffering(true));
-    videoRef.current.addEventListener('playing', () => {
-      setIsBuffering(false);
-      setError(null);
-    });
+    setPlayerMode('hls');
 
     // Check if browser supports native HLS (Safari)
     if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
-      // Safari: use native HLS
       videoRef.current.src = hlsUrl;
       videoRef.current.addEventListener('loadedmetadata', () => {
         videoRef.current?.play();
         setIsPlaying(true);
       });
     } else if (Hls.isSupported()) {
-      // Other browsers: use HLS.js
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
@@ -131,7 +115,7 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
 
       hlsRef.current = hls;
 
-      // Track latency and auto-seek to live edge if drifted too far
+      // Track latency and auto-seek to live edge
       latencyIntervalRef.current = setInterval(() => {
         if (hls.latency !== undefined) {
           setLatency(Math.round(hls.latency));
@@ -146,19 +130,111 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
         }
       }, 1000);
     } else {
-      setError('Your browser does not support HLS playback');
+      setError('Your browser does not support video playback');
     }
-  };
+  }, [hlsUrl]);
+
+  const initializeFlvPlayer = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    try {
+      const mpegts = await import('mpegts.js');
+
+      if (!mpegts.default.isSupported()) {
+        // Browser doesn't support MSE/FLV — fall back to HLS
+        initializeHlsPlayer();
+        return;
+      }
+
+      setPlayerMode('flv');
+
+      const player = mpegts.default.createPlayer(
+        {
+          type: 'flv',
+          isLive: true,
+          url: flvUrl,
+        },
+        {
+          enableWorker: true,
+          enableStashBuffer: false,
+          stashInitialSize: 128,
+          liveBufferLatencyChasing: true,
+          liveBufferLatencyMaxLatency: 1.5,
+          liveBufferLatencyMinRemain: 0.3,
+        },
+      );
+
+      player.attachMediaElement(videoRef.current);
+      player.load();
+
+      videoRef.current.addEventListener('loadedmetadata', () => {
+        videoRef.current?.play();
+        setIsPlaying(true);
+      });
+
+      player.on(mpegts.default.Events.ERROR, () => {
+        // FLV playback error — fall back to HLS
+        player.destroy();
+        mpegtsPlayerRef.current = null;
+        setError(null);
+        initializeHlsPlayer();
+      });
+
+      mpegtsPlayerRef.current = player;
+
+      // Track latency for FLV
+      latencyIntervalRef.current = setInterval(() => {
+        const video = videoRef.current;
+        if (video && video.buffered.length > 0) {
+          const liveEdge = video.buffered.end(video.buffered.length - 1);
+          const currentLatency = liveEdge - video.currentTime;
+          setLatency(Math.round(currentLatency * 10) / 10);
+          // Auto-seek if drifted too far
+          if (currentLatency > 3) {
+            video.currentTime = liveEdge - 0.5;
+          }
+        }
+      }, 1000);
+    } catch {
+      // mpegts.js import failed — fall back to HLS
+      initializeHlsPlayer();
+    }
+  }, [flvUrl, initializeHlsPlayer]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    // Use video element events for buffering state
+    videoRef.current.addEventListener('waiting', () => setIsBuffering(true));
+    videoRef.current.addEventListener('playing', () => {
+      setIsBuffering(false);
+      setError(null);
+    });
+
+    // Try HTTP-FLV first (low-latency), fall back to HLS
+    initializeFlvPlayer();
+    connectWebSocket();
+
+    return () => {
+      cleanupPlayer();
+      disconnectWebSocket();
+    };
+  }, [streamKey]);
 
   const cleanupPlayer = () => {
     if (latencyIntervalRef.current) {
       clearInterval(latencyIntervalRef.current);
       latencyIntervalRef.current = null;
     }
+    if (mpegtsPlayerRef.current) {
+      mpegtsPlayerRef.current.destroy();
+      mpegtsPlayerRef.current = null;
+    }
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+    setPlayerMode(null);
   };
 
   const connectWebSocket = () => {
