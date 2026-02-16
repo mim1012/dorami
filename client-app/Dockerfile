@@ -1,5 +1,7 @@
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 # 루트 package.json + workspaces 구조 복사
