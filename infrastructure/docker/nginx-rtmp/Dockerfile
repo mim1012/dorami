@@ -1,3 +1,6 @@
+# DEPRECATED: Replaced by SRS (infrastructure/docker/srs/).
+# Kept for rollback reference only. Do not use for new deployments.
+#
 # Nginx RTMP Server for Live Streaming
 # Base: Ubuntu 22.04
 # Modules: Nginx 1.25+, RTMP module, FFmpeg

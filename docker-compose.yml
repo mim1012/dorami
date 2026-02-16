@@ -36,22 +36,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # Nginx RTMP Server for Live Streaming
-  nginx-rtmp:
-    image: tiangolo/nginx-rtmp
-    container_name: live-commerce-rtmp
+  # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
+  srs:
+    image: ossrs/srs:6
+    container_name: live-commerce-srs
     restart: unless-stopped
     ports:
       - '1935:1935'  # RTMP
-      - '8080:8080'  # HLS
+      - '8080:8080'  # HTTP-FLV + HLS
     volumes:
-      - ./backend/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - rtmp_data:/tmp/hls
+      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
 
 volumes:
   postgres_data:
   redis_data:
-  rtmp_data:
 
 networks:
   default:

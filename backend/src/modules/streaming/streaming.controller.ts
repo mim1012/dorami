@@ -21,6 +21,7 @@ import {
   GenerateKeyDto,
   StreamHistoryQueryDto,
   RtmpCallbackDto,
+  SrsCallbackDto,
 } from './dto/streaming.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
@@ -156,6 +157,51 @@ export class StreamingController {
 
     await this.streamingService.handleStreamDone(dto.name);
     return { status: 'ok' };
+  }
+
+  /**
+   * SRS on_publish callback
+   * Called when OBS starts streaming to validate stream key
+   * Returns { code: 0 } to allow, { code: 1 } to reject
+   */
+  @Public()
+  @SkipThrottle({ short: true, medium: true, long: true })
+  @Post('srs-auth')
+  @HttpCode(HttpStatus.OK)
+  async authenticateSrsStream(@Body() dto: SrsCallbackDto, @Req() req: Request) {
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    if (!this.isPrivateIp(clientIp)) {
+      this.logger.warn(`SRS auth rejected from external IP: ${clientIp}`);
+      return { code: 1 };
+    }
+
+    const isAuthenticated = await this.streamingService.authenticateStream(dto.stream, dto.ip);
+
+    if (!isAuthenticated) {
+      this.logger.warn(`SRS auth failed for stream key: ${dto.stream}`);
+      return { code: 1 };
+    }
+
+    return { code: 0 };
+  }
+
+  /**
+   * SRS on_unpublish callback
+   * Called when OBS stops streaming
+   */
+  @Public()
+  @SkipThrottle({ short: true, medium: true, long: true })
+  @Post('srs-done')
+  @HttpCode(HttpStatus.OK)
+  async handleSrsStreamDone(@Body() dto: SrsCallbackDto, @Req() req: Request) {
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    if (!this.isPrivateIp(clientIp)) {
+      this.logger.warn(`SRS done rejected from external IP: ${clientIp}`);
+      return { code: 1 };
+    }
+
+    await this.streamingService.handleStreamDone(dto.stream);
+    return { code: 0 };
   }
 
   /**

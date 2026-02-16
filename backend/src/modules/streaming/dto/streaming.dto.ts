@@ -94,7 +94,38 @@ export class StreamingSessionResponseDto {
   createdAt: Date;
 }
 
-// nginx-rtmp on_publish / on_publish_done callback DTO
+// SRS on_publish / on_unpublish callback DTO
+// SRS sends JSON body with these fields
+export class SrsCallbackDto {
+  @IsString()
+  @IsNotEmpty()
+  action: string; // "on_publish" | "on_unpublish"
+
+  @IsString()
+  @IsNotEmpty()
+  stream: string; // = streamKey
+
+  @IsString()
+  @IsOptional()
+  ip?: string;
+
+  @IsOptional()
+  client_id?: number;
+
+  @IsString()
+  @IsOptional()
+  vhost?: string;
+
+  @IsString()
+  @IsOptional()
+  app?: string;
+
+  @IsString()
+  @IsOptional()
+  param?: string;
+}
+
+// nginx-rtmp on_publish / on_publish_done callback DTO (legacy)
 // nginx-rtmp sends all these fields as application/x-www-form-urlencoded
 // All optional fields must be listed to avoid forbidNonWhitelisted rejection
 export class RtmpCallbackDto {
