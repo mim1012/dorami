@@ -1,26 +1,18 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
-import { FaceSmileIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
-  onToggleEmoji: () => void;
   disabled?: boolean;
   compact?: boolean;
-  emojiPickerOpen?: boolean;
 }
 
 export interface ChatInputHandle {
-  insertEmoji: (emoji: string) => void;
+  insertText: (text: string) => void;
 }
 
 const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
-  const {
-    onSendMessage,
-    onToggleEmoji,
-    disabled = false,
-    compact = false,
-    emojiPickerOpen = false,
-  } = props;
+  const { onSendMessage, disabled = false, compact = false } = props;
 
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,14 +34,14 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
     }
   };
 
-  const insertEmoji = (emoji: string) => {
-    setMessage((prev) => prev + emoji);
+  const insertText = (text: string) => {
+    setMessage((prev) => prev + text);
     inputRef.current?.focus();
   };
 
-  // Expose insertEmoji to parent via ref
+  // Expose insertText to parent via ref
   useImperativeHandle(ref, () => ({
-    insertEmoji,
+    insertText,
   }));
 
   return (
@@ -60,19 +52,6 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
       }`}
     >
       <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`}>
-        {/* Emoji Toggle Button */}
-        <button
-          type="button"
-          onClick={onToggleEmoji}
-          className={`flex-shrink-0 text-hot-pink hover:bg-content-bg rounded-button transition-colors ${
-            compact ? 'p-1.5' : 'p-2'
-          } ${emojiPickerOpen ? 'bg-content-bg' : ''}`}
-          aria-label="Open emoji picker"
-          disabled={disabled}
-        >
-          <FaceSmileIcon className={compact ? 'w-5 h-5' : 'w-6 h-6'} />
-        </button>
-
         {/* Text Input */}
         <div className="flex-1 relative">
           <input
@@ -85,16 +64,16 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
             maxLength={maxLength}
             disabled={disabled}
             className={`w-full bg-border-color text-primary-text border border-border-color focus:border-hot-pink focus:outline-none transition-colors ${
-              compact
-                ? 'px-3 py-1.5 text-sm rounded-full'
-                : 'px-4 py-2 rounded-input text-body'
+              compact ? 'px-3 py-1.5 text-sm rounded-full' : 'px-4 py-2 rounded-input text-body'
             }`}
           />
           {/* Character Counter - only show when typing */}
           {message.length > 0 && (
-            <span className={`absolute right-2 text-secondary-text ${
-              compact ? 'bottom-1 text-[10px]' : 'bottom-2 text-small'
-            }`}>
+            <span
+              className={`absolute right-2 text-secondary-text ${
+                compact ? 'bottom-1 text-[10px]' : 'bottom-2 text-small'
+              }`}
+            >
               {message.length}/{maxLength}
             </span>
           )}

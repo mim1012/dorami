@@ -259,25 +259,6 @@ body {
   transform: scale(0.98);
 }
 
-/* Floating Heart Animation (Instagram Live style) */
-@keyframes float-up {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: translateY(-120px) scale(1.2) translateX(10px);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(-250px) scale(0.5) translateX(-5px);
-    opacity: 0;
-  }
-}
-
-.animate-float-up {
-  animation: float-up ease-out forwards;
-}
 
 /* Slide In Left Animation (Cart activity) */
 @keyframes slide-in-left {

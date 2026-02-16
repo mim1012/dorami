@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatInput, { ChatInputHandle } from './ChatInput';
-import EmojiPicker from './EmojiPicker';
+
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 
@@ -19,11 +19,11 @@ export default function ChatOverlay({
   position = 'right',
   className = '',
 }: ChatOverlayProps) {
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const inputRef = useRef<ChatInputHandle>(null);
 
-  const { socket, isConnected, userCount, sendMessage, deleteMessage } = useChatConnection(streamKey);
+  const { socket, isConnected, userCount, sendMessage, deleteMessage } =
+    useChatConnection(streamKey);
   const { messages } = useChatMessages(socket);
 
   // Check if user is admin
@@ -45,16 +45,7 @@ export default function ChatOverlay({
   const handleSendMessage = (message: string) => {
     if (message.trim()) {
       sendMessage(message);
-      setShowEmojiPicker(false);
     }
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    // Insert emoji into input
-    if (inputRef.current) {
-      inputRef.current.insertEmoji(emoji);
-    }
-    setShowEmojiPicker(false);
   };
 
   const positionClasses =
@@ -82,17 +73,11 @@ export default function ChatOverlay({
         onDeleteMessage={deleteMessage}
       />
 
-      {showEmojiPicker && (
-        <EmojiPicker onEmojiSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
-      )}
-
       <ChatInput
         ref={inputRef}
         onSendMessage={handleSendMessage}
-        onToggleEmoji={() => setShowEmojiPicker(!showEmojiPicker)}
         disabled={!isConnected}
         compact={compact}
-        emojiPickerOpen={showEmojiPicker}
       />
     </div>
   );

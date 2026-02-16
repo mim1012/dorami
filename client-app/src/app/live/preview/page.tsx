@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
-import EmojiPicker from '@/components/chat/EmojiPicker';
+
 import CartActivityFeed, { CartActivity } from '@/components/live/CartActivityFeed';
 import ProductBottomSheet from '@/components/live/ProductBottomSheet';
 import type { ChatMessage } from '@/components/chat/types';
@@ -112,7 +112,6 @@ export default function LivePreviewPage() {
   const [cartActivities, setCartActivities] = useState<CartActivity[]>(MOCK_CART_ACTIVITIES);
   const [viewerCount, setViewerCount] = useState(147);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // 시뮬레이션: 뷰어 카운트 변동
   useEffect(() => {
@@ -192,12 +191,6 @@ export default function LivePreviewPage() {
       isDeleted: false,
     };
     setMessages((prev) => [...prev.slice(-30), newMsg]);
-    setShowEmojiPicker(false);
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    inputRef.current?.insertEmoji(emoji);
-    setShowEmojiPicker(false);
   };
 
   return (
@@ -257,11 +250,6 @@ export default function LivePreviewPage() {
               <p className="text-white/15 text-xs mt-1">백엔드 연결 시 실제 영상이 표시됩니다</p>
             </div>
           </div>
-
-          {/* Top gradient overlay */}
-          <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
-          {/* Bottom gradient overlay */}
-          <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10" />
 
           {/* ═══ TOP BAR ═══ */}
           <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
@@ -358,19 +346,11 @@ export default function LivePreviewPage() {
           <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={false} />
             <ChatMessageList messages={messages} compact={false} />
-            {showEmojiPicker && (
-              <EmojiPicker
-                onEmojiSelect={handleEmojiSelect}
-                onClose={() => setShowEmojiPicker(false)}
-              />
-            )}
             <ChatInput
               ref={inputRef}
               onSendMessage={handleSendMessage}
-              onToggleEmoji={() => setShowEmojiPicker(!showEmojiPicker)}
               disabled={false}
               compact={false}
-              emojiPickerOpen={showEmojiPicker}
             />
           </div>
 
@@ -378,19 +358,11 @@ export default function LivePreviewPage() {
           <div className="lg:hidden absolute bottom-0 left-0 w-full h-[40vh] flex flex-col">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={true} />
             <ChatMessageList messages={messages} compact={true} maxMessages={20} />
-            {showEmojiPicker && (
-              <EmojiPicker
-                onEmojiSelect={handleEmojiSelect}
-                onClose={() => setShowEmojiPicker(false)}
-              />
-            )}
             <ChatInput
               ref={inputRef}
               onSendMessage={handleSendMessage}
-              onToggleEmoji={() => setShowEmojiPicker(!showEmojiPicker)}
               disabled={false}
               compact={true}
-              emojiPickerOpen={showEmojiPicker}
             />
           </div>
         </div>
