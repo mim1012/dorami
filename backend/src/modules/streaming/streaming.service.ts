@@ -524,10 +524,10 @@ export class StreamingService {
       return false;
     }
 
-    // Check if stream is in valid state (PENDING)
-    if (session.status !== 'PENDING') {
+    // Check if stream is in valid state (PENDING or OFFLINE for reconnection)
+    if (session.status !== 'PENDING' && session.status !== 'OFFLINE' && session.status !== 'LIVE') {
       this.logger.warn(
-        `RTMP auth failed: Stream not in PENDING state - ${streamKey}, status: ${session.status}`,
+        `RTMP auth failed: Stream in invalid state - ${streamKey}, status: ${session.status}`,
       );
       return false;
     }
