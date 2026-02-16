@@ -91,6 +91,7 @@ export class AuthController {
       secure: this.isProduction,
       sameSite: 'lax',
       maxAge: this.accessTokenMaxAge,
+      path: '/',
     };
   }
 
@@ -103,6 +104,7 @@ export class AuthController {
       secure: this.isProduction,
       sameSite: 'lax',
       maxAge: this.refreshTokenMaxAge,
+      path: '/',
     };
   }
 
