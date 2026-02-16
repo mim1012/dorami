@@ -249,11 +249,26 @@ export class StreamingService {
     });
 
     if (existingStream) {
-      throw new BusinessException(
-        'STREAM_ALREADY_ACTIVE',
-        { streamId: existingStream.id },
-        'You already have an active streaming session. End it first or wait for it to expire.',
-      );
+      // If LIVE, block — can't create a new stream while broadcasting
+      if (existingStream.status === 'LIVE') {
+        throw new BusinessException(
+          'STREAM_ALREADY_ACTIVE',
+          { streamId: existingStream.id },
+          '현재 방송 중입니다. 방송을 종료한 후 다시 시도하세요.',
+        );
+      }
+
+      // If PENDING, return the existing session so user can see their stream key
+      this.logger.log(`Returning existing PENDING stream ${existingStream.id} for user ${userId}`);
+      // Update title if a new one was provided
+      if (dto.title && dto.title !== existingStream.title) {
+        const updated = await this.prisma.liveStream.update({
+          where: { id: existingStream.id },
+          data: { title: dto.title },
+        });
+        return this.mapToResponseDto(updated);
+      }
+      return this.mapToResponseDto(existingStream);
     }
 
     // Generate unique stream key
