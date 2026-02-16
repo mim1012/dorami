@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ForbiddenException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
 import {
   StartStreamDto,
@@ -78,12 +79,14 @@ export class StreamingController {
     return this.streamingService.getStreamStatusByKey(streamKey);
   }
 
+  @SkipThrottle({ short: true, medium: true, long: true })
   @AdminOnly()
   @Get('history')
   async getHistory(@Query() query: StreamHistoryQueryDto) {
     return this.streamingService.getStreamHistory(query);
   }
 
+  @SkipThrottle({ short: true, medium: true, long: true })
   @AdminOnly()
   @Get('live-status')
   async getLiveStatus() {
@@ -96,6 +99,7 @@ export class StreamingController {
    * Returns 200 OK to allow, 403 Forbidden to reject
    */
   @Public()
+  @SkipThrottle({ short: true, medium: true, long: true })
   @Post('auth')
   @HttpCode(HttpStatus.OK)
   async authenticateRtmpStream(@Body() dto: RtmpCallbackDto) {
@@ -113,6 +117,7 @@ export class StreamingController {
    * Called when OBS stops streaming
    */
   @Public()
+  @SkipThrottle({ short: true, medium: true, long: true })
   @Post('done')
   @HttpCode(HttpStatus.OK)
   async handleRtmpStreamDone(@Body() dto: RtmpCallbackDto) {
