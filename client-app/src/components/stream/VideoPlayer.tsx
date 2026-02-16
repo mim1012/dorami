@@ -93,12 +93,13 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       // Other browsers: use HLS.js
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 3,
-        maxBufferLength: 6,
-        liveSyncDuration: 2,
-        liveMaxLatencyDuration: 5,
+        lowLatencyMode: false,
+        backBufferLength: 2,
+        maxBufferLength: 4,
+        liveSyncDuration: 1,
+        liveMaxLatencyDuration: 3,
         liveDurationInfinity: true,
+        maxLiveSyncPlaybackRate: 1.5,
       });
 
       hls.loadSource(hlsUrl);
@@ -130,10 +131,18 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
 
       hlsRef.current = hls;
 
-      // Track latency
+      // Track latency and auto-seek to live edge if drifted too far
       latencyIntervalRef.current = setInterval(() => {
         if (hls.latency !== undefined) {
           setLatency(Math.round(hls.latency));
+        }
+        const video = videoRef.current;
+        if (video && video.buffered.length > 0) {
+          const liveEdge = video.buffered.end(video.buffered.length - 1);
+          const drift = liveEdge - video.currentTime;
+          if (drift > 4) {
+            video.currentTime = liveEdge - 1;
+          }
         }
       }, 1000);
     } else {
