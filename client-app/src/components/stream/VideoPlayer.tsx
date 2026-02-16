@@ -34,10 +34,10 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
 
   const orientation = useOrientation();
 
-  // HLS CDN URL (use environment variable or fallback to localhost)
+  // HLS URL: use CDN if configured, otherwise use relative path through nginx proxy
   const hlsUrl = process.env.NEXT_PUBLIC_CDN_URL
-    ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}/master.m3u8`
-    : `http://localhost:8080/hls/${streamKey}/master.m3u8`;
+    ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}.m3u8`
+    : `/hls/${streamKey}.m3u8`;
 
   useEffect(() => {
     // Detect if device is mobile
@@ -74,10 +74,7 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
     if (!videoRef.current) return;
 
     // Check if browser supports native HLS (Safari)
-    if (
-      videoRef.current.canPlayType('application/vnd.apple.mpegurl') &&
-      !Hls.isSupported()
-    ) {
+    if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
       // Safari: use native HLS
       videoRef.current.src = hlsUrl;
       videoRef.current.addEventListener('loadedmetadata', () => {
@@ -171,11 +168,14 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
       socket.emit('stream:viewer:join', { streamKey });
     });
 
-    socket.on('stream:viewer-count', (data: { data?: { streamKey: string; viewerCount: number } }) => {
-      if (data.data && data.data.streamKey === streamKey) {
-        setViewerCount(data.data.viewerCount);
-      }
-    });
+    socket.on(
+      'stream:viewer-count',
+      (data: { data?: { streamKey: string; viewerCount: number } }) => {
+        if (data.data && data.data.streamKey === streamKey) {
+          setViewerCount(data.data.viewerCount);
+        }
+      },
+    );
 
     socket.on('stream:ended', (data: { streamKey: string }) => {
       if (data.streamKey === streamKey) {
@@ -238,7 +238,9 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
     if (!document.fullscreenElement) {
       if (video.requestFullscreen) {
         video.requestFullscreen();
-      } else if ((video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen) {
+      } else if (
+        (video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen
+      ) {
         (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
       }
     } else {
