@@ -144,7 +144,7 @@ export default function BroadcastsPage() {
         setTotalPages(response.data.totalPages);
       } catch (err: any) {
         console.error('Failed to fetch stream history:', err);
-        setError(err.response?.data?.message || 'Failed to load stream history');
+        setError(err.message || 'Failed to load stream history');
       } finally {
         setIsLoading(false);
       }
@@ -205,10 +205,13 @@ export default function BroadcastsPage() {
     );
   };
 
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
   const handleGenerateStreamKey = async () => {
     if (!newStreamTitle.trim()) return;
 
     setIsGenerating(true);
+    setGenerateError(null);
     try {
       const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', {
         title: newStreamTitle.trim(),
@@ -216,7 +219,8 @@ export default function BroadcastsPage() {
       setGeneratedStream(response.data);
       setNewStreamTitle('');
     } catch (err: any) {
-      setError(err.response?.data?.message || '스트림 키 발급에 실패했습니다.');
+      const message = err.message || '스트림 키 발급에 실패했습니다.';
+      setGenerateError(message);
     } finally {
       setIsGenerating(false);
     }
@@ -236,6 +240,7 @@ export default function BroadcastsPage() {
     setShowGenerateModal(false);
     setGeneratedStream(null);
     setNewStreamTitle('');
+    setGenerateError(null);
   };
 
   // [DEV] Auth check disabled for development
@@ -513,6 +518,11 @@ export default function BroadcastsPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>
+                  {generateError && (
+                    <div className="p-3 bg-error/10 border border-error rounded-lg">
+                      <p className="text-error text-sm">{generateError}</p>
+                    </div>
+                  )}
                   <button
                     onClick={handleGenerateStreamKey}
                     disabled={!newStreamTitle.trim() || isGenerating}

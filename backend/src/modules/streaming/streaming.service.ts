@@ -230,6 +230,16 @@ export class StreamingService {
   }
 
   async generateKey(userId: string, dto: GenerateKeyDto): Promise<StreamingSessionResponseDto> {
+    // Auto-clean expired PENDING streams for this user
+    await this.prisma.liveStream.updateMany({
+      where: {
+        userId,
+        status: 'PENDING',
+        expiresAt: { lt: new Date() },
+      },
+      data: { status: 'OFFLINE' },
+    });
+
     // Check if user already has an active stream
     const existingStream = await this.prisma.liveStream.findFirst({
       where: {
@@ -242,7 +252,7 @@ export class StreamingService {
       throw new BusinessException(
         'STREAM_ALREADY_ACTIVE',
         { streamId: existingStream.id },
-        'You already have an active streaming session',
+        'You already have an active streaming session. End it first or wait for it to expire.',
       );
     }
 
@@ -710,8 +720,10 @@ export class StreamingService {
   }
 
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
-    const rtmpUrl = `${this.configService.get('RTMP_SERVER_URL')}/${session.streamKey}`;
-    const hlsUrl = `${this.configService.get('HLS_SERVER_URL')}/${session.streamKey}/index.m3u8`;
+    const rtmpBase = this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost/live';
+    const hlsBase = this.configService.get('HLS_SERVER_URL') || 'http://localhost:8080/hls';
+    const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
+    const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
 
     return {
       id: session.id,

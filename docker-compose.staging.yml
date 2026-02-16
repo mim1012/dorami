@@ -64,6 +64,8 @@ services:
       BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER}
       BANK_ACCOUNT_HOLDER: ${BANK_ACCOUNT_HOLDER}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
+      RTMP_SERVER_URL: rtmp://${STAGING_HOST:-localhost}/live
+      HLS_SERVER_URL: ${FRONTEND_URL:-http://localhost}/hls
     ports:
       - "127.0.0.1:3001:3001"
 
