@@ -9,7 +9,7 @@ import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
-import EmojiPicker from '@/components/chat/EmojiPicker';
+
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
@@ -83,11 +83,9 @@ export default function LiveStreamPage() {
   } = useChatConnection(streamKey);
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
-  const [showMobileEmoji, setShowMobileEmoji] = useState(false);
 
   // Desktop chat state
   const desktopInputRef = useRef<ChatInputHandle>(null);
-  const [showDesktopEmoji, setShowDesktopEmoji] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Elapsed time timer for mobile top bar
@@ -207,29 +205,13 @@ export default function LiveStreamPage() {
   const handleMobileSendMessage = (message: string) => {
     if (message.trim()) {
       chatSendMessage(message);
-      setShowMobileEmoji(false);
     }
-  };
-
-  const handleMobileEmojiSelect = (emoji: string) => {
-    if (mobileInputRef.current) {
-      mobileInputRef.current.insertEmoji(emoji);
-    }
-    setShowMobileEmoji(false);
   };
 
   const handleDesktopSendMessage = (message: string) => {
     if (message.trim()) {
       chatSendMessage(message);
-      setShowDesktopEmoji(false);
     }
-  };
-
-  const handleDesktopEmojiSelect = (emoji: string) => {
-    if (desktopInputRef.current) {
-      desktopInputRef.current.insertEmoji(emoji);
-    }
-    setShowDesktopEmoji(false);
   };
 
   if (isLoading) {
@@ -336,12 +318,6 @@ export default function LiveStreamPage() {
             title={streamStatus.title}
             onViewerCountChange={handleViewerCountChange}
           />
-
-          {/* Top gradient overlay */}
-          <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
-
-          {/* Bottom gradient overlay */}
-          <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10" />
 
           {/* ═══════════ MOBILE TOP BAR ═══════════ */}
           <div className="absolute top-0 left-0 right-0 z-20 px-3 py-3 flex items-center justify-between lg:hidden">
@@ -512,25 +488,13 @@ export default function LiveStreamPage() {
               </div>
             )}
 
-            {/* Emoji picker for mobile */}
-            {showMobileEmoji && (
-              <div className="pointer-events-auto">
-                <EmojiPicker
-                  onEmojiSelect={handleMobileEmojiSelect}
-                  onClose={() => setShowMobileEmoji(false)}
-                />
-              </div>
-            )}
-
             {/* Chat input */}
             <div className="pointer-events-auto">
               <ChatInput
                 ref={mobileInputRef}
                 onSendMessage={handleMobileSendMessage}
-                onToggleEmoji={() => setShowMobileEmoji(!showMobileEmoji)}
                 disabled={!isConnected}
                 compact
-                emojiPickerOpen={showMobileEmoji}
               />
             </div>
           </div>
@@ -544,19 +508,11 @@ export default function LiveStreamPage() {
               isAdmin={isAdmin}
               onDeleteMessage={chatDeleteMessage}
             />
-            {showDesktopEmoji && (
-              <EmojiPicker
-                onEmojiSelect={handleDesktopEmojiSelect}
-                onClose={() => setShowDesktopEmoji(false)}
-              />
-            )}
             <ChatInput
               ref={desktopInputRef}
               onSendMessage={handleDesktopSendMessage}
-              onToggleEmoji={() => setShowDesktopEmoji(!showDesktopEmoji)}
               disabled={!isConnected}
               compact={false}
-              emojiPickerOpen={showDesktopEmoji}
             />
           </div>
         </div>
