@@ -78,29 +78,32 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   # ===========================================
-  # Build Production Images
+  # Promote Existing Image (reuse staging-tested image)
   # ===========================================
   build:
-    name: Build Production Images
+    name: Promote Image
     needs: [validate, test]
     if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.rollback != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     outputs:
-      backend_image: ${{ steps.meta-backend.outputs.tags }}
-      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.validate.outputs.version }}
+          fetch-depth: 0
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Resolve image tag from git SHA
+        id: resolve
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "image_tag=sha-${SHA}" >> $GITHUB_OUTPUT
+          echo "Resolved image tag: sha-${SHA}"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -109,53 +112,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (Backend)
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
-          tags: |
-            type=raw,value=${{ needs.validate.outputs.version }}
-            type=raw,value=production-latest
+      - name: Tag images for production
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          SHA_TAG="${{ steps.resolve.outputs.image_tag }}"
 
-      - name: Extract metadata (Frontend)
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
-          tags: |
-            type=raw,value=${{ needs.validate.outputs.version }}
-            type=raw,value=production-latest
+          # Pull existing images built during staging
+          docker pull ghcr.io/${{ github.repository_owner }}/dorami-backend:${SHA_TAG}
+          docker pull ghcr.io/${{ github.repository_owner }}/dorami-frontend:${SHA_TAG}
 
-      - name: Build and Push Backend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            NODE_ENV=production
+          # Tag with version and production-latest
+          docker tag ghcr.io/${{ github.repository_owner }}/dorami-backend:${SHA_TAG} \
+            ghcr.io/${{ github.repository_owner }}/dorami-backend:${VERSION}
+          docker tag ghcr.io/${{ github.repository_owner }}/dorami-backend:${SHA_TAG} \
+            ghcr.io/${{ github.repository_owner }}/dorami-backend:production-latest
+          docker tag ghcr.io/${{ github.repository_owner }}/dorami-frontend:${SHA_TAG} \
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:${VERSION}
+          docker tag ghcr.io/${{ github.repository_owner }}/dorami-frontend:${SHA_TAG} \
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:production-latest
 
-      - name: Build and Push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./client-app/Dockerfile
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.PRODUCTION_API_URL }}
-            NEXT_PUBLIC_WS_URL=${{ secrets.PRODUCTION_WS_URL }}
-            NEXT_PUBLIC_CDN_URL=${{ secrets.PRODUCTION_CDN_URL }}
-            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-            NEXT_PUBLIC_APP_VERSION=${{ needs.validate.outputs.version }}
+          # Push version + production-latest tags
+          docker push ghcr.io/${{ github.repository_owner }}/dorami-backend:${VERSION}
+          docker push ghcr.io/${{ github.repository_owner }}/dorami-backend:production-latest
+          docker push ghcr.io/${{ github.repository_owner }}/dorami-frontend:${VERSION}
+          docker push ghcr.io/${{ github.repository_owner }}/dorami-frontend:production-latest
 
   # ===========================================
   # Manual Approval Gate
@@ -257,6 +237,7 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
           VERSION: ${{ needs.validate.outputs.version }}
           IS_ROLLBACK: ${{ needs.validate.outputs.is_rollback }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -266,12 +247,12 @@ jobs:
             echo "=========================================="
             echo "PRODUCTION DEPLOYMENT"
             echo "Version: $VERSION"
+            echo "Image Tag: $IMAGE_TAG"
             echo "Rollback: $IS_ROLLBACK"
             echo "=========================================="
 
             if [ "$IS_ROLLBACK" == "true" ]; then
               echo "=== ROLLBACK MODE ==="
-              # Rollback to specified version
               git fetch --tags
               git checkout $VERSION
             else
@@ -281,19 +262,17 @@ jobs:
             fi
 
             echo "=== Pulling images ==="
+            export IMAGE_TAG=${IMAGE_TAG}
             docker compose -f docker-compose.prod.yml pull
 
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
 
             echo "=== Blue-Green Deployment ==="
-            # Scale down gracefully
             docker compose -f docker-compose.prod.yml up -d --remove-orphans --scale backend=2
 
-            # Wait for new containers to be healthy
             sleep 60
 
-            # Remove old containers
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
             echo "=== Cleaning up ==="

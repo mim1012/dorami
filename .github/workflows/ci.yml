@@ -197,8 +197,6 @@ jobs:
           tags: dorami-backend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            NODE_ENV=production
 
       - name: Build Frontend Image
         uses: docker/build-push-action@v5
@@ -209,10 +207,6 @@ jobs:
           tags: dorami-frontend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_API_URL=http://localhost:3001/api
-            NEXT_PUBLIC_WS_URL=http://localhost:3001
-            NEXT_PUBLIC_CDN_URL=http://localhost:8080
 
   # ===========================================
   # Security Scan

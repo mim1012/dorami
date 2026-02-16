@@ -34,7 +34,7 @@ export function getSentryConfig(): SentryConfig | null {
 
   return {
     dsn,
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV || 'development',
     release: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     tracesSampleRate: isProd ? 0.1 : 1.0,
     replaysSessionSampleRate: isProd ? 0.1 : 0,
@@ -75,10 +75,7 @@ export async function initSentry(): Promise<boolean> {
 /**
  * Capture an exception manually
  */
-export async function captureException(
-  error: Error,
-  context?: Record<string, any>
-): Promise<void> {
+export async function captureException(error: Error, context?: Record<string, any>): Promise<void> {
   try {
     const Sentry = await import('@sentry/nextjs');
     Sentry.captureException(error, { extra: context });
@@ -92,7 +89,7 @@ export async function captureException(
  */
 export async function captureMessage(
   message: string,
-  level: 'info' | 'warning' | 'error' = 'info'
+  level: 'info' | 'warning' | 'error' = 'info',
 ): Promise<void> {
   try {
     const Sentry = await import('@sentry/nextjs');
@@ -105,10 +102,12 @@ export async function captureMessage(
 /**
  * Set user context for Sentry
  */
-export async function setUser(user: {
-  id: string;
-  email?: string;
-} | null): Promise<void> {
+export async function setUser(
+  user: {
+    id: string;
+    email?: string;
+  } | null,
+): Promise<void> {
   try {
     const Sentry = await import('@sentry/nextjs');
     Sentry.setUser(user);
