@@ -2,6 +2,7 @@ import { apiClient } from './client';
 
 export interface LiveStream {
   id: string;
+  streamKey?: string;
   title: string;
   description?: string;
   scheduledTime: string;
