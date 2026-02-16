@@ -238,6 +238,8 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
           IS_ROLLBACK: ${{ needs.validate.outputs.is_rollback }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -261,8 +263,12 @@ jobs:
               git checkout $VERSION
             fi
 
+            echo "=== Logging into GHCR ==="
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
+
             echo "=== Pulling images ==="
             export IMAGE_TAG=${IMAGE_TAG}
+            export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             docker compose -f docker-compose.prod.yml pull
 
             echo "=== Running database migrations ==="

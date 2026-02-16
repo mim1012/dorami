@@ -74,6 +74,8 @@ jobs:
           HOST: ${{ secrets.STAGING_HOST }}
           USER: ${{ secrets.STAGING_USER }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -84,8 +86,12 @@ jobs:
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
 
+            echo "=== Logging into GHCR ==="
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
+
             echo "=== Pulling new images ==="
             export IMAGE_TAG=${IMAGE_TAG}
+            export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             docker compose -f docker-compose.staging.yml pull
 
             echo "=== Running database migrations ==="
