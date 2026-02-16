@@ -358,10 +358,10 @@ describe('StreamingService', () => {
       expect(prismaService.liveStream.update).not.toHaveBeenCalled();
     });
 
-    it('should return false when stream is not PENDING', async () => {
+    it('should return false when stream is in invalid state', async () => {
       jest
         .spyOn(prismaService.liveStream, 'findUnique')
-        .mockResolvedValue({ ...mockStream, status: 'LIVE' } as any);
+        .mockResolvedValue({ ...mockStream, status: 'ENDED' } as any);
 
       const result = await service.authenticateStream('abc123', '127.0.0.1');
 
