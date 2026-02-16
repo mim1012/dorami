@@ -1,0 +1,30 @@
+name: Staging Maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command to run on staging server'
+        required: true
+        default: 'docker compose -f docker-compose.staging.yml ps'
+        type: string
+
+jobs:
+  run:
+    name: Run Command
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Execute Command
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
+            'cd /opt/dorami && ${{ inputs.command }}'
