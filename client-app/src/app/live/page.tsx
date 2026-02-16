@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { getActiveStreams, type LiveStream as Stream } from '@/lib/api/streaming';
 
 export default function LivePage() {
+  const router = useRouter();
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +71,8 @@ export default function LivePage() {
     );
   }
 
-  const liveStreams = streams.filter(stream => stream.status === 'LIVE');
-  const scheduledStreams = streams.filter(stream => stream.status === 'SCHEDULED');
+  const liveStreams = streams.filter((stream) => stream.status === 'LIVE');
+  const scheduledStreams = streams.filter((stream) => stream.status === 'SCHEDULED');
 
   return (
     <>
@@ -79,9 +81,7 @@ export default function LivePage() {
           {/* 헤더 */}
           <div className="mb-8">
             <h1 className="text-h1 text-primary-text font-bold mb-2">Live</h1>
-            <p className="text-body text-secondary-text">
-              실시간 라이브 방송
-            </p>
+            <p className="text-body text-secondary-text">실시간 라이브 방송</p>
           </div>
 
           {/* 현재 라이브 중인 방송 */}
@@ -95,6 +95,7 @@ export default function LivePage() {
                 {liveStreams.map((stream) => (
                   <div
                     key={stream.id}
+                    onClick={() => router.push(`/live/${stream.streamKey}`)}
                     className="relative aspect-video bg-white rounded-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
                   >
                     {/* 비디오 플레이스홀더 */}
@@ -118,7 +119,9 @@ export default function LivePage() {
                       <div className="bg-black/60 backdrop-blur-sm p-3 rounded-[8px]">
                         <h3 className="text-body text-white font-bold mb-1">{stream.title}</h3>
                         {stream.description && (
-                          <p className="text-caption text-white/80 line-clamp-1">{stream.description}</p>
+                          <p className="text-caption text-white/80 line-clamp-1">
+                            {stream.description}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -131,15 +134,10 @@ export default function LivePage() {
           {/* 예정된 라이브 */}
           {scheduledStreams.length > 0 && (
             <div className="mb-12">
-              <h2 className="text-h2 text-primary-text font-semibold mb-4">
-                예정된 라이브
-              </h2>
+              <h2 className="text-h2 text-primary-text font-semibold mb-4">예정된 라이브</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {scheduledStreams.map((stream) => (
-                  <div
-                    key={stream.id}
-                    className="bg-content-bg rounded-[12px] p-4"
-                  >
+                  <div key={stream.id} className="bg-content-bg rounded-[12px] p-4">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-body text-primary-text font-bold">{stream.title}</h3>
                       <div className="bg-hot-pink/20 text-hot-pink px-2 py-1 rounded text-caption font-medium">
