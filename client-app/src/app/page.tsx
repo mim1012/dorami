@@ -108,6 +108,7 @@ export default function Home() {
   const [upcomingLives, setUpcomingLives] = useState<
     Array<{
       id: string;
+      streamKey?: string;
       title: string;
       scheduledTime: Date;
       thumbnailUrl: string;
@@ -160,6 +161,7 @@ export default function Home() {
           if (apiStreams && apiStreams.length > 0) {
             lives = apiStreams.map((s) => ({
               id: s.id,
+              streamKey: s.streamKey,
               title: s.title,
               scheduledTime: new Date(s.scheduledTime || s.scheduledStartTime || now + 3600000),
               thumbnailUrl:
@@ -197,8 +199,8 @@ export default function Home() {
     }
   };
 
-  const handleLiveClick = (liveId: string) => {
-    router.push(`/live/${liveId}`);
+  const handleLiveClick = (streamKey: string) => {
+    router.push(`/live/${streamKey}`);
   };
 
   const handleProductClick = (productId: string) => {
@@ -206,10 +208,10 @@ export default function Home() {
   };
 
   const handleLiveBannerClick = () => {
-    if (isNextLiveActive && upcomingLives.length > 0) {
-      router.push(`/live/${upcomingLives[0].id}`);
+    if (isNextLiveActive && upcomingLives.length > 0 && upcomingLives[0].streamKey) {
+      router.push(`/live/${upcomingLives[0].streamKey}`);
     } else if (upcomingLives.length > 0) {
-      router.push('/alerts');
+      router.push('/live');
     }
   };
 
@@ -388,7 +390,7 @@ export default function Home() {
                 scheduledTime={new Date(live.scheduledTime)}
                 thumbnailUrl={live.thumbnailUrl}
                 isLive={live.isLive}
-                onClick={() => handleLiveClick(live.id)}
+                onClick={() => live.streamKey && handleLiveClick(live.streamKey)}
                 size="small"
               />
             </div>
