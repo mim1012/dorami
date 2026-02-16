@@ -94,10 +94,10 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 5,
-        maxBufferLength: 10,
-        liveSyncDuration: 3,
-        liveMaxLatencyDuration: 8,
+        backBufferLength: 3,
+        maxBufferLength: 6,
+        liveSyncDuration: 2,
+        liveMaxLatencyDuration: 5,
         liveDurationInfinity: true,
       });
 
