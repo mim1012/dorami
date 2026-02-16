@@ -95,6 +95,8 @@ export class StreamingSessionResponseDto {
 }
 
 // nginx-rtmp on_publish / on_publish_done callback DTO
+// nginx-rtmp sends all these fields as application/x-www-form-urlencoded
+// All optional fields must be listed to avoid forbidNonWhitelisted rejection
 export class RtmpCallbackDto {
   @IsString()
   @IsOptional()
@@ -118,9 +120,21 @@ export class RtmpCallbackDto {
 
   @IsString()
   @IsOptional()
+  type?: string; // publish type (e.g., "live")
+
+  @IsString()
+  @IsOptional()
   flashver?: string;
 
   @IsString()
   @IsOptional()
+  swfurl?: string;
+
+  @IsString()
+  @IsOptional()
   tcurl?: string;
+
+  @IsString()
+  @IsOptional()
+  pageurl?: string;
 }
