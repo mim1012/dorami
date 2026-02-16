@@ -93,11 +93,11 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       // Other browsers: use HLS.js
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 10,
-        maxBufferLength: 30,
-        liveSyncDuration: 6,
-        liveMaxLatencyDuration: 15,
+        lowLatencyMode: true,
+        backBufferLength: 5,
+        maxBufferLength: 10,
+        liveSyncDuration: 3,
+        liveMaxLatencyDuration: 8,
         liveDurationInfinity: true,
       });
 
