@@ -8,9 +8,14 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { AuthenticatedSocket, authenticateSocket } from '../../common/middleware/ws-jwt-auth.middleware';
+import { randomUUID } from 'crypto';
+import {
+  AuthenticatedSocket,
+  authenticateSocket,
+} from '../../common/middleware/ws-jwt-auth.middleware';
 
 interface ChatMessagePayload {
   liveId: string;
@@ -21,6 +26,13 @@ interface DeleteMessagePayload {
   liveId: string;
   messageId: string;
 }
+
+// Stream keys are 32-char hex strings
+const STREAM_KEY_REGEX = /^[a-f0-9]{32}$/;
+
+// Rate limit: max messages per window
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 5000;
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -33,20 +45,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(ChatGateway.name);
+
+  // Per-user message timestamps for rate limiting
+  private readonly messageTimes = new Map<string, number[]>();
+
   constructor(private readonly jwtService: JwtService) {}
 
   afterInit(_server: Server) {
-    console.log('✅ Chat Gateway initialized');
+    this.logger.log('Chat Gateway initialized');
   }
 
   async handleConnection(client: Socket) {
     try {
-      // Authenticate client
       const authenticatedClient = await authenticateSocket(client, this.jwtService);
 
-      console.log(`✅ Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`);
+      this.logger.log(
+        `Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`,
+      );
 
-      // Send welcome message
       client.emit('connection:success', {
         type: 'connection:success',
         data: {
@@ -56,7 +73,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         },
       });
     } catch (error) {
-      console.error('❌ Connection failed:', error.message);
+      this.logger.error(`Connection failed: ${error.message}`);
       client.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -68,7 +85,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`👋 Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
+    // Clean up rate limit entries for disconnected user
+    const authClient = client as AuthenticatedSocket;
+    if (authClient.user?.userId) {
+      this.messageTimes.delete(authClient.user.userId);
+    }
   }
 
   @SubscribeMessage('chat:join-room')
@@ -76,23 +98,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: { liveId: string },
   ) {
-    const roomName = `live:${payload.liveId}`;
+    const { liveId } = payload;
+
+    // Validate stream key format
+    if (!liveId || !STREAM_KEY_REGEX.test(liveId)) {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'INVALID_STREAM_KEY',
+        message: 'Invalid stream key format',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const roomName = `live:${liveId}`;
 
     await client.join(roomName);
 
-    console.log(`📥 User ${client.user.userId} joined room ${roomName}`);
+    this.logger.log(`User ${client.user.userId} joined room ${roomName}`);
 
-    // Notify room members
     this.server.to(roomName).emit('chat:user-joined', {
       type: 'chat:user-joined',
       data: {
         userId: client.user.userId,
-        liveId: payload.liveId,
+        liveId,
         timestamp: new Date().toISOString(),
       },
     });
 
-    // Confirm to client
     return {
       type: 'chat:join-room:success',
       data: {
@@ -111,9 +144,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     await client.leave(roomName);
 
-    console.log(`📤 User ${client.user.userId} left room ${roomName}`);
+    this.logger.log(`User ${client.user.userId} left room ${roomName}`);
 
-    // Notify room members
     this.server.to(roomName).emit('chat:user-left', {
       type: 'chat:user-left',
       data: {
@@ -148,8 +180,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return;
     }
 
-    // Sanitize: strip HTML tags to prevent XSS
-    const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
+    // Rate limiting: max RATE_LIMIT_MAX messages per RATE_LIMIT_WINDOW_MS
+    const userId = client.user.userId;
+    const now = Date.now();
+    const times = this.messageTimes.get(userId) || [];
+    const recentTimes = times.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (recentTimes.length >= RATE_LIMIT_MAX) {
+      client.emit('error', {
+        type: 'error',
+        errorCode: 'RATE_LIMITED',
+        message: '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    recentTimes.push(now);
+    this.messageTimes.set(userId, recentTimes);
+
+    // Sanitize: strip all HTML tags including unclosed ones and remaining angle brackets
+    const sanitizedMessage = payload.message
+      .replace(/<[^>]*>?/g, '')
+      .replace(/[<>]/g, '')
+      .trim();
 
     // Validate length (max 500 characters)
     if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
@@ -164,11 +216,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const roomName = `live:${payload.liveId}`;
 
-    // Broadcast to all clients in room (including sender)
     this.server.to(roomName).emit('chat:message', {
       type: 'chat:message',
       data: {
-        id: Date.now().toString(),
+        id: randomUUID(),
         liveId: payload.liveId,
         userId: client.user.userId,
         message: sanitizedMessage,
@@ -189,7 +240,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: DeleteMessagePayload,
   ) {
-    // Check if user is ADMIN
     if (client.user.role !== 'ADMIN') {
       client.emit('error', {
         type: 'error',
@@ -200,7 +250,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return;
     }
 
-    // Validate messageId
     if (!payload.messageId) {
       client.emit('error', {
         type: 'error',
@@ -213,9 +262,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const roomName = `live:${payload.liveId}`;
 
-    console.log(`🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`);
+    this.logger.log(
+      `Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+    );
 
-    // Broadcast deletion to all clients in room
     this.server.to(roomName).emit('chat:message-deleted', {
       type: 'chat:message-deleted',
       data: {

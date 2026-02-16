@@ -6,14 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
 import VideoPlayer from '@/components/stream/VideoPlayer';
-import ChatOverlay from '@/components/chat/ChatOverlay';
+import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 import EmojiPicker from '@/components/chat/EmojiPicker';
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
-import HeartAnimation from '@/components/live/HeartAnimation';
 import CartActivityFeed from '@/components/live/CartActivityFeed';
 import { useCartActivity } from '@/hooks/useCartActivity';
 import { useChatConnection } from '@/hooks/useChatConnection';
@@ -74,11 +73,22 @@ export default function LiveStreamPage() {
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const { showToast } = useToast();
 
-  // Mobile chat — direct connection for standalone ChatInput + ChatMessageList
-  const { socket, isConnected, sendMessage: chatSendMessage } = useChatConnection(streamKey);
+  // Shared chat connection — used by both mobile and desktop chat UI
+  const {
+    socket,
+    isConnected,
+    userCount,
+    sendMessage: chatSendMessage,
+    deleteMessage: chatDeleteMessage,
+  } = useChatConnection(streamKey);
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const [showMobileEmoji, setShowMobileEmoji] = useState(false);
+
+  // Desktop chat state
+  const desktopInputRef = useRef<ChatInputHandle>(null);
+  const [showDesktopEmoji, setShowDesktopEmoji] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -115,20 +125,13 @@ export default function LiveStreamPage() {
     fetchStreamStatus();
   }, [streamKey]);
 
-  // Simulated viewer count that fluctuates
-  useEffect(() => {
-    if (!streamStatus || streamStatus.status !== 'LIVE') return;
-    setViewerCount(streamStatus.viewerCount || Math.floor(Math.random() * 200 + 50));
-    const interval = setInterval(() => {
-      setViewerCount((prev) => {
-        const change = Math.floor(Math.random() * 7) - 2;
-        const newVal = Math.max(1, prev + change);
-        if (change > 2) setShowViewerPulse(true);
-        return newVal;
-      });
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [streamStatus]);
+  // Real viewer count from VideoPlayer WebSocket
+  const handleViewerCountChange = (count: number) => {
+    setViewerCount((prev) => {
+      if (count > prev) setShowViewerPulse(true);
+      return count;
+    });
+  };
 
   // Pulse effect reset
   useEffect(() => {
@@ -137,6 +140,22 @@ export default function LiveStreamPage() {
       return () => clearTimeout(timeout);
     }
   }, [showViewerPulse]);
+
+  // Check if current user is admin (for desktop chat message deletion)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        try {
+          const parsed = JSON.parse(authStorage);
+          const role = parsed?.state?.user?.role;
+          setIsAdmin(role === 'ADMIN');
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+  }, []);
 
   // Elapsed time calculation from streamStatus.startedAt
   useEffect(() => {
@@ -197,6 +216,20 @@ export default function LiveStreamPage() {
       mobileInputRef.current.insertEmoji(emoji);
     }
     setShowMobileEmoji(false);
+  };
+
+  const handleDesktopSendMessage = (message: string) => {
+    if (message.trim()) {
+      chatSendMessage(message);
+      setShowDesktopEmoji(false);
+    }
+  };
+
+  const handleDesktopEmojiSelect = (emoji: string) => {
+    if (desktopInputRef.current) {
+      desktopInputRef.current.insertEmoji(emoji);
+    }
+    setShowDesktopEmoji(false);
   };
 
   if (isLoading) {
@@ -298,7 +331,11 @@ export default function LiveStreamPage() {
       {/* Center: Video Container */}
       <div className="flex-1 relative flex items-center justify-center">
         <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
-          <VideoPlayer streamKey={streamKey} title={streamStatus.title} />
+          <VideoPlayer
+            streamKey={streamKey}
+            title={streamStatus.title}
+            onViewerCountChange={handleViewerCountChange}
+          />
 
           {/* Top gradient overlay */}
           <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
@@ -327,7 +364,9 @@ export default function LiveStreamPage() {
               </div>
               <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
                 <Eye className="w-3.5 h-3.5 text-white/70" />
-                <span className="text-white text-[11px] font-bold">{viewerCount.toLocaleString()}</span>
+                <span className="text-white text-[11px] font-bold">
+                  {viewerCount.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -428,9 +467,6 @@ export default function LiveStreamPage() {
             <CartActivityFeed activities={cartActivities} />
           </div>
 
-          {/* ═══════════ HEART ANIMATION ═══════════ */}
-          <HeartAnimation showButton={false} />
-
           {/* ═══════════ MOBILE BOTTOM SECTION ═══════════ */}
           <div className="absolute bottom-0 left-0 right-0 z-20 lg:hidden flex flex-col pointer-events-none">
             {/* Chat messages overlay */}
@@ -456,7 +492,9 @@ export default function LiveStreamPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{featuredProduct.name}</p>
+                    <p className="text-white text-sm font-medium truncate">
+                      {featuredProduct.name}
+                    </p>
                     <p className="text-[#FF007A] font-bold text-sm">
                       ₩{featuredProduct.price.toLocaleString()}
                     </p>
@@ -497,9 +535,29 @@ export default function LiveStreamPage() {
             </div>
           </div>
 
-          {/* Chat Overlay — Desktop Only (right side panel) */}
-          <div className="hidden lg:block">
-            <ChatOverlay streamKey={streamKey} position="right" />
+          {/* Chat — Desktop Only (right side panel, shared connection) */}
+          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col z-20">
+            <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
+            <ChatMessageList
+              messages={allMessages}
+              compact={false}
+              isAdmin={isAdmin}
+              onDeleteMessage={chatDeleteMessage}
+            />
+            {showDesktopEmoji && (
+              <EmojiPicker
+                onEmojiSelect={handleDesktopEmojiSelect}
+                onClose={() => setShowDesktopEmoji(false)}
+              />
+            )}
+            <ChatInput
+              ref={desktopInputRef}
+              onSendMessage={handleDesktopSendMessage}
+              onToggleEmoji={() => setShowDesktopEmoji(!showDesktopEmoji)}
+              disabled={!isConnected}
+              compact={false}
+              emojiPickerOpen={showDesktopEmoji}
+            />
           </div>
         </div>
       </div>

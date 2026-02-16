@@ -6,11 +6,14 @@ import {
   Param,
   Body,
   Query,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
 import {
@@ -27,7 +30,24 @@ import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('streaming')
 export class StreamingController {
+  private readonly logger = new Logger(StreamingController.name);
+
   constructor(private streamingService: StreamingService) {}
+
+  private isPrivateIp(ip: string | undefined): boolean {
+    if (!ip) {
+      return false;
+    }
+    const normalized = ip.replace(/^::ffff:/, '');
+    return (
+      normalized === '127.0.0.1' ||
+      normalized === '::1' ||
+      normalized.startsWith('10.') ||
+      normalized.startsWith('172.') ||
+      normalized.startsWith('192.168.') ||
+      normalized === 'localhost'
+    );
+  }
 
   @Post('start')
   @UseGuards(JwtAuthGuard)
@@ -102,7 +122,14 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('auth')
   @HttpCode(HttpStatus.OK)
-  async authenticateRtmpStream(@Body() dto: RtmpCallbackDto) {
+  async authenticateRtmpStream(@Body() dto: RtmpCallbackDto, @Req() req: Request) {
+    // Only allow callbacks from internal/Docker network
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    if (!this.isPrivateIp(clientIp)) {
+      this.logger.warn(`RTMP auth rejected from external IP: ${clientIp}`);
+      throw new ForbiddenException('Unauthorized callback source');
+    }
+
     const isAuthenticated = await this.streamingService.authenticateStream(dto.name, dto.addr);
 
     if (!isAuthenticated) {
@@ -120,7 +147,13 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('done')
   @HttpCode(HttpStatus.OK)
-  async handleRtmpStreamDone(@Body() dto: RtmpCallbackDto) {
+  async handleRtmpStreamDone(@Body() dto: RtmpCallbackDto, @Req() req: Request) {
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    if (!this.isPrivateIp(clientIp)) {
+      this.logger.warn(`RTMP done rejected from external IP: ${clientIp}`);
+      throw new ForbiddenException('Unauthorized callback source');
+    }
+
     await this.streamingService.handleStreamDone(dto.name);
     return { status: 'ok' };
   }

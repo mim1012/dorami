@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsBoolean, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsEnum, IsBoolean, IsOptional, IsNotEmpty, Matches } from 'class-validator';
 
 export enum ReStreamPlatformDto {
   YOUTUBE = 'YOUTUBE',
@@ -17,6 +17,9 @@ export class CreateReStreamTargetDto {
 
   @IsString()
   @IsNotEmpty()
+  @Matches(/^rtmps?:\/\/[a-zA-Z0-9._-]+(:\d+)?\//, {
+    message: 'rtmpUrl must be a valid RTMP URL (e.g., rtmp://host/app/)',
+  })
   rtmpUrl: string;
 
   @IsString()
@@ -39,6 +42,9 @@ export class UpdateReStreamTargetDto {
 
   @IsString()
   @IsOptional()
+  @Matches(/^rtmps?:\/\/[a-zA-Z0-9._-]+(:\d+)?\//, {
+    message: 'rtmpUrl must be a valid RTMP URL (e.g., rtmp://host/app/)',
+  })
   rtmpUrl?: string;
 
   @IsString()

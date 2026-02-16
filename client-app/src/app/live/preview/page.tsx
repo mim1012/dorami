@@ -7,7 +7,6 @@ import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 import EmojiPicker from '@/components/chat/EmojiPicker';
-import HeartAnimation from '@/components/live/HeartAnimation';
 import CartActivityFeed, { CartActivity } from '@/components/live/CartActivityFeed';
 import ProductBottomSheet from '@/components/live/ProductBottomSheet';
 import type { ChatMessage } from '@/components/chat/types';
@@ -345,9 +344,6 @@ export default function LivePreviewPage() {
 
           {/* Cart Activity Feed */}
           <CartActivityFeed activities={cartActivities} />
-
-          {/* Heart Animation (auto only, no button) */}
-          <HeartAnimation showButton={false} />
 
           {/* Product Bottom Sheet - Mobile */}
           <div className="lg:hidden">
