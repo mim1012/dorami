@@ -31,7 +31,7 @@ export function getSentryConfig(): SentryConfig | null {
 
   return {
     dsn,
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.APP_ENV || process.env.NODE_ENV || 'development',
     release: process.env.APP_VERSION || '1.0.0',
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,

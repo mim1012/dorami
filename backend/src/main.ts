@@ -22,22 +22,18 @@ import { rateLimitCheck } from './common/middleware/ws-rate-limit.middleware';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log('🚀 Bootstrap starting...');
-  
+
   // Validate critical environment variables
-  const requiredEnvVars = [
-    'DATABASE_URL',
-    'JWT_SECRET',
-    'REDIS_URL',
-  ];
-  
-  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_URL'];
+
+  const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
   if (missingEnvVars.length > 0) {
     logger.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
     process.exit(1);
   }
-  
+
   logger.log('✅ Environment variables validated');
-  
+
   // Production mode check
   const isProduction = process.env.NODE_ENV === 'production';
   if (isProduction) {
@@ -45,7 +41,7 @@ async function bootstrap() {
   } else {
     logger.warn('⚠️ Running in DEVELOPMENT mode');
   }
-  
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   logger.log('AppModule created');
 
@@ -101,13 +97,13 @@ async function bootstrap() {
   // Global Validation Pipe - CRITICAL: Input validation
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,              // Strip properties not in DTO
-      forbidNonWhitelisted: true,   // Throw error for unknown properties
-      transform: true,              // Auto-transform payloads to DTO instances
+      whitelist: true, // Strip properties not in DTO
+      forbidNonWhitelisted: true, // Throw error for unknown properties
+      transform: true, // Auto-transform payloads to DTO instances
       transformOptions: {
-        enableImplicitConversion: true,  // Allow implicit type conversion
+        enableImplicitConversion: true, // Allow implicit type conversion
       },
-      disableErrorMessages: process.env.NODE_ENV === 'production',  // Hide details in production
+      disableErrorMessages: process.env.NODE_ENV === 'production', // Hide details in production
     }),
   );
   logger.log('Validation pipe enabled');
@@ -151,14 +147,14 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-CSRF-Token'],
     exposedHeaders: ['Content-Type'],
-    maxAge: 86400,  // 24 hours preflight cache
+    maxAge: 86400, // 24 hours preflight cache
   });
 
   logger.log(`CORS enabled for origins: ${allowedOrigins.join(', ')}`);
 
   // Manual Socket.IO server creation and attachment
   const httpServer = app.getHttpServer();
-  
+
   logger.log('📡 Creating Socket.IO server manually...');
   const io = new Server(httpServer, {
     cors: {
@@ -167,26 +163,26 @@ async function bootstrap() {
     },
     transports: ['websocket', 'polling'],
   });
-  
+
   // Attach Redis adapter to Socket.IO
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
   const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
   const subClient = pubClient.duplicate();
-  
+
   await Promise.all([pubClient.connect(), subClient.connect()]);
-  
+
   io.adapter(createAdapter(pubClient, subClient));
   logger.log('✅ Redis adapter connected');
-  
+
   // Set IO server on the SocketIoProvider for dependency injection
   const socketIoProvider = app.get(SocketIoProvider);
   socketIoProvider.setServer(io);
   logger.log('✅ SocketIoProvider configured for DI');
-  
+
   // Attach to httpServer
   (httpServer as any).io = io;
   logger.log('✅ Socket.IO server attached to HTTP server');
-  
+
   // Use CustomIoAdapter to allow NestJS Gateways to use our pre-configured Socket.IO server
   app.useWebSocketAdapter(new CustomIoAdapter(app, io));
   logger.log('✅ CustomIoAdapter configured for NestJS Gateways');
@@ -203,7 +199,7 @@ async function bootstrap() {
   logger.log('API versioning enabled (v1)');
 
   // Swagger/OpenAPI Documentation (non-production only)
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.APP_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('도라미 Live Commerce API')
       .setDescription(
@@ -280,24 +276,26 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   logger.log(`Starting server on port ${port}...`);
-  
+
   await app.listen(port);
-  
+
   logger.log(`HTTP server started on port ${port}`);
-  
+
   // Get service instances from app context
   const jwtService = app.get(JwtService);
-  
+
   // Manually create /chat namespace with full ChatGateway logic
   const chatNamespace = io.of('/chat');
   logger.log('✅ Created /chat namespace manually');
-  
+
   chatNamespace.on('connection', async (socket) => {
     try {
       // Authenticate socket
       const authenticatedSocket = await authenticateSocket(socket, jwtService);
-      logger.log(`✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`);
-      
+      logger.log(
+        `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+      );
+
       // Send welcome message
       socket.emit('connection:success', {
         type: 'connection:success',
@@ -307,14 +305,14 @@ async function bootstrap() {
           timestamp: new Date().toISOString(),
         },
       });
-      
+
       // Handle chat:join-room
       socket.on('chat:join-room', async (payload: { liveId: string }) => {
         const roomName = `live:${payload.liveId}`;
         await socket.join(roomName);
-        
+
         logger.log(`📥 User ${authenticatedSocket.user.userId} joined room ${roomName}`);
-        
+
         // Notify room members
         chatNamespace.to(roomName).emit('chat:user-joined', {
           type: 'chat:user-joined',
@@ -324,7 +322,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         // Confirm to client
         socket.emit('chat:join-room:success', {
           type: 'chat:join-room:success',
@@ -334,14 +332,14 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle chat:leave-room
       socket.on('chat:leave-room', async (payload: { liveId: string }) => {
         const roomName = `live:${payload.liveId}`;
         await socket.leave(roomName);
-        
+
         logger.log(`📤 User ${authenticatedSocket.user.userId} left room ${roomName}`);
-        
+
         // Notify room members
         chatNamespace.to(roomName).emit('chat:user-left', {
           type: 'chat:user-left',
@@ -351,7 +349,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         socket.emit('chat:leave-room:success', {
           type: 'chat:leave-room:success',
           data: {
@@ -360,14 +358,14 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle chat:send-message
       socket.on('chat:send-message', async (payload: { liveId: string; message: string }) => {
         // Rate limiting: max 20 messages per 10 seconds
         if (!rateLimitCheck(socket, 'chat:send-message', { windowMs: 10000, maxEvents: 20 })) {
           return;
         }
-        
+
         // Validate message
         if (!payload.message || typeof payload.message !== 'string') {
           socket.emit('error', {
@@ -378,10 +376,10 @@ async function bootstrap() {
           });
           return;
         }
-        
+
         // Sanitize: strip HTML tags to prevent XSS
         const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
-        
+
         // Validate length (max 500 characters)
         if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
           socket.emit('error', {
@@ -392,9 +390,9 @@ async function bootstrap() {
           });
           return;
         }
-        
+
         const roomName = `live:${payload.liveId}`;
-        
+
         // Broadcast to all clients in room
         chatNamespace.to(roomName).emit('chat:message', {
           type: 'chat:message',
@@ -406,7 +404,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         socket.emit('chat:send-message:success', {
           type: 'chat:send-message:success',
           data: {
@@ -414,7 +412,7 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle chat:delete-message
       socket.on('chat:delete-message', async (payload: { liveId: string; messageId: string }) => {
         // Check if user is ADMIN
@@ -427,7 +425,7 @@ async function bootstrap() {
           });
           return;
         }
-        
+
         // Validate messageId
         if (!payload.messageId) {
           socket.emit('error', {
@@ -438,11 +436,13 @@ async function bootstrap() {
           });
           return;
         }
-        
+
         const roomName = `live:${payload.liveId}`;
-        
-        logger.log(`🗑️  Admin ${authenticatedSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`);
-        
+
+        logger.log(
+          `🗑️  Admin ${authenticatedSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+        );
+
         // Broadcast deletion to all clients in room
         chatNamespace.to(roomName).emit('chat:message-deleted', {
           type: 'chat:message-deleted',
@@ -453,7 +453,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         socket.emit('chat:delete-message:success', {
           type: 'chat:delete-message:success',
           data: {
@@ -462,12 +462,11 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle disconnect
       socket.on('disconnect', () => {
         logger.log(`👋 Client disconnected from /chat: ${authenticatedSocket.id}`);
       });
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Chat connection failed: ${errorMessage}`);
@@ -483,17 +482,19 @@ async function bootstrap() {
       socket.disconnect();
     }
   });
-  
+
   // Create /streaming namespace with StreamingGateway logic
   const streamingNamespace = io.of('/streaming');
   const socketStreams = new Map<string, string>();
   logger.log('✅ Created /streaming namespace manually');
-  
+
   streamingNamespace.on('connection', async (socket) => {
     try {
       const authenticatedSocket = await authenticateSocket(socket, jwtService);
-      logger.log(`✅ Client connected to /streaming: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`);
-      
+      logger.log(
+        `✅ Client connected to /streaming: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+      );
+
       socket.emit('connection:success', {
         type: 'connection:success',
         data: {
@@ -502,20 +503,22 @@ async function bootstrap() {
           timestamp: new Date().toISOString(),
         },
       });
-      
+
       // Handle stream:viewer:join
       socket.on('stream:viewer:join', async (payload: { streamKey: string }) => {
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
-        
+
         await socket.join(roomName);
         socketStreams.set(socket.id, streamKey);
-        
+
         // Increment viewer count in Redis
         const viewerCount = Number(await pubClient.incr(`stream:${streamKey}:viewers`));
-        
-        logger.log(`📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`);
-        
+
+        logger.log(
+          `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
+        );
+
         // Broadcast viewer count update
         streamingNamespace.to(roomName).emit('stream:viewer:update', {
           type: 'stream:viewer:update',
@@ -525,7 +528,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         socket.emit('stream:viewer:join:success', {
           type: 'stream:viewer:join:success',
           data: {
@@ -535,23 +538,23 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle stream:viewer:leave
       socket.on('stream:viewer:leave', async (payload: { streamKey: string }) => {
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
-        
+
         await socket.leave(roomName);
         socketStreams.delete(socket.id);
-        
+
         // Decrement viewer count in Redis
         const viewerCount = Number(await pubClient.decr(`stream:${streamKey}:viewers`));
         if (viewerCount < 0) {
           await pubClient.set(`stream:${streamKey}:viewers`, '0');
         }
-        
+
         logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
-        
+
         // Broadcast viewer count update
         streamingNamespace.to(roomName).emit('stream:viewer:update', {
           type: 'stream:viewer:update',
@@ -561,7 +564,7 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
-        
+
         socket.emit('stream:viewer:leave:success', {
           type: 'stream:viewer:leave:success',
           data: {
@@ -570,7 +573,7 @@ async function bootstrap() {
           },
         });
       });
-      
+
       // Handle disconnect
       socket.on('disconnect', async () => {
         const streamKey = socketStreams.get(socket.id);
@@ -580,7 +583,7 @@ async function bootstrap() {
           if (viewerCount < 0) {
             await pubClient.set(`stream:${streamKey}:viewers`, '0');
           }
-          
+
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',
             data: {
@@ -589,12 +592,11 @@ async function bootstrap() {
               timestamp: new Date().toISOString(),
             },
           });
-          
+
           socketStreams.delete(socket.id);
         }
         logger.log(`👋 Client disconnected from /streaming: ${authenticatedSocket.id}`);
       });
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Streaming connection failed: ${errorMessage}`);
@@ -610,49 +612,51 @@ async function bootstrap() {
       socket.disconnect();
     }
   });
-  
+
   // Create root namespace (/) with WebsocketGateway logic
   const rootNamespace = io.of('/');
   logger.log('✅ Configured root (/) namespace manually');
-  
+
   rootNamespace.on('connection', async (socket) => {
     try {
       const authenticatedSocket = await authenticateSocket(socket, jwtService);
-      logger.log(`✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`);
-      
+      logger.log(
+        `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+      );
+
       socket.emit('connected', {
         message: 'Connected to Live Commerce WebSocket',
         userId: authenticatedSocket.user.userId,
       });
-      
+
       // Handle join:stream
       socket.on('join:stream', async (data: { streamId: string }) => {
         const roomName = `stream:${data.streamId}`;
         await socket.join(roomName);
-        
+
         logger.log(`📥 Client ${socket.id} joined stream room: ${roomName}`);
-        
+
         rootNamespace.to(roomName).emit('user:joined', {
           userId: authenticatedSocket.user.userId,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
       });
-      
+
       // Handle leave:stream
       socket.on('leave:stream', async (data: { streamId: string }) => {
         const roomName = `stream:${data.streamId}`;
         await socket.leave(roomName);
-        
+
         logger.log(`📤 Client ${socket.id} left stream room: ${roomName}`);
-        
+
         rootNamespace.to(roomName).emit('user:left', {
           userId: authenticatedSocket.user.userId,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
       });
-      
+
       // Handle disconnect
       socket.on('disconnect', () => {
         const rooms = Array.from(socket.rooms).filter((room) => room !== socket.id);
@@ -662,7 +666,6 @@ async function bootstrap() {
         }
         logger.log(`👋 Client disconnected from /: ${socket.id}`);
       });
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Root connection failed: ${errorMessage}`);
@@ -673,7 +676,7 @@ async function bootstrap() {
       socket.disconnect();
     }
   });
-  
+
   // Expose ProductGateway broadcast methods on the io server for use by services
   (io as any).broadcastProductAdded = (streamKey: string, product: any) => {
     const room = `stream:${streamKey}`;
@@ -683,7 +686,7 @@ async function bootstrap() {
     });
     logger.log(`Product added broadcast sent to room ${room}: ${product.id}`);
   };
-  
+
   (io as any).broadcastProductUpdated = (streamKey: string, product: any) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:updated', {
@@ -692,7 +695,7 @@ async function bootstrap() {
     });
     logger.log(`Product updated broadcast sent to room ${room}: ${product.id}`);
   };
-  
+
   (io as any).broadcastProductSoldOut = (streamKey: string, productId: string) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:soldout', {
@@ -701,7 +704,7 @@ async function bootstrap() {
     });
     logger.log(`Product sold out broadcast sent to room ${room}: ${productId}`);
   };
-  
+
   (io as any).broadcastProductDeleted = (streamKey: string, productId: string) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:deleted', {
@@ -710,7 +713,7 @@ async function bootstrap() {
     });
     logger.log(`Product deleted broadcast sent to room ${room}: ${productId}`);
   };
-  
+
   // Check if Socket.IO is attached
   setTimeout(() => {
     const sio = (httpServer as any).io;
@@ -721,9 +724,9 @@ async function bootstrap() {
       logger.warn(`❌ Socket.IO server NOT attached to HTTP server`);
     }
   }, 1000);
-  
+
   logger.log(`Application is running on: http://localhost:${port}/api`);
-  
+
   // Graceful shutdown
   const gracefulShutdown = async (signal: string) => {
     logger.log(`\n⚠️  Received ${signal}, starting graceful shutdown...`);
@@ -739,10 +742,7 @@ async function bootstrap() {
 
     // Close Redis connections
     logger.log('🔌 Closing Redis connections...');
-    await Promise.all([
-      pubClient.quit(),
-      subClient.quit(),
-    ]);
+    await Promise.all([pubClient.quit(), subClient.quit()]);
     logger.log('✅ Redis connections closed');
 
     // Close HTTP server
@@ -754,8 +754,12 @@ async function bootstrap() {
     process.exit(0);
   };
 
-  process.on('SIGTERM', () => { void gracefulShutdown('SIGTERM'); });
-  process.on('SIGINT', () => { void gracefulShutdown('SIGINT'); });
+  process.on('SIGTERM', () => {
+    void gracefulShutdown('SIGTERM');
+  });
+  process.on('SIGINT', () => {
+    void gracefulShutdown('SIGINT');
+  });
 
   // Unhandled rejection handler
   process.on('unhandledRejection', (reason, promise) => {

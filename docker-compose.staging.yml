@@ -33,9 +33,7 @@ services:
       retries: 5
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:-latest}
     restart: always
     depends_on:
       postgres:
@@ -44,6 +42,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      APP_ENV: staging
       PORT: 3001
       DATABASE_URL: postgresql://dorami:${DB_PASSWORD}@postgres:5432/live_commerce
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -70,21 +69,23 @@ services:
       - "127.0.0.1:3001:3001"
 
   frontend:
-    build:
-      context: .
-      dockerfile: client-app/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${FRONTEND_URL}/api/v1
-        NEXT_PUBLIC_WS_URL: ${WS_URL}
-        NEXT_PUBLIC_KAKAO_JS_KEY: ${KAKAO_JS_KEY}
-        NEXT_PUBLIC_PREVIEW_ENABLED: "true"
-        NEXT_PUBLIC_ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-true}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-frontend:${IMAGE_TAG:-latest}
     restart: always
     depends_on:
       - backend
     environment:
       BACKEND_URL: http://backend:3001
       HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_WS_URL: ${WS_URL:-}
+      NEXT_PUBLIC_CDN_URL: ${CDN_URL:-}
+      NEXT_PUBLIC_KAKAO_JS_KEY: ${KAKAO_JS_KEY:-}
+      NEXT_PUBLIC_ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-false}
+      NEXT_PUBLIC_PREVIEW_ENABLED: "true"
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
+      NEXT_PUBLIC_APP_ENV: staging
     ports:
       - "127.0.0.1:3000:3000"
 

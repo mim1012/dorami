@@ -7,6 +7,9 @@ import * as Joi from 'joi';
 export const configValidationSchema = Joi.object({
   // Node Environment
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  APP_ENV: Joi.string()
+    .valid('development', 'staging', 'production', 'test')
+    .default('development'),
 
   // Server
   PORT: Joi.number().default(3001),
