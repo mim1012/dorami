@@ -26,11 +26,22 @@ export type AuthenticatedSocket = Socket & {
   };
 };
 
+function parseCookieToken(cookieHeader: string | undefined): string | null {
+  if (!cookieHeader) {
+    return null;
+  }
+  const match = cookieHeader.match(/(?:^|;\s*)access_token=([^;]*)/);
+  return match ? match[1] : null;
+}
+
 export async function authenticateSocket(
   socket: Socket,
   jwtService: JwtService,
 ): Promise<AuthenticatedSocket> {
-  const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+  const token =
+    socket.handshake.auth.token ||
+    socket.handshake.headers.authorization?.split(' ')[1] ||
+    parseCookieToken(socket.handshake.headers.cookie as string | undefined);
 
   if (!token) {
     throw new WsException('No token provided');
@@ -55,7 +66,9 @@ export async function authenticateSocket(
           throw new WsException('Token has been revoked');
         }
       } catch (err) {
-        if (err instanceof WsException) {throw err;}
+        if (err instanceof WsException) {
+          throw err;
+        }
         // Graceful degradation if Redis unavailable
       }
     }
@@ -68,7 +81,9 @@ export async function authenticateSocket(
 
     return socket as AuthenticatedSocket;
   } catch (error) {
-    if (error instanceof WsException) {throw error;}
+    if (error instanceof WsException) {
+      throw error;
+    }
     throw new WsException('Invalid token');
   }
 }

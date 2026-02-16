@@ -11,9 +11,7 @@ export function useChatConnection(streamKey: string) {
     const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
     const socket = io(`${baseUrl}/chat`, {
       transports: ['websocket'],
-      auth: {
-        token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null,
-      },
+      withCredentials: true,
     });
 
     socketRef.current = socket;
@@ -23,8 +21,8 @@ export function useChatConnection(streamKey: string) {
       console.log('[Chat] WebSocket connected');
       setIsConnected(true);
 
-      // Join chat room
-      socket.emit('chat:join-room', { streamKey });
+      // Join chat room (gateway expects liveId)
+      socket.emit('chat:join-room', { liveId: streamKey });
     });
 
     socket.on('disconnect', () => {
@@ -49,7 +47,7 @@ export function useChatConnection(streamKey: string) {
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.emit('chat:leave-room', { streamKey });
+        socketRef.current.emit('chat:leave-room', { liveId: streamKey });
         socketRef.current.disconnect();
       }
     };

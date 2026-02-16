@@ -140,19 +140,14 @@ describe('StreamingService', () => {
       await expect(service.startStream('user-1', { expiresAt })).rejects.toThrow(BusinessException);
     });
 
-    it('should cache stream data in Redis', async () => {
+    it('should emit stream:created event', async () => {
       jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prismaService.liveStream, 'create').mockResolvedValue(mockStream as any);
-      jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await service.startStream('user-1', { expiresAt });
 
-      expect(redisService.set).toHaveBeenCalledWith(
-        'stream:stream-1',
-        expect.stringContaining('abc123'),
-        3600 * 24,
-      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith('stream:created', { streamId: 'stream-1' });
     });
 
     it('should continue even if Redis caching fails', async () => {
@@ -200,7 +195,7 @@ describe('StreamingService', () => {
       await expect(service.goLive('stream-1', 'wrong-user')).rejects.toThrow(BusinessException);
     });
 
-    it('should update Redis cache', async () => {
+    it('should update Redis cache with streamKey-based key', async () => {
       jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
       jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockLiveStream as any);
       jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
@@ -208,10 +203,16 @@ describe('StreamingService', () => {
       await service.goLive('stream-1', 'user-1');
 
       expect(redisService.set).toHaveBeenCalledWith(
-        'stream:stream-1',
+        'stream:abc123:meta',
         expect.stringContaining('LIVE'),
         3600 * 24,
       );
+    });
+
+    it('should throw INVALID_STREAM_STATE when stream is not PENDING', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+
+      await expect(service.goLive('stream-2', 'user-1')).rejects.toThrow(BusinessException);
     });
   });
 
@@ -254,20 +255,16 @@ describe('StreamingService', () => {
   });
 
   describe('getStreamStatus', () => {
-    it('should try Redis first and return cached data', async () => {
-      const cachedData = JSON.stringify({
-        userId: 'user-1',
-        streamKey: 'abc123',
-        status: 'LIVE',
-      });
-      jest.spyOn(redisService, 'get').mockResolvedValue(cachedData);
+    it('should query database directly for stream status', async () => {
+      jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
 
       const result = await service.getStreamStatus('stream-1');
 
       expect(result).toBeDefined();
       expect(result.streamKey).toBe('abc123');
-      expect(redisService.get).toHaveBeenCalledWith('stream:stream-1');
-      expect(prismaService.liveStream.findUnique).not.toHaveBeenCalled();
+      expect(prismaService.liveStream.findUnique).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+      });
     });
 
     it('should fallback to database when Redis cache miss', async () => {

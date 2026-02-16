@@ -112,21 +112,6 @@ export class StreamingService {
       },
     });
 
-    // Store stream metadata in Redis for quick access (non-critical)
-    try {
-      await this.redisService.set(
-        `stream:${session.id}`,
-        JSON.stringify({
-          userId: session.userId,
-          streamKey: session.streamKey,
-          status: session.status,
-        }),
-        3600 * 24, // 24 hour TTL
-      );
-    } catch {
-      this.logger.warn(`Failed to cache stream ${session.id} in Redis`);
-    }
-
     this.eventEmitter.emit('stream:created', { streamId: session.id });
 
     return this.mapToResponseDto(session);
@@ -144,6 +129,15 @@ export class StreamingService {
       throw new BusinessException('STREAM_NOT_FOUND', { streamId });
     }
 
+    // Only PENDING streams can go live
+    if (session.status !== 'PENDING') {
+      throw new BusinessException(
+        'INVALID_STREAM_STATE',
+        { currentStatus: session.status },
+        `Stream must be in PENDING state to go live (current: ${session.status})`,
+      );
+    }
+
     const updatedSession = await this.prisma.liveStream.update({
       where: { id: streamId },
       data: {
@@ -152,13 +146,15 @@ export class StreamingService {
       },
     });
 
-    // Update Redis cache
+    // Update Redis cache using streamKey-based key
     await this.redisService.set(
-      `stream:${streamId}`,
+      `stream:${session.streamKey}:meta`,
       JSON.stringify({
-        ...session,
+        userId: session.userId,
+        title: session.title,
         status: 'LIVE',
-        startedAt: updatedSession.startedAt,
+        streamId: session.id,
+        startedAt: updatedSession.startedAt?.toISOString(),
       }),
       3600 * 24,
     );
@@ -195,18 +191,6 @@ export class StreamingService {
   }
 
   async getStreamStatus(streamId: string): Promise<StreamingSessionResponseDto> {
-    // Try Redis cache first (non-critical)
-    try {
-      const cached = await this.redisService.get(`stream:${streamId}`);
-      if (cached) {
-        const data = JSON.parse(cached);
-        return this.mapToResponseDto({ id: streamId, ...data });
-      }
-    } catch {
-      this.logger.warn(`Redis unavailable for stream status ${streamId}, falling back to DB`);
-    }
-
-    // Fallback to database
     const session = await this.prisma.liveStream.findUnique({
       where: { id: streamId },
     });
@@ -418,21 +402,29 @@ export class StreamingService {
   }
 
   async updateViewerCount(streamKey: string, delta: number): Promise<number> {
-    // Increment or decrement viewer count
     const key = `stream:${streamKey}:viewers`;
+    const client = this.redisService.getClient();
+
+    let viewerCount: number;
 
     if (delta > 0) {
-      await this.redisService.getClient().incr(key);
+      viewerCount = await client.incr(key);
     } else if (delta < 0) {
+      // Atomic decrement that won't go below zero (Lua script)
+      const result = await client.eval(
+        `local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+         if current > 0 then
+           return redis.call('DECR', KEYS[1])
+         end
+         return 0`,
+        1,
+        key,
+      );
+      viewerCount = typeof result === 'number' ? result : parseInt(String(result), 10);
+    } else {
       const current = await this.redisService.get(key);
-      const currentCount = current ? parseInt(current, 10) : 0;
-      if (currentCount > 0) {
-        await this.redisService.getClient().decr(key);
-      }
+      viewerCount = current ? parseInt(current, 10) : 0;
     }
-
-    const viewerCountStr = await this.redisService.get(key);
-    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
 
     // Update peak viewers if needed
     const session = await this.prisma.liveStream.findUnique({
@@ -539,11 +531,12 @@ export class StreamingService {
     }
 
     // Authentication successful - update stream to LIVE
+    // Preserve original startedAt on RTMP reconnect
     await this.prisma.liveStream.update({
       where: { id: session.id },
       data: {
         status: 'LIVE',
-        startedAt: new Date(),
+        startedAt: session.startedAt || new Date(),
       },
     });
 
