@@ -14,9 +14,10 @@ import StreamEndedOverlay from './StreamEndedOverlay';
 interface VideoPlayerProps {
   streamKey: string;
   title: string;
+  onViewerCountChange?: (count: number) => void;
 }
 
-export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
+export default function VideoPlayer({ streamKey, title, onViewerCountChange }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -73,6 +74,13 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
   const initializePlayer = () => {
     if (!videoRef.current) return;
 
+    // Use video element events for accurate buffering state
+    videoRef.current.addEventListener('waiting', () => setIsBuffering(true));
+    videoRef.current.addEventListener('playing', () => {
+      setIsBuffering(false);
+      setError(null);
+    });
+
     // Check if browser supports native HLS (Safari)
     if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
       // Safari: use native HLS
@@ -85,11 +93,11 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
       // Other browsers: use HLS.js
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 5,
-        maxBufferLength: 5,
-        liveSyncDuration: 2,
-        liveMaxLatencyDuration: 3,
+        lowLatencyMode: false,
+        backBufferLength: 10,
+        maxBufferLength: 30,
+        liveSyncDuration: 6,
+        liveMaxLatencyDuration: 15,
         liveDurationInfinity: true,
       });
 
@@ -118,15 +126,6 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
               break;
           }
         }
-      });
-
-      hls.on(Hls.Events.FRAG_BUFFERED, () => {
-        setIsBuffering(false);
-        setError(null);
-      });
-
-      hls.on(Hls.Events.BUFFER_APPENDING, () => {
-        setIsBuffering(true);
       });
 
       hlsRef.current = hls;
@@ -173,6 +172,7 @@ export default function VideoPlayer({ streamKey, title }: VideoPlayerProps) {
       (data: { data?: { streamKey: string; viewerCount: number } }) => {
         if (data.data && data.data.streamKey === streamKey) {
           setViewerCount(data.data.viewerCount);
+          onViewerCountChange?.(data.data.viewerCount);
         }
       },
     );
