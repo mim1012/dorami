@@ -166,7 +166,7 @@ export default function ProductDetailPage() {
                 <span className="text-lg font-bold">원</span>
               </Display>
             )}
-            <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
+            <Body className="text-secondary-text text-sm mt-1">남은 재고: {product.stock}개</Body>
           </div>
 
           {/* Description */}
