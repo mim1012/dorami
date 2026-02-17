@@ -87,7 +87,8 @@ jobs:
             git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Cleaning up disk space ==="
-            docker system prune -af --volumes --filter "until=24h" || true
+            docker system prune -af || true
+            docker volume prune -af || true
             docker builder prune -af || true
             echo "Disk usage after cleanup:"
             df -h / | tail -1
