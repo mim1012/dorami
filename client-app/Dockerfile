@@ -1,38 +1,28 @@
 # syntax=docker/dockerfile:1
 
 # ============================================
-# Stage 1: 의존성 설치 (deps)
+# Stage 1: 빌드 (builder)
+# - 의존성 파일을 먼저 복사하여 Docker 레이어 캐시 활용
+# - 소스 변경 시 npm ci 레이어는 캐시됨
 # ============================================
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# 의존성 파일만 먼저 복사 (캐시 레이어 최적화)
+# 의존성 파일만 먼저 복사 (Docker 레이어 캐시 최적화)
 COPY package.json package-lock.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
-COPY client-app/package.json ./client-app/
 COPY backend/package.json ./backend/
+COPY client-app/package.json ./client-app/
 
-# BuildKit 캐시 마운트로 npm 캐시 영속화
+# BuildKit 캐시 마운트로 npm 캐시 영속화 + npm ci로 결정적 설치
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts
 
-# ============================================
-# Stage 2: 소스 빌드 (builder)
-# ============================================
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# 의존성 복사 (npm workspaces는 루트 node_modules에 호이스팅)
-COPY --from=deps /app/node_modules ./node_modules
-
-# 소스 코드 복사 (backend/package.json도 포함하여 workspace 구조 완성)
-COPY package.json ./
+# 소스 코드 복사 (위 레이어가 캐시되므로 소스 변경 시 여기부터 재실행)
 COPY packages/shared-types ./packages/shared-types
-COPY backend/package.json ./backend/
 COPY client-app ./client-app
 
 # 환경변수 플레이스홀더 (런타임에 docker-entrypoint.sh로 치환)
@@ -58,7 +48,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build:shared && cd client-app && npm run build
 
 # ============================================
-# Stage 3: 프로덕션 이미지 (runner)
+# Stage 2: 프로덕션 이미지 (runner)
 # ============================================
 FROM node:20-alpine AS runner
 
