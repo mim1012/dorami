@@ -437,16 +437,6 @@ function AdminOrdersContent() {
       render: (order) => getStatusBadge(order.status, 'order'),
     },
     {
-      key: 'paymentStatus',
-      label: '결제',
-      render: (order) => getStatusBadge(order.paymentStatus, 'payment'),
-    },
-    {
-      key: 'shippingStatus',
-      label: '배송',
-      render: (order) => getStatusBadge(order.shippingStatus, 'shipping'),
-    },
-    {
       key: 'total',
       label: '합계',
       sortable: true,
@@ -462,12 +452,6 @@ function AdminOrdersContent() {
       label: '주문일',
       sortable: true,
       render: (order) => formatDate(order.createdAt),
-    },
-    {
-      key: 'paidAt',
-      label: '결제일',
-      sortable: true,
-      render: (order) => formatDate(order.paidAt),
     },
     {
       key: 'actions',
@@ -618,54 +602,7 @@ function AdminOrdersContent() {
               </div>
             </div>
 
-            {/* Payment Status Filter */}
-            <div>
-              <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 'PENDING', label: '대기' },
-                  { value: 'CONFIRMED', label: '확인' },
-                  { value: 'FAILED', label: '실패' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => handleStatusToggle(value, 'payment')}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                      paymentStatusFilter.includes(value)
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-white text-secondary-text hover:bg-gray-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Shipping Status Filter */}
-            <div>
-              <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 'PENDING', label: '대기' },
-                  { value: 'PROCESSING', label: '준비중' },
-                  { value: 'SHIPPED', label: '배송중' },
-                  { value: 'DELIVERED', label: '배송완료' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => handleStatusToggle(value, 'shipping')}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                      shippingStatusFilter.includes(value)
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-white text-secondary-text hover:bg-gray-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 배송사 미연동 — 배송/결제 필터 불필요 */}
           </div>
         )}
       </div>

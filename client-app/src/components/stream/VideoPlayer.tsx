@@ -35,6 +35,22 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
   const [isMobile, setIsMobile] = useState(false);
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
 
+  // KPI metrics
+  const metricsRef = useRef({
+    playStartTime: 0,
+    firstFrameTime: 0,
+    rebufferCount: 0,
+    totalStallDuration: 0,
+    stallStartTime: 0,
+    reconnectCount: 0,
+  });
+  const [kpi, setKpi] = useState({
+    firstFrameMs: 0,
+    rebufferCount: 0,
+    stallDurationMs: 0,
+    reconnectCount: 0,
+  });
+
   const orientation = useOrientation();
 
   // Stream URLs
@@ -62,9 +78,21 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     }
   }, [orientation, isMobile]);
 
+  // Sync KPI state from metricsRef
+  const syncKpi = useCallback(() => {
+    const m = metricsRef.current;
+    setKpi({
+      firstFrameMs: m.firstFrameTime > 0 ? Math.round(m.firstFrameTime - m.playStartTime) : 0,
+      rebufferCount: m.rebufferCount,
+      stallDurationMs: Math.round(m.totalStallDuration),
+      reconnectCount: m.reconnectCount,
+    });
+  }, []);
+
   const initializeHlsPlayer = useCallback(() => {
     if (!videoRef.current) return;
 
+    metricsRef.current.playStartTime = performance.now();
     setPlayerMode('hls');
 
     // Check if browser supports native HLS (Safari)
@@ -77,11 +105,11 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     } else if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: false,
+        lowLatencyMode: true,
         backBufferLength: 2,
-        maxBufferLength: 4,
-        liveSyncDuration: 1,
-        liveMaxLatencyDuration: 3,
+        maxBufferLength: 3,
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 4,
         liveDurationInfinity: true,
         maxLiveSyncPlaybackRate: 1.5,
       });
@@ -136,6 +164,8 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
 
   const initializeFlvPlayer = useCallback(async () => {
     if (!videoRef.current) return;
+
+    metricsRef.current.playStartTime = performance.now();
 
     try {
       const mpegts = await import('mpegts.js');
@@ -231,14 +261,40 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
 
     const video = videoRef.current;
 
-    // Use video element events for buffering state
-    const onWaiting = () => setIsBuffering(true);
+    // KPI + buffering state via video element events
+    const onWaiting = () => {
+      setIsBuffering(true);
+      const m = metricsRef.current;
+      // Only count as rebuffer after first frame has been rendered
+      if (m.firstFrameTime > 0) {
+        m.rebufferCount++;
+        m.stallStartTime = performance.now();
+      }
+    };
     const onPlaying = () => {
       setIsBuffering(false);
       setError(null);
+      const m = metricsRef.current;
+      // Record first frame time
+      if (m.firstFrameTime === 0 && m.playStartTime > 0) {
+        m.firstFrameTime = performance.now();
+      }
+      // End stall duration tracking
+      if (m.stallStartTime > 0) {
+        m.totalStallDuration += performance.now() - m.stallStartTime;
+        m.stallStartTime = 0;
+      }
+      syncKpi();
+    };
+    const onStalled = () => {
+      const m = metricsRef.current;
+      if (m.firstFrameTime > 0 && m.stallStartTime === 0) {
+        m.stallStartTime = performance.now();
+      }
     };
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
+    video.addEventListener('stalled', onStalled);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
     initializeFlvPlayer();
@@ -247,6 +303,7 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     return () => {
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
+      video.removeEventListener('stalled', onStalled);
       cleanupPlayer();
       disconnectWebSocket();
     };
@@ -276,8 +333,8 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
     });
 
     socket.on('connect', () => {
@@ -286,11 +343,13 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
 
     // Re-join room after reconnection (WiFi switch, background recovery)
     socket.io.on('reconnect', () => {
+      metricsRef.current.reconnectCount++;
+      syncKpi();
       socket.emit('stream:viewer:join', { streamKey });
     });
 
     socket.on(
-      'stream:viewer-count',
+      'stream:viewer:update',
       (data: { data?: { streamKey: string; viewerCount: number } }) => {
         if (data.data && data.data.streamKey === streamKey) {
           setViewerCount(data.data.viewerCount);
@@ -397,6 +456,17 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       {isBuffering && <BufferingSpinner />}
       {error && <ErrorOverlay message={error} />}
       {streamEnded && <StreamEndedOverlay />}
+
+      {/* KPI debug overlay — dev only */}
+      {process.env.NODE_ENV !== 'production' && kpi.firstFrameMs > 0 && (
+        <div className="absolute top-12 right-2 bg-black/70 text-white text-[10px] font-mono px-2 py-1 rounded space-y-0.5 pointer-events-none">
+          <div>mode: {playerMode || '-'}</div>
+          <div>first frame: {kpi.firstFrameMs}ms</div>
+          <div>rebuffers: {kpi.rebufferCount}</div>
+          <div>stall: {kpi.stallDurationMs}ms</div>
+          <div>reconnects: {kpi.reconnectCount}</div>
+        </div>
+      )}
     </div>
   );
 }

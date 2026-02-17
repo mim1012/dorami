@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RedisService } from '../../common/redis/redis.service';
 import {
   GetUsersQueryDto,
   UserListResponseDto,
@@ -66,6 +67,7 @@ export class AdminService {
     private eventEmitter: EventEmitter2,
     private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
+    private redisService: RedisService,
   ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
@@ -1232,13 +1234,19 @@ export class AdminService {
       data: updateData,
     });
 
-    // TODO: Epic 12 - Emit audit log event
-    // this.eventEmitter.emit('admin:user:status-updated', {
-    //   userId,
-    //   oldStatus: user.status,
-    //   newStatus: dto.status,
-    //   adminId: currentAdminId,
-    // });
+    // Set/clear Redis suspended flag for WebSocket auth check
+    try {
+      if (dto.status === 'SUSPENDED') {
+        await this.redisService.set(`suspended:${userId}`, '1');
+        // Also blacklist all existing tokens for this user
+        await this.redisService.set(`blacklist:${userId}`, '1', 86400 * 30); // 30 days
+      } else {
+        await this.redisService.del(`suspended:${userId}`);
+        await this.redisService.del(`blacklist:${userId}`);
+      }
+    } catch {
+      // Redis unavailable — DB status check in JWT strategy still works
+    }
 
     return {
       success: true,

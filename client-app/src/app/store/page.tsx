@@ -15,6 +15,8 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
+  discountRate?: number;
   imageUrl: string;
   stock: number;
   status: ProductStatus;
@@ -191,8 +193,9 @@ export default function StorePage() {
                   key={product.id}
                   id={product.id}
                   name={product.name}
-                  price={product.price}
+                  price={product.originalPrice || product.price}
                   imageUrl={product.imageUrl || '/images/placeholder-product.jpg'}
+                  discount={product.discountRate || 0}
                   onClick={() => handleProductClick(product)}
                 />
               ))}
@@ -202,7 +205,8 @@ export default function StorePage() {
             {meta.totalPages > 1 && (
               <div className="flex flex-col md:flex-row items-center justify-between bg-content-bg rounded-button px-6 py-4 gap-4">
                 <Caption className="text-secondary-text">
-                  Showing {(meta.page - 1) * 24 + 1}-{Math.min(meta.page * 24, meta.total)} of {meta.total} products
+                  Showing {(meta.page - 1) * 24 + 1}-{Math.min(meta.page * 24, meta.total)} of{' '}
+                  {meta.total} products
                 </Caption>
 
                 <div className="flex items-center gap-2">

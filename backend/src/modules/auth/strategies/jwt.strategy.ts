@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { TokenPayload } from '../dto/auth.dto';
 import { RedisService } from '../../../common/redis/redis.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 import { UnauthorizedException } from '../../../common/exceptions/business.exception';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private configService: ConfigService,
     private redisService: RedisService,
+    private prismaService: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -50,6 +52,27 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         throw error;
       }
       // Redis unavailable — skip blacklist check rather than blocking all requests
+    }
+
+    // Check if user is suspended (blacklisted)
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: payload.sub },
+        select: { status: true },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (user.status === 'SUSPENDED') {
+        throw new UnauthorizedException('Account is suspended');
+      }
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // DB unavailable — skip status check rather than blocking all requests
     }
 
     return {

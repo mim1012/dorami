@@ -55,9 +55,9 @@ export default function ProductBottomSheet({
                     {(products[0].originalPrice || products[0].price).toLocaleString()}원
                   </span>
                   <span className="text-hot-pink text-sm font-black">
-                    {(products[0].originalPrice
-                      ? products[0].price
-                      : Math.round(products[0].price * (1 - products[0].discountRate / 100))
+                    {Math.round(
+                      (products[0].originalPrice || products[0].price) *
+                        (1 - products[0].discountRate / 100),
                     ).toLocaleString()}
                     원
                   </span>
@@ -144,9 +144,9 @@ export default function ProductBottomSheet({
                           {product.discountRate}%
                         </span>
                         <span className="text-hot-pink font-black text-base">
-                          {(product.originalPrice
-                            ? product.price
-                            : Math.round(product.price * (1 - product.discountRate / 100))
+                          {Math.round(
+                            (product.originalPrice || product.price) *
+                              (1 - product.discountRate / 100),
                           ).toLocaleString()}
                           원
                         </span>
