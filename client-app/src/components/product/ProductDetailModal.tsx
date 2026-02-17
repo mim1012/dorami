@@ -20,10 +20,10 @@ export default function ProductDetailModal({
   onAddToCart,
 }: ProductDetailModalProps) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    product.colorOptions.length > 0 ? product.colorOptions[0] : undefined
+    product.colorOptions.length > 0 ? product.colorOptions[0] : undefined,
   );
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    product.sizeOptions.length > 0 ? product.sizeOptions[0] : undefined
+    product.sizeOptions.length > 0 ? product.sizeOptions[0] : undefined,
   );
 
   if (!isOpen) return null;
@@ -36,10 +36,7 @@ export default function ProductDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Content */}
       <div className="relative w-full max-w-md bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto">
@@ -57,12 +54,7 @@ export default function ProductDetailModal({
         {/* Product Image */}
         <div className="relative w-full aspect-square bg-primary-black">
           {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-            />
+            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="text-secondary-text">No Image</span>
@@ -75,10 +67,24 @@ export default function ProductDetailModal({
           {/* Name and Price */}
           <div>
             <Heading2 className="text-primary-text mb-2">{product.name}</Heading2>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[32px] font-bold text-hot-pink">
-                ₩{product.price.toLocaleString()}
-              </span>
+            <div className="flex flex-col gap-1">
+              {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+                <>
+                  <span className="text-sm text-secondary-text line-through">
+                    ₩{product.originalPrice.toLocaleString()}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-black text-error">{product.discountRate}%</span>
+                    <span className="text-[32px] font-bold text-hot-pink">
+                      ₩{product.price.toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-[32px] font-bold text-hot-pink">
+                  ₩{product.price.toLocaleString()}
+                </span>
+              )}
               {product.shippingFee > 0 && (
                 <Caption className="text-secondary-text">
                   배송비 +₩{product.shippingFee.toLocaleString()}
@@ -98,7 +104,8 @@ export default function ProductDetailModal({
           {product.timerEnabled && (
             <div className="bg-hot-pink/10 border border-hot-pink/20 rounded-lg p-3">
               <Body className="text-hot-pink">
-                <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> 장바구니 담기 후 {product.timerDuration}분 내 결제 필요
+                <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" /> 장바구니 담기 후{' '}
+                {product.timerDuration}분 내 결제 필요
               </Body>
             </div>
           )}
@@ -106,7 +113,9 @@ export default function ProductDetailModal({
           {/* Stock Info */}
           <div className="flex items-center justify-between p-3 bg-primary-black rounded-lg">
             <Caption className="text-secondary-text">재고</Caption>
-            <Body className={`font-medium ${product.stock < 5 ? 'text-warning' : 'text-primary-text'}`}>
+            <Body
+              className={`font-medium ${product.stock < 5 ? 'text-warning' : 'text-primary-text'}`}
+            >
               {product.stock}개 남음
             </Body>
           </div>
@@ -122,9 +131,10 @@ export default function ProductDetailModal({
                     onClick={() => setSelectedColor(color)}
                     className={`
                       px-4 py-2 rounded-button text-caption transition-all
-                      ${selectedColor === color
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-content-bg'
+                      ${
+                        selectedColor === color
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-primary-black text-secondary-text hover:bg-content-bg'
                       }
                     `}
                   >
@@ -146,9 +156,10 @@ export default function ProductDetailModal({
                     onClick={() => setSelectedSize(size)}
                     className={`
                       px-4 py-2 rounded-button text-caption transition-all
-                      ${selectedSize === size
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-primary-black text-secondary-text hover:bg-content-bg'
+                      ${
+                        selectedSize === size
+                          ? 'bg-hot-pink text-white'
+                          : 'bg-primary-black text-secondary-text hover:bg-content-bg'
                       }
                     `}
                   >
@@ -165,16 +176,16 @@ export default function ProductDetailModal({
             disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
             className={`
               w-full py-4 rounded-button font-bold text-body transition-colors
-              ${product.status === ProductStatus.SOLD_OUT || product.stock === 0
-                ? 'bg-content-bg text-secondary-text cursor-not-allowed'
-                : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
+              ${
+                product.status === ProductStatus.SOLD_OUT || product.stock === 0
+                  ? 'bg-content-bg text-secondary-text cursor-not-allowed'
+                  : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
               }
             `}
           >
             {product.status === ProductStatus.SOLD_OUT || product.stock === 0
               ? '품절'
-              : '장바구니에 담기'
-            }
+              : '장바구니에 담기'}
           </button>
         </div>
       </div>

@@ -7,6 +7,8 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
+  discountRate?: number;
   imageUrl?: string;
   stock: number;
 }
@@ -17,7 +19,11 @@ interface ProductBottomSheetProps {
   streamKey: string;
 }
 
-export default function ProductBottomSheet({ products, onAddToCart, streamKey }: ProductBottomSheetProps) {
+export default function ProductBottomSheet({
+  products,
+  onAddToCart,
+  streamKey,
+}: ProductBottomSheetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -32,17 +38,48 @@ export default function ProductBottomSheet({ products, onAddToCart, streamKey }:
           <div className="bg-black/60 backdrop-blur-lg rounded-2xl p-3 border border-white/10 flex items-center gap-3 active:scale-[0.98] transition-transform">
             {products[0]?.imageUrl && (
               <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative">
-                <Image src={products[0].imageUrl} alt={products[0].name} fill className="object-cover" sizes="48px" />
+                <Image
+                  src={products[0].imageUrl}
+                  alt={products[0].name}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
               </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="text-white text-sm font-bold truncate">{products[0]?.name}</p>
-              <p className="text-hot-pink text-sm font-black">{products[0]?.price.toLocaleString()}원</p>
+              {products[0]?.discountRate &&
+              products[0].discountRate > 0 &&
+              products[0].originalPrice ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white/40 text-xs line-through">
+                    {products[0].originalPrice.toLocaleString()}원
+                  </span>
+                  <span className="text-hot-pink text-sm font-black">
+                    {products[0].price.toLocaleString()}원
+                  </span>
+                </div>
+              ) : (
+                <p className="text-hot-pink text-sm font-black">
+                  {products[0]?.price.toLocaleString()}원
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-white/50 text-xs">{products.length}개 상품</span>
-              <svg className="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              <svg
+                className="w-5 h-5 text-white/50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
               </svg>
             </div>
           </div>
@@ -53,18 +90,18 @@ export default function ProductBottomSheet({ products, onAddToCart, streamKey }:
       {isExpanded && (
         <>
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 z-30"
-            onClick={() => setIsExpanded(false)}
-          />
-          
+          <div className="absolute inset-0 bg-black/40 z-30" onClick={() => setIsExpanded(false)} />
+
           {/* Sheet */}
           <div
             ref={sheetRef}
             className="absolute bottom-0 left-0 right-0 z-40 bg-content-bg rounded-t-3xl max-h-[60vh] overflow-hidden animate-slide-up"
           >
             {/* Handle */}
-            <div className="flex justify-center py-3 cursor-pointer" onClick={() => setIsExpanded(false)}>
+            <div
+              className="flex justify-center py-3 cursor-pointer"
+              onClick={() => setIsExpanded(false)}
+            >
               <div className="w-10 h-1 rounded-full bg-border-color" />
             </div>
 
@@ -83,12 +120,36 @@ export default function ProductBottomSheet({ products, onAddToCart, streamKey }:
                 >
                   {product.imageUrl && (
                     <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 relative bg-border-color">
-                      <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="64px" />
+                      <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-primary-text text-sm font-semibold truncate">{product.name}</p>
-                    <p className="text-hot-pink font-black text-base">{product.price.toLocaleString()}원</p>
+                    <p className="text-primary-text text-sm font-semibold truncate">
+                      {product.name}
+                    </p>
+                    {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-secondary-text text-xs line-through">
+                          {product.originalPrice.toLocaleString()}원
+                        </span>
+                        <span className="text-error text-xs font-bold">
+                          {product.discountRate}%
+                        </span>
+                        <span className="text-hot-pink font-black text-base">
+                          {product.price.toLocaleString()}원
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-hot-pink font-black text-base">
+                        {product.price.toLocaleString()}원
+                      </p>
+                    )}
                     <p className="text-secondary-text text-xs">재고 {product.stock}개</p>
                   </div>
                   <button
