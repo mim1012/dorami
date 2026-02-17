@@ -49,15 +49,17 @@ export default function ProductBottomSheet({
             )}
             <div className="flex-1 min-w-0">
               <p className="text-white text-sm font-bold truncate">{products[0]?.name}</p>
-              {products[0]?.discountRate &&
-              products[0].discountRate > 0 &&
-              products[0].originalPrice ? (
+              {products[0]?.discountRate && products[0].discountRate > 0 ? (
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/40 text-xs line-through">
-                    {products[0].originalPrice.toLocaleString()}원
+                    {(products[0].originalPrice || products[0].price).toLocaleString()}원
                   </span>
                   <span className="text-hot-pink text-sm font-black">
-                    {products[0].price.toLocaleString()}원
+                    {(products[0].originalPrice
+                      ? products[0].price
+                      : Math.round(products[0].price * (1 - products[0].discountRate / 100))
+                    ).toLocaleString()}
+                    원
                   </span>
                 </div>
               ) : (
@@ -133,16 +135,20 @@ export default function ProductBottomSheet({
                     <p className="text-primary-text text-sm font-semibold truncate">
                       {product.name}
                     </p>
-                    {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+                    {product.discountRate && product.discountRate > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <span className="text-secondary-text text-xs line-through">
-                          {product.originalPrice.toLocaleString()}원
+                          {(product.originalPrice || product.price).toLocaleString()}원
                         </span>
                         <span className="text-error text-xs font-bold">
                           {product.discountRate}%
                         </span>
                         <span className="text-hot-pink font-black text-base">
-                          {product.price.toLocaleString()}원
+                          {(product.originalPrice
+                            ? product.price
+                            : Math.round(product.price * (1 - product.discountRate / 100))
+                          ).toLocaleString()}
+                          원
                         </span>
                       </div>
                     ) : (
