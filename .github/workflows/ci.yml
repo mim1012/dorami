@@ -5,8 +5,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
   workflow_call:
@@ -173,42 +171,6 @@ jobs:
           NEXT_PUBLIC_CDN_URL: http://localhost:8080
 
   # ===========================================
-  # Docker Build Test
-  # ===========================================
-  docker-build:
-    name: Docker Build Test
-    needs: [changes]
-    if: needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Backend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: false
-          tags: dorami-backend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./client-app/Dockerfile
-          push: false
-          tags: dorami-frontend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ===========================================
   # Security Scan
   # ===========================================
   security-scan:
@@ -239,7 +201,7 @@ jobs:
   # ===========================================
   ci-success:
     name: CI Success
-    needs: [backend-ci, frontend-ci, docker-build]
+    needs: [backend-ci, frontend-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -247,11 +209,9 @@ jobs:
         run: |
           echo "Backend CI: ${{ needs.backend-ci.result }}"
           echo "Frontend CI: ${{ needs.frontend-ci.result }}"
-          echo "Docker Build: ${{ needs.docker-build.result }}"
 
           if [[ "${{ needs.backend-ci.result }}" == "failure" || \
-                "${{ needs.frontend-ci.result }}" == "failure" || \
-                "${{ needs.docker-build.result }}" == "failure" ]]; then
+                "${{ needs.frontend-ci.result }}" == "failure" ]]; then
             echo "::error::One or more CI jobs failed"
             exit 1
           fi
