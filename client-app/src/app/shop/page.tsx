@@ -382,7 +382,11 @@ function ShopPageContent() {
                     <ProductCard
                       id={product.id}
                       name={product.name}
-                      price={product.originalPrice || product.price}
+                      price={
+                        product.discountRate
+                          ? product.originalPrice || product.price
+                          : product.price
+                      }
                       imageUrl={
                         product.imageUrl ||
                         'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'

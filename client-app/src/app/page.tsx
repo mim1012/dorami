@@ -139,7 +139,7 @@ export default function Home() {
             products = apiProducts.map((p) => ({
               id: p.id,
               name: p.name,
-              price: p.originalPrice || p.price,
+              price: p.discountRate ? p.originalPrice || p.price : p.price,
               imageUrl:
                 p.imageUrl ||
                 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
