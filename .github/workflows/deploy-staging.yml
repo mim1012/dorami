@@ -102,7 +102,7 @@ jobs:
             docker compose -f docker-compose.staging.yml pull
 
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.staging.yml run --rm backend npx prisma migrate deploy
+            docker compose -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy
 
             echo "=== Restarting services ==="
             docker compose -f docker-compose.staging.yml up -d --force-recreate --remove-orphans
