@@ -12,21 +12,31 @@ export function useChatConnection(streamKey: string) {
     const socket = io(`${baseUrl}/chat`, {
       transports: ['websocket'],
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
 
     socketRef.current = socket;
 
     // Connection events
     socket.on('connect', () => {
-      console.log('[Chat] WebSocket connected');
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] WebSocket connected');
       setIsConnected(true);
 
       // Join chat room (gateway expects liveId)
       socket.emit('chat:join-room', { liveId: streamKey });
     });
 
+    // Re-join room after reconnection (network switch, background recovery)
+    socket.io.on('reconnect', () => {
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] Reconnected, re-joining room');
+      socket.emit('chat:join-room', { liveId: streamKey });
+    });
+
     socket.on('disconnect', () => {
-      console.log('[Chat] WebSocket disconnected');
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] WebSocket disconnected');
       setIsConnected(false);
     });
 

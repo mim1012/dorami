@@ -13,6 +13,7 @@ import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS = [
@@ -492,6 +493,9 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* Push Notification Banner */}
+      <PushNotificationBanner />
 
       {/* Floating Navigation */}
       <FloatingNav />
