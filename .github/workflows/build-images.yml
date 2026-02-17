@@ -64,10 +64,9 @@ jobs:
           context: .
           file: ./client-app/Dockerfile
           push: true
+          no-cache: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/dorami-frontend:sha-${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/dorami-frontend:latest
           build-args: |
             CACHEBUST=${{ github.sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
