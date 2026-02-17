@@ -68,15 +68,19 @@ export default function ProductDetailModal({
           <div>
             <Heading2 className="text-primary-text mb-2">{product.name}</Heading2>
             <div className="flex flex-col gap-1">
-              {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+              {product.discountRate && product.discountRate > 0 ? (
                 <>
                   <span className="text-sm text-secondary-text line-through">
-                    ₩{product.originalPrice.toLocaleString()}
+                    ₩{(product.originalPrice || product.price).toLocaleString()}
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-error">{product.discountRate}%</span>
                     <span className="text-[32px] font-bold text-hot-pink">
-                      ₩{product.price.toLocaleString()}
+                      ₩
+                      {(product.originalPrice
+                        ? product.price
+                        : Math.round(product.price * (1 - product.discountRate / 100))
+                      ).toLocaleString()}
                     </span>
                   </div>
                 </>

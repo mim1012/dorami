@@ -152,14 +152,20 @@ export default function ProductDetailPage() {
           {/* Name & Price */}
           <div>
             <Heading2 className="text-primary-text text-2xl mb-2">{product.name}</Heading2>
-            {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+            {product.discountRate && product.discountRate > 0 ? (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-secondary-text line-through">
-                  {formatPrice(product.originalPrice)}
+                  {formatPrice(product.originalPrice || product.price)}
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-black text-error">{product.discountRate}%</span>
-                  <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
+                  <Display className="text-hot-pink">
+                    {formatPrice(
+                      product.originalPrice
+                        ? product.price
+                        : Math.round(product.price * (1 - product.discountRate / 100)),
+                    )}
+                  </Display>
                 </div>
               </div>
             ) : (
@@ -248,7 +254,13 @@ export default function ProductDetailPage() {
           <div className="bg-content-bg rounded-2xl p-4 border border-border-color">
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
-              <Display className="text-hot-pink">{formatPrice(product.price * quantity)}</Display>
+              <Display className="text-hot-pink">
+                {formatPrice(
+                  (product.discountRate && product.discountRate > 0 && !product.originalPrice
+                    ? Math.round(product.price * (1 - product.discountRate / 100))
+                    : product.price) * quantity,
+                )}
+              </Display>
             </div>
           </div>
         </div>
