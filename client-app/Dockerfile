@@ -19,12 +19,6 @@ RUN npm run build:shared
 ARG CACHEBUST=1
 COPY client-app ./client-app
 
-# DEBUG: Verify source file content before build
-RUN echo "=== SOURCE VERIFICATION ===" && \
-    grep -c 'discountRate' client-app/src/app/products/\[id\]/page.tsx && \
-    grep -c 'Intl.NumberFormat' client-app/src/app/products/\[id\]/page.tsx || true && \
-    echo "=== END VERIFICATION ==="
-
 ARG NEXT_PUBLIC_ENABLE_DEV_AUTH=false
 ARG NEXT_PUBLIC_PREVIEW_ENABLED=false
 ARG NEXT_PUBLIC_APP_ENV=production
@@ -41,13 +35,6 @@ ENV NEXT_PUBLIC_APP_VERSION=__NEXT_PUBLIC_APP_VERSION__
 ENV NEXT_PUBLIC_APP_ENV=${NEXT_PUBLIC_APP_ENV}
 
 RUN cd client-app && npm run build
-
-# DEBUG: Verify build output
-RUN echo "=== BUILD OUTPUT VERIFICATION ===" && \
-    find client-app/.next/static/chunks -name "*.js" | head -20 && \
-    grep -rl 'discountRate' client-app/.next/static/chunks/ | head -5 || echo "NO discountRate IN CHUNKS" && \
-    grep -rl 'Intl.NumberFormat' client-app/.next/static/chunks/ | head -5 || echo "NO Intl.NumberFormat IN CHUNKS" && \
-    echo "=== END BUILD OUTPUT ==="
 
 FROM node:20-alpine AS runner
 
