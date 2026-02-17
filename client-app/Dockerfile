@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY client-app/package.json ./client-app/
+COPY backend/package.json ./backend/
 
 # BuildKit 캐시 마운트로 npm 캐시 영속화
 RUN --mount=type=cache,target=/root/.npm \
@@ -28,9 +29,10 @@ WORKDIR /app
 # 의존성 복사 (npm workspaces는 루트 node_modules에 호이스팅)
 COPY --from=deps /app/node_modules ./node_modules
 
-# 소스 코드 복사
+# 소스 코드 복사 (backend/package.json도 포함하여 workspace 구조 완성)
 COPY package.json ./
 COPY packages/shared-types ./packages/shared-types
+COPY backend/package.json ./backend/
 COPY client-app ./client-app
 
 # 환경변수 플레이스홀더 (런타임에 docker-entrypoint.sh로 치환)
