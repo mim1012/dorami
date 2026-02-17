@@ -56,13 +56,6 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-    }).format(price);
-  };
-
   const maxQuantity = product ? Math.min(product.stock || 0, 10) : 1;
 
   const handleQuantityChange = (delta: number) => {
