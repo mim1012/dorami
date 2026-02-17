@@ -86,6 +86,12 @@ jobs:
             git fetch origin ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
 
+            echo "=== Cleaning up disk space ==="
+            docker system prune -af --volumes --filter "until=24h" || true
+            docker builder prune -af || true
+            echo "Disk usage after cleanup:"
+            df -h / | tail -1
+
             echo "=== Logging into GHCR ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
@@ -101,7 +107,7 @@ jobs:
             docker compose -f docker-compose.staging.yml up -d --remove-orphans
 
             echo "=== Cleaning up old images ==="
-            docker image prune -f
+            docker image prune -af --filter "until=1h"
 
             echo "=== Checking service health ==="
             sleep 30
