@@ -17,12 +17,23 @@ import {
 } from './dto/notification.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Notifications')
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
   constructor(private pushNotificationService: PushNotificationService) {}
+
+  @Get('vapid-key')
+  @Public()
+  @ApiOperation({ summary: 'Get VAPID public key for push subscription' })
+  @ApiResponse({ status: 200, description: 'VAPID public key' })
+  getVapidKey() {
+    return {
+      publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    };
+  }
 
   @Post('subscribe')
   @ApiOperation({ summary: 'Subscribe to push notifications' })
@@ -31,10 +42,7 @@ export class NotificationsController {
     description: 'Subscription created successfully',
     type: NotificationSubscriptionResponseDto,
   })
-  async subscribe(
-    @CurrentUser('userId') userId: string,
-    @Body() dto: SubscribeNotificationDto,
-  ) {
+  async subscribe(@CurrentUser('userId') userId: string, @Body() dto: SubscribeNotificationDto) {
     return this.pushNotificationService.subscribe(userId, dto);
   }
 

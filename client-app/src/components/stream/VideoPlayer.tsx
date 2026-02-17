@@ -201,21 +201,52 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     }
   }, [flvUrl, initializeHlsPlayer]);
 
+  // Visibility change: handle tab switch and background recovery
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Tab became visible again — seek to live edge
+        const video = videoRef.current;
+        if (video && video.buffered.length > 0) {
+          const liveEdge = video.buffered.end(video.buffered.length - 1);
+          video.currentTime = liveEdge - 0.5;
+        }
+        // If video was paused by browser, resume
+        if (video && video.paused && isPlaying && !streamEnded) {
+          video.play().catch(() => {});
+        }
+        // Re-emit viewer join in case socket reconnected while hidden
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('stream:viewer:join', { streamKey });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [streamKey, isPlaying, streamEnded]);
+
   useEffect(() => {
     if (!videoRef.current) return;
 
+    const video = videoRef.current;
+
     // Use video element events for buffering state
-    videoRef.current.addEventListener('waiting', () => setIsBuffering(true));
-    videoRef.current.addEventListener('playing', () => {
+    const onWaiting = () => setIsBuffering(true);
+    const onPlaying = () => {
       setIsBuffering(false);
       setError(null);
-    });
+    };
+    video.addEventListener('waiting', onWaiting);
+    video.addEventListener('playing', onPlaying);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
     initializeFlvPlayer();
     connectWebSocket();
 
     return () => {
+      video.removeEventListener('waiting', onWaiting);
+      video.removeEventListener('playing', onPlaying);
       cleanupPlayer();
       disconnectWebSocket();
     };
@@ -244,11 +275,17 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
       transports: ['websocket'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
 
     socket.on('connect', () => {
+      socket.emit('stream:viewer:join', { streamKey });
+    });
+
+    // Re-join room after reconnection (WiFi switch, background recovery)
+    socket.io.on('reconnect', () => {
       socket.emit('stream:viewer:join', { streamKey });
     });
 

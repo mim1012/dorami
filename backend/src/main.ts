@@ -313,6 +313,23 @@ async function bootstrap() {
 
         logger.log(`📥 User ${authenticatedSocket.user.userId} joined room ${roomName}`);
 
+        // Send recent chat history (last 50 messages from Redis)
+        try {
+          const historyKey = `chat:${payload.liveId}:history`;
+          const messages = await pubClient.lRange(historyKey, -50, -1);
+          if (messages.length > 0) {
+            socket.emit('chat:history', {
+              type: 'chat:history',
+              data: {
+                liveId: payload.liveId,
+                messages: messages.map((m) => JSON.parse(String(m))),
+              },
+            });
+          }
+        } catch (err) {
+          logger.warn(`Failed to load chat history for ${payload.liveId}: ${err}`);
+        }
+
         // Notify room members
         chatNamespace.to(roomName).emit('chat:user-joined', {
           type: 'chat:user-joined',
@@ -393,16 +410,26 @@ async function bootstrap() {
 
         const roomName = `live:${payload.liveId}`;
 
+        const messageData = {
+          id: Date.now().toString(),
+          liveId: payload.liveId,
+          userId: authenticatedSocket.user.userId,
+          message: sanitizedMessage,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Store message in Redis (async, non-blocking, max 100 messages, 24h TTL)
+        const historyKey = `chat:${payload.liveId}:history`;
+        pubClient
+          .rPush(historyKey, JSON.stringify(messageData))
+          .then(() => pubClient.lTrim(historyKey, -100, -1))
+          .then(() => pubClient.expire(historyKey, 86400))
+          .catch((err) => logger.warn(`Failed to cache chat message: ${err}`));
+
         // Broadcast to all clients in room
         chatNamespace.to(roomName).emit('chat:message', {
           type: 'chat:message',
-          data: {
-            id: Date.now().toString(),
-            liveId: payload.liveId,
-            userId: authenticatedSocket.user.userId,
-            message: sanitizedMessage,
-            timestamp: new Date().toISOString(),
-          },
+          data: messageData,
         });
 
         socket.emit('chat:send-message:success', {

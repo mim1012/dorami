@@ -2,9 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Package, Radio, Megaphone, Bell, ShoppingCart, Truck, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Package,
+  Radio,
+  Megaphone,
+  Bell,
+  ShoppingCart,
+  Truck,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  BellRing,
+  BellOff,
+} from 'lucide-react';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { apiClient } from '@/lib/api/client';
+import { usePushNotification } from '@/lib/hooks/use-push-notification';
 
 type AlertTab = '전체' | '주문' | '라이브' | '공지';
 
@@ -24,6 +38,13 @@ export default function AlertsPage() {
   const [activeTab, setActiveTab] = useState<AlertTab>('전체');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const {
+    permission,
+    isSubscribed,
+    isLoading: pushLoading,
+    subscribe,
+    unsubscribe,
+  } = usePushNotification();
 
   useEffect(() => {
     fetchNotifications();
@@ -108,29 +129,38 @@ export default function AlertsPage() {
   ];
 
   const tabTypeMap: Record<AlertTab, string | null> = {
-    '전체': null,
-    '주문': 'order',
-    '라이브': 'live',
-    '공지': 'notice',
+    전체: null,
+    주문: 'order',
+    라이브: 'live',
+    공지: 'notice',
   };
 
-  const filtered = activeTab === '전체'
-    ? notifications
-    : notifications.filter(n => n.type === tabTypeMap[activeTab]);
+  const filtered =
+    activeTab === '전체'
+      ? notifications
+      : notifications.filter((n) => n.type === tabTypeMap[activeTab]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const IconComponent = ({ icon }: { icon: Notification['icon'] }) => {
     const cls = 'w-5 h-5';
     switch (icon) {
-      case 'cart': return <ShoppingCart className={`${cls} text-hot-pink`} />;
-      case 'truck': return <Truck className={`${cls} text-info`} />;
-      case 'check': return <CheckCircle className={`${cls} text-success`} />;
-      case 'live': return <Radio className={`${cls} text-hot-pink`} />;
-      case 'megaphone': return <Megaphone className={`${cls} text-warning`} />;
-      case 'clock': return <Clock className={`${cls} text-secondary-text`} />;
-      case 'alert': return <AlertTriangle className={`${cls} text-error`} />;
-      default: return <Bell className={`${cls} text-secondary-text`} />;
+      case 'cart':
+        return <ShoppingCart className={`${cls} text-hot-pink`} />;
+      case 'truck':
+        return <Truck className={`${cls} text-info`} />;
+      case 'check':
+        return <CheckCircle className={`${cls} text-success`} />;
+      case 'live':
+        return <Radio className={`${cls} text-hot-pink`} />;
+      case 'megaphone':
+        return <Megaphone className={`${cls} text-warning`} />;
+      case 'clock':
+        return <Clock className={`${cls} text-secondary-text`} />;
+      case 'alert':
+        return <AlertTriangle className={`${cls} text-error`} />;
+      default:
+        return <Bell className={`${cls} text-secondary-text`} />;
     }
   };
 
@@ -176,6 +206,43 @@ export default function AlertsPage() {
           </div>
         </div>
 
+        {/* Push Subscription Status */}
+        {permission !== 'unsupported' && (
+          <div className="px-4 pt-3">
+            {isSubscribed ? (
+              <div className="flex items-center justify-between p-3 bg-content-bg rounded-xl border border-border-color">
+                <div className="flex items-center gap-2">
+                  <BellRing className="w-4 h-4 text-hot-pink" />
+                  <span className="text-sm text-primary-text font-medium">푸시 알림 수신 중</span>
+                </div>
+                <button
+                  onClick={unsubscribe}
+                  disabled={pushLoading}
+                  className="text-xs text-secondary-text hover:text-error transition-colors font-medium disabled:opacity-50"
+                >
+                  해제
+                </button>
+              </div>
+            ) : permission !== 'denied' ? (
+              <button
+                onClick={subscribe}
+                disabled={pushLoading}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-hot-pink/10 border border-hot-pink/20 rounded-xl text-sm font-bold text-hot-pink active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                <BellOff className="w-4 h-4" />
+                {pushLoading ? '설정 중...' : '푸시 알림 켜기'}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 p-3 bg-content-bg rounded-xl border border-border-color">
+                <BellOff className="w-4 h-4 text-secondary-text" />
+                <span className="text-sm text-secondary-text">
+                  브라우저 알림이 차단되었습니다. 설정에서 허용해주세요.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Content */}
         <div className="px-4 py-3">
           {loading ? (
@@ -186,7 +253,9 @@ export default function AlertsPage() {
             <div className="flex flex-col items-center justify-center h-48 text-center">
               <Bell className="w-12 h-12 text-secondary-text/40 mb-3" />
               <p className="text-secondary-text font-medium">알림이 없습니다</p>
-              <p className="text-secondary-text/60 text-sm mt-1">새로운 소식이 있으면 알려드릴게요</p>
+              <p className="text-secondary-text/60 text-sm mt-1">
+                새로운 소식이 있으면 알려드릴게요
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -195,24 +264,26 @@ export default function AlertsPage() {
                   key={notif.id}
                   onClick={() => notif.link && router.push(notif.link)}
                   className={`w-full text-left flex items-start gap-3 p-4 rounded-xl transition-colors ${
-                    notif.read
-                      ? 'bg-content-bg/50'
-                      : 'bg-content-bg border border-hot-pink/10'
+                    notif.read ? 'bg-content-bg/50' : 'bg-content-bg border border-hot-pink/10'
                   } ${notif.link ? 'hover:bg-content-bg active:scale-[0.99]' : ''}`}
                 >
                   {/* Icon */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    notif.read ? 'bg-primary-black' : 'bg-hot-pink/10'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      notif.read ? 'bg-primary-black' : 'bg-hot-pink/10'
+                    }`}
+                  >
                     <IconComponent icon={notif.icon} />
                   </div>
 
                   {/* Text */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-semibold truncate ${
-                        notif.read ? 'text-secondary-text' : 'text-primary-text'
-                      }`}>
+                      <p
+                        className={`text-sm font-semibold truncate ${
+                          notif.read ? 'text-secondary-text' : 'text-primary-text'
+                        }`}
+                      >
                         {notif.title}
                       </p>
                       {!notif.read && (
@@ -222,9 +293,7 @@ export default function AlertsPage() {
                     <p className="text-sm text-secondary-text mt-0.5 line-clamp-2">
                       {notif.message}
                     </p>
-                    <p className="text-xs text-secondary-text/60 mt-1.5">
-                      {notif.time}
-                    </p>
+                    <p className="text-xs text-secondary-text/60 mt-1.5">{notif.time}</p>
                   </div>
                 </button>
               ))}
@@ -240,27 +309,41 @@ export default function AlertsPage() {
 
 function getOrderTitle(status: string): string {
   switch (status) {
-    case 'PENDING': return '주문 접수';
-    case 'DEPOSIT_WAITING': return '입금 대기 중';
-    case 'DEPOSIT_CONFIRMED': return '입금 확인 완료';
-    case 'PREPARING': return '상품 준비 중';
-    case 'SHIPPING': return '배송 중';
-    case 'DELIVERED': return '배송 완료';
-    case 'CANCELLED': return '주문 취소됨';
-    default: return '주문 업데이트';
+    case 'PENDING':
+      return '주문 접수';
+    case 'DEPOSIT_WAITING':
+      return '입금 대기 중';
+    case 'DEPOSIT_CONFIRMED':
+      return '입금 확인 완료';
+    case 'PREPARING':
+      return '상품 준비 중';
+    case 'SHIPPING':
+      return '배송 중';
+    case 'DELIVERED':
+      return '배송 완료';
+    case 'CANCELLED':
+      return '주문 취소됨';
+    default:
+      return '주문 업데이트';
   }
 }
 
 function getOrderIcon(status: string): Notification['icon'] {
   switch (status) {
     case 'PENDING':
-    case 'DEPOSIT_WAITING': return 'clock';
+    case 'DEPOSIT_WAITING':
+      return 'clock';
     case 'DEPOSIT_CONFIRMED':
-    case 'PREPARING': return 'cart';
-    case 'SHIPPING': return 'truck';
-    case 'DELIVERED': return 'check';
-    case 'CANCELLED': return 'alert';
-    default: return 'cart';
+    case 'PREPARING':
+      return 'cart';
+    case 'SHIPPING':
+      return 'truck';
+    case 'DELIVERED':
+      return 'check';
+    case 'CANCELLED':
+      return 'alert';
+    default:
+      return 'cart';
   }
 }
 

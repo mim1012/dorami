@@ -28,12 +28,18 @@ import {
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
+import { RedisService } from '../../common/redis/redis.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import * as Papa from 'papaparse';
 
 @Controller('admin')
 @AdminOnly()
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private redisService: RedisService,
+    private prismaService: PrismaService,
+  ) {}
 
   @Get('users')
   async getUserList(@Query() query: GetUsersQueryDto) {
@@ -214,5 +220,88 @@ export class AdminController {
     const { page: pageNum, limit: limitNum } = parsePagination(page, limit, { limit: 50 });
 
     return this.adminService.getAuditLogs(from, to, action, pageNum, limitNum);
+  }
+
+  /**
+   * Real-time system monitoring dashboard data
+   */
+  @Get('monitoring')
+  async getMonitoring() {
+    const redis = this.redisService.getClient();
+
+    // 1. Active streams & viewer counts
+    const activeStreams = await this.prismaService.liveStream.findMany({
+      where: { status: 'LIVE' },
+      select: { id: true, streamKey: true, title: true, startedAt: true, peakViewers: true },
+    });
+
+    const streamStats = await Promise.all(
+      activeStreams.map(async (stream) => {
+        const viewers = await redis.get(`stream:${stream.streamKey}:viewers`);
+        return {
+          streamId: stream.id,
+          streamKey: stream.streamKey,
+          title: stream.title,
+          startedAt: stream.startedAt,
+          viewerCount: parseInt(viewers || '0', 10),
+          peakViewers: stream.peakViewers,
+        };
+      }),
+    );
+
+    const totalViewers = streamStats.reduce((sum, s) => sum + s.viewerCount, 0);
+
+    // 2. Redis health & stats
+    let redisStatus = 'down';
+    let redisConnections = 0;
+    let redisMemory = '0';
+    try {
+      await redis.ping();
+      redisStatus = 'up';
+      const info = await redis.info('clients');
+      const connMatch = info.match(/connected_clients:(\d+)/);
+      redisConnections = connMatch ? parseInt(connMatch[1], 10) : 0;
+      const memInfo = await redis.info('memory');
+      const memMatch = memInfo.match(/used_memory_human:(.+)/);
+      redisMemory = memMatch ? memMatch[1].trim() : '0';
+    } catch {
+      redisStatus = 'down';
+    }
+
+    // 3. DB connection pool (approximate from active query)
+    let dbStatus = 'down';
+    try {
+      await this.prismaService.$queryRaw`SELECT 1`;
+      dbStatus = 'up';
+    } catch {
+      dbStatus = 'down';
+    }
+
+    // 4. Process metrics
+    const memUsage = process.memoryUsage();
+    const uptime = process.uptime();
+
+    return {
+      timestamp: new Date().toISOString(),
+      server: {
+        uptime: Math.floor(uptime),
+        memoryMB: Math.round(memUsage.rss / 1024 / 1024),
+        heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+      },
+      streams: {
+        activeCount: activeStreams.length,
+        totalViewers,
+        details: streamStats,
+      },
+      redis: {
+        status: redisStatus,
+        connections: redisConnections,
+        memory: redisMemory,
+      },
+      database: {
+        status: dbStatus,
+      },
+    };
   }
 }

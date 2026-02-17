@@ -8,6 +8,19 @@ export function useChatMessages(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
+    // Receive chat history on join/rejoin
+    socket.on('chat:history', (data: any) => {
+      const historyMessages: ChatMessage[] = (data.data?.messages || []).map((m: any) => ({
+        id: m.id || `${Date.now()}-${Math.random()}`,
+        userId: m.userId,
+        username: m.username || 'Unknown',
+        message: m.message,
+        timestamp: new Date(m.timestamp),
+        isDeleted: false,
+      }));
+      setMessages(historyMessages);
+    });
+
     // Receive messages
     socket.on('chat:message', (data: any) => {
       const newMessage: ChatMessage = {
@@ -31,6 +44,7 @@ export function useChatMessages(socket: Socket | null) {
     });
 
     return () => {
+      socket.off('chat:history');
       socket.off('chat:message');
       socket.off('chat:message-deleted');
     };

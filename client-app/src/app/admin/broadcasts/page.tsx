@@ -228,11 +228,24 @@ export default function BroadcastsPage() {
 
   const handleCopyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for HTTP / non-secure context
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      alert('복사에 실패했습니다. 직접 선택하여 복사해주세요.');
     }
   };
 
@@ -424,8 +437,23 @@ export default function BroadcastsPage() {
                         <div className="text-sm font-medium text-primary-text">{stream.title}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text font-mono">
-                          {stream.streamKey}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm text-secondary-text font-mono truncate max-w-[120px]">
+                            {stream.streamKey.slice(0, 8)}...
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
+                            }
+                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
+                            title="스트림 키 복사"
+                          >
+                            {copiedField === `key-${stream.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-success" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-secondary-text" />
+                            )}
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

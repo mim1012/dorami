@@ -193,18 +193,19 @@ export class OrdersService {
         },
       });
 
+      // Deduct points inside the same transaction for atomicity
+      if (pointsToUse && pointsToUse > 0) {
+        await this.pointsService.deductPointsTx(
+          tx,
+          userId,
+          pointsToUse,
+          PointTransactionType.USED_ORDER,
+          createdOrder.id,
+        );
+      }
+
       return createdOrder;
     });
-
-    // Deduct points outside the main transaction (separate atomic operation)
-    if (pointsToUse && pointsToUse > 0) {
-      await this.pointsService.deductPoints(
-        userId,
-        pointsToUse,
-        PointTransactionType.USED_ORDER,
-        order.id,
-      );
-    }
 
     // Emit domain event
     const event = new OrderCreatedEvent(
