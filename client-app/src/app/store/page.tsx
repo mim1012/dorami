@@ -193,7 +193,9 @@ export default function StorePage() {
                   key={product.id}
                   id={product.id}
                   name={product.name}
-                  price={product.originalPrice || product.price}
+                  price={
+                    product.discountRate ? product.originalPrice || product.price : product.price
+                  }
                   imageUrl={product.imageUrl || '/images/placeholder-product.jpg'}
                   discount={product.discountRate || 0}
                   onClick={() => handleProductClick(product)}
