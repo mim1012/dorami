@@ -155,21 +155,23 @@ export default function ProductDetailPage() {
             {product.discountRate && product.discountRate > 0 ? (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-secondary-text line-through">
-                  {formatPrice(product.originalPrice || product.price)}
+                  {(product.originalPrice || product.price).toLocaleString()}원
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-black text-error">{product.discountRate}%</span>
                   <Display className="text-hot-pink">
-                    {formatPrice(
-                      product.originalPrice
-                        ? product.price
-                        : Math.round(product.price * (1 - product.discountRate / 100)),
-                    )}
+                    {Math.round(
+                      (product.originalPrice || product.price) * (1 - product.discountRate / 100),
+                    ).toLocaleString()}
+                    <span className="text-lg font-bold">원</span>
                   </Display>
                 </div>
               </div>
             ) : (
-              <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
+              <Display className="text-hot-pink">
+                {product.price.toLocaleString()}
+                <span className="text-lg font-bold">원</span>
+              </Display>
             )}
             <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
           </div>
@@ -255,11 +257,14 @@ export default function ProductDetailPage() {
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
               <Display className="text-hot-pink">
-                {formatPrice(
-                  (product.discountRate && product.discountRate > 0 && !product.originalPrice
-                    ? Math.round(product.price * (1 - product.discountRate / 100))
-                    : product.price) * quantity,
-                )}
+                {(
+                  (product.discountRate && product.discountRate > 0
+                    ? Math.round(
+                        (product.originalPrice || product.price) * (1 - product.discountRate / 100),
+                      )
+                    : product.price) * quantity
+                ).toLocaleString()}
+                <span className="text-lg font-bold">원</span>
               </Display>
             </div>
           </div>

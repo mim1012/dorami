@@ -14,8 +14,8 @@ export function useChatConnection(streamKey: string) {
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
     });
 
     socketRef.current = socket;

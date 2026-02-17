@@ -71,22 +71,22 @@ export default function ProductDetailModal({
               {product.discountRate && product.discountRate > 0 ? (
                 <>
                   <span className="text-sm text-secondary-text line-through">
-                    ₩{(product.originalPrice || product.price).toLocaleString()}
+                    {(product.originalPrice || product.price).toLocaleString()}원
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-error">{product.discountRate}%</span>
                     <span className="text-[32px] font-bold text-hot-pink">
-                      ₩
-                      {(product.originalPrice
-                        ? product.price
-                        : Math.round(product.price * (1 - product.discountRate / 100))
+                      {Math.round(
+                        (product.originalPrice || product.price) * (1 - product.discountRate / 100),
                       ).toLocaleString()}
+                      <span className="text-lg font-bold">원</span>
                     </span>
                   </div>
                 </>
               ) : (
                 <span className="text-[32px] font-bold text-hot-pink">
-                  ₩{product.price.toLocaleString()}
+                  {product.price.toLocaleString()}
+                  <span className="text-lg font-bold">원</span>
                 </span>
               )}
               {product.shippingFee > 0 && (

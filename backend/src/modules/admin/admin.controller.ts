@@ -277,9 +277,27 @@ export class AdminController {
       dbStatus = 'down';
     }
 
-    // 4. Process metrics
+    // 4. Process metrics + event loop lag
     const memUsage = process.memoryUsage();
     const uptime = process.uptime();
+
+    const eventLoopLagMs = await new Promise<number>((resolve) => {
+      const start = performance.now();
+      setTimeout(() => resolve(Math.round(performance.now() - start)), 0);
+    });
+
+    // 5. SRS active streams via API (best-effort)
+    let srsStreams = 0;
+    try {
+      const srsHost = process.env.SRS_API_URL || 'http://localhost:1985';
+      const res = await fetch(`${srsHost}/api/v1/streams/`);
+      if (res.ok) {
+        const data = await res.json();
+        srsStreams = data.streams?.length || 0;
+      }
+    } catch {
+      // SRS unreachable — skip
+    }
 
     return {
       timestamp: new Date().toISOString(),
@@ -288,10 +306,12 @@ export class AdminController {
         memoryMB: Math.round(memUsage.rss / 1024 / 1024),
         heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
         heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+        eventLoopLagMs,
       },
       streams: {
         activeCount: activeStreams.length,
         totalViewers,
+        srsActiveStreams: srsStreams,
         details: streamStats,
       },
       redis: {
