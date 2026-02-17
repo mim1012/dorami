@@ -13,7 +13,8 @@ RUN npm install --legacy-peer-deps --ignore-scripts
 # shared-types 빌드
 RUN npm run build:shared
 
-# backend 소스 복사
+# backend 소스 복사 (CACHEBUST로 캐시 무효화)
+ARG CACHEBUST=1
 COPY backend ./backend
 
 # Prisma generate + backend 빌드

@@ -15,7 +15,8 @@ RUN npm install --legacy-peer-deps --ignore-scripts
 # shared-types 빌드
 RUN npm run build:shared
 
-# client-app 소스 복사
+# client-app 소스 복사 (CACHEBUST로 캐시 무효화)
+ARG CACHEBUST=1
 COPY client-app ./client-app
 
 ARG NEXT_PUBLIC_ENABLE_DEV_AUTH=false
