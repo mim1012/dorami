@@ -117,8 +117,7 @@ export default function ProductDetailPage() {
   if (!product) return null;
 
   const imageUrl =
-    product.imageUrl ||
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80';
+    product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80';
 
   return (
     <>
@@ -152,24 +151,28 @@ export default function ProductDetailPage() {
         <div className="px-4 py-6 space-y-6">
           {/* Name & Price */}
           <div>
-            <Heading2 className="text-primary-text text-2xl mb-2">
-              {product.name}
-            </Heading2>
-            <Display className="text-hot-pink">
-              {formatPrice(product.price)}
-            </Display>
-            <Body className="text-secondary-text text-sm mt-1">
-              재고: {product.stock}개
-            </Body>
+            <Heading2 className="text-primary-text text-2xl mb-2">{product.name}</Heading2>
+            {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-secondary-text line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-error">{product.discountRate}%</span>
+                  <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
+                </div>
+              </div>
+            ) : (
+              <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
+            )}
+            <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
           </div>
 
           {/* Description */}
           {product.description && (
             <div className="border-t border-border-color pt-4">
               <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
-              <Body className="text-secondary-text leading-relaxed">
-                {product.description}
-              </Body>
+              <Body className="text-secondary-text leading-relaxed">{product.description}</Body>
             </div>
           )}
 
@@ -245,9 +248,7 @@ export default function ProductDetailPage() {
           <div className="bg-content-bg rounded-2xl p-4 border border-border-color">
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
-              <Display className="text-hot-pink">
-                {formatPrice(product.price * quantity)}
-              </Display>
+              <Display className="text-hot-pink">{formatPrice(product.price * quantity)}</Display>
             </div>
           </div>
         </div>

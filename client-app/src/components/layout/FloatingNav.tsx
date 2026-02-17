@@ -1,14 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, User, Package, MessageCircle, Share2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 
 export function FloatingNav() {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
 
   const navItems = [
     {
@@ -32,7 +35,7 @@ export function FloatingNav() {
     {
       icon: MessageCircle,
       label: '문의',
-      onClick: () => router.push('/contact'),
+      onClick: () => setIsInquiryOpen(true),
       title: '문의하기',
     },
     {
@@ -40,17 +43,17 @@ export function FloatingNav() {
       label: '공유',
       onClick: () => {
         if (navigator.share) {
-          navigator.share({
-            title: 'DoReMi Live Commerce',
-            text: '라이브 커머스 플랫폼 DoReMi',
-            url: window.location.href,
-          }).catch(() => {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(window.location.href);
-            showToast('링크가 복사되었습니다!', 'success');
-          });
+          navigator
+            .share({
+              title: 'DoRaMi Live Commerce',
+              text: '라이브 커머스 플랫폼 DoRaMi',
+              url: window.location.href,
+            })
+            .catch(() => {
+              navigator.clipboard.writeText(window.location.href);
+              showToast('링크가 복사되었습니다!', 'success');
+            });
         } else {
-          // Fallback: copy to clipboard
           navigator.clipboard.writeText(window.location.href);
           showToast('링크가 복사되었습니다!', 'success');
         }
@@ -60,21 +63,29 @@ export function FloatingNav() {
   ];
 
   return (
-    <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2" role="navigation" aria-label="빠른 메뉴">
-      {navItems.map((item, index) => {
-        const Icon = item.icon;
-        return (
-          <button
-            key={index}
-            onClick={item.onClick}
-            aria-label={item.title}
-            className="w-14 h-14 rounded-full bg-card-bg border border-border-color flex flex-col items-center justify-center gap-0.5 transition-all duration-200 hover:bg-hot-pink hover:text-white hover:scale-110 hover:border-hot-pink shadow-floating"
-          >
-            <Icon className="w-5 h-5" aria-hidden="true" />
-            <span className="text-[9px] font-semibold">{item.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div
+        className="fixed right-4 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2"
+        role="navigation"
+        aria-label="빠른 메뉴"
+      >
+        {navItems.map((item, index) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={index}
+              onClick={item.onClick}
+              aria-label={item.title}
+              className="w-14 h-14 rounded-full bg-card-bg border border-border-color flex flex-col items-center justify-center gap-0.5 transition-all duration-200 hover:bg-hot-pink hover:text-white hover:scale-110 hover:border-hot-pink shadow-floating"
+            >
+              <Icon className="w-5 h-5" aria-hidden="true" />
+              <span className="text-[9px] font-semibold">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <InquiryBottomSheet isOpen={isInquiryOpen} onClose={() => setIsInquiryOpen(false)} />
+    </>
   );
 }

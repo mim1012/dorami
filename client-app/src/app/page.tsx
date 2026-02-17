@@ -138,7 +138,7 @@ export default function Home() {
             products = apiProducts.map((p) => ({
               id: p.id,
               name: p.name,
-              price: p.price,
+              price: p.originalPrice || p.price,
               imageUrl:
                 p.imageUrl ||
                 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
@@ -195,7 +195,7 @@ export default function Home() {
 
   const handleSearch = (query: string) => {
     if (query.trim()) {
-      router.push(`/shop?search=${encodeURIComponent(query)}`);
+      router.push(`/shop?q=${encodeURIComponent(query)}`);
     }
   };
 

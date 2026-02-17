@@ -241,7 +241,16 @@ function ShopPageContent() {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-error-bg flex items-center justify-center">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#DC2626"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="8" x2="12" y2="12" />
                     <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -282,11 +291,20 @@ function ShopPageContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
-                  <button 
+                  <button
                     onClick={() => router.push('/cart')}
                     className="relative w-11 h-11 rounded-full glass flex items-center justify-center hover:border-hot-pink/50 transition-all active:scale-95"
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <circle cx="9" cy="21" r="1" />
                       <circle cx="20" cy="21" r="1" />
                       <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
@@ -317,7 +335,7 @@ function ShopPageContent() {
                   <span>{filter.label}</span>
                 </button>
               ))}
-              
+
               {/* Sort dropdown */}
               <select
                 value={sortBy}
@@ -335,8 +353,11 @@ function ShopPageContent() {
           {/* Results count + active filter badge */}
           <div className="px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-secondary-text font-medium">
-              <span className="text-primary-text font-bold">{filteredProducts.length}</span>개의 상품
-              {searchQuery && <span className="text-hot-pink ml-1 font-semibold">&quot;{searchQuery}&quot;</span>}
+              <span className="text-primary-text font-bold">{filteredProducts.length}</span>개의
+              상품
+              {searchQuery && (
+                <span className="text-hot-pink ml-1 font-semibold">&quot;{searchQuery}&quot;</span>
+              )}
             </p>
             {activeFilter !== 'all' && (
               <button
@@ -353,16 +374,19 @@ function ShopPageContent() {
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                 {filteredProducts.map((product, index) => (
-                  <div 
-                    key={product.id} 
+                  <div
+                    key={product.id}
                     className="animate-stagger-fade"
                     style={{ animationDelay: `${index * 60}ms` }}
                   >
                     <ProductCard
                       id={product.id}
                       name={product.name}
-                      price={product.price}
-                      imageUrl={product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'}
+                      price={product.originalPrice || product.price}
+                      imageUrl={
+                        product.imageUrl ||
+                        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'
+                      }
                       isNew={product.isNew}
                       discount={product.discountRate}
                       onClick={() => handleProductClick(product.id)}
@@ -370,19 +394,17 @@ function ShopPageContent() {
                   </div>
                 ))}
               </div>
+            ) : searchQuery ? (
+              <EmptyState
+                icon={Search}
+                title="검색 결과 없음"
+                description={`'${searchQuery}'에 대한 결과가 없습니다`}
+              />
             ) : (
-              searchQuery ? (
-                <EmptyState
-                  icon={Search}
-                  title="검색 결과 없음"
-                  description={`'${searchQuery}'에 대한 결과가 없습니다`}
-                />
-              ) : (
-                <EmptyState
-                  title="등록된 상품이 없습니다"
-                  description="곧 새로운 상품이 등록됩니다"
-                />
-              )
+              <EmptyState
+                title="등록된 상품이 없습니다"
+                description="곧 새로운 상품이 등록됩니다"
+              />
             )}
           </div>
         </div>
