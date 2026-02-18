@@ -111,6 +111,10 @@ services:
   srs:
     image: ossrs/srs:6
     restart: always
+    depends_on:
+      - backend
+    links:
+      - backend
     ports:
       - "1935:1935"
       - "8443:1935"
