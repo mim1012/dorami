@@ -4,24 +4,8 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
-
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Product } from '@/lib/types';
+import { ProductStatus } from '@/lib/types';
 
 interface ProductListProps {
   streamKey: string;
@@ -67,24 +51,28 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
 
     ws.on('live:product:updated', (data: { type: string; data: Product }) => {
       console.log('[Products] Product updated:', data.data);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === data.data.id ? data.data : p))
-      );
+      setProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
     });
 
     ws.on('live:product:soldout', (data: { type: string; data: { productId: string } }) => {
       console.log('[Products] Product sold out:', data.data.productId);
       setProducts((prev) =>
         prev.map((p) =>
-          p.id === data.data.productId ? { ...p, status: 'SOLD_OUT' as const } : p
-        )
+          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
+        ),
       );
     });
 
-    ws.on('product:low-stock', (data: { type: string; data: { productId: string; productName: string; remainingStock: number } }) => {
-      console.log('[Products] Low stock warning:', data.data);
-      // Could show a toast notification here
-    });
+    ws.on(
+      'product:low-stock',
+      (data: {
+        type: string;
+        data: { productId: string; productName: string; remainingStock: number };
+      }) => {
+        console.log('[Products] Low stock warning:', data.data);
+        // Could show a toast notification here
+      },
+    );
 
     return () => {
       if (ws) {
@@ -138,21 +126,17 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
               key={product.id}
               className={`
                 bg-primary-black rounded-card p-3 cursor-pointer transition-colors border
-                ${product.status === 'SOLD_OUT'
-                  ? 'border-border-color opacity-60'
-                  : 'border-border-color hover:border-hot-pink hover:bg-content-bg'
+                ${
+                  product.status === 'SOLD_OUT'
+                    ? 'border-border-color opacity-60'
+                    : 'border-border-color hover:border-hot-pink hover:bg-content-bg'
                 }
               `}
               onClick={() => product.status === 'AVAILABLE' && onProductClick?.(product)}
             >
               <div className="relative w-full aspect-square mb-2 rounded overflow-hidden bg-primary-black">
                 {product.imageUrl ? (
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-content-bg">
                     <span className="text-secondary-text text-sm">No Image</span>
@@ -164,21 +148,31 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
                   </div>
                 )}
               </div>
-              <h3 className="text-caption text-primary-text truncate mb-1">
-                {product.name}
-              </h3>
+              <h3 className="text-caption text-primary-text truncate mb-1">{product.name}</h3>
               <div className="flex items-center justify-between">
-                <p className="text-body text-hot-pink font-bold">
-                  ₩{product.price.toLocaleString()}
-                </p>
-                <p className={`text-small ${product.stock < 5 ? 'text-warning' : 'text-secondary-text'}`}>
+                {product.discountRate && product.discountRate > 0 ? (
+                  <div>
+                    <span className="text-small text-secondary-text line-through mr-1">
+                      ₩{(product.originalPrice ?? product.price).toLocaleString()}
+                    </span>
+                    <span className="text-small text-error font-bold">{product.discountRate}%</span>
+                    <p className="text-body text-hot-pink font-bold">
+                      ₩{product.price.toLocaleString()}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-body text-hot-pink font-bold">
+                    ₩{product.price.toLocaleString()}
+                  </p>
+                )}
+                <p
+                  className={`text-small ${product.stock < 5 ? 'text-warning' : 'text-secondary-text'}`}
+                >
                   재고 {product.stock}
                 </p>
               </div>
               {product.freeShippingMessage && (
-                <p className="text-small text-success mt-1">
-                  {product.freeShippingMessage}
-                </p>
+                <p className="text-small text-success mt-1">{product.freeShippingMessage}</p>
               )}
             </div>
           ))}

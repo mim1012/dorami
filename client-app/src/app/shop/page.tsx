@@ -4,7 +4,9 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { ProductCard } from '@/components/home/ProductCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
-import { getProducts, type Product } from '@/lib/api/products';
+import { getProducts } from '@/lib/api/products';
+import type { Product } from '@/lib/types';
+import { ProductStatus } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
@@ -13,21 +15,28 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Search } from 'lucide-react';
 
 // ── Fallback mock data ──
-const MOCK_PRODUCTS: Product[] = [
+interface ShopProduct {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  stock: number;
+  status: ProductStatus;
+  isNew: boolean;
+  discountRate: number;
+}
+
+const MOCK_PRODUCTS: ShopProduct[] = [
   {
     id: '1',
     name: 'Chic Evening Bag',
     price: 129000,
-    originalPrice: 129000,
     imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
-    description: '세련된 저녁 가방',
-    category: 'fashion',
     stock: 10,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: true,
     discountRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '2',
@@ -35,44 +44,30 @@ const MOCK_PRODUCTS: Product[] = [
     price: 62300,
     originalPrice: 89000,
     imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-    description: '프로 오디오 팟',
-    category: 'electronics',
     stock: 25,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: false,
     discountRate: 30,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '3',
     name: 'Handmade Tableware',
     price: 45000,
-    originalPrice: 45000,
     imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
-    description: '수제 식기세트',
-    category: 'home',
     stock: 15,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: false,
     discountRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '4',
     name: 'Smart Fitness Watch',
     price: 199000,
-    originalPrice: 199000,
     imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-    description: '스마트 피트니스 워치',
-    category: 'electronics',
     stock: 8,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: false,
     discountRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '5',
@@ -80,14 +75,10 @@ const MOCK_PRODUCTS: Product[] = [
     price: 67150,
     originalPrice: 79000,
     imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
-    description: '프리미엄 가죽 지갑',
-    category: 'fashion',
     stock: 20,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: true,
     discountRate: 15,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '6',
@@ -95,44 +86,30 @@ const MOCK_PRODUCTS: Product[] = [
     price: 119200,
     originalPrice: 149000,
     imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
-    description: '무선 키보드',
-    category: 'electronics',
     stock: 12,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: false,
     discountRate: 20,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '7',
     name: 'Designer Sunglasses',
     price: 159000,
-    originalPrice: 159000,
     imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500&q=80',
-    description: '디자이너 선글라스',
-    category: 'fashion',
     stock: 18,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: true,
     discountRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
     id: '8',
     name: 'Ceramic Coffee Mug Set',
     price: 32000,
-    originalPrice: 32000,
     imageUrl: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500&q=80',
-    description: '세라믹 커피머그 세트',
-    category: 'home',
     stock: 30,
-    status: 'AVAILABLE',
+    status: ProductStatus.AVAILABLE,
     isNew: false,
     discountRate: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -148,7 +125,7 @@ function ShopPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,16 +145,22 @@ function ShopPageContent() {
         setLoading(true);
 
         // Try API first, fallback to mock
-        let fetchedProducts: Product[];
+        let fetchedProducts: ShopProduct[];
         try {
           const apiProducts = await getProducts();
           if (apiProducts && apiProducts.length > 0) {
             fetchedProducts = apiProducts.map((p) => ({
-              ...p,
-              stock: p.stock ?? p.stockQuantity ?? 0,
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              originalPrice: p.originalPrice,
+              imageUrl:
+                p.imageUrl ||
+                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+              stock: p.stock,
+              status: p.status,
               discountRate: p.discountRate ?? 0,
               isNew: p.isNew ?? false,
-              originalPrice: p.originalPrice ?? p.price,
             }));
           } else {
             fetchedProducts = MOCK_PRODUCTS;
@@ -382,11 +365,8 @@ function ShopPageContent() {
                     <ProductCard
                       id={product.id}
                       name={product.name}
-                      price={
-                        product.discountRate
-                          ? product.originalPrice || product.price
-                          : product.price
-                      }
+                      price={product.price}
+                      originalPrice={product.originalPrice}
                       imageUrl={
                         product.imageUrl ||
                         'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'

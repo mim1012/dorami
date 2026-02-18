@@ -2,16 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  discountRate?: number;
-  imageUrl?: string;
-  stock: number;
-}
+import type { Product } from '@/lib/types';
 
 interface ProductBottomSheetProps {
   products: Product[];
@@ -52,14 +43,10 @@ export default function ProductBottomSheet({
               {products[0]?.discountRate && products[0].discountRate > 0 ? (
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/40 text-xs line-through">
-                    {(products[0].originalPrice || products[0].price).toLocaleString()}원
+                    {(products[0].originalPrice ?? products[0].price).toLocaleString()}원
                   </span>
                   <span className="text-hot-pink text-sm font-black">
-                    {Math.round(
-                      (products[0].originalPrice || products[0].price) *
-                        (1 - products[0].discountRate / 100),
-                    ).toLocaleString()}
-                    원
+                    {products[0].price.toLocaleString()}원
                   </span>
                 </div>
               ) : (
@@ -138,17 +125,13 @@ export default function ProductBottomSheet({
                     {product.discountRate && product.discountRate > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <span className="text-secondary-text text-xs line-through">
-                          {(product.originalPrice || product.price).toLocaleString()}원
+                          {(product.originalPrice ?? product.price).toLocaleString()}원
                         </span>
                         <span className="text-error text-xs font-bold">
                           {product.discountRate}%
                         </span>
                         <span className="text-hot-pink font-black text-base">
-                          {Math.round(
-                            (product.originalPrice || product.price) *
-                              (1 - product.discountRate / 100),
-                          ).toLocaleString()}
-                          원
+                          {product.price.toLocaleString()}원
                         </span>
                       </div>
                     ) : (
@@ -160,9 +143,14 @@ export default function ProductBottomSheet({
                   </div>
                   <button
                     onClick={() => onAddToCart(product.id)}
-                    className="px-4 py-2 bg-hot-pink text-white text-sm font-bold rounded-full hover:bg-hot-pink/80 active:scale-95 transition-all flex-shrink-0"
+                    disabled={product.status === 'SOLD_OUT' || product.stock === 0}
+                    className={`px-4 py-2 text-sm font-bold rounded-full active:scale-95 transition-all flex-shrink-0 ${
+                      product.status === 'SOLD_OUT' || product.stock === 0
+                        ? 'bg-content-bg text-secondary-text cursor-not-allowed'
+                        : 'bg-hot-pink text-white hover:bg-hot-pink/80'
+                    }`}
                   >
-                    담기
+                    {product.status === 'SOLD_OUT' || product.stock === 0 ? '품절' : '담기'}
                   </button>
                 </div>
               ))}

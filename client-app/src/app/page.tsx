@@ -101,6 +101,7 @@ export default function Home() {
       id: string;
       name: string;
       price: number;
+      originalPrice?: number;
       imageUrl: string;
       isNew?: boolean;
       discount?: number;
@@ -139,7 +140,8 @@ export default function Home() {
             products = apiProducts.map((p) => ({
               id: p.id,
               name: p.name,
-              price: p.discountRate ? p.originalPrice || p.price : p.price,
+              price: p.price,
+              originalPrice: p.originalPrice,
               imageUrl:
                 p.imageUrl ||
                 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
@@ -482,6 +484,7 @@ export default function Home() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
+                  originalPrice={product.originalPrice}
                   imageUrl={product.imageUrl}
                   isNew={product.isNew}
                   discount={product.discount}
