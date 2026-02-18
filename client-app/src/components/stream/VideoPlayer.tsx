@@ -349,7 +349,7 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
     });
 
     socket.on(
-      'stream:viewer:update',
+      'stream:viewer-count',
       (data: { data?: { streamKey: string; viewerCount: number } }) => {
         if (data.data && data.data.streamKey === streamKey) {
           setViewerCount(data.data.viewerCount);
