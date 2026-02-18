@@ -60,6 +60,9 @@ RUN apk add --no-cache ffmpeg openssl && \
 # 프로덕션 의존성만 복사 (devDependencies 제외)
 COPY --from=deps --chown=nestjs:nodejs /app/prod_node_modules ./node_modules
 
+# Prisma 생성 클라이언트 복사 (builder에서 prisma generate로 생성됨)
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
 # 빌드 결과물 복사
 COPY --from=builder --chown=nestjs:nodejs /app/backend/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/backend/prisma ./prisma
