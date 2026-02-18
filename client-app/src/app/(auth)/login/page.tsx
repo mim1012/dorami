@@ -15,12 +15,19 @@ function LoginContent() {
   const [devRole, setDevRole] = useState<'USER' | 'ADMIN'>('USER');
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
+  const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       router.push('/');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    // 런타임에 체크 (docker-entrypoint.sh가 플레이스홀더를 치환한 후 실행됨)
+    const val = String(process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH || '');
+    setIsDevAuthEnabled(val === 'true');
+  }, []);
 
   const handleKakaoLogin = () => {
     window.location.href = '/api/auth/kakao';
@@ -106,7 +113,7 @@ function LoginContent() {
         </div>
 
         {/* Dev Login Section — only rendered when NEXT_PUBLIC_ENABLE_DEV_AUTH=true */}
-        {process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true' && (
+        {isDevAuthEnabled && (
           <div className="pt-4 border-t border-border-color">
             <div className="p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
               <p className="text-xs text-secondary-text">스테이징 테스트 전용</p>
