@@ -97,10 +97,8 @@ services:
       - backend
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/staging.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./backend/uploads:/var/www/uploads
       - certbot_www:/var/www/certbot:ro
     healthcheck:
