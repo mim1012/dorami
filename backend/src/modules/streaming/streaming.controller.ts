@@ -29,6 +29,7 @@ import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { SkipCsrf } from '../../common/guards/csrf.guard';
 
 @Controller('streaming')
 export class StreamingController {
@@ -135,6 +136,7 @@ export class StreamingController {
    * Returns 200 OK to allow, 403 Forbidden to reject
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('auth')
   @HttpCode(HttpStatus.OK)
@@ -160,6 +162,7 @@ export class StreamingController {
    * Called when OBS stops streaming
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('done')
   @HttpCode(HttpStatus.OK)
@@ -202,6 +205,7 @@ export class StreamingController {
   }
 
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-auth')
   @HttpCode(HttpStatus.OK)
@@ -225,6 +229,7 @@ export class StreamingController {
    * Called when OBS stops streaming
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-done')
   @HttpCode(HttpStatus.OK)
@@ -242,6 +247,7 @@ export class StreamingController {
    * Used for monitoring SRS health
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-heartbeat')
   @HttpCode(HttpStatus.OK)
