@@ -95,7 +95,7 @@ export class StreamingSessionResponseDto {
 }
 
 // SRS on_publish / on_unpublish callback DTO
-// SRS sends JSON body with these fields
+// SRS v6 sends JSON body with these fields (all extra fields must be declared to pass forbidNonWhitelisted)
 export class SrsCallbackDto {
   @IsString()
   @IsNotEmpty()
@@ -110,7 +110,7 @@ export class SrsCallbackDto {
   ip?: string;
 
   @IsOptional()
-  client_id?: number;
+  client_id?: string | number; // SRS v6 sends string (e.g. "9308h583")
 
   @IsString()
   @IsOptional()
@@ -123,6 +123,27 @@ export class SrsCallbackDto {
   @IsString()
   @IsOptional()
   param?: string;
+
+  // SRS v6 additional fields
+  @IsString()
+  @IsOptional()
+  server_id?: string;
+
+  @IsString()
+  @IsOptional()
+  service_id?: string;
+
+  @IsString()
+  @IsOptional()
+  tcUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  stream_url?: string;
+
+  @IsString()
+  @IsOptional()
+  stream_id?: string;
 }
 
 // nginx-rtmp on_publish / on_publish_done callback DTO (legacy)
