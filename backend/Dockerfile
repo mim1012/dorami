@@ -63,6 +63,9 @@ COPY --from=deps --chown=nestjs:nodejs /app/prod_node_modules ./node_modules
 # Prisma 생성 클라이언트 복사 (builder에서 prisma generate로 생성됨)
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# shared-types 빌드 결과물 복사 (workspace symlink 대상: node_modules/@live-commerce/shared-types → ../../packages/shared-types)
+COPY --from=builder --chown=nestjs:nodejs /app/packages/shared-types ./packages/shared-types
+
 # 빌드 결과물 복사
 COPY --from=builder --chown=nestjs:nodejs /app/backend/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/backend/prisma ./prisma
