@@ -16,6 +16,7 @@ import {
   AuthenticatedSocket,
   authenticateSocket,
 } from '../../common/middleware/ws-jwt-auth.middleware';
+import { OnEvent } from '@nestjs/event-emitter';
 
 interface ViewerJoinPayload {
   streamKey: string;
@@ -184,6 +185,18 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
         viewerCount,
         timestamp: new Date().toISOString(),
       },
+    });
+  }
+
+  @OnEvent('stream:ended')
+  handleStreamEnded(payload: { streamId: string; streamKey: string }) {
+    if (!payload.streamKey) {
+      return;
+    }
+    const roomName = `stream:${payload.streamKey}`;
+    this.logger.log(`Broadcasting stream:ended to room ${roomName}`);
+    this.server.to(roomName).emit('stream:ended', {
+      streamKey: payload.streamKey,
     });
   }
 }
