@@ -45,7 +45,7 @@ services:
       - '1935:1935'  # RTMP
       - '8080:8080'  # HTTP-FLV + HLS
     volumes:
-      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
 
 volumes:
   postgres_data:
