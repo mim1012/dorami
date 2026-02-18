@@ -4,41 +4,39 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
 import { io, Socket } from 'socket.io-client';
+import type { Product } from '@/lib/types';
 
-interface FeaturedProduct {
-  id: string;
-  name: string;
-  price: number;
+type FeaturedProduct = Pick<
+  Product,
+  'id' | 'name' | 'price' | 'stock' | 'status' | 'colorOptions' | 'sizeOptions'
+> & {
   imageUrl: string;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  status: string;
-}
+  originalPrice?: number;
+  discountRate?: number;
+};
 
 interface FeaturedProductBarProps {
   streamKey: string;
   onProductClick?: (product: FeaturedProduct) => void;
 }
 
-export default function FeaturedProductBar({
-  streamKey,
-  onProductClick
-}: FeaturedProductBarProps) {
+export default function FeaturedProductBar({ streamKey, onProductClick }: FeaturedProductBarProps) {
   const [product, setProduct] = useState<FeaturedProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchFeaturedProduct();
     const cleanupFn = setupWebSocket();
-    return () => { cleanupFn?.(); };
+    return () => {
+      cleanupFn?.();
+    };
   }, [streamKey]);
 
   const fetchFeaturedProduct = async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get<{ product: FeaturedProduct | null }>(
-        `/streaming/key/${streamKey}/featured-product`
+        `/streaming/key/${streamKey}/featured-product`,
       );
       setProduct(response.data.product);
     } catch (error) {
@@ -81,7 +79,17 @@ export default function FeaturedProductBar({
         <div className="flex-1 min-w-0">
           <h3 className="text-body text-primary-text font-semibold truncate">{product.name}</h3>
           <div className="flex items-center gap-2">
-            <p className="text-h2 text-hot-pink font-bold">₩{product.price.toLocaleString()}</p>
+            {product.discountRate && product.discountRate > 0 ? (
+              <>
+                <span className="text-small text-secondary-text line-through">
+                  ₩{(product.originalPrice ?? product.price).toLocaleString()}
+                </span>
+                <span className="text-small text-error font-bold">{product.discountRate}%</span>
+                <p className="text-h2 text-hot-pink font-bold">₩{product.price.toLocaleString()}</p>
+              </>
+            ) : (
+              <p className="text-h2 text-hot-pink font-bold">₩{product.price.toLocaleString()}</p>
+            )}
             <p className="text-small text-secondary-text">재고 {product.stock}</p>
           </div>
         </div>

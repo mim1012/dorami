@@ -102,15 +102,23 @@ export function ProductOptionModal({
               )}
             </div>
             <div className="flex-1">
-              <Body className="text-primary-text font-semibold mb-1">
-                {product.name}
-              </Body>
-              <Body className="text-hot-pink font-bold text-lg">
-                {formatPrice(product.price)}
-              </Body>
-              <Body className="text-secondary-text text-xs mt-1">
-                재고: {product.stock}개
-              </Body>
+              <Body className="text-primary-text font-semibold mb-1">{product.name}</Body>
+              {product.discountRate && product.discountRate > 0 ? (
+                <div>
+                  <span className="text-secondary-text text-xs line-through mr-1">
+                    {formatPrice(product.originalPrice ?? product.price)}
+                  </span>
+                  <span className="text-error text-xs font-bold">{product.discountRate}%</span>
+                  <Body className="text-hot-pink font-bold text-lg">
+                    {formatPrice(product.price)}
+                  </Body>
+                </div>
+              ) : (
+                <Body className="text-hot-pink font-bold text-lg">
+                  {formatPrice(product.price)}
+                </Body>
+              )}
+              <Body className="text-secondary-text text-xs mt-1">재고: {product.stock}개</Body>
             </div>
           </div>
 
@@ -126,9 +134,7 @@ export function ProductOptionModal({
           {/* Options Section */}
           {product.metadata?.options && (
             <div className="space-y-3">
-              <Body className="text-primary-text font-semibold">
-                옵션 선택
-              </Body>
+              <Body className="text-primary-text font-semibold">옵션 선택</Body>
               {/* Add option selection UI here based on product.metadata.options */}
               <div className="p-4 bg-primary-black/50 rounded-xl">
                 <Body className="text-secondary-text text-sm text-center">
@@ -140,9 +146,7 @@ export function ProductOptionModal({
 
           {/* Quantity Selector */}
           <div className="space-y-3">
-            <Body className="text-primary-text font-semibold">
-              수량 선택
-            </Body>
+            <Body className="text-primary-text font-semibold">수량 선택</Body>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => handleQuantityChange(-1)}
@@ -152,9 +156,7 @@ export function ProductOptionModal({
                 <Minus className="w-5 h-5 text-primary-text" />
               </button>
               <div className="flex-1 text-center">
-                <Body className="text-primary-text font-bold text-2xl">
-                  {quantity}
-                </Body>
+                <Body className="text-primary-text font-bold text-2xl">{quantity}</Body>
               </div>
               <button
                 onClick={() => handleQuantityChange(1)}
@@ -165,9 +167,7 @@ export function ProductOptionModal({
               </button>
             </div>
             {quantity >= maxQuantity && (
-              <Body className="text-warning text-xs text-center">
-                최대 구매 가능 수량입니다
-              </Body>
+              <Body className="text-warning text-xs text-center">최대 구매 가능 수량입니다</Body>
             )}
           </div>
         </div>
@@ -176,9 +176,7 @@ export function ProductOptionModal({
         <div className="flex-shrink-0 px-6 py-4 border-t border-border-color bg-content-bg/90 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <Body className="text-secondary-text">총 금액</Body>
-            <Heading2 className="text-hot-pink">
-              {formatPrice(totalPrice)}
-            </Heading2>
+            <Heading2 className="text-hot-pink">{formatPrice(totalPrice)}</Heading2>
           </div>
           <Button
             variant="primary"

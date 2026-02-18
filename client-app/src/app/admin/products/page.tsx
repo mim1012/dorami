@@ -41,24 +41,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
+import type { Product as BaseProduct } from '@/lib/types';
+
+interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface ProductFormData {
@@ -181,9 +168,7 @@ function SortableRow({
         )}
       </td>
       <td className="px-4 py-4 text-center">
-        <Body
-          className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}
-        >
+        <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
         </Body>
       </td>
@@ -758,7 +743,9 @@ export default function AdminProductsPage() {
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-secondary-text mx-auto mb-4 opacity-30" />
             <Body className="text-secondary-text mb-4">
-              {products.length === 0 ? '등록된 상품이 없습니다' : '필터 조건에 맞는 상품이 없습니다'}
+              {products.length === 0
+                ? '등록된 상품이 없습니다'
+                : '필터 조건에 맞는 상품이 없습니다'}
             </Body>
             {products.length === 0 && (
               <Button variant="primary" onClick={() => handleOpenModal()}>

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
-import { getProductById, type Product } from '@/lib/api/products';
+import { getProductById } from '@/lib/api/products';
+import type { Product } from '@/lib/types';
+import { ProductStatus } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
 import { useCart } from '@/lib/contexts/CartContext';
 import { Display, Heading2, Body } from '@/components/common/Typography';
@@ -13,14 +15,17 @@ import { BottomTabBar } from '@/components/layout/BottomTabBar';
 
 const MOCK_PRODUCT: Product = {
   id: 'mock-1',
+  streamKey: '',
   name: '샘플 상품',
-  description: '이 상품은 현재 서버에서 불러올 수 없어 임시로 표시됩니다.',
   price: 29900,
   stock: 10,
   imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
-  status: 'AVAILABLE',
+  status: ProductStatus.AVAILABLE,
   colorOptions: [],
   sizeOptions: [],
+  shippingFee: 0,
+  timerEnabled: false,
+  timerDuration: 0,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -148,14 +153,12 @@ export default function ProductDetailPage() {
             {product.discountRate && product.discountRate > 0 ? (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-secondary-text line-through">
-                  {(product.originalPrice || product.price).toLocaleString()}원
+                  {(product.originalPrice ?? product.price).toLocaleString()}원
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-black text-error">{product.discountRate}%</span>
                   <Display className="text-hot-pink">
-                    {Math.round(
-                      (product.originalPrice || product.price) * (1 - product.discountRate / 100),
-                    ).toLocaleString()}
+                    {product.price.toLocaleString()}
                     <span className="text-lg font-bold">원</span>
                   </Display>
                 </div>
@@ -168,14 +171,6 @@ export default function ProductDetailPage() {
             )}
             <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
           </div>
-
-          {/* Description */}
-          {product.description && (
-            <div className="border-t border-border-color pt-4">
-              <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
-              <Body className="text-secondary-text leading-relaxed">{product.description}</Body>
-            </div>
-          )}
 
           {/* Color Selector */}
           {colors.length > 0 && (
@@ -250,13 +245,7 @@ export default function ProductDetailPage() {
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
               <Display className="text-hot-pink">
-                {(
-                  (product.discountRate && product.discountRate > 0
-                    ? Math.round(
-                        (product.originalPrice || product.price) * (1 - product.discountRate / 100),
-                      )
-                    : product.price) * quantity
-                ).toLocaleString()}
+                {(product.price * quantity).toLocaleString()}
                 <span className="text-lg font-bold">원</span>
               </Display>
             </div>

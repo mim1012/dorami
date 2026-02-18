@@ -19,7 +19,7 @@ import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
 import { Body, Heading2 } from '@/components/common/Typography';
-import { ProductStatus } from '@live-commerce/shared-types';
+import type { Product } from '@/lib/types';
 import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 
@@ -30,29 +30,12 @@ interface StreamStatus {
   title: string;
 }
 
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
-  isNew?: boolean;
-  status: ProductStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface FeaturedProduct {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
+  discountRate?: number;
   imageUrl?: string;
   stock: number;
   status: string;
@@ -272,9 +255,21 @@ export default function LiveStreamPage() {
     );
   }
 
-  const handleProductClick = (product: Product | FeaturedProduct) => {
-    setSelectedProduct(product as Product);
-    setIsModalOpen(true);
+  const handleProductClick = async (product: Product | FeaturedProduct) => {
+    // If product has all required Product fields, use directly; otherwise fetch full data
+    if ('streamKey' in product && 'colorOptions' in product) {
+      setSelectedProduct(product as Product);
+      setIsModalOpen(true);
+    } else {
+      try {
+        const response = await apiClient.get<Product>(`/products/${product.id}`);
+        setSelectedProduct(response.data);
+        setIsModalOpen(true);
+      } catch (err) {
+        console.error('Failed to fetch product details:', err);
+        showToast('상품 정보를 불러올 수 없습니다.', 'error');
+      }
+    }
   };
 
   const handleAddToCart = async (
@@ -471,9 +466,23 @@ export default function LiveStreamPage() {
                     <p className="text-white text-sm font-medium truncate">
                       {featuredProduct.name}
                     </p>
-                    <p className="text-[#FF007A] font-bold text-sm">
-                      ₩{featuredProduct.price.toLocaleString()}
-                    </p>
+                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-white/40 text-xs line-through">
+                          ₩
+                          {(
+                            featuredProduct.originalPrice ?? featuredProduct.price
+                          ).toLocaleString()}
+                        </span>
+                        <span className="text-[#FF007A] font-bold text-sm">
+                          ₩{featuredProduct.price.toLocaleString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[#FF007A] font-bold text-sm">
+                        ₩{featuredProduct.price.toLocaleString()}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={(e) => {

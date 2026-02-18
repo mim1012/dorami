@@ -9,28 +9,7 @@ import { Display, Heading2, Body, Caption } from '@/components/common/Typography
 import { Button } from '@/components/common/Button';
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
-import { ProductStatus } from '@live-commerce/shared-types';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  discountRate?: number;
-  imageUrl: string;
-  stock: number;
-  status: ProductStatus;
-  streamKey: string;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  isNew?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Product } from '@/lib/types';
 
 interface StoreResponse {
   data: Product[];
@@ -193,9 +172,8 @@ export default function StorePage() {
                   key={product.id}
                   id={product.id}
                   name={product.name}
-                  price={
-                    product.discountRate ? product.originalPrice || product.price : product.price
-                  }
+                  price={product.price}
+                  originalPrice={product.originalPrice}
                   imageUrl={product.imageUrl || '/images/placeholder-product.jpg'}
                   discount={product.discountRate || 0}
                   onClick={() => handleProductClick(product)}

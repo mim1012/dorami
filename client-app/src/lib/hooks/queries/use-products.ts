@@ -22,7 +22,7 @@ export function useProducts(streamKey: string, status?: string) {
     queryFn: async () => {
       const params: Record<string, string> = { streamKey };
       if (status) params.status = status;
-      const response = await apiClient.get<Product[]>('/v1/products', { params });
+      const response = await apiClient.get<Product[]>('/products', { params });
       return response.data;
     },
     enabled: !!streamKey,
@@ -34,7 +34,7 @@ export function useProduct(id: string) {
   return useQuery({
     queryKey: productKeys.detail(id),
     queryFn: async () => {
-      const response = await apiClient.get<Product>(`/v1/products/${id}`);
+      const response = await apiClient.get<Product>(`/products/${id}`);
       return response.data;
     },
     enabled: !!id,
@@ -46,7 +46,7 @@ export function useFeaturedProducts(limit = 6) {
   return useQuery({
     queryKey: productKeys.featured(limit),
     queryFn: async () => {
-      const response = await apiClient.get<Product[]>('/v1/products/featured', {
+      const response = await apiClient.get<Product[]>('/products/featured', {
         params: { limit },
       });
       return response.data;
@@ -60,7 +60,7 @@ export function useAddToCart() {
 
   return useMutation({
     mutationFn: async (data: AddToCartRequest) => {
-      const response = await apiClient.post('/v1/cart', data);
+      const response = await apiClient.post('/cart', data);
       return response.data;
     },
     onSuccess: () => {
