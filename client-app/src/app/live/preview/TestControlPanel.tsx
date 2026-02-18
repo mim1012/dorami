@@ -220,7 +220,7 @@ export default function TestControlPanel({
                     onClick={() =>
                       onUpdateProduct(index, {
                         stock: 25,
-                        status: ProductStatus.ON_SALE,
+                        status: ProductStatus.AVAILABLE,
                       })
                     }
                     className="flex-1 py-1.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-lg"
