@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
 import { useCart } from '@/lib/contexts/CartContext';
@@ -32,6 +32,7 @@ export function BottomTabBar() {
   const { user } = useAuth();
   const cartItemCount = getTotalItems();
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [noLiveToast, setNoLiveToast] = useState(false);
 
   const handleTabClick = async (tab: TabItem) => {
     if (tab.isInquiry) {
@@ -42,9 +43,13 @@ export function BottomTabBar() {
         const liveStream = streams.find((s) => s.status === 'LIVE' && s.streamKey);
         if (liveStream?.streamKey) {
           router.push(`/live/${liveStream.streamKey}`);
+        } else {
+          setNoLiveToast(true);
+          setTimeout(() => setNoLiveToast(false), 2500);
         }
       } catch {
-        // no active stream
+        setNoLiveToast(true);
+        setTimeout(() => setNoLiveToast(false), 2500);
       }
     } else if (tab.path) {
       const path = tab.id === 'mypage' && user?.role === 'ADMIN' ? '/admin' : tab.path;
@@ -55,7 +60,7 @@ export function BottomTabBar() {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-[#1E1E1E]/95 backdrop-blur-sm border-t border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)]"
+        className="fixed bottom-0 left-0 right-0 bg-[#1E1E1E]/95 backdrop-blur-sm border-t border-white/10 z-50 shadow-lg pb-[env(safe-area-inset-bottom)] relative"
         role="navigation"
         aria-label="메인 내비게이션"
       >
@@ -106,6 +111,11 @@ export function BottomTabBar() {
             })}
           </div>
         </div>
+        {noLiveToast && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-2 bg-[#2A2A2A] text-white text-xs rounded-full whitespace-nowrap border border-white/10 shadow-lg pointer-events-none">
+            현재 진행 중인 라이브가 없어요
+          </div>
+        )}
       </nav>
 
       <InquiryBottomSheet isOpen={isInquiryOpen} onClose={() => setIsInquiryOpen(false)} />
