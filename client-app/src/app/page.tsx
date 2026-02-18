@@ -213,8 +213,6 @@ export default function Home() {
   const handleLiveBannerClick = () => {
     if (isNextLiveActive && upcomingLives.length > 0 && upcomingLives[0].streamKey) {
       router.push(`/live/${upcomingLives[0].streamKey}`);
-    } else if (upcomingLives.length > 0) {
-      router.push('/live');
     }
   };
 
@@ -372,12 +370,6 @@ export default function Home() {
               {upcomingLives.length}
             </span>
           </div>
-          <button
-            onClick={() => router.push('/live')}
-            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
-          >
-            전체보기 &rarr;
-          </button>
         </div>
 
         <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 -mx-4 px-4 snap-x snap-mandatory">

@@ -6,6 +6,7 @@ import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
 import { useCart } from '@/lib/contexts/CartContext';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
+import { getActiveStreams } from '@/lib/api/streaming';
 
 interface TabItem {
   id: string;
@@ -19,7 +20,7 @@ interface TabItem {
 const tabs: TabItem[] = [
   { id: 'home', label: '홈', icon: Home, path: '/' },
   { id: 'cart', label: '장바구니', icon: ShoppingCart, path: '/cart' },
-  { id: 'live', label: '라이브', icon: Video, path: '/live' },
+  { id: 'live', label: '라이브', icon: Video },
   { id: 'inquiry', label: '문의', icon: MessageCircle, isInquiry: true },
   { id: 'mypage', label: '마이', icon: User, path: '/my-page' },
 ];
@@ -32,9 +33,19 @@ export function BottomTabBar() {
   const cartItemCount = getTotalItems();
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
 
-  const handleTabClick = (tab: TabItem) => {
+  const handleTabClick = async (tab: TabItem) => {
     if (tab.isInquiry) {
       setIsInquiryOpen(true);
+    } else if (tab.id === 'live') {
+      try {
+        const streams = await getActiveStreams();
+        const liveStream = streams.find((s) => s.status === 'LIVE' && s.streamKey);
+        if (liveStream?.streamKey) {
+          router.push(`/live/${liveStream.streamKey}`);
+        }
+      } catch {
+        // no active stream
+      }
     } else if (tab.path) {
       const path = tab.id === 'mypage' && user?.role === 'ADMIN' ? '/admin' : tab.path;
       router.push(path);
@@ -51,7 +62,12 @@ export function BottomTabBar() {
         <div className="max-w-screen-xl mx-auto">
           <div className="flex items-center justify-around h-16 px-2">
             {tabs.map((tab) => {
-              const isActive = tab.path ? pathname === tab.path : false;
+              const isActive =
+                tab.id === 'live'
+                  ? pathname.startsWith('/live')
+                  : tab.path
+                    ? pathname === tab.path
+                    : false;
               const Icon = tab.icon;
               const showBadge = tab.id === 'cart' && cartItemCount > 0;
 
