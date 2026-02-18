@@ -116,7 +116,7 @@ services:
       - "8443:1935"
       - "127.0.0.1:8080:8080"
     volumes:
-      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
 
 volumes:
   postgres_data:
