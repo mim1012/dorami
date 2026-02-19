@@ -184,8 +184,9 @@ export class StreamingService {
       },
     });
 
-    // Remove from Redis
-    await this.redisService.del(`stream:${streamId}`);
+    // Remove from Redis (use streamKey-based keys, consistent with goLive/handleStreamDone)
+    await this.redisService.del(`stream:${session.streamKey}:meta`);
+    await this.redisService.del(`stream:${session.streamKey}:viewers`);
 
     this.eventEmitter.emit('stream:ended', { streamId: session.id });
   }
