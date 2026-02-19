@@ -185,9 +185,11 @@ function streamReducer(state: StreamState, event: LiveEvent): StreamState {
     case 'STALL':
       return 'stalled';
     case 'MEDIA_ERROR':
-      // Never played yet → treat as no stream (SRS not started)
-      // Already playing → transient error, keep error state
-      if (state === 'unknown' || state === 'waiting_manifest') return 'no_stream';
+      // Broadcast not started yet (or already identified as no stream) → keep as no_stream.
+      // FLV→HLS fallback fires MEDIA_ERROR twice; the second time state is 'no_stream'.
+      // Already playing → transient error, keep error state.
+      if (state === 'unknown' || state === 'waiting_manifest' || state === 'no_stream')
+        return 'no_stream';
       return 'error';
     case 'STREAM_ENDED':
       return 'no_stream';

@@ -22,6 +22,8 @@ interface VideoPlayerProps {
   onViewerCountChange?: (count: number) => void;
   onStreamError?: (hasError: boolean) => void;
   onStreamStateChange?: (event: VideoStreamEvent) => void;
+  /** When true, suppresses the built-in ErrorOverlay (parent handles error display via FSM). */
+  hideErrorOverlay?: boolean;
 }
 
 export default function VideoPlayer({
@@ -30,6 +32,7 @@ export default function VideoPlayer({
   onViewerCountChange,
   onStreamError,
   onStreamStateChange,
+  hideErrorOverlay = false,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -429,7 +432,7 @@ export default function VideoPlayer({
       {!error && !streamEnded && <ViewerCount count={viewerCount} />}
 
       {isBuffering && <BufferingSpinner />}
-      {error && <ErrorOverlay message={error} />}
+      {error && !hideErrorOverlay && <ErrorOverlay message={error} />}
       {streamEnded && <StreamEndedOverlay />}
 
       {/* KPI debug overlay — dev only */}

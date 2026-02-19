@@ -368,6 +368,7 @@ export default function LiveStreamPage() {
             title={streamStatus.title}
             onViewerCountChange={handleViewerCountChange}
             onStreamError={setVideoError}
+            hideErrorOverlay
             onStreamStateChange={(e) => {
               if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
               else if (e.type === 'STALL') dispatch({ type: 'STALL' });
