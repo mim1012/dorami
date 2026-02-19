@@ -202,14 +202,11 @@ export default function LiveStreamPage() {
     };
     fetchFeatured();
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) return;
-
     const ws = io(
       process.env.NEXT_PUBLIC_WS_URL ||
         (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
       {
-        auth: { token },
+        withCredentials: true, // Use HttpOnly cookie for auth instead of localStorage token
       },
     );
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));

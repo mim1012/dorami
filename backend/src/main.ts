@@ -61,7 +61,7 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'", 'wss:', 'ws:'],
@@ -69,7 +69,7 @@ async function bootstrap() {
           objectSrc: ["'none'"],
           mediaSrc: ["'self'", 'https:'],
           frameSrc: ["'none'"],
-          upgradeInsecureRequests: null, // Disable for HTTP staging; enable when HTTPS is configured
+          upgradeInsecureRequests: isProduction ? [] : null,
         },
       },
       crossOriginEmbedderPolicy: false, // Required for loading external resources
@@ -310,6 +310,9 @@ async function bootstrap() {
 
       // Handle chat:join-room
       socket.on('chat:join-room', async (payload: { liveId: string }) => {
+        if (!rateLimitCheck(socket, 'chat:join-room', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `live:${payload.liveId}`;
         await socket.join(roomName);
 
@@ -354,6 +357,9 @@ async function bootstrap() {
 
       // Handle chat:leave-room
       socket.on('chat:leave-room', async (payload: { liveId: string }) => {
+        if (!rateLimitCheck(socket, 'chat:leave-room', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `live:${payload.liveId}`;
         await socket.leave(roomName);
 
@@ -535,6 +541,9 @@ async function bootstrap() {
 
       // Handle stream:viewer:join
       socket.on('stream:viewer:join', async (payload: { streamKey: string }) => {
+        if (!rateLimitCheck(socket, 'stream:viewer:join', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
 
@@ -570,6 +579,9 @@ async function bootstrap() {
 
       // Handle stream:viewer:leave
       socket.on('stream:viewer:leave', async (payload: { streamKey: string }) => {
+        if (!rateLimitCheck(socket, 'stream:viewer:leave', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
 
@@ -660,6 +672,9 @@ async function bootstrap() {
 
       // Handle join:stream
       socket.on('join:stream', async (data: { streamId: string }) => {
+        if (!rateLimitCheck(socket, 'join:stream', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `stream:${data.streamId}`;
         await socket.join(roomName);
 
@@ -674,6 +689,9 @@ async function bootstrap() {
 
       // Handle leave:stream
       socket.on('leave:stream', async (data: { streamId: string }) => {
+        if (!rateLimitCheck(socket, 'leave:stream', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `stream:${data.streamId}`;
         await socket.leave(roomName);
 

@@ -20,7 +20,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.events';
 import { PointsService } from '../points/points.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PointTransactionType, Order, OrderItem } from '@prisma/client';
+import { PointTransactionType, Order, OrderItem, Prisma } from '@prisma/client';
 
 // Type for Order with items
 interface OrderWithItems extends Order {
@@ -271,37 +271,47 @@ export class OrdersService {
       })),
     );
 
-    // Decrease stock (with pessimistic locking)
-    await this.inventoryService.batchDecreaseStock(
-      createOrderDto.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-      })),
-    );
-
-    // Generate unique order ID
+    // Generate unique order ID outside transaction (uses Redis, not transactional)
     const orderId = await this.generateOrderId();
 
-    const order = await this.prisma.order.create({
-      data: {
-        id: orderId, // Generate ORD-YYYYMMDD-XXXXX format
-        userId,
-        userEmail: user.email,
-        depositorName: user.depositorName || user.name,
-        instagramId: user.instagramId || '',
-        shippingAddress: user.shippingAddress || {},
-        status: 'PENDING_PAYMENT',
-        subtotal: new Decimal(totals.subtotal),
-        shippingFee: new Decimal(totals.totalShippingFee),
-        total: new Decimal(totals.total),
-        orderItems: {
-          create: orderItemsData,
-        },
+    // Atomically decrease stock + create order to prevent partial failure
+    // (stock decremented but order not created, or vice versa)
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        await this.inventoryService.batchDecreaseStockTx(
+          tx,
+          createOrderDto.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        );
+
+        return tx.order.create({
+          data: {
+            id: orderId,
+            userId,
+            userEmail: user.email,
+            depositorName: user.depositorName || user.name,
+            instagramId: user.instagramId || '',
+            shippingAddress: user.shippingAddress || {},
+            status: 'PENDING_PAYMENT',
+            subtotal: new Decimal(totals.subtotal),
+            shippingFee: new Decimal(totals.totalShippingFee),
+            total: new Decimal(totals.total),
+            orderItems: {
+              create: orderItemsData,
+            },
+          },
+          include: {
+            orderItems: true,
+          },
+        });
       },
-      include: {
-        orderItems: true,
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 8000,
       },
-    });
+    );
 
     // Set expiration timer in Redis (handled by cron job)
     const expirationSeconds = this.orderExpirationMinutes * 60;
