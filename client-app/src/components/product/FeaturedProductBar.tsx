@@ -50,9 +50,13 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!token) return;
 
-    const ws = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001', {
-      auth: { token },
-    });
+    const ws = io(
+      process.env.NEXT_PUBLIC_WS_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
+      {
+        auth: { token },
+      },
+    );
 
     ws.on('connect', () => {
       ws.emit('join:stream', { streamId: streamKey });

@@ -60,7 +60,7 @@ export default function LiveStreamPage() {
   const { showToast } = useToast();
 
   // ── FSM ────────────────────────────────────────────────────────────────────
-  const { snapshot, dispatch } = useLiveLayoutMachine();
+  const { snapshot, stream, dispatch } = useLiveLayoutMachine();
   const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
 
   // Shared chat connection — used by both mobile and desktop chat UI
@@ -205,9 +205,13 @@ export default function LiveStreamPage() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!token) return;
 
-    const ws = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001', {
-      auth: { token },
-    });
+    const ws = io(
+      process.env.NEXT_PUBLIC_WS_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
+      {
+        auth: { token },
+      },
+    );
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
@@ -396,7 +400,8 @@ export default function LiveStreamPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING' ? (
+                {(snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING') &&
+                stream !== 'error' ? (
                   <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />

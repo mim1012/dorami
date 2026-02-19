@@ -8,7 +8,9 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // WebSocket connection - connect to /chat namespace
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const socket = io(`${baseUrl}/chat`, {
       transports: ['websocket'],
