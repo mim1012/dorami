@@ -15,9 +15,15 @@ interface VideoPlayerProps {
   streamKey: string;
   title: string;
   onViewerCountChange?: (count: number) => void;
+  onStreamError?: (hasError: boolean) => void;
 }
 
-export default function VideoPlayer({ streamKey, title, onViewerCountChange }: VideoPlayerProps) {
+export default function VideoPlayer({
+  streamKey,
+  title,
+  onViewerCountChange,
+  onStreamError,
+}: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const mpegtsPlayerRef = useRef<any>(null);
@@ -52,6 +58,10 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
   });
 
   const orientation = useOrientation();
+
+  useEffect(() => {
+    onStreamError?.(!!error);
+  }, [error, onStreamError]);
 
   // Stream URLs
   const flvUrl = `/live/live/${streamKey}.flv`;
@@ -439,19 +449,21 @@ export default function VideoPlayer({ streamKey, title, onViewerCountChange }: V
         aria-label="Live stream video player"
       />
 
-      <LiveBadge />
-      <ViewerCount count={viewerCount} />
+      {!error && !streamEnded && <LiveBadge />}
+      {!error && !streamEnded && <ViewerCount count={viewerCount} />}
 
-      <PlayerControls
-        isPlaying={isPlaying}
-        volume={volume}
-        isMuted={isMuted}
-        latency={latency}
-        onPlayPause={handlePlayPause}
-        onVolumeChange={handleVolumeChange}
-        onMuteToggle={handleMuteToggle}
-        onFullscreen={handleFullscreen}
-      />
+      {!error && !streamEnded && (
+        <PlayerControls
+          isPlaying={isPlaying}
+          volume={volume}
+          isMuted={isMuted}
+          latency={latency}
+          onPlayPause={handlePlayPause}
+          onVolumeChange={handleVolumeChange}
+          onMuteToggle={handleMuteToggle}
+          onFullscreen={handleFullscreen}
+        />
+      )}
 
       {isBuffering && <BufferingSpinner />}
       {error && <ErrorOverlay message={error} />}
