@@ -23,7 +23,7 @@ npm run dev:all              # Start backend + frontend concurrently
 npm run dev:backend          # NestJS watch mode only
 npm run dev:client           # Next.js dev server only
 
-# Infrastructure (PostgreSQL 16, Redis 7, Nginx RTMP)
+# Infrastructure (PostgreSQL 16, Redis 7, SRS v6)
 npm run docker:up            # docker-compose up -d
 npm run docker:down
 
@@ -81,9 +81,21 @@ npm run build:shared         # Build shared-types package only
 
 **Error handling:** `BusinessException` with named error codes (`business.exception.ts`). Predefined subclasses: `InsufficientStockException`, `CartExpiredException`, `OrderNotFoundException`, etc.
 
-**Real-time:** Socket.IO with optional Redis adapter for horizontal scaling. Used for chat, cart updates, notifications.
-
 **Key modules:** `auth`, `users`, `products`, `streaming`, `cart` (10-min expiration timer), `orders`, `reservation` (waiting list → promoted to cart), `chat` (WebSocket), `notifications` (Web Push VAPID), `points`, `settlement`, `restream` (FFmpeg multi-target), `admin` (audit logs)
+
+### WebSocket Architecture (Non-standard)
+
+Socket.IO is **manually bootstrapped in `main.ts`**, not via NestJS's standard gateway DI wiring. A single `Server` instance is created, attached with the Redis adapter, and then three namespaces are configured inline:
+
+- `/` — general stream room join/leave; also exposes `broadcastProduct*` methods on the `io` object for use by services
+- `/chat` — chat with Redis-backed history (`chat:{liveId}:history`, max 100 msgs, 24h TTL); rate-limited at 20 msgs/10s
+- `/streaming` — viewer count tracking via Redis counters (`stream:{streamKey}:viewers`)
+
+NestJS Gateways (e.g. `StreamingGateway`) still exist as classes with `@SubscribeMessage` handlers, but the actual connection lifecycle (`handleConnection`, `handleDisconnect`) runs from `main.ts`. The `CustomIoAdapter` bridges the pre-created server to NestJS's gateway system.
+
+**`stream:ended` event flow:** `StreamingController` → NestJS `EventEmitter2` (`stream:ended`) → `StreamingGateway.handleStreamEnded()` → broadcasts `stream:ended` to WebSocket room.
+
+All socket connections require JWT authentication via `authenticateSocket()` middleware.
 
 ### Frontend (Next.js App Router)
 
@@ -93,25 +105,69 @@ npm run build:shared         # Build shared-types package only
 - Server state: TanStack Query v5 (`lib/hooks/queries/`)
 - Real-time: Socket.IO client
 
-**API client** (`lib/api/client.ts`): Custom fetch wrapper with automatic CSRF token injection, 401 → token refresh → retry, response unwrapping from `{data}` envelope. All API functions in `lib/api/`.
+**API client** (`lib/api/client.ts`): Custom fetch wrapper with automatic CSRF token injection, 401 → token refresh (coalesced) → retry, response unwrapping from `{data}` envelope. All API functions in `lib/api/`. `ApiError` carries `statusCode`, `errorCode`, and `details`.
 
 **Proxy:** Next.js rewrites `/api/:path*` → `BACKEND_URL` (default `http://127.0.0.1:3001`). Frontend calls `/api/...` which proxies to backend.
+
+**Key custom hooks** (`client-app/src/hooks/`):
+
+- `useChatConnection` — manages `/chat` Socket.IO namespace, exposes `sendMessage`, `deleteMessage`
+- `useChatMessages` — accumulates messages from `chat:message` events
+- `useCartActivity` — listens for cart add events, shown as system messages in chat overlay
+- `useProductStock` — real-time stock updates via WebSocket
+- `useNotifications` — Web Push subscription management
+
+**Live page** (`app/live/[streamKey]/page.tsx`): Three-column desktop layout (product list | video | chat); single-column mobile with overlay chat + featured product inline card. `VideoPlayer` accepts `onStreamError` callback to toggle the LIVE badge and controls when the HLS/FLV stream has an error.
 
 **Playwright E2E:** Two projects — `user` (ignores `admin-*.spec.ts`) and `admin` (matches `admin-*.spec.ts`). Global setup pre-authenticates via dev login. Auth state stored in `e2e/.auth/`.
 
 ### Shared Types (`packages/shared-types`)
 
-TypeScript-only package exporting enums (`Role`, `UserStatus`, `StreamStatus`, `OrderStatus`, `PaymentMethod`, etc.) and event interfaces. Built with `tsc`, consumed by both backend and frontend.
+TypeScript-only package exporting enums and event interfaces. Built with `tsc`, consumed by both backend and frontend.
+
+Key enum values to be aware of:
+
+- `ProductStatus`: `AVAILABLE` | `SOLD_OUT` (not `ON_SALE`)
+- `StreamStatus`: `PENDING` | `LIVE` | `OFFLINE`
+- `OrderStatus`: `PENDING_PAYMENT` | `PAYMENT_CONFIRMED` | `SHIPPED` | `DELIVERED` | `CANCELLED`
 
 ### Database (Prisma + PostgreSQL)
 
 Schema at `backend/prisma/schema.prisma`. Key models: `User`, `LiveStream`, `Product`, `Cart` (TTL-based), `Order`/`OrderItem`, `Reservation`, `PointBalance`/`PointTransaction`, `Settlement`, `ReStreamTarget`, `NotificationSubscription`, `AuditLog`, `SystemConfig`.
 
-Order IDs use `ORD-YYYYMMDD-XXXXX` format (not UUID). Shipping addresses are encrypted (AES-256-GCM).
+Order IDs use `ORD-YYYYMMDD-XXXXX` format (not UUID). Shipping addresses are encrypted (AES-256-GCM via `EncryptionService`).
+
+### Streaming Infrastructure
+
+Local dev uses **SRS (Simple Realtime Server) v6** — replaces the earlier Nginx RTMP setup. Config at `infrastructure/docker/srs/srs.conf`.
+
+| Port | Protocol | Purpose                 |
+| ---- | -------- | ----------------------- |
+| 1935 | RTMP     | OBS/encoder ingest      |
+| 8080 | HTTP     | HTTP-FLV + HLS playback |
+
+**Nginx proxy paths (staging):**
+
+- HTTP-FLV: `/live/live/{streamKey}.flv` → `srs:8080/live/live/` (low-latency primary)
+- HLS: `/hls/{streamKey}.m3u8` → `srs:8080/live/` (Safari/iOS fallback)
+
+SRS fires webhook callbacks to the backend to update `LiveStream.status` in the database.
+
+**Important:** The `/live/live/` nginx location is intentionally specific to avoid conflicting with the Next.js `/live` page route.
 
 ### Docker Compose (Local Dev)
 
-`docker-compose.yml` runs PostgreSQL 16 (5432), Redis 7 (6379), Nginx RTMP (1935 RTMP, 8080 HLS).
+`docker-compose.yml` runs PostgreSQL 16 (5432), Redis 7 (6379), SRS v6 (1935 RTMP, 8080 HTTP).
+
+**Required environment variables** (backend fails to start without these):
+
+- `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`
+
+**Optional:**
+
+- `CSRF_ENABLED=false` — disables CSRF guard (useful for API testing)
+- `CORS_ORIGINS` — comma-separated allowed origins (default: `http://localhost:3000`)
+- `PORT` — backend HTTP port (default: 3001)
 
 ## Pre-commit Hooks
 

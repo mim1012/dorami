@@ -222,6 +222,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         id: randomUUID(),
         liveId: payload.liveId,
         userId: client.user.userId,
+        username: client.user.name,
         message: sanitizedMessage,
         timestamp: new Date().toISOString(),
       },

@@ -6,16 +6,22 @@ import { io, Socket } from 'socket.io-client';
 import { useOrientation } from '@/hooks/useOrientation';
 import LiveBadge from './LiveBadge';
 import ViewerCount from './ViewerCount';
-import PlayerControls from './PlayerControls';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
 import StreamEndedOverlay from './StreamEndedOverlay';
+
+export type VideoStreamEvent =
+  | { type: 'PLAY_OK' }
+  | { type: 'STALL' }
+  | { type: 'MEDIA_ERROR' }
+  | { type: 'STREAM_ENDED' };
 
 interface VideoPlayerProps {
   streamKey: string;
   title: string;
   onViewerCountChange?: (count: number) => void;
   onStreamError?: (hasError: boolean) => void;
+  onStreamStateChange?: (event: VideoStreamEvent) => void;
 }
 
 export default function VideoPlayer({
@@ -23,6 +29,7 @@ export default function VideoPlayer({
   title,
   onViewerCountChange,
   onStreamError,
+  onStreamStateChange,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -32,8 +39,6 @@ export default function VideoPlayer({
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0); // Start muted for autoplay
-  const [isMuted, setIsMuted] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamEnded, setStreamEnded] = useState(false);
@@ -58,6 +63,12 @@ export default function VideoPlayer({
   });
 
   const orientation = useOrientation();
+
+  // Use a ref so closures in useCallback/event handlers always see the latest callback
+  const onStreamStateChangeRef = useRef(onStreamStateChange);
+  useEffect(() => {
+    onStreamStateChangeRef.current = onStreamStateChange;
+  }, [onStreamStateChange]);
 
   useEffect(() => {
     onStreamError?.(!!error);
@@ -148,6 +159,7 @@ export default function VideoPlayer({
               hls.destroy();
               break;
           }
+          onStreamStateChangeRef.current?.({ type: 'MEDIA_ERROR' });
         }
       });
 
@@ -217,6 +229,7 @@ export default function VideoPlayer({
         player.destroy();
         mpegtsPlayerRef.current = null;
         setError(null);
+        onStreamStateChangeRef.current?.({ type: 'MEDIA_ERROR' });
         initializeHlsPlayer();
       });
 
@@ -280,6 +293,7 @@ export default function VideoPlayer({
         m.rebufferCount++;
         m.stallStartTime = performance.now();
       }
+      onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
     const onPlaying = () => {
       setIsBuffering(false);
@@ -295,16 +309,24 @@ export default function VideoPlayer({
         m.stallStartTime = 0;
       }
       syncKpi();
+      onStreamStateChangeRef.current?.({ type: 'PLAY_OK' });
     };
     const onStalled = () => {
       const m = metricsRef.current;
       if (m.firstFrameTime > 0 && m.stallStartTime === 0) {
         m.stallStartTime = performance.now();
       }
+      onStreamStateChangeRef.current?.({ type: 'STALL' });
+    };
+    const onRateChange = () => {
+      if (video.playbackRate !== 1) {
+        video.playbackRate = 1;
+      }
     };
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
     video.addEventListener('stalled', onStalled);
+    video.addEventListener('ratechange', onRateChange);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
     initializeFlvPlayer();
@@ -314,6 +336,7 @@ export default function VideoPlayer({
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
+      video.removeEventListener('ratechange', onRateChange);
       cleanupPlayer();
       disconnectWebSocket();
     };
@@ -371,6 +394,8 @@ export default function VideoPlayer({
     socket.on('stream:ended', (data: { streamKey: string }) => {
       if (data.streamKey === streamKey) {
         setStreamEnded(true);
+        onStreamError?.(true);
+        onStreamStateChangeRef.current?.({ type: 'STREAM_ENDED' });
         if (videoRef.current) {
           videoRef.current.pause();
         }
@@ -388,82 +413,18 @@ export default function VideoPlayer({
     }
   };
 
-  const handlePlayPause = () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      videoRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const handleVolumeChange = (newVolume: number) => {
-    if (!videoRef.current) return;
-
-    videoRef.current.volume = newVolume / 100;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-  };
-
-  const handleMuteToggle = () => {
-    if (!videoRef.current) return;
-
-    if (isMuted) {
-      videoRef.current.volume = 0.5;
-      setVolume(50);
-      setIsMuted(false);
-    } else {
-      videoRef.current.volume = 0;
-      setVolume(0);
-      setIsMuted(true);
-    }
-  };
-
-  const handleFullscreen = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (!document.fullscreenElement) {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (
-        (video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen
-      ) {
-        (video as HTMLVideoElement & { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
-      }
-    } else {
-      document.exitFullscreen();
-    }
-  };
-
   return (
     <div className="relative w-full h-full bg-black">
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
         playsInline
-        muted={isMuted}
+        muted
         aria-label="Live stream video player"
       />
 
       {!error && !streamEnded && <LiveBadge />}
       {!error && !streamEnded && <ViewerCount count={viewerCount} />}
-
-      {!error && !streamEnded && (
-        <PlayerControls
-          isPlaying={isPlaying}
-          volume={volume}
-          isMuted={isMuted}
-          latency={latency}
-          onPlayPause={handlePlayPause}
-          onVolumeChange={handleVolumeChange}
-          onMuteToggle={handleMuteToggle}
-          onFullscreen={handleFullscreen}
-        />
-      )}
 
       {isBuffering && <BufferingSpinner />}
       {error && <ErrorOverlay message={error} />}

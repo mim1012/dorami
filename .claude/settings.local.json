@@ -120,7 +120,12 @@
       "Bash(gh workflow list:*)",
       "Bash(gh variable list:*)",
       "Bash(gh run cancel:*)",
-      "Bash(__NEW_LINE_c32ad0f805d3d6eb__ gh workflow run \"Staging Maintenance\" --repo mim1012/dorami --field command=\"curl -s http://localhost:3001/api/v1/streaming/active\")"
+      "Bash(__NEW_LINE_c32ad0f805d3d6eb__ gh workflow run \"Staging Maintenance\" --repo mim1012/dorami --field command=\"curl -s http://localhost:3001/api/v1/streaming/active\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__plugin_oh-my-claudecode_t__notepad_read",
+      "mcp__plugin_oh-my-claudecode_t__project_memory_read",
+      "mcp__plugin_oh-my-claudecode_t__state_read",
+      "mcp__plugin_oh-my-claudecode_t__state_clear"
     ]
   },
   "teammateMode": "tmux"

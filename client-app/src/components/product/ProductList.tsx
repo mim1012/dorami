@@ -41,7 +41,7 @@ export default function ProductList({
     ws.on('connect', () => {
       console.log('[Products] WebSocket connected');
       // Join stream room to receive product updates
-      ws.emit('stream:join', { streamKey });
+      ws.emit('join:stream', { streamId: streamKey });
     });
 
     ws.on('disconnect', () => {
@@ -81,7 +81,7 @@ export default function ProductList({
 
     return () => {
       if (ws) {
-        ws.emit('stream:leave', { streamKey });
+        ws.emit('leave:stream', { streamId: streamKey });
         ws.disconnect();
       }
     };

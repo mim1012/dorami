@@ -57,6 +57,12 @@
   --warning-bg: #FFF7ED;
   --info-bg: #EFF6FF;
 
+  /* Live page layout tokens */
+  --live-bottom-bar-h: 60px;
+  --live-product-bar-h: 76px;
+  --live-top-bar-h: 60px;
+  --live-gap: 12px;
+
   /* Bottom Nav */
   --bottom-nav-height: 80px;
 
