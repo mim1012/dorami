@@ -178,6 +178,9 @@ function streamReducer(state: StreamState, event: LiveEvent): StreamState {
     case 'STALL':
       return 'stalled';
     case 'MEDIA_ERROR':
+      // Never played yet → treat as no stream (SRS not started)
+      // Already playing → transient error, keep error state
+      if (state === 'unknown' || state === 'waiting_manifest') return 'no_stream';
       return 'error';
     case 'STREAM_ENDED':
       return 'no_stream';
