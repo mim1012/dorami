@@ -54,6 +54,7 @@ export default function LiveStreamPage() {
   const { activities: cartActivities } = useCartActivity(streamKey);
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const { showToast } = useToast();
 
   // Shared chat connection — used by both mobile and desktop chat UI
@@ -312,6 +313,7 @@ export default function LiveStreamPage() {
             streamKey={streamKey}
             title={streamStatus.title}
             onViewerCountChange={handleViewerCountChange}
+            onStreamError={setVideoError}
           />
 
           {/* ═══════════ MOBILE TOP BAR ═══════════ */}
@@ -326,13 +328,15 @@ export default function LiveStreamPage() {
 
             {/* Live timer + Viewer count */}
             <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                </span>
-                <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
-              </div>
+              {!videoError && (
+                <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
                 <Eye className="w-3.5 h-3.5 text-white/70" />
                 <span className="text-white text-[11px] font-bold">
@@ -366,15 +370,22 @@ export default function LiveStreamPage() {
             {/* LIVE badge + Viewer count */}
             <div className="flex items-center gap-2">
               {/* LIVE badge with glow */}
-              <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                </span>
-                <span className="text-white text-xs font-black tracking-wider">
-                  LIVE<span className="sr-only"> 현재 생방송 중</span>
-                </span>
-              </div>
+              {videoError ? (
+                <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/10">
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white/40 animate-pulse" />
+                  <span className="text-white/60 text-xs font-bold">연결 중...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+                  <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                  </span>
+                  <span className="text-white text-xs font-black tracking-wider">
+                    LIVE<span className="sr-only"> 현재 생방송 중</span>
+                  </span>
+                </div>
+              )}
 
               {/* Viewer count with pulse on increase */}
               <div
