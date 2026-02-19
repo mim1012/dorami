@@ -441,7 +441,8 @@ export default function LiveStreamPage() {
           {/* ═══════════ MOBILE BOTTOM SECTION ═══════════ */}
           <div className="absolute bottom-0 left-0 right-0 z-20 lg:hidden flex flex-col pointer-events-none">
             {/* Chat messages overlay */}
-            <div className="h-[28vh] mb-1">
+            <div className="h-[28vh] mb-1 relative">
+              <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
               <ChatMessageList messages={allMessages} compact maxMessages={30} />
             </div>
 
@@ -507,24 +508,24 @@ export default function LiveStreamPage() {
               />
             </div>
           </div>
-
-          {/* Chat — Desktop Only (right side panel, shared connection) */}
-          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col z-20">
-            <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
-            <ChatMessageList
-              messages={allMessages}
-              compact={false}
-              isAdmin={isAdmin}
-              onDeleteMessage={chatDeleteMessage}
-            />
-            <ChatInput
-              ref={desktopInputRef}
-              onSendMessage={handleDesktopSendMessage}
-              disabled={!isConnected}
-              compact={false}
-            />
-          </div>
         </div>
+      </div>
+
+      {/* Right: Chat Panel — Desktop Only */}
+      <div className="hidden lg:flex w-[320px] h-full flex-col bg-[#0A0A0A] border-l border-white/5">
+        <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
+        <ChatMessageList
+          messages={allMessages}
+          compact={false}
+          isAdmin={isAdmin}
+          onDeleteMessage={chatDeleteMessage}
+        />
+        <ChatInput
+          ref={desktopInputRef}
+          onSendMessage={handleDesktopSendMessage}
+          disabled={!isConnected}
+          compact={false}
+        />
       </div>
 
       {/* Bottom: Featured Product Bar — Desktop Only */}
