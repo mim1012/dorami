@@ -3,7 +3,10 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
+import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
@@ -55,6 +58,10 @@ export default function LiveStreamPage() {
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const { showToast } = useToast();
+
+  // ── FSM ────────────────────────────────────────────────────────────────────
+  const { snapshot, dispatch } = useLiveLayoutMachine();
+  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
 
   // Shared chat connection — used by both mobile and desktop chat UI
   const {
@@ -150,6 +157,65 @@ export default function LiveStreamPage() {
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [streamStatus?.startedAt]);
+
+  // ── Socket → FSM dispatch ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+    const handleConnect = () => dispatch({ type: 'CONNECT_OK' });
+    const handleDisconnect = () => dispatch({ type: 'CONNECT_FAIL' });
+    const handleReconnectAttempt = () => dispatch({ type: 'CONNECT_START' });
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.io.on('reconnect_attempt', handleReconnectAttempt);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.io.off('reconnect_attempt', handleReconnectAttempt);
+    };
+  }, [socket, dispatch]);
+
+  // ── Keyboard detection via visualViewport ──────────────────────────────────
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const ratio = vv.height / window.screen.height;
+      dispatch(ratio < 0.75 ? { type: 'OPEN_KEYBOARD' } : { type: 'CLOSE_KEYBOARD' });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, [dispatch]);
+
+  // ── Featured product fetch + real-time WS (mobile) ─────────────────────────
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const response = await apiClient.get<{ product: FeaturedProduct | null }>(
+          `/streaming/key/${streamKey}/featured-product`,
+        );
+        setFeaturedProduct(response.data.product);
+      } catch {
+        // non-critical — leave featuredProduct as null
+      }
+    };
+    fetchFeatured();
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return;
+
+    const ws = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001', {
+      auth: { token },
+    });
+    ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
+    ws.on('stream:featured-product:updated', (data: any) => {
+      if (data.streamKey === streamKey) setFeaturedProduct(data.product);
+    });
+    return () => {
+      ws.disconnect();
+    };
+  }, [streamKey]);
 
   const fetchStreamStatus = async () => {
     try {
@@ -274,6 +340,8 @@ export default function LiveStreamPage() {
     }
   };
 
+  const layout = computeLayout(snapshot, !!featuredProduct);
+
   return (
     <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
       {/* ── Left: Product List — Desktop only ── */}
@@ -287,76 +355,187 @@ export default function LiveStreamPage() {
         <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
       </aside>
 
-      {/* ── MOBILE: independent vertical layout ── */}
-      <div className="flex lg:hidden flex-col w-full h-full overflow-hidden">
-        {/* 1. Top bar */}
-        <div className="shrink-0 px-3 py-2 flex items-center justify-between bg-black/80">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg">
-              <span className="text-white text-xs font-black">D</span>
-            </div>
-            <span className="text-white font-bold text-sm">도라미LIVE</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {!videoError && (
-              <div className="flex items-center gap-1.5 bg-black/50 px-2.5 py-1.5 rounded-full border border-white/10">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                </span>
-                <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1 bg-black/50 px-2.5 py-1.5 rounded-full border border-white/10">
-              <Eye className="w-3.5 h-3.5 text-white/70" />
-              <span className="text-white text-[11px] font-bold">
-                {viewerCount.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Notice banner (conditional, static) */}
-        {notice?.text && (
-          <div className="shrink-0 mx-3 mb-1 bg-amber-500/20 border border-amber-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
-            <p className="text-amber-200 text-xs line-clamp-1 font-medium">{notice.text}</p>
-          </div>
-        )}
-
-        {/* 3. Video (16:9 aspect ratio) */}
-        <div className="shrink-0 w-full aspect-video relative bg-black">
+      {/* ── MOBILE: FSM-driven overlay layout ── */}
+      <div className="flex lg:hidden relative w-full h-full overflow-hidden bg-black">
+        {/* video — z-0 */}
+        <div className="absolute inset-0 z-0">
           <VideoPlayer
             streamKey={streamKey}
             title={streamStatus.title}
             onViewerCountChange={handleViewerCountChange}
             onStreamError={setVideoError}
+            onStreamStateChange={(e) => {
+              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
+              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
+              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
+              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
+            }}
           />
         </div>
 
-        {/* 4. Chat area (flex-1, scrollable) */}
-        <div className="flex-1 overflow-hidden min-h-0">
-          <ChatMessageList messages={allMessages} compact maxMessages={50} />
-        </div>
+        {/* top-bar — z-20 */}
+        {layout.topBar.visible && (
+          <div
+            className={`absolute top-0 inset-x-0 z-20 bg-black/40 backdrop-blur-sm px-3 transition-opacity ${
+              layout.topBar.dim ? 'opacity-40' : 'opacity-100'
+            }`}
+            style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+          >
+            <div className="flex items-center justify-between pb-4">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <span className="text-white text-xs font-black">D</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight line-clamp-1">
+                    {streamStatus.title}
+                  </p>
+                  {(snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING') && (
+                    <p className="text-white/60 text-[10px] font-mono">{elapsedTime}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING' ? (
+                  <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                    </span>
+                    <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10">
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white/40 animate-pulse" />
+                    <span className="text-white/60 text-[10px] font-bold">연결 중...</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10">
+                  <Eye className="w-3 h-3 text-white/70" />
+                  <span className="text-white text-[10px] font-bold">
+                    {viewerCount.toLocaleString()}
+                  </span>
+                </div>
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"
+                  aria-label="닫기"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* 5. Product list (horizontal scroll) */}
-        <div className="shrink-0 border-t border-white/10">
-          <ProductList
-            streamKey={streamKey}
-            onProductClick={handleProductClick}
-            layout="horizontal"
-          />
-        </div>
+        {/* notice — z-15 */}
+        {layout.notice.visible && notice?.text && (
+          <div className="absolute inset-x-3 z-[15]" style={{ top: 'var(--live-top-bar-h)' }}>
+            <div className="bg-[rgba(255,120,120,0.9)] rounded-full px-3 py-1.5 flex items-center gap-2">
+              <Zap className="w-3 h-3 text-white flex-shrink-0" />
+              <p className="text-white text-[11px] font-medium line-clamp-1">{notice.text}</p>
+            </div>
+          </div>
+        )}
 
-        {/* 6. Chat input */}
-        <div className="shrink-0">
-          <ChatInput
-            ref={mobileInputRef}
-            onSendMessage={handleMobileSendMessage}
-            disabled={!isConnected}
-            compact
-          />
-        </div>
+        {/* chat — z-10 */}
+        {layout.chat.visible && (
+          <div
+            className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto"
+            style={{ bottom: layout.chat.bottom }}
+          >
+            <ChatMessageList messages={allMessages} compact maxMessages={50} />
+          </div>
+        )}
+
+        {/* product-card — z-25 */}
+        {layout.productCard.visible && featuredProduct && (
+          <div
+            className="absolute inset-x-3 z-[25] bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer"
+            style={{ bottom: 'calc(var(--live-bottom-bar-h) + env(safe-area-inset-bottom, 0px))' }}
+            onClick={() => handleProductClick(featuredProduct)}
+          >
+            {featuredProduct.imageUrl && (
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                <Image
+                  src={featuredProduct.imageUrl}
+                  alt={featuredProduct.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-900 font-semibold text-sm truncate">{featuredProduct.name}</p>
+              <div className="flex items-center gap-1.5">
+                {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
+                  <>
+                    <span className="text-xs text-gray-400 line-through">
+                      ₩{(featuredProduct.originalPrice ?? featuredProduct.price).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-red-500 font-bold">
+                      {featuredProduct.discountRate}%
+                    </span>
+                  </>
+                ) : null}
+                <span className="text-sm font-bold text-[#FF007A]">
+                  ₩{featuredProduct.price.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <button
+              className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
+              disabled={featuredProduct.status === 'SOLD_OUT'}
+            >
+              구매하기
+            </button>
+          </div>
+        )}
+
+        {/* center overlay — z-15 */}
+        {layout.centerOverlay.visible && (
+          <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
+            <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
+              {layout.centerOverlay.message}
+            </p>
+            {snapshot === 'ENDED' && (
+              <button
+                onClick={() => router.push('/')}
+                className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
+              >
+                홈으로
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* bottom-input — z-30, fixed */}
+        {layout.bottomInput.visible && (
+          <div
+            className="fixed inset-x-0 bottom-0 z-[30] flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+            style={{
+              height: 'var(--live-bottom-bar-h)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
+          >
+            <ChatInput
+              compact
+              disabled={layout.bottomInput.disabled || !isConnected}
+              onSendMessage={handleMobileSendMessage}
+              ref={mobileInputRef}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Center: Video + overlays — Desktop only ── */}

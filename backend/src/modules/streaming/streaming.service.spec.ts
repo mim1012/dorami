@@ -470,4 +470,74 @@ describe('StreamingService', () => {
       expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
     });
   });
+
+  // ── getFeaturedProduct smoke tests (FSM data integrity) ───────────────────────
+  describe('getFeaturedProduct', () => {
+    const mockProduct = {
+      id: 'prod-1',
+      name: '테스트 상품',
+      price: { toNumber: () => 29900 },
+      imageUrl: 'https://example.com/img.jpg',
+      quantity: 10,
+      colorOptions: ['빨강', '파랑'],
+      sizeOptions: ['S', 'M', 'L'],
+      status: 'AVAILABLE',
+      streamKey: 'abc123',
+    };
+
+    it('should return null when no featured product in Redis', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue(null);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).toBeNull();
+      expect(redisService.get).toHaveBeenCalledWith('stream:abc123:featured-product');
+      expect(prismaService.product.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should return shaped product when Redis has valid product id', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-1');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('prod-1');
+      expect(result.name).toBe('테스트 상품');
+      expect(result.price).toBe(29900);
+      expect(result.stock).toBe(10);
+      expect(result.status).toBe('AVAILABLE');
+      expect(result.colorOptions).toEqual(['빨강', '파랑']);
+    });
+
+    it('should clean up stale Redis entry and return null when product deleted from DB', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-deleted');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).toBeNull();
+      // stale Redis key must be cleaned up — data integrity
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:featured-product');
+    });
+
+    it('should use correct Redis key format: stream:{streamKey}:featured-product', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue(null);
+
+      await service.getFeaturedProduct('my-stream-key');
+
+      expect(redisService.get).toHaveBeenCalledWith('stream:my-stream-key:featured-product');
+    });
+
+    it('should return numeric price (not Decimal object) for FSM card rendering', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-1');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(typeof result.price).toBe('number');
+      expect(result.price).toBe(29900);
+    });
+  });
 });

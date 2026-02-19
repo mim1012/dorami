@@ -54,6 +54,10 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
       auth: { token },
     });
 
+    ws.on('connect', () => {
+      ws.emit('join:stream', { streamId: streamKey });
+    });
+
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) {
         setProduct(data.product);
