@@ -235,7 +235,8 @@ describe('StreamingService', () => {
           endedAt: expect.any(Date),
         },
       });
-      expect(redisService.del).toHaveBeenCalledWith('stream:stream-2');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
       expect(eventEmitter.emit).toHaveBeenCalledWith('stream:ended', { streamId: 'stream-2' });
     });
 
