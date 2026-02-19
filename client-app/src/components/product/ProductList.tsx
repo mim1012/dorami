@@ -10,9 +10,14 @@ import { ProductStatus } from '@/lib/types';
 interface ProductListProps {
   streamKey: string;
   onProductClick?: (product: Product) => void;
+  layout?: 'vertical' | 'horizontal';
 }
 
-export default function ProductList({ streamKey, onProductClick }: ProductListProps) {
+export default function ProductList({
+  streamKey,
+  onProductClick,
+  layout = 'vertical',
+}: ProductListProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -97,6 +102,19 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
   };
 
   if (loading) {
+    if (layout === 'horizontal') {
+      return (
+        <div className="flex flex-row overflow-x-auto gap-3 px-3 py-2 scrollbar-none">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="w-[120px] shrink-0 animate-pulse">
+              <div className="w-full aspect-square rounded-lg bg-white/10 mb-2" />
+              <div className="h-3 bg-white/10 rounded mb-1" />
+              <div className="h-3 bg-white/10 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      );
+    }
     return (
       <div className="p-4">
         <div className="animate-pulse space-y-4">
@@ -104,6 +122,43 @@ export default function ProductList({ streamKey, onProductClick }: ProductListPr
             <div key={i} className="bg-content-bg rounded-card h-32" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (layout === 'horizontal') {
+    return (
+      <div className="flex flex-row overflow-x-auto gap-3 px-3 py-2 scrollbar-none">
+        {products.length === 0 ? (
+          <p className="text-white/40 text-xs py-2">등록된 상품이 없습니다</p>
+        ) : (
+          products.map((product) => (
+            <div
+              key={product.id}
+              className={`w-[120px] shrink-0 cursor-pointer ${product.status === 'SOLD_OUT' ? 'opacity-60' : ''}`}
+              onClick={() => product.status === 'AVAILABLE' && onProductClick?.(product)}
+            >
+              <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white/10 mb-1.5">
+                {product.imageUrl ? (
+                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-white/30 text-xs">No Image</span>
+                  </div>
+                )}
+                {product.status === 'SOLD_OUT' && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                    <span className="text-white font-bold text-xs">품절</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-white text-[11px] font-medium truncate">{product.name}</p>
+              <p className="text-[#FF007A] text-[11px] font-bold">
+                ₩{product.price.toLocaleString()}
+              </p>
+            </div>
+          ))
+        )}
       </div>
     );
   }
