@@ -54,7 +54,9 @@ export const useStockStore = create<StockState>((set) => ({
 }));
 
 // ── WebSocket hook for real-time stock updates ──
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
 /**
  * useProductStock
