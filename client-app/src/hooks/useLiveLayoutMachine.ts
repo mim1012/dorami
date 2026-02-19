@@ -76,7 +76,14 @@ export function deriveSnapshot(
   uiMode: UIModeState,
 ): LiveSnapshot {
   if (connection === 'ended') return 'ENDED';
-  if (connection === 'offline' || connection === 'retrying') return 'RETRYING';
+  // Only show RETRYING when stream was actively playing — not when waiting for broadcast to start.
+  // If stream is unknown/waiting_manifest/no_stream, the broadcast hasn't started yet,
+  // so a chat socket retry should not mask the "waiting for stream" state.
+  if (
+    (connection === 'offline' || connection === 'retrying') &&
+    (stream === 'playing' || stream === 'stalled' || stream === 'error')
+  )
+    return 'RETRYING';
   if (stream === 'no_stream') return 'NO_STREAM';
   if (uiMode === 'typing') return 'LIVE_TYPING';
   return 'LIVE_NORMAL';
