@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -74,9 +73,6 @@ export default function LiveStreamPage() {
 
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-
-  // Featured product for mobile inline card
-  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
 
   // Notice banner (reuses NoticeBox pattern)
   const { data: notice } = useQuery<{ text: string | null }>({
@@ -154,21 +150,6 @@ export default function LiveStreamPage() {
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [streamStatus?.startedAt]);
-
-  // Fetch featured product for mobile inline card
-  useEffect(() => {
-    const fetchFeatured = async () => {
-      try {
-        const response = await apiClient.get<{ product: FeaturedProduct | null }>(
-          `/streaming/key/${streamKey}/featured-product`,
-        );
-        setFeaturedProduct(response.data.product);
-      } catch {
-        // silently fail — featured product is optional
-      }
-    };
-    fetchFeatured();
-  }, [streamKey]);
 
   const fetchStreamStatus = async () => {
     try {
@@ -295,7 +276,7 @@ export default function LiveStreamPage() {
 
   return (
     <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
-      {/* Left: Product List - Desktop Only */}
+      {/* ── Left: Product List — Desktop only ── */}
       <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
@@ -306,8 +287,80 @@ export default function LiveStreamPage() {
         <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
       </aside>
 
-      {/* Center: Video Container */}
-      <div className="flex-1 relative flex items-center justify-center">
+      {/* ── MOBILE: independent vertical layout ── */}
+      <div className="flex lg:hidden flex-col w-full h-full overflow-hidden">
+        {/* 1. Top bar */}
+        <div className="shrink-0 px-3 py-2 flex items-center justify-between bg-black/80">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg">
+              <span className="text-white text-xs font-black">D</span>
+            </div>
+            <span className="text-white font-bold text-sm">도라미LIVE</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {!videoError && (
+              <div className="flex items-center gap-1.5 bg-black/50 px-2.5 py-1.5 rounded-full border border-white/10">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1 bg-black/50 px-2.5 py-1.5 rounded-full border border-white/10">
+              <Eye className="w-3.5 h-3.5 text-white/70" />
+              <span className="text-white text-[11px] font-bold">
+                {viewerCount.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Notice banner (conditional, static) */}
+        {notice?.text && (
+          <div className="shrink-0 mx-3 mb-1 bg-amber-500/20 border border-amber-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <p className="text-amber-200 text-xs line-clamp-1 font-medium">{notice.text}</p>
+          </div>
+        )}
+
+        {/* 3. Video (16:9 aspect ratio) */}
+        <div className="shrink-0 w-full aspect-video relative bg-black">
+          <VideoPlayer
+            streamKey={streamKey}
+            title={streamStatus.title}
+            onViewerCountChange={handleViewerCountChange}
+            onStreamError={setVideoError}
+          />
+        </div>
+
+        {/* 4. Chat area (flex-1, scrollable) */}
+        <div className="flex-1 overflow-hidden min-h-0">
+          <ChatMessageList messages={allMessages} compact maxMessages={50} />
+        </div>
+
+        {/* 5. Product list (horizontal scroll) */}
+        <div className="shrink-0 border-t border-white/10">
+          <ProductList
+            streamKey={streamKey}
+            onProductClick={handleProductClick}
+            layout="horizontal"
+          />
+        </div>
+
+        {/* 6. Chat input */}
+        <div className="shrink-0">
+          <ChatInput
+            ref={mobileInputRef}
+            onSendMessage={handleMobileSendMessage}
+            disabled={!isConnected}
+            compact
+          />
+        </div>
+      </div>
+
+      {/* ── Center: Video + overlays — Desktop only ── */}
+      <div className="hidden lg:flex flex-1 relative items-center justify-center">
         <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
           <VideoPlayer
             streamKey={streamKey}
@@ -316,38 +369,8 @@ export default function LiveStreamPage() {
             onStreamError={setVideoError}
           />
 
-          {/* ═══════════ MOBILE TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 px-3 py-3 flex items-center justify-between lg:hidden">
-            {/* Brand avatar + label */}
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg">
-                <span className="text-white text-xs font-black">D</span>
-              </div>
-              <span className="text-white font-bold text-sm drop-shadow-lg">도라미LIVE</span>
-            </div>
-
-            {/* Live timer + Viewer count */}
-            <div className="flex items-center gap-1.5">
-              {!videoError && (
-                <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                  </span>
-                  <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
-                <Eye className="w-3.5 h-3.5 text-white/70" />
-                <span className="text-white text-[11px] font-bold">
-                  {viewerCount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 hidden lg:flex items-center justify-between">
+          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
             {/* Back button */}
             <button
               onClick={() => router.push('/')}
@@ -369,7 +392,6 @@ export default function LiveStreamPage() {
 
             {/* LIVE badge + Viewer count */}
             <div className="flex items-center gap-2">
-              {/* LIVE badge with glow */}
               {videoError ? (
                 <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/10">
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white/40 animate-pulse" />
@@ -427,102 +449,19 @@ export default function LiveStreamPage() {
             </button>
           </div>
 
-          {/* Stream title — Desktop only */}
-          <div className="absolute top-[68px] left-4 right-20 z-20 hidden lg:block">
+          {/* Stream title */}
+          <div className="absolute top-[68px] left-4 right-20 z-20">
             <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
               {streamStatus.title}
             </h1>
           </div>
 
-          {/* ═══════════ MOBILE NOTICE BANNER ═══════════ */}
-          {notice?.text && (
-            <div className="absolute top-14 left-3 right-3 z-20 lg:hidden">
-              <div className="bg-amber-500/20 backdrop-blur-sm border border-amber-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <p className="text-amber-200 text-xs line-clamp-1 font-medium">{notice.text}</p>
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════ CART ACTIVITY FEED — Desktop only ═══════════ */}
-          <div className="hidden lg:block">
-            <CartActivityFeed activities={cartActivities} />
-          </div>
-
-          {/* ═══════════ MOBILE BOTTOM SECTION ═══════════ */}
-          <div className="absolute bottom-0 left-0 right-0 z-20 lg:hidden flex flex-col pointer-events-none">
-            {/* Chat messages overlay */}
-            <div className="h-[28vh] mb-1 relative">
-              <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/20 to-transparent pointer-events-none z-10" />
-              <ChatMessageList messages={allMessages} compact maxMessages={30} />
-            </div>
-
-            {/* Featured product inline card */}
-            {featuredProduct && (
-              <div className="px-3 pb-2 pointer-events-auto">
-                <div
-                  className="bg-black/60 backdrop-blur-md rounded-xl p-2.5 flex items-center gap-3 border border-white/10"
-                  onClick={() => handleProductClick(featuredProduct)}
-                >
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0 relative">
-                    {featuredProduct.imageUrl && (
-                      <Image
-                        src={featuredProduct.imageUrl}
-                        alt={featuredProduct.name}
-                        fill
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
-                      {featuredProduct.name}
-                    </p>
-                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-white/40 text-xs line-through">
-                          ₩
-                          {(
-                            featuredProduct.originalPrice ?? featuredProduct.price
-                          ).toLocaleString()}
-                        </span>
-                        <span className="text-[#FF007A] font-bold text-sm">
-                          ₩{featuredProduct.price.toLocaleString()}
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="text-[#FF007A] font-bold text-sm">
-                        ₩{featuredProduct.price.toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleProductClick(featuredProduct);
-                    }}
-                    className="bg-[#FF007A] hover:bg-[#E00070] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex-shrink-0"
-                  >
-                    구매
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Chat input */}
-            <div className="pointer-events-auto">
-              <ChatInput
-                ref={mobileInputRef}
-                onSendMessage={handleMobileSendMessage}
-                disabled={!isConnected}
-                compact
-              />
-            </div>
-          </div>
+          {/* Cart activity feed */}
+          <CartActivityFeed activities={cartActivities} />
         </div>
       </div>
 
-      {/* Right: Chat Panel — Desktop Only */}
+      {/* ── Right: Chat Panel — Desktop only ── */}
       <div className="hidden lg:flex w-[320px] h-full flex-col bg-[#0A0A0A] border-l border-white/5">
         <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
         <ChatMessageList
@@ -539,7 +478,7 @@ export default function LiveStreamPage() {
         />
       </div>
 
-      {/* Bottom: Featured Product Bar — Desktop Only */}
+      {/* Bottom: Featured Product Bar — Desktop only */}
       <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
 
       {/* Product Detail Modal */}
