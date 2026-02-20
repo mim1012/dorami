@@ -42,6 +42,7 @@ export default function VideoPlayer({
   const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const flvRetryCountRef = useRef(0);
   const flvRetryInProgressRef = useRef(false);
+  const flvRetryResetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const stallWatchdogRef = useRef<NodeJS.Timeout | null>(null);
   const lastCurrentTimeRef = useRef<number>(-1);
   const stallTicksRef = useRef<number>(0);
@@ -244,10 +245,14 @@ export default function VideoPlayer({
           flvRetryCountRef.current++;
           flvRetryInProgressRef.current = true;
           player.unload();
-          setTimeout(() => {
-            flvRetryInProgressRef.current = false;
-            player.load();
-          }, 1000 * flvRetryCountRef.current);
+          // Exponential backoff: 1s → 2s → 4s
+          setTimeout(
+            () => {
+              flvRetryInProgressRef.current = false;
+              player.load();
+            },
+            1000 * Math.pow(2, flvRetryCountRef.current - 1),
+          );
           return;
         }
 
@@ -281,9 +286,17 @@ export default function VideoPlayer({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Tab became visible again — seek to live edge (1.5s 여유로 즉시 스피너 방지)
         const video = videoRef.current;
-        if (video && video.buffered.length > 0) {
+        if (video && video.buffered.length === 0) {
+          // 버퍼 완전 소진 → 플레이어 재로드
+          if (mpegtsPlayerRef.current) {
+            mpegtsPlayerRef.current.unload();
+            mpegtsPlayerRef.current.load();
+          } else if (hlsRef.current) {
+            hlsRef.current.startLoad();
+          }
+        } else if (video && video.buffered.length > 0) {
+          // 버퍼 있음 → 라이브 엣지로 seek (1.5s 여유로 즉시 스피너 방지)
           const liveEdge = video.buffered.end(video.buffered.length - 1);
           video.currentTime = liveEdge - 1.5;
         }
@@ -340,6 +353,14 @@ export default function VideoPlayer({
       if (m.stallStartTime > 0) {
         m.totalStallDuration += performance.now() - m.stallStartTime;
         m.stallStartTime = 0;
+      }
+      // 10초 안정 재생 후 FLV retry 카운터 리셋 (일시적 오류 후 카운터 소진 방지)
+      if (flvRetryCountRef.current > 0) {
+        if (flvRetryResetTimerRef.current) clearTimeout(flvRetryResetTimerRef.current);
+        flvRetryResetTimerRef.current = setTimeout(() => {
+          flvRetryCountRef.current = 0;
+          flvRetryResetTimerRef.current = null;
+        }, 10000);
       }
       syncKpi();
       onStreamStateChangeRef.current?.({ type: 'PLAY_OK' });
@@ -423,6 +444,10 @@ export default function VideoPlayer({
     if (latencyIntervalRef.current) {
       clearInterval(latencyIntervalRef.current);
       latencyIntervalRef.current = null;
+    }
+    if (flvRetryResetTimerRef.current) {
+      clearTimeout(flvRetryResetTimerRef.current);
+      flvRetryResetTimerRef.current = null;
     }
     if (stallWatchdogRef.current) {
       clearInterval(stallWatchdogRef.current);
