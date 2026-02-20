@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Save, Settings as SettingsIcon, DollarSign, Clock, Bell, Loader2 } from 'lucide-react';
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
+import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
 
@@ -122,7 +123,10 @@ export default function AdminSettingsPage() {
                 max={60}
                 value={settings.defaultCartTimerMinutes}
                 onChange={(e) =>
-                  setSettings({ ...settings, defaultCartTimerMinutes: parseInt(e.target.value) || 10 })
+                  setSettings({
+                    ...settings,
+                    defaultCartTimerMinutes: parseInt(e.target.value) || 10,
+                  })
                 }
                 fullWidth
               />
@@ -214,6 +218,9 @@ export default function AdminSettingsPage() {
 
         {/* Notice Management Section */}
         <NoticeManagement />
+
+        {/* Notice List Management Section */}
+        <NoticeListManagement />
 
         {/* Save Button */}
         <div className="flex justify-end gap-4">

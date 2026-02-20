@@ -1,14 +1,19 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Share2, ShoppingBag } from 'lucide-react';
+import { MessageCircle, Share2, ShoppingBag, Megaphone } from 'lucide-react';
 
 interface LiveQuickActionBarProps {
   streamTitle: string;
   onInquiry?: () => void;
+  onNotice?: () => void;
 }
 
-export default function LiveQuickActionBar({ streamTitle, onInquiry }: LiveQuickActionBarProps) {
+export default function LiveQuickActionBar({
+  streamTitle,
+  onInquiry,
+  onNotice,
+}: LiveQuickActionBarProps) {
   const router = useRouter();
 
   const handleShare = async () => {
@@ -34,6 +39,15 @@ export default function LiveQuickActionBar({ streamTitle, onInquiry }: LiveQuick
 
   return (
     <div className="flex items-center justify-around bg-[rgba(0,0,0,0.85)] border-t border-white/10 h-[var(--live-quick-action-h)]">
+      <button
+        onClick={onNotice}
+        className="flex flex-col items-center gap-0.5 text-white/70 hover:text-white active:scale-90 transition-all flex-1 py-2"
+        aria-label="공지사항"
+      >
+        <Megaphone className="w-5 h-5" />
+        <span className="text-[10px] font-medium">공지</span>
+      </button>
+      <div className="w-px h-5 bg-white/10" />
       <button
         onClick={onInquiry}
         className="flex flex-col items-center gap-0.5 text-white/70 hover:text-white active:scale-90 transition-all flex-1 py-2"

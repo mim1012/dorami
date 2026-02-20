@@ -394,13 +394,21 @@ enum SettlementStatus {
   PAID
 }
 
+enum NoticeCategory {
+  IMPORTANT
+  GENERAL
+
+  @@map("notice_category")
+}
+
 model Notice {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid())
   title     String
-  content   String   @db.Text
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  content   String         @db.Text
+  isActive  Boolean        @default(true) @map("is_active")
+  category  NoticeCategory @default(GENERAL)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
 
   @@map("notices")
 }
