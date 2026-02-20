@@ -210,10 +210,8 @@ export default function VideoPlayer({
         {
           enableWorker: true,
           enableStashBuffer: true,
-          stashInitialSize: 128, // 1024→128: 초기 스트림 조인 지연 4s→0.5s
-          liveBufferLatencyChasing: true,
-          liveBufferLatencyMaxLatency: 2.0, // 4.0→2.0: 수동 seek(3s) 보다 먼저 chasing 개입
-          liveBufferLatencyMinRemain: 0.8, // 1.5→0.8: catch-up 후 적정 버퍼 유지
+          stashInitialSize: 256,
+          liveBufferLatencyChasing: false,
           autoCleanupSourceBuffer: true,
           autoCleanupMaxBackwardDuration: 30,
           autoCleanupMinBackwardDuration: 10,
@@ -255,13 +253,16 @@ export default function VideoPlayer({
 
       mpegtsPlayerRef.current = player;
 
-      // Track latency for FLV (latency chasing은 mpegts.js가 playbackRate로 처리)
+      // Track latency for FLV — manual seek to live edge when drift > 3.5s
       latencyIntervalRef.current = setInterval(() => {
         const video = videoRef.current;
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
           const currentLatency = liveEdge - video.currentTime;
           setLatency(Math.round(currentLatency * 10) / 10);
+          if (currentLatency > 3.5) {
+            video.currentTime = liveEdge - 1.5;
+          }
         }
       }, 1000);
     } catch {
@@ -302,12 +303,12 @@ export default function VideoPlayer({
 
     // KPI + buffering state via video element events
     const onWaiting = () => {
-      // Delay spinner by 400ms — transient micro-stalls won't flash the spinner
+      // Delay spinner by 800ms — transient micro-stalls won't flash the spinner
       if (bufferingTimerRef.current) clearTimeout(bufferingTimerRef.current);
       bufferingTimerRef.current = setTimeout(() => {
         setIsBuffering(true);
         bufferingTimerRef.current = null;
-      }, 400);
+      }, 800);
       const m = metricsRef.current;
       // Only count as rebuffer after first frame has been rendered
       if (m.firstFrameTime > 0) {
