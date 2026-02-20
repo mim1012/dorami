@@ -14,6 +14,7 @@ import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
+import { Footer } from '@/components/layout/Footer';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS = [
@@ -491,6 +492,9 @@ export default function Home() {
 
       {/* Push Notification Banner */}
       <PushNotificationBanner />
+
+      {/* Footer */}
+      <Footer />
 
       {/* Floating Navigation */}
       <FloatingNav />
