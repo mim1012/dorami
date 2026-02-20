@@ -268,6 +268,10 @@ export default function VideoPlayer({
         }
         watchdogStartedRef.current = false;
         stallTicksRef.current = 0;
+        if (flvRetryResetTimerRef.current) {
+          clearTimeout(flvRetryResetTimerRef.current);
+          flvRetryResetTimerRef.current = null;
+        }
         player.destroy();
         mpegtsPlayerRef.current = null;
         setError(null);
@@ -293,6 +297,7 @@ export default function VideoPlayer({
             mpegtsPlayerRef.current.unload();
             mpegtsPlayerRef.current.load();
           } else if (hlsRef.current) {
+            hlsRef.current.stopLoad();
             hlsRef.current.startLoad();
           }
         } else if (video && video.buffered.length > 0) {
