@@ -112,7 +112,7 @@ async function bootstrap() {
   app.useGlobalFilters(new BusinessExceptionFilter());
 
   // Global Response Transformer
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(new TransformInterceptor(app.get(Reflector)));
 
   // CSRF Protection Guard (Double Submit Cookie Pattern)
   // Skip for development if CSRF_ENABLED=false
