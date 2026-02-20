@@ -2,22 +2,24 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, User, Package, MessageCircle, Share2 } from 'lucide-react';
+import { Megaphone, User, Package, MessageCircle, Share2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
+import { NoticeModal } from '@/components/notices/NoticeModal';
 
 export function FloatingNav() {
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
 
   const navItems = [
     {
-      icon: Bell,
+      icon: Megaphone,
       label: '공지',
-      onClick: () => router.push('/alerts'),
+      onClick: () => setIsNoticeOpen(true),
       title: '공지사항',
     },
     {
@@ -86,6 +88,7 @@ export function FloatingNav() {
       </div>
 
       <InquiryBottomSheet isOpen={isInquiryOpen} onClose={() => setIsInquiryOpen(false)} />
+      <NoticeModal isOpen={isNoticeOpen} onClose={() => setIsNoticeOpen(false)} />
     </>
   );
 }

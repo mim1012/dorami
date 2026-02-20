@@ -15,8 +15,8 @@ import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
-import CartActivityFeed from '@/components/live/CartActivityFeed';
 import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
+import { NoticeModal } from '@/components/notices/NoticeModal';
 import { useCartActivity } from '@/hooks/useCartActivity';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
@@ -54,6 +54,7 @@ export default function LiveStreamPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const { activities: cartActivities } = useCartActivity(streamKey);
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
@@ -536,7 +537,10 @@ export default function LiveStreamPage() {
           className="fixed inset-x-0 bottom-0 z-40"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <LiveQuickActionBar streamTitle={streamStatus.title} />
+          <LiveQuickActionBar
+            streamTitle={streamStatus.title}
+            onNotice={() => setIsNoticeOpen(true)}
+          />
         </div>
 
         {/* 6. Chat input bar — fixed above quick action bar z-40 */}
@@ -654,9 +658,6 @@ export default function LiveStreamPage() {
               {streamStatus.title}
             </h1>
           </div>
-
-          {/* Cart activity feed */}
-          <CartActivityFeed activities={cartActivities} />
         </div>
       </div>
 
@@ -669,7 +670,10 @@ export default function LiveStreamPage() {
           isAdmin={isAdmin}
           onDeleteMessage={chatDeleteMessage}
         />
-        <LiveQuickActionBar streamTitle={streamStatus.title} />
+        <LiveQuickActionBar
+          streamTitle={streamStatus.title}
+          onNotice={() => setIsNoticeOpen(true)}
+        />
         <ChatInput
           ref={desktopInputRef}
           onSendMessage={handleDesktopSendMessage}
@@ -690,6 +694,9 @@ export default function LiveStreamPage() {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      {/* Notice Modal */}
+      <NoticeModal isOpen={isNoticeOpen} onClose={() => setIsNoticeOpen(false)} />
     </div>
   );
 }
