@@ -25,12 +25,12 @@ export function useStreamViewer(streamKey: string, enabled: boolean = true): Use
       }
     };
 
-    socket.on('stream:viewer-count', handleViewerCount);
+    socket.on('stream:viewer:update', handleViewerCount);
 
     // Leave the stream when unmounting
     return () => {
       socket.emit('stream:viewer:leave', { streamKey });
-      socket.off('stream:viewer-count', handleViewerCount);
+      socket.off('stream:viewer:update', handleViewerCount);
     };
   }, [socket, streamKey, enabled]);
 

@@ -47,7 +47,6 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamEnded, setStreamEnded] = useState(false);
-  const [latency, setLatency] = useState(0);
   const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
   // Debounce ref: spinner only appears if buffering lasts > 400ms
@@ -168,9 +167,6 @@ export default function VideoPlayer({
 
       // Track latency and auto-seek to live edge
       latencyIntervalRef.current = setInterval(() => {
-        if (hls.latency !== undefined) {
-          setLatency(Math.round(hls.latency));
-        }
         const video = videoRef.current;
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
@@ -259,7 +255,6 @@ export default function VideoPlayer({
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
           const currentLatency = liveEdge - video.currentTime;
-          setLatency(Math.round(currentLatency * 10) / 10);
           if (currentLatency > 3.5) {
             video.currentTime = liveEdge - 1.5;
           }
@@ -417,7 +412,7 @@ export default function VideoPlayer({
     });
 
     socket.on(
-      'stream:viewer-count',
+      'stream:viewer:update',
       (data: { data?: { streamKey: string; viewerCount: number } }) => {
         if (data.data && data.data.streamKey === streamKey) {
           setViewerCount(data.data.viewerCount);

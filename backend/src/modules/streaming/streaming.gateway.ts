@@ -132,8 +132,8 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       `User ${client.user.userId} joined stream ${streamKey} (viewers: ${viewerCount})`,
     );
 
-    this.server.to(roomName).emit('stream:viewer-count', {
-      type: 'stream:viewer-count',
+    this.server.to(roomName).emit('stream:viewer:update', {
+      type: 'stream:viewer:update',
       data: {
         streamKey,
         viewerCount,
@@ -178,8 +178,8 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
 
     this.logger.log(`Client ${client.id} left stream ${streamKey} (viewers: ${viewerCount})`);
 
-    this.server.to(roomName).emit('stream:viewer-count', {
-      type: 'stream:viewer-count',
+    this.server.to(roomName).emit('stream:viewer:update', {
+      type: 'stream:viewer:update',
       data: {
         streamKey,
         viewerCount,

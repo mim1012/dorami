@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
-import { TrendingUp, TrendingDown, ShoppingCart, DollarSign, Clock, Radio, Package, BarChart3 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+  TrendingUp,
+  TrendingDown,
+  ShoppingCart,
+  DollarSign,
+  Clock,
+  Radio,
+  Package,
+  BarChart3,
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface StatItem {
   value: number;
@@ -47,34 +48,45 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    // 초기 데이터 조회
-    fetchDashboardStats();
-
-    // 30초마다 자동 새로고침
-    const refreshInterval = setInterval(() => {
-      fetchDashboardStats();
-    }, 30000);
-
-    // 컴포넌트 언마운트 시 인터벌 정리
-    return () => clearInterval(refreshInterval);
-  }, []);
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
 
   const fetchDashboardStats = async () => {
     try {
-      setIsLoading(true);
+      if (!stats) setIsLoading(true);
       setError(null);
 
       const response = await apiClient.get<DashboardStats>('/admin/dashboard/stats');
       setStats(response.data);
     } catch (err: any) {
       console.error('Failed to fetch dashboard stats:', err);
-      setError(err.response?.data?.message || '대시보드 통계를 불러오지 못했습니다');
+      if (err?.statusCode === 401 || err?.statusCode === 403) {
+        stopPolling();
+      }
+      setError(err?.message || '대시보드 통계를 불러오지 못했습니다');
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // 초기 데이터 조회
+    fetchDashboardStats();
+
+    // 30초마다 자동 새로고침
+    pollingRef.current = setInterval(() => {
+      fetchDashboardStats();
+    }, 30000);
+
+    // 컴포넌트 언마운트 시 인터벌 정리
+    return () => stopPolling();
+  }, []);
 
   if (isLoading) {
     return (
@@ -115,7 +127,9 @@ export default function AdminDashboardPage() {
               <div className="p-3 bg-hot-pink/10 rounded-button">
                 <DollarSign className="w-6 h-6 text-hot-pink" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.revenue.trendUp ? 'text-success' : 'text-error'}`}>
+              <div
+                className={`flex items-center gap-1 ${stats.revenue.trendUp ? 'text-success' : 'text-error'}`}
+              >
                 {stats.revenue.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -135,7 +149,9 @@ export default function AdminDashboardPage() {
               <div className="p-3 bg-info/10 rounded-button">
                 <ShoppingCart className="w-6 h-6 text-info" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.orders.trendUp ? 'text-success' : 'text-error'}`}>
+              <div
+                className={`flex items-center gap-1 ${stats.orders.trendUp ? 'text-success' : 'text-error'}`}
+              >
                 {stats.orders.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -179,7 +195,9 @@ export default function AdminDashboardPage() {
               <div className="p-3 bg-purple-500/10 rounded-button">
                 <Package className="w-6 h-6 text-purple-500" />
               </div>
-              <div className={`flex items-center gap-1 ${stats.messages.trendUp ? 'text-success' : 'text-error'}`}>
+              <div
+                className={`flex items-center gap-1 ${stats.messages.trendUp ? 'text-success' : 'text-error'}`}
+              >
                 {stats.messages.trendUp ? (
                   <TrendingUp className="w-4 h-4" />
                 ) : (
@@ -242,12 +260,7 @@ export default function AdminDashboardPage() {
                     padding: '8px',
                   }}
                 />
-                <Bar
-                  dataKey="revenue"
-                  fill="#FF1B8D"
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={60}
-                />
+                <Bar dataKey="revenue" fill="#FF1B8D" radius={[8, 8, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
 
@@ -273,7 +286,9 @@ export default function AdminDashboardPage() {
                     </div>
                     <div>
                       <Body className="text-primary-text font-medium">{product.productName}</Body>
-                      <Caption className="text-secondary-text">ID: {product.productId.substring(0, 8)}</Caption>
+                      <Caption className="text-secondary-text">
+                        ID: {product.productId.substring(0, 8)}
+                      </Caption>
                     </div>
                   </div>
                   <div className="text-right">
@@ -288,7 +303,21 @@ export default function AdminDashboardPage() {
 
         {stats.topProducts.length === 0 && (
           <div className="bg-content-bg rounded-button p-12 text-center">
-            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg></div>
+            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                />
+              </svg>
+            </div>
             <Heading2 className="text-secondary-text mb-2">판매 데이터 없음</Heading2>
             <Body className="text-secondary-text">
               확정된 주문이 생기면 인기 판매 상품이 여기에 표시됩니다

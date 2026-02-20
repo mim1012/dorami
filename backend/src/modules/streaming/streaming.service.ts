@@ -378,6 +378,7 @@ export class StreamingService {
       const data = JSON.parse(cached);
       title = data.title;
       status = data.status;
+      startedAt = data.startedAt ? new Date(data.startedAt) : undefined;
     } else {
       // Fallback to database
       const session = await this.prisma.liveStream.findUnique({
