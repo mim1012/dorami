@@ -9,9 +9,20 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isChunkError = error.name === 'ChunkLoadError';
+
   useEffect(() => {
     console.error('[Error Boundary]', error);
-  }, [error]);
+
+    // ChunkLoadError: 재배포 후 구 청크 참조 → 전체 새로고침으로 새 HTML 수신
+    if (isChunkError) {
+      const RELOAD_KEY = 'chunk_error_reloaded';
+      if (!sessionStorage.getItem(RELOAD_KEY)) {
+        sessionStorage.setItem(RELOAD_KEY, '1');
+        window.location.reload();
+      }
+    }
+  }, [error, isChunkError]);
 
   return (
     <div className="min-h-screen bg-primary-black flex items-center justify-center px-6">
@@ -34,17 +45,23 @@ export default function Error({
           </svg>
         </div>
 
-        <h2 className="text-2xl font-bold text-primary-text mb-2">
-          문제가 발생했습니다
-        </h2>
+        <h2 className="text-2xl font-bold text-primary-text mb-2">문제가 발생했습니다</h2>
         <p className="text-secondary-text mb-8 text-sm leading-relaxed">
-          페이지를 불러오는 중 오류가 발생했습니다.<br />
+          페이지를 불러오는 중 오류가 발생했습니다.
+          <br />
           잠시 후 다시 시도해 주세요.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
-            onClick={reset}
+            onClick={() => {
+              if (isChunkError) {
+                sessionStorage.removeItem('chunk_error_reloaded');
+                window.location.reload();
+              } else {
+                reset();
+              }
+            }}
             className="px-6 py-3 bg-hot-pink text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-colors active:scale-[0.98]"
           >
             다시 시도
@@ -58,9 +75,7 @@ export default function Error({
         </div>
 
         {error.digest && (
-          <p className="mt-6 text-xs text-secondary-text">
-            오류 코드: {error.digest}
-          </p>
+          <p className="mt-6 text-xs text-secondary-text">오류 코드: {error.digest}</p>
         )}
       </div>
     </div>
