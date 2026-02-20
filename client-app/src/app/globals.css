@@ -62,6 +62,8 @@
   --live-product-bar-h: 76px;
   --live-top-bar-h: 60px;
   --live-gap: 12px;
+  --live-quick-action-h: 52px;
+  --live-total-bottom-h: calc(var(--live-bottom-bar-h) + var(--live-quick-action-h));
 
   /* Bottom Nav */
   --bottom-nav-height: 80px;
@@ -449,4 +451,16 @@ body {
     border: none;
     box-shadow: none;
   }
+}
+
+/* ── Live page notice marquee ── */
+@keyframes scrollNotice {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.notice-track {
+  display: flex;
+  white-space: nowrap;
+  animation: scrollNotice 15s linear infinite;
 }

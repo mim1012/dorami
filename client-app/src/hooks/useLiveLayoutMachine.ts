@@ -61,9 +61,7 @@ export type LiveSnapshot = 'LIVE_NORMAL' | 'LIVE_TYPING' | 'RETRYING' | 'NO_STRE
 // ── Layout descriptor ──────────────────────────────────────────────────────────
 export interface LiveLayout {
   topBar: { visible: boolean; dim: boolean };
-  notice: { visible: boolean };
   chat: { visible: boolean; bottom: string };
-  productCard: { visible: boolean };
   bottomInput: { visible: boolean; disabled: boolean };
   centerOverlay: { visible: boolean; message: string };
 }
@@ -89,19 +87,16 @@ export function deriveSnapshot(
   return 'LIVE_NORMAL';
 }
 
-export function computeLayout(snapshot: LiveSnapshot, hasFeatured: boolean): LiveLayout {
-  const chatBottomFeatured =
-    'calc(var(--live-bottom-bar-h) + var(--live-product-bar-h) + var(--live-gap) + env(safe-area-inset-bottom, 0px))';
-  const chatBottomNormal =
-    'calc(var(--live-bottom-bar-h) + var(--live-gap) + env(safe-area-inset-bottom, 0px))';
+export function computeLayout(snapshot: LiveSnapshot, _hasFeatured: boolean): LiveLayout {
+  // Chat overlay is positioned inside the 16:9 video container (absolute),
+  // so bottom is relative to the video element, not the viewport.
+  const chatBottom = 'var(--live-gap)';
 
   switch (snapshot) {
     case 'LIVE_NORMAL':
       return {
         topBar: { visible: true, dim: false },
-        notice: { visible: true },
-        chat: { visible: true, bottom: hasFeatured ? chatBottomFeatured : chatBottomNormal },
-        productCard: { visible: hasFeatured },
+        chat: { visible: true, bottom: chatBottom },
         bottomInput: { visible: true, disabled: false },
         centerOverlay: { visible: false, message: '' },
       };
@@ -109,12 +104,7 @@ export function computeLayout(snapshot: LiveSnapshot, hasFeatured: boolean): Liv
     case 'LIVE_TYPING':
       return {
         topBar: { visible: true, dim: true },
-        notice: { visible: false },
-        chat: {
-          visible: true,
-          bottom: 'calc(var(--live-bottom-bar-h) + env(safe-area-inset-bottom, 0px))',
-        },
-        productCard: { visible: false },
+        chat: { visible: true, bottom: chatBottom },
         bottomInput: { visible: true, disabled: false },
         centerOverlay: { visible: false, message: '' },
       };
@@ -122,9 +112,7 @@ export function computeLayout(snapshot: LiveSnapshot, hasFeatured: boolean): Liv
     case 'RETRYING':
       return {
         topBar: { visible: true, dim: false },
-        notice: { visible: false },
         chat: { visible: false, bottom: '0' },
-        productCard: { visible: false },
         bottomInput: { visible: true, disabled: true },
         centerOverlay: { visible: true, message: '네트워크 오류. 재연결 중...' },
       };
@@ -132,9 +120,7 @@ export function computeLayout(snapshot: LiveSnapshot, hasFeatured: boolean): Liv
     case 'NO_STREAM':
       return {
         topBar: { visible: true, dim: false },
-        notice: { visible: true },
         chat: { visible: false, bottom: '0' },
-        productCard: { visible: false },
         bottomInput: { visible: true, disabled: true },
         centerOverlay: { visible: true, message: '방송을 기다리는 중입니다' },
       };
@@ -142,9 +128,7 @@ export function computeLayout(snapshot: LiveSnapshot, hasFeatured: boolean): Liv
     case 'ENDED':
       return {
         topBar: { visible: false, dim: false },
-        notice: { visible: false },
         chat: { visible: false, bottom: '0' },
-        productCard: { visible: false },
         bottomInput: { visible: false, disabled: true },
         centerOverlay: { visible: true, message: '방송이 종료되었습니다' },
       };
