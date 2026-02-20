@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Patch,
+  Delete,
   Get,
   Param,
   Body,
@@ -18,6 +19,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
 import {
   StartStreamDto,
+  UpdateStreamDto,
   GenerateKeyDto,
   StreamHistoryQueryDto,
   RtmpCallbackDto,
@@ -84,6 +86,23 @@ export class StreamingController {
   async stopStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
     await this.streamingService.stopStream(streamId, userId);
     return { message: 'Stream ended successfully' };
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async updateStream(
+    @Param('id') streamId: string,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateStreamDto,
+  ) {
+    return this.streamingService.updateStream(streamId, userId, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
+    await this.streamingService.cancelStream(streamId, userId);
   }
 
   @Public()

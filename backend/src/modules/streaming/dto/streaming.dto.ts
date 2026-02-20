@@ -23,6 +23,16 @@ export class GenerateKeyDto {
   title?: string = 'Live Stream';
 }
 
+export class UpdateStreamDto {
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsDateString()
+  @IsOptional()
+  expiresAt?: string; // ISO 8601 format
+}
+
 export class StreamStatusDto {
   status: string;
   viewerCount: number;
