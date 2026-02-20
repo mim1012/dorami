@@ -79,7 +79,13 @@ export function NoticeManagement() {
     },
     onError: (error: any) => {
       console.error('Failed to save notice:', error);
-      showToast('공지 저장에 실패했습니다. 다시 시도해주세요.', 'error');
+      if (error?.statusCode === 401) {
+        showToast('세션이 만료되었습니다. 다시 로그인해주세요.', 'error');
+      } else if (error?.statusCode === 403) {
+        showToast('관리자 권한이 없습니다.', 'error');
+      } else {
+        showToast('공지 저장에 실패했습니다. 다시 시도해주세요.', 'error');
+      }
     },
   });
 
@@ -101,7 +107,13 @@ export function NoticeManagement() {
     },
     onError: (error: any) => {
       console.error('Failed to reset notice:', error);
-      showToast('공지 초기화에 실패했습니다.', 'error');
+      if (error?.statusCode === 401) {
+        showToast('세션이 만료되었습니다. 다시 로그인해주세요.', 'error');
+      } else if (error?.statusCode === 403) {
+        showToast('관리자 권한이 없습니다.', 'error');
+      } else {
+        showToast('공지 초기화에 실패했습니다.', 'error');
+      }
     },
   });
 
@@ -152,9 +164,7 @@ export function NoticeManagement() {
 
           {/* Textarea */}
           <div>
-            <label className="block text-sm font-medium text-primary-text mb-2">
-              공지 내용
-            </label>
+            <label className="block text-sm font-medium text-primary-text mb-2">공지 내용</label>
             <textarea
               value={formData.text || ''}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
@@ -165,16 +175,12 @@ export function NoticeManagement() {
                 fontFamily: formData.fontFamily,
               }}
             />
-            <p className="text-xs text-secondary-text mt-2">
-              {(formData.text || '').length} 글자
-            </p>
+            <p className="text-xs text-secondary-text mt-2">{(formData.text || '').length} 글자</p>
           </div>
 
           {/* Font Family Selector */}
           <div>
-            <label className="block text-sm font-medium text-primary-text mb-2">
-              글꼴
-            </label>
+            <label className="block text-sm font-medium text-primary-text mb-2">글꼴</label>
             <select
               value={formData.fontFamily}
               onChange={(e) => setFormData({ ...formData, fontFamily: e.target.value })}
@@ -199,9 +205,7 @@ export function NoticeManagement() {
               max="24"
               step="1"
               value={formData.fontSize}
-              onChange={(e) =>
-                setFormData({ ...formData, fontSize: parseInt(e.target.value) })
-              }
+              onChange={(e) => setFormData({ ...formData, fontSize: parseInt(e.target.value) })}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
               style={{
                 background: `linear-gradient(to right, #ff007a 0%, #ff007a ${((formData.fontSize - 10) / 14) * 100}%, #e5e7eb ${((formData.fontSize - 10) / 14) * 100}%, #e5e7eb 100%)`,
@@ -235,9 +239,7 @@ export function NoticeManagement() {
         {/* Right: Live Preview */}
         <div className="bg-content-bg border border-gray-200 rounded-card p-6">
           <h3 className="text-lg font-semibold text-primary-text mb-4">미리보기</h3>
-          <p className="text-xs text-secondary-text mb-4">
-            사용자에게 표시될 실제 모습입니다.
-          </p>
+          <p className="text-xs text-secondary-text mb-4">사용자에게 표시될 실제 모습입니다.</p>
 
           {/* Preview Box */}
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 min-h-[400px] flex flex-col">
