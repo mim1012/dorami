@@ -211,11 +211,11 @@ export default function VideoPlayer({
         },
         {
           enableWorker: true,
-          enableStashBuffer: false,
-          stashInitialSize: 128,
+          enableStashBuffer: true,
+          stashInitialSize: 512,
           liveBufferLatencyChasing: true,
-          liveBufferLatencyMaxLatency: 1.5,
-          liveBufferLatencyMinRemain: 0.3,
+          liveBufferLatencyMaxLatency: 4.0,
+          liveBufferLatencyMinRemain: 1.5,
         },
       );
 
