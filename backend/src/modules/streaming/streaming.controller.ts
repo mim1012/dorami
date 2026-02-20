@@ -30,6 +30,7 @@ import { parsePagination } from '../../common/utils/pagination.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { SkipCsrf } from '../../common/guards/csrf.guard';
+import { SkipTransform } from '../../common/decorators/skip-transform.decorator';
 
 @Controller('streaming')
 export class StreamingController {
@@ -206,21 +207,31 @@ export class StreamingController {
 
   @Public()
   @SkipCsrf()
+  @SkipTransform()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-auth')
   @HttpCode(HttpStatus.OK)
   async authenticateSrsStream(@Body() dto: SrsCallbackDto, @Req() req: Request) {
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    this.logger.log(
+      `SRS on_publish: stream=${dto.stream} app=${dto.app} clientIp=${clientIp} srcIp=${dto.ip} client_id=${dto.client_id}`,
+    );
+
     if (!this.validateSrsWebhook(req)) {
+      this.logger.warn(
+        `SRS auth rejected [IP_NOT_PRIVATE]: clientIp=${clientIp} stream=${dto.stream}`,
+      );
       return { code: 1 };
     }
 
     const isAuthenticated = await this.streamingService.authenticateStream(dto.stream, dto.ip);
 
     if (!isAuthenticated) {
-      this.logger.warn(`SRS auth failed for stream key: ${dto.stream}`);
+      this.logger.warn(`SRS auth rejected [INVALID_STREAM_KEY]: stream=${dto.stream} ip=${dto.ip}`);
       return { code: 1 };
     }
 
+    this.logger.log(`SRS auth approved: stream=${dto.stream}`);
     return { code: 0 };
   }
 
@@ -230,6 +241,7 @@ export class StreamingController {
    */
   @Public()
   @SkipCsrf()
+  @SkipTransform()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-done')
   @HttpCode(HttpStatus.OK)
@@ -248,6 +260,7 @@ export class StreamingController {
    */
   @Public()
   @SkipCsrf()
+  @SkipTransform()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-heartbeat')
   @HttpCode(HttpStatus.OK)

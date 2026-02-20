@@ -144,6 +144,18 @@ export class SrsCallbackDto {
   @IsString()
   @IsOptional()
   stream_id?: string;
+
+  // SRS v6 may also send these depending on version/config
+  @IsOptional()
+  port?: number | string;
+
+  @IsString()
+  @IsOptional()
+  type?: string; // e.g. "live"
+
+  @IsString()
+  @IsOptional()
+  pageUrl?: string;
 }
 
 // nginx-rtmp on_publish / on_publish_done callback DTO (legacy)
