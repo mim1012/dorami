@@ -6,7 +6,6 @@ import { io, Socket } from 'socket.io-client';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import LiveBadge from './LiveBadge';
-import ViewerCount from './ViewerCount';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
 import StreamEndedOverlay from './StreamEndedOverlay';
@@ -427,16 +426,9 @@ export default function VideoPlayer({
       }
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
-    const onRateChange = () => {
-      // Force playback rate to 1x — latency chasing is seek-based, not speed-based.
-      if (video.playbackRate !== 1) {
-        video.playbackRate = 1;
-      }
-    };
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
     video.addEventListener('stalled', onStalled);
-    video.addEventListener('ratechange', onRateChange);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
     initializeFlvPlayer();
@@ -446,7 +438,6 @@ export default function VideoPlayer({
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
-      video.removeEventListener('ratechange', onRateChange);
       if (bufferingTimerRef.current) {
         clearTimeout(bufferingTimerRef.current);
         bufferingTimerRef.current = null;
@@ -550,7 +541,6 @@ export default function VideoPlayer({
       />
 
       {!error && !streamEnded && <LiveBadge />}
-      {!error && !streamEnded && <ViewerCount count={viewerCount} />}
 
       {isBuffering && <BufferingSpinner />}
       {error && !hideErrorOverlay && <ErrorOverlay message={error} />}
