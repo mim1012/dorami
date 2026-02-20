@@ -143,7 +143,7 @@ export default function VideoPlayer({
         maxBufferLength: 20,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 6,
-        maxLiveSyncPlaybackRate: 1.3,
+        maxLiveSyncPlaybackRate: 1,
       });
 
       hls.loadSource(hlsUrl);
@@ -218,7 +218,7 @@ export default function VideoPlayer({
           enableWorker: true,
           enableStashBuffer: true,
           stashInitialSize: 256,
-          liveBufferLatencyChasing: true,
+          liveBufferLatencyChasing: false,
           liveBufferLatencyMaxLatency: 3.0,
           liveBufferLatencyMinRemain: 1.0,
           autoCleanupSourceBuffer: true,
@@ -280,6 +280,18 @@ export default function VideoPlayer({
       });
 
       mpegtsPlayerRef.current = player;
+
+      // FLV seek-based latency chasing (mirrors HLS interval; chasing disabled above)
+      latencyIntervalRef.current = setInterval(() => {
+        const video = videoRef.current;
+        if (video && video.buffered.length > 0) {
+          const liveEdge = video.buffered.end(video.buffered.length - 1);
+          const drift = liveEdge - video.currentTime;
+          if (drift > 5) {
+            video.currentTime = liveEdge - 1.5;
+          }
+        }
+      }, 1000);
     } catch {
       // mpegts.js import failed — fall back to HLS
       initializeHlsPlayer();
@@ -416,9 +428,8 @@ export default function VideoPlayer({
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
     const onRateChange = () => {
-      // mpegts.js manages playbackRate internally for latency chasing (FLV mode).
-      // Only reset in HLS fallback mode to prevent unintended speed changes.
-      if (mpegtsPlayerRef.current === null && video.playbackRate !== 1) {
+      // Force playback rate to 1x — latency chasing is seek-based, not speed-based.
+      if (video.playbackRate !== 1) {
         video.playbackRate = 1;
       }
     };
