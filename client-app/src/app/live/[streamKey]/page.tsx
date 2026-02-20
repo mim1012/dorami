@@ -466,7 +466,7 @@ export default function LiveStreamPage() {
           {/* Chat overlay — bottom 40% of video */}
           {layout.chat.visible && (
             <div
-              className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto"
+              className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto text-white"
               style={{ bottom: layout.chat.bottom }}
             >
               <ChatMessageList messages={allMessages} compact maxMessages={50} />

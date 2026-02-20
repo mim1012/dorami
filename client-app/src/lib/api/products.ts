@@ -18,3 +18,10 @@ export async function getFeaturedProducts(limit: number = 6): Promise<Product[]>
   const response = await apiClient.get<Product[]>(`/products/featured?limit=${limit}`);
   return response.data;
 }
+
+export async function getProductsByStreamKey(streamKey: string): Promise<Product[]> {
+  const response = await apiClient.get<Product[]>(
+    `/products?streamKey=${streamKey}&status=AVAILABLE`,
+  );
+  return response.data;
+}
