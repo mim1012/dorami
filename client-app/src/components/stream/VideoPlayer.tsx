@@ -183,8 +183,8 @@ export default function VideoPlayer({
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
           const drift = liveEdge - video.currentTime;
-          if (drift > 4) {
-            video.currentTime = liveEdge - 1;
+          if (drift > 5) {
+            video.currentTime = liveEdge - 1.5; // 1.5s 여유로 HLS seek 후 즉시 stall 방지
           }
         }
       }, 1000);
@@ -218,10 +218,10 @@ export default function VideoPlayer({
         {
           enableWorker: true,
           enableStashBuffer: true,
-          stashInitialSize: 1024,
+          stashInitialSize: 128, // 1024→128: 초기 스트림 조인 지연 4s→0.5s
           liveBufferLatencyChasing: true,
-          liveBufferLatencyMaxLatency: 4.0,
-          liveBufferLatencyMinRemain: 1.5,
+          liveBufferLatencyMaxLatency: 2.0, // 4.0→2.0: 수동 seek(3s) 보다 먼저 chasing 개입
+          liveBufferLatencyMinRemain: 0.8, // 1.5→0.8: catch-up 후 적정 버퍼 유지
           autoCleanupSourceBuffer: true,
           autoCleanupMaxBackwardDuration: 30,
           autoCleanupMinBackwardDuration: 10,
@@ -263,17 +263,13 @@ export default function VideoPlayer({
 
       mpegtsPlayerRef.current = player;
 
-      // Track latency for FLV
+      // Track latency for FLV (latency chasing은 mpegts.js가 playbackRate로 처리)
       latencyIntervalRef.current = setInterval(() => {
         const video = videoRef.current;
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
           const currentLatency = liveEdge - video.currentTime;
           setLatency(Math.round(currentLatency * 10) / 10);
-          // Auto-seek if drifted too far
-          if (currentLatency > 3) {
-            video.currentTime = liveEdge - 0.5;
-          }
         }
       }, 1000);
     } catch {
@@ -286,11 +282,11 @@ export default function VideoPlayer({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Tab became visible again — seek to live edge
+        // Tab became visible again — seek to live edge (1.5s 여유로 즉시 스피너 방지)
         const video = videoRef.current;
         if (video && video.buffered.length > 0) {
           const liveEdge = video.buffered.end(video.buffered.length - 1);
-          video.currentTime = liveEdge - 0.5;
+          video.currentTime = liveEdge - 1.5;
         }
         // If video was paused by browser, resume
         if (video && video.paused && isPlaying && !streamEnded) {
