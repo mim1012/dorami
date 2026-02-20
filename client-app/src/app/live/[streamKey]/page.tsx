@@ -361,7 +361,9 @@ export default function LiveStreamPage() {
       <div
         className="flex lg:hidden flex-col w-full bg-black"
         style={{
-          paddingBottom: 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: layout.bottomInput.visible
+            ? 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))'
+            : 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {/* 1. LIVE status bar — sticky top z-30 */}
