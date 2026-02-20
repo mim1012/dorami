@@ -5,6 +5,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import {
   StartStreamDto,
+  UpdateStreamDto,
   StreamingSessionResponseDto,
   GenerateKeyDto,
   StreamStatusDto,
@@ -115,6 +116,72 @@ export class StreamingService {
     this.eventEmitter.emit('stream:created', { streamId: session.id });
 
     return this.mapToResponseDto(session);
+  }
+
+  async updateStream(
+    streamId: string,
+    userId: string,
+    dto: UpdateStreamDto,
+  ): Promise<StreamingSessionResponseDto> {
+    const session = await this.prisma.liveStream.findFirst({
+      where: { id: streamId, userId },
+    });
+
+    if (!session) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamId });
+    }
+
+    if (session.status !== 'PENDING') {
+      throw new BusinessException(
+        'INVALID_STREAM_STATE',
+        { currentStatus: session.status },
+        `Only PENDING streams can be updated (current: ${session.status})`,
+      );
+    }
+
+    const data: { title?: string; expiresAt?: Date } = {};
+    if (dto.title !== undefined) {
+      data.title = dto.title;
+    }
+    if (dto.expiresAt !== undefined) {
+      data.expiresAt = new Date(dto.expiresAt);
+    }
+
+    const updated = await this.prisma.liveStream.update({
+      where: { id: streamId },
+      data,
+    });
+
+    return this.mapToResponseDto(updated);
+  }
+
+  async cancelStream(streamId: string, userId: string): Promise<void> {
+    const session = await this.prisma.liveStream.findFirst({
+      where: { id: streamId, userId },
+    });
+
+    if (!session) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamId });
+    }
+
+    if (session.status !== 'PENDING') {
+      throw new BusinessException(
+        'INVALID_STREAM_STATE',
+        { currentStatus: session.status },
+        `Only PENDING streams can be cancelled (current: ${session.status})`,
+      );
+    }
+
+    await this.prisma.liveStream.update({
+      where: { id: streamId },
+      data: { status: 'OFFLINE' },
+    });
+
+    // Clean up Redis if any metadata was cached
+    await this.redisService.del(`stream:${session.streamKey}:meta`);
+    await this.redisService.del(`stream:${session.streamKey}:viewers`);
+
+    this.logger.log(`Stream ${streamId} cancelled by user ${userId}`);
   }
 
   async goLive(streamId: string, userId: string): Promise<StreamingSessionResponseDto> {
@@ -525,19 +592,28 @@ export class StreamingService {
       return false;
     }
 
-    // Check if stream key has expired
-    if (session.expiresAt && new Date() > session.expiresAt) {
+    // Check if stream key has expired.
+    // Skip expiry check for LIVE streams — an active broadcast must not be
+    // interrupted by key expiry on OBS reconnect.
+    if (session.status !== 'LIVE' && session.expiresAt && new Date() > session.expiresAt) {
       this.logger.warn(`RTMP auth failed: Stream key expired - ${streamKey}`);
       return false;
     }
 
-    // Authentication successful - update stream to LIVE
-    // Preserve original startedAt on RTMP reconnect
+    // Authentication successful - update stream to LIVE.
+    // Extend expiresAt to at least 48h from now so that OBS reconnects
+    // after a brief disconnect are never blocked by key expiry.
+    const minExpiresAt = new Date();
+    minExpiresAt.setHours(minExpiresAt.getHours() + 48);
+    const newExpiresAt =
+      session.expiresAt && session.expiresAt > minExpiresAt ? session.expiresAt : minExpiresAt;
+
     await this.prisma.liveStream.update({
       where: { id: session.id },
       data: {
         status: 'LIVE',
         startedAt: session.startedAt || new Date(),
+        expiresAt: newExpiresAt,
       },
     });
 
