@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
 import { useOrientation } from '@/hooks/useOrientation';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import LiveBadge from './LiveBadge';
 import ViewerCount from './ViewerCount';
 import BufferingSpinner from './BufferingSpinner';
@@ -47,8 +48,10 @@ export default function VideoPlayer({
   const [error, setError] = useState<string | null>(null);
   const [streamEnded, setStreamEnded] = useState(false);
   const [latency, setLatency] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
+  // Debounce ref: spinner only appears if buffering lasts > 400ms
+  const bufferingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // KPI metrics
   const metricsRef = useRef({
@@ -83,17 +86,6 @@ export default function VideoPlayer({
   const hlsUrl = process.env.NEXT_PUBLIC_CDN_URL
     ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}.m3u8`
     : `/hls/${streamKey}.m3u8`;
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   useEffect(() => {
     if (isMobile && orientation === 'landscape' && !document.fullscreenElement) {
@@ -310,7 +302,12 @@ export default function VideoPlayer({
 
     // KPI + buffering state via video element events
     const onWaiting = () => {
-      setIsBuffering(true);
+      // Delay spinner by 400ms — transient micro-stalls won't flash the spinner
+      if (bufferingTimerRef.current) clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = setTimeout(() => {
+        setIsBuffering(true);
+        bufferingTimerRef.current = null;
+      }, 400);
       const m = metricsRef.current;
       // Only count as rebuffer after first frame has been rendered
       if (m.firstFrameTime > 0) {
@@ -320,6 +317,11 @@ export default function VideoPlayer({
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
     const onPlaying = () => {
+      // Cancel pending spinner before it appears
+      if (bufferingTimerRef.current) {
+        clearTimeout(bufferingTimerRef.current);
+        bufferingTimerRef.current = null;
+      }
       setIsBuffering(false);
       setError(null);
       const m = metricsRef.current;
@@ -363,6 +365,10 @@ export default function VideoPlayer({
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
       video.removeEventListener('ratechange', onRateChange);
+      if (bufferingTimerRef.current) {
+        clearTimeout(bufferingTimerRef.current);
+        bufferingTimerRef.current = null;
+      }
       cleanupPlayer();
       disconnectWebSocket();
     };
