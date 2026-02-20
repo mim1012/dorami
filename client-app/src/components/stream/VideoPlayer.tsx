@@ -41,6 +41,12 @@ export default function VideoPlayer({
   const socketRef = useRef<Socket | null>(null);
   const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const flvRetryCountRef = useRef(0);
+  const flvRetryInProgressRef = useRef(false);
+  const stallWatchdogRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCurrentTimeRef = useRef<number>(-1);
+  const stallTicksRef = useRef<number>(0);
+  const watchdogStartedRef = useRef<boolean>(false);
+  const streamEndedRef = useRef(false);
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -49,7 +55,7 @@ export default function VideoPlayer({
   const [streamEnded, setStreamEnded] = useState(false);
   const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
-  // Debounce ref: spinner only appears if buffering lasts > 400ms
+  // Debounce ref: spinner only appears if buffering lasts > 800ms
   const bufferingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // KPI metrics
@@ -79,6 +85,10 @@ export default function VideoPlayer({
   useEffect(() => {
     onStreamError?.(!!error);
   }, [error, onStreamError]);
+
+  useEffect(() => {
+    streamEndedRef.current = streamEnded;
+  }, [streamEnded]);
 
   // Stream URLs
   const flvUrl = `/live/live/${streamKey}.flv`;
@@ -207,7 +217,9 @@ export default function VideoPlayer({
           enableWorker: true,
           enableStashBuffer: true,
           stashInitialSize: 256,
-          liveBufferLatencyChasing: false,
+          liveBufferLatencyChasing: true,
+          liveBufferLatencyMaxLatency: 3.0,
+          liveBufferLatencyMinRemain: 1.0,
           autoCleanupSourceBuffer: true,
           autoCleanupMaxBackwardDuration: 30,
           autoCleanupMinBackwardDuration: 10,
@@ -230,8 +242,12 @@ export default function VideoPlayer({
 
         if (isRetryable && flvRetryCountRef.current < 3) {
           flvRetryCountRef.current++;
+          flvRetryInProgressRef.current = true;
           player.unload();
-          setTimeout(() => player.load(), 1000 * flvRetryCountRef.current);
+          setTimeout(() => {
+            flvRetryInProgressRef.current = false;
+            player.load();
+          }, 1000 * flvRetryCountRef.current);
           return;
         }
 
@@ -240,6 +256,13 @@ export default function VideoPlayer({
           clearInterval(latencyIntervalRef.current);
           latencyIntervalRef.current = null;
         }
+        // Reset watchdog so it restarts cleanly for the HLS session
+        if (stallWatchdogRef.current) {
+          clearInterval(stallWatchdogRef.current);
+          stallWatchdogRef.current = null;
+        }
+        watchdogStartedRef.current = false;
+        stallTicksRef.current = 0;
         player.destroy();
         mpegtsPlayerRef.current = null;
         setError(null);
@@ -248,18 +271,6 @@ export default function VideoPlayer({
       });
 
       mpegtsPlayerRef.current = player;
-
-      // Track latency for FLV — manual seek to live edge when drift > 3.5s
-      latencyIntervalRef.current = setInterval(() => {
-        const video = videoRef.current;
-        if (video && video.buffered.length > 0) {
-          const liveEdge = video.buffered.end(video.buffered.length - 1);
-          const currentLatency = liveEdge - video.currentTime;
-          if (currentLatency > 3.5) {
-            video.currentTime = liveEdge - 1.5;
-          }
-        }
-      }, 1000);
     } catch {
       // mpegts.js import failed — fall back to HLS
       initializeHlsPlayer();
@@ -332,6 +343,44 @@ export default function VideoPlayer({
       }
       syncKpi();
       onStreamStateChangeRef.current?.({ type: 'PLAY_OK' });
+      // Start stall watchdog on first successful frame
+      if (!watchdogStartedRef.current) {
+        watchdogStartedRef.current = true;
+        lastCurrentTimeRef.current = videoRef.current?.currentTime ?? 0;
+        stallTicksRef.current = 0;
+        stallWatchdogRef.current = setInterval(() => {
+          const v = videoRef.current;
+          if (!v || v.paused || streamEndedRef.current) {
+            stallTicksRef.current = 0;
+            lastCurrentTimeRef.current = v?.currentTime ?? -1;
+            return;
+          }
+          // 부동소수점 비교: 10ms 미만 진행은 stall로 간주
+          if (Math.abs(v.currentTime - lastCurrentTimeRef.current) < 0.01) {
+            stallTicksRef.current++;
+            if (stallTicksRef.current >= 5) {
+              // 5초간 currentTime 무변화 → 강제 재연결
+              stallTicksRef.current = 0;
+              metricsRef.current.reconnectCount++;
+              syncKpi();
+              // 재연결 5회 초과 시 에러 표시 (무한 루프 방지)
+              if (metricsRef.current.reconnectCount > 5) {
+                setError('Connection lost. Please refresh.');
+                return;
+              }
+              if (mpegtsPlayerRef.current && !flvRetryInProgressRef.current) {
+                mpegtsPlayerRef.current.unload();
+                mpegtsPlayerRef.current.load();
+              } else if (hlsRef.current) {
+                hlsRef.current.startLoad();
+              }
+            }
+          } else {
+            stallTicksRef.current = 0;
+            lastCurrentTimeRef.current = v.currentTime;
+          }
+        }, 1000);
+      }
     };
     const onStalled = () => {
       const m = metricsRef.current;
@@ -375,6 +424,12 @@ export default function VideoPlayer({
       clearInterval(latencyIntervalRef.current);
       latencyIntervalRef.current = null;
     }
+    if (stallWatchdogRef.current) {
+      clearInterval(stallWatchdogRef.current);
+      stallWatchdogRef.current = null;
+    }
+    watchdogStartedRef.current = false;
+    stallTicksRef.current = 0;
     if (mpegtsPlayerRef.current) {
       mpegtsPlayerRef.current.destroy();
       mpegtsPlayerRef.current = null;
