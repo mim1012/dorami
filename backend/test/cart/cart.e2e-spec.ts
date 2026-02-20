@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { TransformInterceptor } from '../../src/common/interceptors/transform.interceptor';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
@@ -29,7 +30,7 @@ describe('Cart (e2e)', () => {
         transformOptions: { enableImplicitConversion: true },
       }),
     );
-    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalInterceptors(new TransformInterceptor(moduleFixture.get(Reflector)));
 
     await app.init();
 
