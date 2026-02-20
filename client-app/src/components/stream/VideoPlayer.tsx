@@ -39,6 +39,7 @@ export default function VideoPlayer({
   const mpegtsPlayerRef = useRef<any>(null);
   const socketRef = useRef<Socket | null>(null);
   const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const flvRetryCountRef = useRef(0);
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -116,6 +117,12 @@ export default function VideoPlayer({
   const initializeHlsPlayer = useCallback(() => {
     if (!videoRef.current) return;
 
+    // Clear any existing interval (e.g. orphaned FLV interval during fallback)
+    if (latencyIntervalRef.current) {
+      clearInterval(latencyIntervalRef.current);
+      latencyIntervalRef.current = null;
+    }
+
     metricsRef.current.playStartTime = performance.now();
     setPlayerMode('hls');
 
@@ -129,13 +136,12 @@ export default function VideoPlayer({
     } else if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 2,
-        maxBufferLength: 3,
-        liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 4,
-        liveDurationInfinity: true,
-        maxLiveSyncPlaybackRate: 1.5,
+        lowLatencyMode: false,
+        backBufferLength: 10,
+        maxBufferLength: 20,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 6,
+        maxLiveSyncPlaybackRate: 1.3,
       });
 
       hls.loadSource(hlsUrl);
@@ -212,10 +218,13 @@ export default function VideoPlayer({
         {
           enableWorker: true,
           enableStashBuffer: true,
-          stashInitialSize: 512,
+          stashInitialSize: 1024,
           liveBufferLatencyChasing: true,
           liveBufferLatencyMaxLatency: 4.0,
           liveBufferLatencyMinRemain: 1.5,
+          autoCleanupSourceBuffer: true,
+          autoCleanupMaxBackwardDuration: 30,
+          autoCleanupMinBackwardDuration: 10,
         },
       );
 
@@ -227,8 +236,24 @@ export default function VideoPlayer({
         setIsPlaying(true);
       });
 
-      player.on(mpegts.default.Events.ERROR, () => {
-        // FLV playback error — fall back to HLS
+      player.on(mpegts.default.Events.ERROR, (errorType: string, errorDetail: string) => {
+        const isRetryable =
+          (errorType === 'NetworkError' &&
+            (errorDetail === 'NetworkTimeout' || errorDetail === 'NetworkStatusCodeInvalid')) ||
+          (errorType === 'MediaError' && errorDetail === 'MediaMSEError');
+
+        if (isRetryable && flvRetryCountRef.current < 3) {
+          flvRetryCountRef.current++;
+          player.unload();
+          setTimeout(() => player.load(), 1000 * flvRetryCountRef.current);
+          return;
+        }
+
+        // Unrecoverable or retry limit reached — clear interval then fall back to HLS
+        if (latencyIntervalRef.current) {
+          clearInterval(latencyIntervalRef.current);
+          latencyIntervalRef.current = null;
+        }
         player.destroy();
         mpegtsPlayerRef.current = null;
         setError(null);
@@ -322,7 +347,9 @@ export default function VideoPlayer({
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
     const onRateChange = () => {
-      if (video.playbackRate !== 1) {
+      // mpegts.js manages playbackRate internally for latency chasing (FLV mode).
+      // Only reset in HLS fallback mode to prevent unintended speed changes.
+      if (mpegtsPlayerRef.current === null && video.playbackRate !== 1) {
         video.playbackRate = 1;
       }
     };
