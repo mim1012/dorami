@@ -644,7 +644,7 @@ export default function LiveStreamPage() {
       </div>
 
       {/* ── Right: Chat Panel — Desktop only ── */}
-      <div className="hidden lg:flex w-[320px] h-full flex-col bg-[#0A0A0A] border-l border-white/5">
+      <div className="hidden lg:flex w-[320px] h-full flex-col bg-[#0A0A0A] border-l border-white/5 relative z-[30]">
         <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
         <ChatMessageList
           messages={allMessages}

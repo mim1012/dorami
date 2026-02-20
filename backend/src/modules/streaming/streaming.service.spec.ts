@@ -472,6 +472,107 @@ describe('StreamingService', () => {
     });
   });
 
+  describe('updateStream', () => {
+    it('should update title of PENDING stream', async () => {
+      const updated = { ...mockStream, title: '새 방송 제목' };
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
+
+      const result = await service.updateStream('stream-1', 'user-1', { title: '새 방송 제목' });
+
+      expect(result.title).toBe('새 방송 제목');
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { title: '새 방송 제목' },
+      });
+    });
+
+    it('should update expiresAt of PENDING stream', async () => {
+      const newExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const updated = { ...mockStream, expiresAt: newExpiresAt };
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
+
+      const result = await service.updateStream('stream-1', 'user-1', {
+        expiresAt: newExpiresAt.toISOString(),
+      });
+
+      expect(result.expiresAt).toEqual(newExpiresAt);
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { expiresAt: expect.any(Date) },
+      });
+    });
+
+    it('should throw STREAM_NOT_FOUND when stream not found', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.updateStream('invalid-id', 'user-1', { title: '제목' })).rejects.toThrow(
+        BusinessException,
+      );
+    });
+
+    it('should throw INVALID_STREAM_STATE when stream is LIVE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+
+      await expect(service.updateStream('stream-2', 'user-1', { title: '제목' })).rejects.toThrow(
+        BusinessException,
+      );
+    });
+
+    it('should only update provided fields', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockStream as any);
+
+      await service.updateStream('stream-1', 'user-1', {});
+
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: {},
+      });
+    });
+  });
+
+  describe('cancelStream', () => {
+    it('should cancel PENDING stream and set status to OFFLINE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue({
+        ...mockStream,
+        status: 'OFFLINE',
+      } as any);
+      jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
+
+      await service.cancelStream('stream-1', 'user-1');
+
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { status: 'OFFLINE' },
+      });
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
+    });
+
+    it('should throw STREAM_NOT_FOUND when stream not found', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.cancelStream('invalid-id', 'user-1')).rejects.toThrow(BusinessException);
+    });
+
+    it('should throw INVALID_STREAM_STATE when stream is LIVE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+
+      await expect(service.cancelStream('stream-2', 'user-1')).rejects.toThrow(BusinessException);
+    });
+
+    it('should throw STREAM_NOT_FOUND when userId does not match', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.cancelStream('stream-1', 'wrong-user')).rejects.toThrow(
+        BusinessException,
+      );
+    });
+  });
+
   // ── getFeaturedProduct smoke tests (FSM data integrity) ───────────────────────
   describe('getFeaturedProduct', () => {
     const mockProduct = {
