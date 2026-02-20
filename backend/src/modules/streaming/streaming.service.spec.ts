@@ -339,6 +339,7 @@ describe('StreamingService', () => {
         data: {
           status: 'LIVE',
           startedAt: expect.any(Date),
+          expiresAt: expect.any(Date),
         },
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith('stream:started', {
