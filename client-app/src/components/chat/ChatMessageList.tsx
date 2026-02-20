@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ChatMessage from './ChatMessage';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from './types';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ShoppingCart } from 'lucide-react';
 
 interface ChatMessageListProps {
   messages: ChatMessageType[];
@@ -82,20 +83,18 @@ export default function ChatMessageList({
                 return (
                   <div
                     key={message.id}
-                    className={`animate-fade-in flex items-start gap-2 ${
-                      compact ? 'mb-1.5 px-3 py-1' : 'mb-2 px-4 py-1.5'
-                    }`}
+                    className={`animate-fade-in ${compact ? 'mb-1.5 px-1' : 'mb-2 px-2'}`}
                   >
-                    <span className="flex-shrink-0 bg-amber-500/20 text-amber-400 text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                      시스템
-                    </span>
-                    <p
-                      className={`text-amber-200/90 whitespace-pre-wrap break-words ${
-                        compact ? 'text-[13px] leading-snug' : 'text-sm'
-                      }`}
-                    >
-                      {message.message}
-                    </p>
+                    <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-[#FF007A]/20 border border-[#FF007A]/30">
+                      <ShoppingCart className="w-3 h-3 text-[#FF007A] flex-shrink-0" />
+                      <span
+                        className={`text-[#FF007A] font-semibold ${
+                          compact ? 'text-[12px]' : 'text-[13px]'
+                        }`}
+                      >
+                        {message.message}
+                      </span>
+                    </div>
                   </div>
                 );
               }

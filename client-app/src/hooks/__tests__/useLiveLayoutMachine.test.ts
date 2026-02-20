@@ -33,9 +33,13 @@ describe('deriveSnapshot', () => {
     expect(deriveSnapshot('offline', 'stalled', 'typing')).toBe('RETRYING');
   });
 
-  test('retrying connection returns RETRYING', () => {
-    expect(deriveSnapshot('retrying', 'unknown', 'normal')).toBe('RETRYING');
+  test('retrying connection returns RETRYING only when stream was actively playing', () => {
+    // Stream was playing/stalled/error → RETRYING (chat socket dropped mid-broadcast)
     expect(deriveSnapshot('retrying', 'playing', 'controls')).toBe('RETRYING');
+    expect(deriveSnapshot('retrying', 'stalled', 'normal')).toBe('RETRYING');
+    // Stream never started → do NOT mask "waiting for stream" with RETRYING
+    expect(deriveSnapshot('retrying', 'unknown', 'normal')).toBe('LIVE_NORMAL');
+    expect(deriveSnapshot('retrying', 'waiting_manifest', 'normal')).toBe('LIVE_NORMAL');
   });
 
   // Priority 3: stream === 'no_stream' → NO_STREAM
@@ -74,9 +78,10 @@ describe('deriveSnapshot', () => {
     expect(deriveSnapshot('ended', 'no_stream', 'normal')).toBe('ENDED');
   });
 
-  test('RETRYING beats no_stream', () => {
-    // offline + no_stream → RETRYING wins (priority 2 > 3)
-    expect(deriveSnapshot('offline', 'no_stream', 'normal')).toBe('RETRYING');
+  test('offline + no_stream → NO_STREAM (stream never started, do not show RETRYING)', () => {
+    // The FSM intentionally does not return RETRYING when stream is no_stream,
+    // because a chat socket retry should not mask the "waiting for broadcast" state.
+    expect(deriveSnapshot('offline', 'no_stream', 'normal')).toBe('NO_STREAM');
   });
 });
 
@@ -84,52 +89,41 @@ describe('deriveSnapshot', () => {
 
 describe('computeLayout', () => {
   describe('LIVE_NORMAL', () => {
-    test('without featured product: chat bottom uses normal calc', () => {
+    test('topBar visible, chat visible, input enabled', () => {
       const layout = computeLayout('LIVE_NORMAL', false);
       expect(layout.topBar.visible).toBe(true);
       expect(layout.topBar.dim).toBe(false);
-      expect(layout.notice.visible).toBe(true);
       expect(layout.chat.visible).toBe(true);
-      expect(layout.chat.bottom).not.toContain('product-bar-h');
-      expect(layout.productCard.visible).toBe(false);
+      expect(layout.chat.bottom).toBe('var(--live-gap)');
       expect(layout.bottomInput.visible).toBe(true);
       expect(layout.bottomInput.disabled).toBe(false);
       expect(layout.centerOverlay.visible).toBe(false);
       expect(layout.centerOverlay.message).toBe('');
     });
 
-    test('with featured product: chat bottom includes product-bar-h', () => {
-      const layout = computeLayout('LIVE_NORMAL', true);
-      expect(layout.chat.bottom).toContain('--live-product-bar-h');
-      expect(layout.productCard.visible).toBe(true);
+    test('hasFeatured flag does not change chat.bottom (product card is in static flow)', () => {
+      const layoutWithout = computeLayout('LIVE_NORMAL', false);
+      const layoutWith = computeLayout('LIVE_NORMAL', true);
+      expect(layoutWith.chat.bottom).toBe(layoutWithout.chat.bottom);
     });
   });
 
   describe('LIVE_TYPING', () => {
-    test('hides notice and productCard, dims topBar', () => {
+    test('dims topBar, chat visible, input enabled', () => {
       const layout = computeLayout('LIVE_TYPING', true);
       expect(layout.topBar.visible).toBe(true);
       expect(layout.topBar.dim).toBe(true);
-      expect(layout.notice.visible).toBe(false);
-      expect(layout.productCard.visible).toBe(false);
       expect(layout.chat.visible).toBe(true);
       expect(layout.bottomInput.visible).toBe(true);
       expect(layout.bottomInput.disabled).toBe(false);
       expect(layout.centerOverlay.visible).toBe(false);
     });
 
-    test('chat bottom does NOT include product bar height when typing', () => {
-      const layout = computeLayout('LIVE_TYPING', true);
-      // product card is hidden so chat bottom should not account for it
-      expect(layout.chat.bottom).not.toContain('--live-product-bar-h');
-    });
-
-    test('hasFeatured=false: same layout (typing hides product card anyway)', () => {
+    test('hasFeatured=false: same layout as hasFeatured=true', () => {
       const layoutWith = computeLayout('LIVE_TYPING', true);
       const layoutWithout = computeLayout('LIVE_TYPING', false);
       expect(layoutWith.topBar.dim).toBe(layoutWithout.topBar.dim);
-      expect(layoutWith.productCard.visible).toBe(false);
-      expect(layoutWithout.productCard.visible).toBe(false);
+      expect(layoutWith.chat.bottom).toBe(layoutWithout.chat.bottom);
     });
   });
 
@@ -138,9 +132,7 @@ describe('computeLayout', () => {
       const layout = computeLayout('RETRYING', false);
       expect(layout.topBar.visible).toBe(true);
       expect(layout.topBar.dim).toBe(false);
-      expect(layout.notice.visible).toBe(false);
       expect(layout.chat.visible).toBe(false);
-      expect(layout.productCard.visible).toBe(false);
       expect(layout.bottomInput.visible).toBe(true);
       expect(layout.bottomInput.disabled).toBe(true);
       expect(layout.centerOverlay.visible).toBe(true);
@@ -151,18 +143,15 @@ describe('computeLayout', () => {
       const l1 = computeLayout('RETRYING', false);
       const l2 = computeLayout('RETRYING', true);
       expect(l1.chat.visible).toBe(l2.chat.visible);
-      expect(l1.productCard.visible).toBe(l2.productCard.visible);
       expect(l1.centerOverlay.message).toBe(l2.centerOverlay.message);
     });
   });
 
   describe('NO_STREAM', () => {
-    test('shows center overlay with waiting message, disables input, shows notice', () => {
+    test('shows center overlay with waiting message, disables input', () => {
       const layout = computeLayout('NO_STREAM', false);
       expect(layout.topBar.visible).toBe(true);
-      expect(layout.notice.visible).toBe(true);
       expect(layout.chat.visible).toBe(false);
-      expect(layout.productCard.visible).toBe(false);
       expect(layout.bottomInput.visible).toBe(true);
       expect(layout.bottomInput.disabled).toBe(true);
       expect(layout.centerOverlay.visible).toBe(true);
@@ -174,9 +163,7 @@ describe('computeLayout', () => {
     test('hides everything except center overlay CTA', () => {
       const layout = computeLayout('ENDED', true);
       expect(layout.topBar.visible).toBe(false);
-      expect(layout.notice.visible).toBe(false);
       expect(layout.chat.visible).toBe(false);
-      expect(layout.productCard.visible).toBe(false);
       expect(layout.bottomInput.visible).toBe(false);
       expect(layout.bottomInput.disabled).toBe(true);
       expect(layout.centerOverlay.visible).toBe(true);
@@ -184,7 +171,7 @@ describe('computeLayout', () => {
     });
   });
 
-  // ── Data integrity: CSS calc() values use registered tokens ──────────────────
+  // ── Data integrity: CSS values ────────────────────────────────────────────────
 
   describe('CSS token integrity', () => {
     const snapshots: LiveSnapshot[] = [
@@ -195,34 +182,15 @@ describe('computeLayout', () => {
       'ENDED',
     ];
 
-    test.each(snapshots)('%s: chat.bottom references only known CSS variables', (snapshot) => {
+    test.each(snapshots)('%s: chat.bottom is a valid CSS value string', (snapshot) => {
       const layout = computeLayout(snapshot, true);
-      if (layout.chat.bottom && layout.chat.bottom !== '0') {
-        const allowedVars = [
-          '--live-bottom-bar-h',
-          '--live-product-bar-h',
-          '--live-gap',
-          'env(safe-area-inset-bottom',
-        ];
-        for (const v of allowedVars.concat(['0'])) {
-          // just check it's a string starting with calc( or '0'
-        }
-        expect(layout.chat.bottom).toMatch(/^(0|calc\()/);
-      }
+      expect(typeof layout.chat.bottom).toBe('string');
+      expect(layout.chat.bottom.length).toBeGreaterThan(0);
     });
 
-    test('LIVE_NORMAL with featured: chat.bottom includes all three height vars', () => {
+    test('LIVE_NORMAL chat.bottom is var(--live-gap)', () => {
       const layout = computeLayout('LIVE_NORMAL', true);
-      expect(layout.chat.bottom).toContain('--live-bottom-bar-h');
-      expect(layout.chat.bottom).toContain('--live-product-bar-h');
-      expect(layout.chat.bottom).toContain('--live-gap');
-    });
-
-    test('LIVE_NORMAL without featured: chat.bottom uses only bottom-bar + gap', () => {
-      const layout = computeLayout('LIVE_NORMAL', false);
-      expect(layout.chat.bottom).toContain('--live-bottom-bar-h');
-      expect(layout.chat.bottom).not.toContain('--live-product-bar-h');
-      expect(layout.chat.bottom).toContain('--live-gap');
+      expect(layout.chat.bottom).toBe('var(--live-gap)');
     });
   });
 
@@ -242,10 +210,8 @@ describe('computeLayout', () => {
         const layout = computeLayout(snapshot, hasFeatured);
         expect(typeof layout.topBar.visible).toBe('boolean');
         expect(typeof layout.topBar.dim).toBe('boolean');
-        expect(typeof layout.notice.visible).toBe('boolean');
         expect(typeof layout.chat.visible).toBe('boolean');
         expect(typeof layout.chat.bottom).toBe('string');
-        expect(typeof layout.productCard.visible).toBe('boolean');
         expect(typeof layout.bottomInput.visible).toBe('boolean');
         expect(typeof layout.bottomInput.disabled).toBe('boolean');
         expect(typeof layout.centerOverlay.visible).toBe('boolean');

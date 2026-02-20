@@ -16,6 +16,7 @@ import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
 import CartActivityFeed from '@/components/live/CartActivityFeed';
+import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import { useCartActivity } from '@/hooks/useCartActivity';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
@@ -81,7 +82,7 @@ export default function LiveStreamPage() {
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
-  // Notice banner (reuses NoticeBox pattern)
+  // Notice banner
   const { data: notice } = useQuery<{ text: string | null }>({
     queryKey: ['notice', 'current'],
     queryFn: async () => {
@@ -188,7 +189,7 @@ export default function LiveStreamPage() {
     return () => vv.removeEventListener('resize', onResize);
   }, [dispatch]);
 
-  // ── Featured product fetch + real-time WS (mobile) ─────────────────────────
+  // ── Featured product fetch + real-time WS ──────────────────────────────────
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -206,7 +207,7 @@ export default function LiveStreamPage() {
       process.env.NEXT_PUBLIC_WS_URL ||
         (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
       {
-        withCredentials: true, // Use HttpOnly cookie for auth instead of localStorage token
+        withCredentials: true,
       },
     );
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
@@ -305,7 +306,6 @@ export default function LiveStreamPage() {
   }
 
   const handleProductClick = async (product: Product | FeaturedProduct) => {
-    // If product has all required Product fields, use directly; otherwise fetch full data
     if ('streamKey' in product && 'colorOptions' in product) {
       setSelectedProduct(product as Product);
       setIsModalOpen(true);
@@ -344,7 +344,7 @@ export default function LiveStreamPage() {
   const layout = computeLayout(snapshot, !!featuredProduct);
 
   return (
-    <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
+    <div className="live-fullscreen w-full bg-black lg:h-screen lg:flex lg:overflow-hidden">
       {/* ── Left: Product List — Desktop only ── */}
       <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
@@ -356,34 +356,22 @@ export default function LiveStreamPage() {
         <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
       </aside>
 
-      {/* ── MOBILE: FSM-driven overlay layout ── */}
-      <div className="flex lg:hidden relative w-full h-full overflow-hidden bg-black">
-        {/* video — z-0 */}
-        <div className="absolute inset-0 z-0">
-          <VideoPlayer
-            streamKey={streamKey}
-            title={streamStatus.title}
-            onViewerCountChange={handleViewerCountChange}
-            onStreamError={setVideoError}
-            hideErrorOverlay
-            onStreamStateChange={(e) => {
-              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
-              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
-              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
-              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
-            }}
-          />
-        </div>
-
-        {/* top-bar — z-20 */}
+      {/* ── MOBILE: flex-col scroll layout ── */}
+      <div
+        className="flex lg:hidden flex-col w-full bg-black"
+        style={{
+          paddingBottom: 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))',
+        }}
+      >
+        {/* 1. LIVE status bar — sticky top z-30 */}
         {layout.topBar.visible && (
           <div
-            className={`absolute top-0 inset-x-0 z-20 bg-black/40 backdrop-blur-sm px-3 transition-opacity ${
+            className={`sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3 transition-opacity ${
               layout.topBar.dim ? 'opacity-40' : 'opacity-100'
             }`}
             style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
           >
-            <div className="flex items-center justify-between pb-4">
+            <div className="flex items-center justify-between pb-3">
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg flex-shrink-0">
                   <span className="text-white text-xs font-black">D</span>
@@ -441,31 +429,69 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* notice — z-15 */}
-        {layout.notice.visible && notice?.text && (
-          <div className="absolute inset-x-3 z-[15]" style={{ top: 'var(--live-top-bar-h)' }}>
-            <div className="bg-[rgba(255,120,120,0.9)] rounded-full px-3 py-1.5 flex items-center gap-2">
+        {/* 2. Notice banner — sticky z-20 (only when text exists) */}
+        {notice?.text && (
+          <div className="sticky z-20 bg-[rgba(255,100,100,0.92)] px-3 py-1.5 overflow-hidden">
+            <div className="flex items-center gap-2">
               <Zap className="w-3 h-3 text-white flex-shrink-0" />
-              <p className="text-white text-[11px] font-medium line-clamp-1">{notice.text}</p>
+              <div className="overflow-hidden flex-1">
+                <div className="notice-track text-white text-[11px] font-medium">
+                  <span className="pr-12">{notice.text}</span>
+                  <span className="pr-12">{notice.text}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* chat — z-10 */}
-        {layout.chat.visible && (
-          <div
-            className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto"
-            style={{ bottom: layout.chat.bottom }}
-          >
-            <ChatMessageList messages={allMessages} compact maxMessages={50} />
-          </div>
-        )}
+        {/* 3. Video player (16:9) with chat overlay inside */}
+        <div className="relative w-full aspect-video bg-black">
+          <VideoPlayer
+            streamKey={streamKey}
+            title={streamStatus.title}
+            onViewerCountChange={handleViewerCountChange}
+            onStreamError={setVideoError}
+            hideErrorOverlay
+            onStreamStateChange={(e) => {
+              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
+              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
+              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
+              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
+            }}
+          />
 
-        {/* product-card — z-25 */}
-        {layout.productCard.visible && featuredProduct && (
-          <div
-            className="absolute inset-x-3 z-[25] bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer"
-            style={{ bottom: 'calc(var(--live-bottom-bar-h) + env(safe-area-inset-bottom, 0px))' }}
+          {/* Chat overlay — bottom 40% of video */}
+          {layout.chat.visible && (
+            <div
+              className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto"
+              style={{ bottom: layout.chat.bottom }}
+            >
+              <ChatMessageList messages={allMessages} compact maxMessages={50} />
+            </div>
+          )}
+
+          {/* Center overlay */}
+          {layout.centerOverlay.visible && (
+            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
+              <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
+                {layout.centerOverlay.message}
+              </p>
+              {snapshot === 'ENDED' && (
+                <button
+                  onClick={() => router.push('/')}
+                  className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
+                >
+                  홈으로
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Featured product section — static, below video */}
+        {featuredProduct && (
+          <section
+            className="mx-3 mt-3 bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => handleProductClick(featuredProduct)}
           >
             {featuredProduct.imageUrl && (
@@ -502,33 +528,24 @@ export default function LiveStreamPage() {
             >
               구매하기
             </button>
-          </div>
+          </section>
         )}
 
-        {/* center overlay — z-15 */}
-        {layout.centerOverlay.visible && (
-          <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
-            <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
-              {layout.centerOverlay.message}
-            </p>
-            {snapshot === 'ENDED' && (
-              <button
-                onClick={() => router.push('/')}
-                className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
-              >
-                홈으로
-              </button>
-            )}
-          </div>
-        )}
+        {/* 5. Quick action bar — fixed at bottom z-40 */}
+        <div
+          className="fixed inset-x-0 bottom-0 z-40"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <LiveQuickActionBar streamTitle={streamStatus.title} />
+        </div>
 
-        {/* bottom-input — z-30, fixed */}
+        {/* 6. Chat input bar — fixed above quick action bar z-40 */}
         {layout.bottomInput.visible && (
           <div
-            className="fixed inset-x-0 bottom-0 z-[30] flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+            className="fixed inset-x-0 z-40 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
             style={{
+              bottom: 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
               height: 'var(--live-bottom-bar-h)',
-              paddingBottom: 'env(safe-area-inset-bottom)',
             }}
           >
             <ChatInput
@@ -652,6 +669,7 @@ export default function LiveStreamPage() {
           isAdmin={isAdmin}
           onDeleteMessage={chatDeleteMessage}
         />
+        <LiveQuickActionBar streamTitle={streamStatus.title} />
         <ChatInput
           ref={desktopInputRef}
           onSendMessage={handleDesktopSendMessage}
