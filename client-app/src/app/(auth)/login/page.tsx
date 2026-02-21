@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Body } from '@/components/common/Typography';
+import Image from 'next/image';
 
 function LoginContent() {
   const router = useRouter();
@@ -79,8 +80,14 @@ function LoginContent() {
     <div className="min-h-screen bg-primary-black flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
-            <span className="text-white font-black text-2xl">D</span>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden">
+            <Image
+              src="/logo.png"
+              alt="DoRaMi"
+              width={64}
+              height={64}
+              className="object-contain w-full h-full"
+            />
           </div>
           <Display className="text-hot-pink mb-2">DoReMi</Display>
           <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
