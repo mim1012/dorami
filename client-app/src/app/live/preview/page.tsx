@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
-
-import CartActivityFeed, { CartActivity } from '@/components/live/CartActivityFeed';
+import type { CartActivity } from '@/components/live/CartActivityFeed';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
+import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import TestControlPanel from './TestControlPanel';
 import { useToast } from '@/components/common/Toast';
 import type { ChatMessage } from '@/components/chat/types';
+import { SYSTEM_USERNAME } from '@/components/chat/types';
 import type { Product } from '@/lib/types/product';
 import { ProductStatus } from '@live-commerce/shared-types';
 import { formatPrice } from '@/lib/utils/price';
-
-// ── staging / dev 전용 (런타임 체크 — DCE 방지) ──
+import { Eye } from 'lucide-react';
 
 // ── Mock Data ──
 const MOCK_MESSAGES: ChatMessage[] = [
@@ -125,9 +125,13 @@ const USER_NAMES = ['민지', '수현', '하은', '지우', '서연', '예린', 
 
 let nextProductId = 3;
 
+const STREAM_TITLE = '도레미 라이브 커머스 미리보기';
+
 export default function LivePreviewPage() {
   const router = useRouter();
-  const inputRef = useRef<ChatInputHandle>(null);
+  const mobileInputRef = useRef<ChatInputHandle>(null);
+  const desktopInputRef = useRef<ChatInputHandle>(null);
+  const startedAtRef = useRef(new Date());
   const { showToast } = useToast();
 
   // 런타임에 preview 접근 허가 여부 체크 (빌드 시 DCE 방지)
@@ -149,10 +153,38 @@ export default function LivePreviewPage() {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [chatSpeed, setChatSpeed] = useState(3500);
   const [cartCount, setCartCount] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
   // Product detail modal state
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // allMessages: cart activities merged as system messages (same as real page)
+  const allMessages = useMemo(() => {
+    const systemMessages: ChatMessage[] = cartActivities.map((activity) => ({
+      id: `system-cart-${activity.id}`,
+      userId: 'system',
+      username: SYSTEM_USERNAME,
+      message: `${activity.userName}님이 ${activity.productName}을 장바구니에 담았습니다`,
+      timestamp: new Date(activity.timestamp),
+      isDeleted: false,
+    }));
+    return [...messages, ...systemMessages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+  }, [messages, cartActivities]);
+
+  // Elapsed time timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const diff = Math.max(0, Math.floor((Date.now() - startedAtRef.current.getTime()) / 1000));
+      const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const s = String(diff % 60).padStart(2, '0');
+      setElapsedTime(`${h}:${m}:${s}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 시뮬레이션: 뷰어 카운트 변동
   useEffect(() => {
@@ -167,10 +199,9 @@ export default function LivePreviewPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 시뮬레이션: 자동 채팅 메시지 (chatSpeed로 제어)
+  // 시뮬레이션: 자동 채팅 메시지
   useEffect(() => {
-    if (chatSpeed === 0) return; // 정지 상태
-
+    if (chatSpeed === 0) return;
     const autoMessages = [
       '이거 진짜 갖고 싶다 ㅠㅠ',
       '사이즈 추천 부탁드려요!',
@@ -182,7 +213,6 @@ export default function LivePreviewPage() {
       '오늘 특가 맞죠? 🔥',
     ];
     let idx = 0;
-
     const interval = setInterval(() => {
       const username = `user_${Math.floor(Math.random() * 999)}`;
       const newMsg: ChatMessage = {
@@ -196,7 +226,6 @@ export default function LivePreviewPage() {
       setMessages((prev) => [...prev.slice(-30), newMsg]);
       idx++;
     }, chatSpeed);
-
     return () => clearInterval(interval);
   }, [chatSpeed]);
 
@@ -240,10 +269,7 @@ export default function LivePreviewPage() {
   const handleAddToCart = (productId: string, selectedColor?: string, selectedSize?: string) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-
     setCartCount((prev) => prev + 1);
-
-    // 장바구니 활동 피드에 추가
     const activity: CartActivity = {
       id: `ca-me-${Date.now()}`,
       userName: '나',
@@ -252,7 +278,6 @@ export default function LivePreviewPage() {
       timestamp: new Date().toISOString(),
     };
     setCartActivities((prev) => [...prev, activity]);
-
     const options = [selectedColor, selectedSize].filter(Boolean).join(', ');
     showToast(`${product.name}${options ? ` (${options})` : ''} 장바구니에 담았어요!`, 'success');
   };
@@ -262,6 +287,21 @@ export default function LivePreviewPage() {
     if (product) {
       setSelectedProduct(product);
       setIsModalOpen(true);
+    }
+  };
+
+  const handleShare = () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (navigator.share) {
+      navigator
+        .share({ title: STREAM_TITLE, text: `${STREAM_TITLE} - 도레LIVE`, url })
+        .catch(() => {
+          navigator.clipboard.writeText(url);
+          showToast('링크가 복사되었습니다!', 'success');
+        });
+    } else {
+      navigator.clipboard.writeText(url);
+      showToast('링크가 복사되었습니다!', 'success');
     }
   };
 
@@ -327,7 +367,6 @@ export default function LivePreviewPage() {
     setProducts((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // 접근 허가 대기 중 로딩 표시
   if (!isAllowed) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -336,28 +375,13 @@ export default function LivePreviewPage() {
     );
   }
 
-  const handleShare = () => {
-    const shareData = {
-      title: 'Doremi Live Commerce',
-      text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      navigator.share(shareData).catch(() => {
-        navigator.clipboard.writeText(window.location.href);
-        showToast('링크가 복사되었습니다!', 'success');
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      showToast('링크가 복사되었습니다!', 'success');
-    }
-  };
+  const featuredProduct = products[0] ?? null;
 
   return (
-    <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
-      {/* Left: Product List - Desktop Only */}
-      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-primary-black border-r border-border-color">
-        <div className="p-4 border-b border-border-color">
+    <div className="live-fullscreen w-full bg-black lg:h-screen lg:flex lg:overflow-hidden">
+      {/* ── Left: Product List — Desktop only ── */}
+      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
+        <div className="p-4 border-b border-white/10">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]"></span>
             상품 목록
@@ -397,266 +421,373 @@ export default function LivePreviewPage() {
         </div>
       </aside>
 
-      {/* Center: Video Container */}
-      <div className="flex-1 relative flex items-center justify-center">
-        <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
-          {/* ── Mock Video Player ── */}
-          <div className="w-full h-full bg-white flex items-center justify-center relative overflow-hidden">
-            {/* Animated background circles */}
+      {/* ── Mobile: flex-col scroll layout ── */}
+      <div className="flex lg:hidden flex-col w-full bg-black">
+        {/* 1. Top status bar — sticky */}
+        <div
+          className="sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3"
+          style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+        >
+          <div className="flex items-center justify-between pb-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg flex-shrink-0">
+                <span className="text-white text-xs font-black">D</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-white font-bold text-sm leading-tight line-clamp-1">
+                  {STREAM_TITLE}
+                </p>
+                <p className="text-white/60 text-[10px] font-mono">{elapsedTime}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                </span>
+                <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
+              </div>
+              <div
+                className={`flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10 transition-transform ${showViewerPulse ? 'scale-110' : ''}`}
+              >
+                <Eye className="w-3 h-3 text-white/70" />
+                <span className="text-white text-[10px] font-bold">
+                  {viewerCount.toLocaleString()}
+                </span>
+              </div>
+              <button
+                onClick={() => router.push('/')}
+                className="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"
+                aria-label="닫기"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Video (16:9) with overlays inside */}
+        <div className="relative w-full aspect-video bg-black">
+          {/* Mock video background */}
+          <div className="w-full h-full bg-[#111] flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#FF007A]/10 rounded-full blur-3xl animate-pulse" />
               <div
                 className="absolute -bottom-32 -right-20 w-96 h-96 bg-[#7928CA]/10 rounded-full blur-3xl animate-pulse"
                 style={{ animationDelay: '1s' }}
               />
-              <div
-                className="absolute top-1/3 left-1/2 w-48 h-48 bg-[#FF007A]/5 rounded-full blur-2xl animate-pulse"
-                style={{ animationDelay: '2s' }}
-              />
             </div>
             <div className="text-center z-10">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                <svg className="w-10 h-10 text-white/30" fill="currentColor" viewBox="0 0 24 24">
+              <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                <svg className="w-7 h-7 text-white/30" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <p className="text-white/30 text-sm font-medium">LIVE PREVIEW</p>
-              <p className="text-white/15 text-xs mt-1">백엔드 연결 시 실제 영상이 표시됩니다</p>
+              <p className="text-white/30 text-xs font-medium">LIVE PREVIEW</p>
             </div>
           </div>
 
-          {/* ═══ TOP BAR ═══ */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
-            <button
-              onClick={() => router.push('/')}
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="뒤로가기"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
+          {/* Chat overlay — bottom 40%, pushed up when featured product exists */}
+          <div
+            className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto text-white"
+            style={{ bottom: featuredProduct ? '80px' : '0px' }}
+          >
+            <ChatMessageList messages={allMessages} compact maxMessages={50} />
+          </div>
+
+          {/* Featured product — white card overlay (same as real page) */}
+          {featuredProduct && (
+            <div className="absolute inset-x-3 bottom-2 z-20">
+              <section
+                className="bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                onClick={() => handleProductClick(featuredProduct.id)}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                </span>
-                <span className="text-white text-xs font-black tracking-wider">LIVE</span>
-              </div>
-
-              <div
-                className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span className="text-white text-xs font-bold">{viewerCount.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                const shareData = {
-                  title: 'Doremi Live Commerce',
-                  text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
-                  url: window.location.href,
-                };
-                if (navigator.share) {
-                  navigator.share(shareData).catch(() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    showToast('링크가 복사되었습니다!', 'success');
-                  });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  showToast('링크가 복사되었습니다!', 'success');
-                }
-              }}
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="공유하기"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16,6 12,2 8,6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Stream title */}
-          <div className="absolute top-[68px] left-4 right-20 z-20">
-            <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
-              도레미 라이브 커머스 미리보기
-            </h1>
-          </div>
-
-          {/* ═══ PREVIEW 배지 ═══ */}
-          <div className="absolute top-[96px] left-4 z-20">
-            <span className="bg-amber-500/80 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
-              STAGING PREVIEW
-            </span>
-          </div>
-
-          {/* Cart Activity Feed — Desktop only */}
-          <div className="hidden lg:block">
-            <CartActivityFeed activities={cartActivities} />
-          </div>
-
-          {/* ═══ MOBILE: Layer 3 — Chat Overlay (on video, above product card) ═══ */}
-          <div className="lg:hidden absolute left-0 right-0 bottom-[132px] z-[3] h-[200px] pointer-events-none overflow-hidden">
-            {/* Fade-out at top so messages blend into video */}
-            <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-black/40 to-transparent z-10 pointer-events-none" />
-            <div className="h-full flex flex-col justify-end">
-              <ChatMessageList messages={messages} compact maxMessages={15} />
-            </div>
-          </div>
-
-          {/* ═══ MOBILE: Layer 4 — Product Card (fixed above input) ═══ */}
-          {products.length > 0 && (
-            <div className="lg:hidden absolute left-0 right-0 bottom-[52px] z-[4] px-3 pb-2 pointer-events-auto">
-              <div
-                className="bg-black/70 backdrop-blur-lg rounded-xl p-2.5 flex items-center gap-3 border border-white/10"
-                onClick={() => handleProductClick(products[0].id)}
-              >
-                <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                   {/* eslint-disable-next-line */}
                   <img
-                    src={products[0].imageUrl}
-                    alt={products[0].name}
+                    src={featuredProduct.imageUrl}
+                    alt={featuredProduct.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{products[0].name}</p>
+                  <p className="text-gray-900 font-semibold text-sm truncate">
+                    {featuredProduct.name}
+                  </p>
                   <div className="flex items-center gap-1.5">
-                    {products[0].discountRate && products[0].discountRate > 0 ? (
+                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
                       <>
-                        <span className="text-white/40 text-xs line-through">
-                          {formatPrice(products[0].originalPrice || products[0].price)}
+                        <span className="text-xs text-gray-400 line-through">
+                          {formatPrice(featuredProduct.originalPrice ?? featuredProduct.price)}
                         </span>
-                        <span className="text-[#FF007A] font-bold text-sm">
-                          {formatPrice(
-                            Math.round(
-                              (products[0].originalPrice || products[0].price) *
-                                (1 - (products[0].discountRate || 0) / 100),
-                            ),
-                          )}
+                        <span className="text-xs text-red-500 font-bold">
+                          {featuredProduct.discountRate}%
                         </span>
                       </>
-                    ) : (
-                      <span className="text-[#FF007A] font-bold text-sm">
-                        {formatPrice(products[0].price)}
-                      </span>
-                    )}
+                    ) : null}
+                    <span className="text-sm font-bold text-[#FF007A]">
+                      {formatPrice(
+                        featuredProduct.discountRate && featuredProduct.discountRate > 0
+                          ? Math.round(
+                              (featuredProduct.originalPrice ?? featuredProduct.price) *
+                                (1 - featuredProduct.discountRate / 100),
+                            )
+                          : featuredProduct.price,
+                      )}
+                    </span>
                   </div>
                 </div>
                 <button
+                  className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAddToCart(products[0].id);
+                    handleAddToCart(featuredProduct.id);
                   }}
-                  className="bg-[#FF007A] hover:bg-[#E00070] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex-shrink-0"
                 >
-                  구매
+                  구매하기
                 </button>
-              </div>
+              </section>
             </div>
           )}
+        </div>
 
-          {/* ═══ MOBILE: Layer 4 — Chat Input (fixed bottom) ═══ */}
-          <div className="lg:hidden absolute left-0 right-0 bottom-0 z-[4] pointer-events-auto">
-            <ChatInput ref={inputRef} onSendMessage={handleSendMessage} disabled={false} compact />
+        {/* 3. Spacer — prevents content from hiding under fixed bottom bars */}
+        <div
+          className="flex-shrink-0"
+          style={{
+            height: 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))',
+          }}
+        />
+
+        {/* 4. Fixed bottom: LiveQuickActionBar */}
+        <div
+          className="fixed inset-x-0 bottom-0 z-40"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <LiveQuickActionBar streamTitle={STREAM_TITLE} />
+        </div>
+
+        {/* 5. Fixed above quick action bar: ChatInput */}
+        <div
+          className="fixed inset-x-0 z-40 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+          style={{
+            bottom: 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
+            height: 'var(--live-bottom-bar-h)',
+          }}
+        >
+          <ChatInput
+            compact
+            disabled={false}
+            onSendMessage={handleSendMessage}
+            ref={mobileInputRef}
+          />
+        </div>
+      </div>
+
+      {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
+      <div className="hidden lg:flex flex-1 flex-col min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Center: Video + overlays */}
+          <div className="flex flex-1 relative items-center justify-center">
+            <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+              {/* Mock video */}
+              <div className="w-full h-full bg-white flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden">
+                  <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#FF007A]/10 rounded-full blur-3xl animate-pulse" />
+                  <div
+                    className="absolute -bottom-32 -right-20 w-96 h-96 bg-[#7928CA]/10 rounded-full blur-3xl animate-pulse"
+                    style={{ animationDelay: '1s' }}
+                  />
+                  <div
+                    className="absolute top-1/3 left-1/2 w-48 h-48 bg-[#FF007A]/5 rounded-full blur-2xl animate-pulse"
+                    style={{ animationDelay: '2s' }}
+                  />
+                </div>
+                <div className="text-center z-10">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                    <svg
+                      className="w-10 h-10 text-white/30"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                  <p className="text-white/30 text-sm font-medium">LIVE PREVIEW</p>
+                  <p className="text-white/15 text-xs mt-1">
+                    백엔드 연결 시 실제 영상이 표시됩니다
+                  </p>
+                </div>
+              </div>
+
+              {/* ═══ DESKTOP TOP BAR ═══ */}
+              <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="뒤로가기"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+                    <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                    </span>
+                    <span className="text-white text-xs font-black tracking-wider">LIVE</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span className="text-white text-xs font-bold">
+                      {viewerCount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleShare}
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="공유하기"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                    <polyline points="16,6 12,2 8,6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Stream title */}
+              <div className="absolute top-[68px] left-4 right-20 z-20">
+                <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
+                  {STREAM_TITLE}
+                </h1>
+              </div>
+
+              {/* STAGING PREVIEW badge */}
+              <div className="absolute top-[96px] left-4 z-20">
+                <span className="bg-amber-500/80 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                  STAGING PREVIEW
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* ═══ CHAT - Desktop (Right Side) ═══ */}
-          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col">
+          {/* Right: Chat Panel (same structure as real page) */}
+          <div className="flex w-[320px] flex-col bg-[#0A0A0A] border-l border-white/5">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={false} />
-            <ChatMessageList messages={messages} compact={false} />
+            <ChatMessageList messages={allMessages} compact={false} />
+            <LiveQuickActionBar streamTitle={STREAM_TITLE} />
             <ChatInput
-              ref={inputRef}
+              ref={desktopInputRef}
               onSendMessage={handleSendMessage}
               disabled={false}
               compact={false}
             />
           </div>
         </div>
-      </div>
 
-      {/* Bottom: Featured Product Bar — Desktop */}
-      {products.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-primary-black/95 backdrop-blur-md border-t border-border-color p-4 z-20 cursor-pointer hover:bg-primary-black transition-colors lg:block hidden">
+        {/* Bottom: Featured Product Bar (same as FeaturedProductBar component) */}
+        {featuredProduct && (
           <div
-            className="flex items-center gap-4 max-w-screen-xl mx-auto"
-            onClick={() => handleProductClick(products[0].id)}
+            className="w-full bg-content-bg/95 backdrop-blur-md border-t border-border-color p-4 cursor-pointer hover:bg-content-bg transition-colors"
+            onClick={() => handleProductClick(featuredProduct.id)}
           >
-            <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-content-bg">
-              {/* eslint-disable-next-line */}
-              <img
-                src={products[0].imageUrl}
-                alt={products[0].name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm text-white font-semibold truncate">{products[0].name}</h3>
-              <div className="flex items-center gap-2">
-                {products[0].discountRate && products[0].discountRate > 0 ? (
-                  <>
-                    <span className="text-white/40 text-xs line-through">
-                      {formatPrice(products[0].originalPrice || products[0].price)}
-                    </span>
-                    <p className="text-lg text-[#FF007A] font-bold">
-                      {formatPrice(
-                        Math.round(
-                          (products[0].originalPrice || products[0].price) *
-                            (1 - (products[0].discountRate || 0) / 100),
-                        ),
-                      )}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-lg text-[#FF007A] font-bold">
-                    {formatPrice(products[0].price)}
-                  </p>
-                )}
-                <p className="text-xs text-white/40">재고 {products[0].stock}</p>
+            <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
+              <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-primary-black">
+                {/* eslint-disable-next-line */}
+                <img
+                  src={featuredProduct.imageUrl}
+                  alt={featuredProduct.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm text-primary-text font-semibold truncate">
+                  {featuredProduct.name}
+                </h3>
+                <div className="flex items-center gap-2">
+                  {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
+                    <>
+                      <span className="text-secondary-text text-xs line-through">
+                        {formatPrice(featuredProduct.originalPrice ?? featuredProduct.price)}
+                      </span>
+                      <span className="text-xs text-error font-bold">
+                        {featuredProduct.discountRate}%
+                      </span>
+                      <p className="text-lg text-hot-pink font-bold">
+                        {formatPrice(
+                          Math.round(
+                            (featuredProduct.originalPrice ?? featuredProduct.price) *
+                              (1 - featuredProduct.discountRate / 100),
+                          ),
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-lg text-hot-pink font-bold">
+                      {formatPrice(featuredProduct.price)}
+                    </p>
+                  )}
+                  <p className="text-xs text-secondary-text">재고 {featuredProduct.stock}</p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToCart(featuredProduct.id);
+                }}
+                className="px-6 py-2 bg-hot-pink text-white rounded-full hover:bg-hot-pink/80 transition-colors font-semibold"
+              >
+                구매하기
+              </button>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddToCart(products[0].id);
-              }}
-              className="px-6 py-2 bg-[#FF007A] text-white rounded-full hover:bg-[#FF007A]/80 transition-colors font-semibold"
-            >
-              구매하기
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Product Detail Modal */}
       {selectedProduct && (
