@@ -358,14 +358,7 @@ export default function LiveStreamPage() {
       </aside>
 
       {/* ── MOBILE: flex-col scroll layout ── */}
-      <div
-        className="flex lg:hidden flex-col w-full bg-black"
-        style={{
-          paddingBottom: layout.bottomInput.visible
-            ? 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))'
-            : 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
-        }}
-      >
+      <div className="flex lg:hidden flex-col w-full bg-black">
         {/* 1. LIVE status bar — sticky top z-30 */}
         {layout.topBar.visible && (
           <div
@@ -534,6 +527,16 @@ export default function LiveStreamPage() {
           </section>
         )}
 
+        {/* Spacer — prevents content from being hidden under the fixed bottom bar */}
+        <div
+          className="flex-shrink-0"
+          style={{
+            height: layout.bottomInput.visible
+              ? 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))'
+              : 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
+          }}
+        />
+
         {/* 5. Quick action bar — fixed at bottom z-40 */}
         <div
           className="fixed inset-x-0 bottom-0 z-40"
@@ -564,128 +567,135 @@ export default function LiveStreamPage() {
         )}
       </div>
 
-      {/* ── Center: Video + overlays — Desktop only ── */}
-      <div className="hidden lg:flex flex-1 relative items-center justify-center">
-        <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
-          <VideoPlayer
-            streamKey={streamKey}
-            title={streamStatus.title}
-            onViewerCountChange={handleViewerCountChange}
-            onStreamError={setVideoError}
-          />
+      {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
+      <div className="hidden lg:flex flex-1 flex-col min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Center: Video + overlays */}
+          <div className="flex flex-1 relative items-center justify-center">
+            <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+              <VideoPlayer
+                streamKey={streamKey}
+                title={streamStatus.title}
+                onViewerCountChange={handleViewerCountChange}
+                onStreamError={setVideoError}
+              />
 
-          {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
-            {/* Back button */}
-            <button
-              onClick={() => router.push('/')}
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="뒤로가기"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            {/* LIVE badge + Viewer count */}
-            <div className="flex items-center gap-2">
-              {videoError ? (
-                <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/10">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white/40 animate-pulse" />
-                  <span className="text-white/60 text-xs font-bold">연결 중...</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                  <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                  </span>
-                  <span className="text-white text-xs font-black tracking-wider">
-                    LIVE<span className="sr-only"> 현재 생방송 중</span>
-                  </span>
-                </div>
-              )}
-
-              {/* Viewer count with pulse on increase */}
-              <div
-                className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
+              {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
+              <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
+                {/* Back button */}
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="뒤로가기"
                 >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span className="text-white text-xs font-bold">{viewerCount.toLocaleString()}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* LIVE badge + Viewer count */}
+                <div className="flex items-center gap-2">
+                  {videoError ? (
+                    <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/10">
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white/40 animate-pulse" />
+                      <span className="text-white/60 text-xs font-bold">연결 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+                      <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                      </span>
+                      <span className="text-white text-xs font-black tracking-wider">
+                        LIVE<span className="sr-only"> 현재 생방송 중</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Viewer count with pulse on increase */}
+                  <div
+                    className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span className="text-white text-xs font-bold">
+                      {viewerCount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Share button */}
+                <button
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="공유하기"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                    <polyline points="16,6 12,2 8,6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Stream title */}
+              <div className="absolute top-[68px] left-4 right-20 z-20">
+                <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
+                  {streamStatus.title}
+                </h1>
               </div>
             </div>
-
-            {/* Share button */}
-            <button
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="공유하기"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16,6 12,2 8,6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
           </div>
 
-          {/* Stream title */}
-          <div className="absolute top-[68px] left-4 right-20 z-20">
-            <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
-              {streamStatus.title}
-            </h1>
+          {/* Right: Chat Panel */}
+          <div className="flex w-[320px] flex-col bg-[#0A0A0A] border-l border-white/5">
+            <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
+            <ChatMessageList
+              messages={allMessages}
+              compact={false}
+              isAdmin={isAdmin}
+              onDeleteMessage={chatDeleteMessage}
+            />
+            <LiveQuickActionBar
+              streamTitle={streamStatus.title}
+              onNotice={() => setIsNoticeOpen(true)}
+            />
+            <ChatInput
+              ref={desktopInputRef}
+              onSendMessage={handleDesktopSendMessage}
+              disabled={!isConnected}
+              compact={false}
+            />
           </div>
         </div>
-      </div>
 
-      {/* ── Right: Chat Panel — Desktop only ── */}
-      <div className="hidden lg:flex w-[320px] h-full flex-col bg-[#0A0A0A] border-l border-white/5 relative z-[30]">
-        <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
-        <ChatMessageList
-          messages={allMessages}
-          compact={false}
-          isAdmin={isAdmin}
-          onDeleteMessage={chatDeleteMessage}
-        />
-        <LiveQuickActionBar
-          streamTitle={streamStatus.title}
-          onNotice={() => setIsNoticeOpen(true)}
-        />
-        <ChatInput
-          ref={desktopInputRef}
-          onSendMessage={handleDesktopSendMessage}
-          disabled={!isConnected}
-          compact={false}
-        />
+        {/* Bottom: Featured Product Bar */}
+        <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
       </div>
-
-      {/* Bottom: Featured Product Bar — Desktop only */}
-      <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
 
       {/* Product Detail Modal */}
       {selectedProduct && (

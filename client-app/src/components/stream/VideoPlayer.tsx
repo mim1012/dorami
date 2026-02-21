@@ -274,7 +274,6 @@ export default function VideoPlayer({
         player.destroy();
         mpegtsPlayerRef.current = null;
         setError(null);
-        onStreamStateChangeRef.current?.({ type: 'MEDIA_ERROR' });
         initializeHlsPlayer();
       });
 

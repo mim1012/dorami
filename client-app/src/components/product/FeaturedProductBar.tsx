@@ -75,7 +75,7 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
 
   return (
     <div
-      className="hidden lg:block fixed bottom-0 left-0 right-0 bg-content-bg/95 backdrop-blur-md border-t border-border-color p-4 z-20 cursor-pointer hover:bg-content-bg transition-colors"
+      className="w-full bg-content-bg/95 backdrop-blur-md border-t border-border-color p-4 cursor-pointer hover:bg-content-bg transition-colors"
       onClick={() => onProductClick?.(product)}
     >
       <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
