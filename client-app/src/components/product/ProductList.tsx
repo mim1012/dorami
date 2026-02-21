@@ -29,14 +29,16 @@ export default function ProductList({
 
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const ws = io(
       process.env.NEXT_PUBLIC_WS_URL ||
         (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
       {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
         withCredentials: true,
-        auth: token ? { token } : undefined,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 10000,
       },
     );
 
