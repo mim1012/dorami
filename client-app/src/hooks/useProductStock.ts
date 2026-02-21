@@ -77,10 +77,9 @@ export function useProductStock(streamKey?: string) {
     // Don't create duplicate connections
     if (socketRef.current?.connected) return;
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
-      auth: token ? { token } : undefined,
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,

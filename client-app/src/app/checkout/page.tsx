@@ -68,9 +68,10 @@ export default function CheckoutPage() {
   const finalTotal = orderTotal - effectivePointsUsed;
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 

@@ -69,7 +69,7 @@ export class NotificationsService {
     const template = await this.getTemplate('PAYMENT_REMINDER');
     const message = this.replaceVariables(template, {
       orderId,
-      amount: amount.toLocaleString('ko-KR'),
+      amount: amount.toLocaleString('en-US'),
       depositorName,
     });
 

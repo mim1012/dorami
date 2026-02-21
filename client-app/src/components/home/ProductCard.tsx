@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductCardProps {
   id: string;
@@ -91,7 +92,7 @@ export function ProductCard({
           {discount !== undefined && discount > 0 && originalPrice !== undefined && (
             <span className="text-xs text-secondary-text line-through">
               <span className="sr-only">정가 </span>
-              {originalPrice.toLocaleString()}원
+              {formatPrice(originalPrice)}
             </span>
           )}
           <div className="flex items-baseline gap-1">
@@ -103,8 +104,7 @@ export function ProductCard({
             )}
             <span className="text-lg font-black text-hot-pink tracking-tight">
               <span className="sr-only">판매가 </span>
-              {price.toLocaleString()}
-              <span className="text-sm font-bold">원</span>
+              {formatPrice(price)}
             </span>
           </div>
         </div>

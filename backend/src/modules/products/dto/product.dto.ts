@@ -83,7 +83,7 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({
     description: 'Free shipping message',
-    example: 'Free shipping over ₩50,000',
+    example: 'Free shipping over $50',
     maxLength: 50,
   })
   @IsOptional()
@@ -235,7 +235,7 @@ export class UpdateProductDto {
 
   @ApiPropertyOptional({
     description: 'Free shipping message',
-    example: 'Free shipping over ₩50,000',
+    example: 'Free shipping over $50',
     maxLength: 50,
   })
   @IsOptional()
@@ -335,7 +335,7 @@ export class ProductResponseDto {
 
   @ApiPropertyOptional({
     description: 'Free shipping message',
-    example: 'Free shipping over ₩50,000',
+    example: 'Free shipping over $50',
   })
   freeShippingMessage?: string;
 
