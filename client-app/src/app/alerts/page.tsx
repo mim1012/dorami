@@ -69,7 +69,7 @@ export default function AlertsPage() {
           }))
         : [];
 
-      // Static notifications for live and notices (until backend supports per-user notification feed)
+      // Static notifications for live (until backend supports per-user notification feed)
       const staticNotifs: Notification[] = [
         {
           id: 'live-1',
@@ -81,18 +81,44 @@ export default function AlertsPage() {
           icon: 'live',
           link: '/live',
         },
-        {
-          id: 'notice-1',
-          type: 'notice',
-          title: '서비스 공지',
-          message: 'DoReMi 라이브 커머스에 오신 것을 환영합니다!',
-          time: '오늘',
-          read: true,
-          icon: 'megaphone',
-        },
       ];
 
-      setNotifications([...orderNotifs, ...staticNotifs]);
+      // Fetch notices from API
+      let noticeNotifs: Notification[] = [];
+      try {
+        const noticeRes = await apiClient.get<any>('/admin/notices').catch(() => null);
+        const noticesData = noticeRes?.data?.notices || noticeRes?.data || [];
+        if (Array.isArray(noticesData) && noticesData.length > 0) {
+          noticeNotifs = noticesData.slice(0, 5).map((notice: any) => ({
+            id: `notice-${notice.id}`,
+            type: 'notice' as const,
+            title: notice.title || '서비스 공지',
+            message: notice.content || notice.message || notice.noticeText || '',
+            time: formatTime(notice.updatedAt || notice.createdAt),
+            read: false,
+            icon: 'megaphone' as const,
+          }));
+        }
+      } catch {
+        // silent fail
+      }
+
+      // Fallback to static notice if no API notices
+      if (noticeNotifs.length === 0) {
+        noticeNotifs = [
+          {
+            id: 'notice-1',
+            type: 'notice',
+            title: '서비스 공지',
+            message: 'DoReMi 라이브 커머스에 오신 것을 환영합니다!',
+            time: '오늘',
+            read: true,
+            icon: 'megaphone',
+          },
+        ];
+      }
+
+      setNotifications([...orderNotifs, ...staticNotifs, ...noticeNotifs]);
     } catch {
       // If all fetches fail, show default notifications
       setNotifications([
@@ -100,7 +126,7 @@ export default function AlertsPage() {
           id: 'notice-welcome',
           type: 'notice',
           title: '환영합니다!',
-          message: 'DoReMi 라이브 커머스에 가입해 주셔서 감사합니다.',
+          message: 'Doremi 라이브 커머스에 가입해 주셔서 감사합니다.',
           time: '오늘',
           read: false,
           icon: 'megaphone',

@@ -121,7 +121,11 @@ export default function AdminUserDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR').format(amount) + '원';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   const getStatusLabel = (status: string) => {

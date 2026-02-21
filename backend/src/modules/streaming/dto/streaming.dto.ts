@@ -21,6 +21,14 @@ export class GenerateKeyDto {
   @IsString()
   @IsOptional()
   title?: string = 'Live Stream';
+
+  @IsDateString()
+  @IsOptional()
+  scheduledAt?: string; // ISO 8601 — intended broadcast start time
+
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
 }
 
 export class UpdateStreamDto {
@@ -100,6 +108,8 @@ export class StreamingSessionResponseDto {
   startedAt?: Date;
   endedAt?: Date;
   totalDuration?: number;
+  scheduledAt?: Date | null;
+  thumbnailUrl?: string | null;
   expiresAt: Date;
   createdAt: Date;
 }

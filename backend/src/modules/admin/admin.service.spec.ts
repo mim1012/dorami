@@ -30,9 +30,10 @@ describe('AdminService', () => {
             order: {
               findUnique: jest.fn(),
               update: jest.fn(),
-              findMany: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
               count: jest.fn(),
               aggregate: jest.fn(),
+              groupBy: jest.fn().mockResolvedValue([]),
             },
             user: {
               findMany: jest.fn(),
