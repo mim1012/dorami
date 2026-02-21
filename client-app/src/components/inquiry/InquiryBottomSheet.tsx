@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
 
 const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_DeEAX';
-const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremi.shop';
+const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
 
 // 카카오톡 채널 채팅 URL
 const KAKAO_CHANNEL_URL = KAKAO_CHANNEL_ID
