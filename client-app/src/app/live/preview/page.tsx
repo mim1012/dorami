@@ -337,7 +337,7 @@ export default function LivePreviewPage() {
 
   const handleShare = () => {
     const shareData = {
-      title: 'DoRaMi Live Commerce',
+      title: 'DoReMi Live Commerce',
       text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
       url: window.location.href,
     };
@@ -476,7 +476,7 @@ export default function LivePreviewPage() {
             <button
               onClick={() => {
                 const shareData = {
-                  title: 'DoRaMi Live Commerce',
+                  title: 'DoReMi Live Commerce',
                   text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
                   url: window.location.href,
                 };

@@ -47,8 +47,8 @@ export function FloatingNav() {
         if (navigator.share) {
           navigator
             .share({
-              title: 'DoRaMi Live Commerce',
-              text: '라이브 커머스 플랫폼 DoRaMi',
+              title: 'DoReMi Live Commerce',
+              text: '라이브 커머스 플랫폼 DoReMi',
               url: window.location.href,
             })
             .catch(() => {
