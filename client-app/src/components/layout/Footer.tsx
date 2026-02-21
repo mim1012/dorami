@@ -1,3 +1,6 @@
+import Image from 'next/image';
+import Link from 'next/link';
+
 export function Footer() {
   return (
     <footer className="relative mt-2 pb-2">
@@ -7,8 +10,14 @@ export function Footer() {
       <div className="px-4 space-y-5">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-hot-pink to-[#7928CA] flex items-center justify-center shadow-hot-pink flex-shrink-0">
-            <span className="text-white font-black text-base">D</span>
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
+            <Image
+              src="/logo.png"
+              alt="DoRaMi"
+              width={36}
+              height={36}
+              className="object-contain w-full h-full"
+            />
           </div>
           <div>
             <p className="text-sm font-black bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent leading-none">
@@ -34,6 +43,18 @@ export function Footer() {
 
           <div className="space-y-1.5 text-[11px] text-secondary-text">
             <div className="flex gap-2">
+              <span className="text-secondary-text/50 w-20 flex-shrink-0">상호명</span>
+              <span className="text-primary-text/80 font-medium">DoRaMi</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-secondary-text/50 w-20 flex-shrink-0">대표자</span>
+              <span className="text-primary-text/80 font-medium">김민성</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-secondary-text/50 w-20 flex-shrink-0">개인정보책임자</span>
+              <span className="text-primary-text/80 font-medium">김민성</span>
+            </div>
+            <div className="flex gap-2">
               <span className="text-secondary-text/50 w-20 flex-shrink-0">사업자 번호</span>
               <span className="text-primary-text/80 font-medium">194-44-00522</span>
             </div>
@@ -50,8 +71,29 @@ export function Footer() {
                 422sss@live.com
               </a>
             </div>
+            <div className="flex gap-2">
+              <span className="text-secondary-text/50 w-20 flex-shrink-0">호스팅제공자</span>
+              <span className="text-primary-text/80 font-medium">(주)비마이프렌즈</span>
+            </div>
           </div>
         </div>
+
+        {/* Terms links */}
+        <p className="text-[10px] text-center">
+          <Link
+            href="/terms"
+            className="text-secondary-text/60 hover:text-hot-pink transition-colors underline"
+          >
+            이용약관
+          </Link>
+          {' | '}
+          <Link
+            href="/privacy"
+            className="text-secondary-text/60 hover:text-hot-pink transition-colors underline"
+          >
+            개인정보 처리방침
+          </Link>
+        </p>
 
         {/* Copyright */}
         <p className="text-[10px] text-secondary-text/40 text-center pb-1">

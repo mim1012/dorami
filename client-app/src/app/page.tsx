@@ -15,6 +15,7 @@ import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
 import { Footer } from '@/components/layout/Footer';
+import Image from 'next/image';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS = [
@@ -278,8 +279,14 @@ export default function Home() {
           {/* Brand header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
-                <span className="text-white font-black text-xl">D</span>
+              <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="DoRaMi"
+                  width={48}
+                  height={48}
+                  className="object-contain w-full h-full"
+                />
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
