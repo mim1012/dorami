@@ -90,13 +90,13 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
             {product.discountRate && product.discountRate > 0 ? (
               <>
                 <span className="text-small text-secondary-text line-through">
-                  ₩{(product.originalPrice ?? product.price).toLocaleString()}
+                  ${(product.originalPrice ?? product.price).toLocaleString()}
                 </span>
                 <span className="text-small text-error font-bold">{product.discountRate}%</span>
-                <p className="text-h2 text-hot-pink font-bold">₩{product.price.toLocaleString()}</p>
+                <p className="text-h2 text-hot-pink font-bold">${product.price.toLocaleString()}</p>
               </>
             ) : (
-              <p className="text-h2 text-hot-pink font-bold">₩{product.price.toLocaleString()}</p>
+              <p className="text-h2 text-hot-pink font-bold">${product.price.toLocaleString()}</p>
             )}
             <p className="text-small text-secondary-text">재고 {product.stock}</p>
           </div>

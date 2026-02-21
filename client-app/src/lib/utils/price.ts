@@ -24,5 +24,9 @@ export function getDisplayPrice(product: {
 }
 
 export function formatPrice(price: number): string {
-  return price.toLocaleString();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(price);
 }

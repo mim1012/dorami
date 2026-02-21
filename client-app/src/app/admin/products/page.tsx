@@ -303,9 +303,10 @@ export default function AdminProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -852,7 +853,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격 (원)"
+              label="가격 ($)"
               name="price"
               type="number"
               value={formData.price}
@@ -894,7 +895,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="배송비 (원)"
+              label="배송비 ($)"
               name="shippingFee"
               type="number"
               value={formData.shippingFee}

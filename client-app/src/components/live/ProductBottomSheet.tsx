@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import type { Product } from '@/lib/types';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductBottomSheetProps {
   products: Product[];
@@ -43,15 +44,15 @@ export default function ProductBottomSheet({
               {products[0]?.discountRate && products[0].discountRate > 0 ? (
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/40 text-xs line-through">
-                    {(products[0].originalPrice ?? products[0].price).toLocaleString()}원
+                    {formatPrice(products[0].originalPrice ?? products[0].price)}
                   </span>
                   <span className="text-hot-pink text-sm font-black">
-                    {products[0].price.toLocaleString()}원
+                    {formatPrice(products[0].price)}
                   </span>
                 </div>
               ) : (
                 <p className="text-hot-pink text-sm font-black">
-                  {products[0]?.price.toLocaleString()}원
+                  {formatPrice(products[0]?.price)}
                 </p>
               )}
             </div>
@@ -125,18 +126,18 @@ export default function ProductBottomSheet({
                     {product.discountRate && product.discountRate > 0 ? (
                       <div className="flex items-center gap-1.5">
                         <span className="text-secondary-text text-xs line-through">
-                          {(product.originalPrice ?? product.price).toLocaleString()}원
+                          {formatPrice(product.originalPrice ?? product.price)}
                         </span>
                         <span className="text-error text-xs font-bold">
                           {product.discountRate}%
                         </span>
                         <span className="text-hot-pink font-black text-base">
-                          {product.price.toLocaleString()}원
+                          {formatPrice(product.price)}
                         </span>
                       </div>
                     ) : (
                       <p className="text-hot-pink font-black text-base">
-                        {product.price.toLocaleString()}원
+                        {formatPrice(product.price)}
                       </p>
                     )}
                     <p className="text-secondary-text text-xs">재고 {product.stock}개</p>

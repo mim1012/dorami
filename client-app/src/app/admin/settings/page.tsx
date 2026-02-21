@@ -172,7 +172,7 @@ export default function AdminSettingsPage() {
             <Heading2 className="text-primary-text mb-4">배송 설정</Heading2>
             <div className="space-y-4">
               <Input
-                label="기본 배송비 (원)"
+                label="기본 배송비 ($)"
                 type="number"
                 step="0.01"
                 min={0}

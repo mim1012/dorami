@@ -164,9 +164,9 @@ export default function SettlementPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(amount);
   };
@@ -191,7 +191,9 @@ export default function SettlementPage() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">정산 관리</Display>
-          <Body className="text-secondary-text">입금 확인된 주문의 정산 리포트를 조회하고 다운로드하세요</Body>
+          <Body className="text-secondary-text">
+            입금 확인된 주문의 정산 리포트를 조회하고 다운로드하세요
+          </Body>
         </div>
 
         <div className="bg-content-bg rounded-button p-6 mb-6">
@@ -245,17 +247,23 @@ export default function SettlementPage() {
 
               <div className="bg-content-bg rounded-button p-6">
                 <Caption className="text-secondary-text mb-2">총 매출액</Caption>
-                <Heading2 className="text-hot-pink">{formatCurrency(report.summary.totalRevenue)}</Heading2>
+                <Heading2 className="text-hot-pink">
+                  {formatCurrency(report.summary.totalRevenue)}
+                </Heading2>
               </div>
 
               <div className="bg-content-bg rounded-button p-6">
                 <Caption className="text-secondary-text mb-2">평균 주문액</Caption>
-                <Heading2 className="text-primary-text">{formatCurrency(report.summary.avgOrderValue)}</Heading2>
+                <Heading2 className="text-primary-text">
+                  {formatCurrency(report.summary.avgOrderValue)}
+                </Heading2>
               </div>
 
               <div className="bg-content-bg rounded-button p-6">
                 <Caption className="text-secondary-text mb-2">배송비 총액</Caption>
-                <Heading2 className="text-primary-text">{formatCurrency(report.summary.totalShippingFee)}</Heading2>
+                <Heading2 className="text-primary-text">
+                  {formatCurrency(report.summary.totalShippingFee)}
+                </Heading2>
               </div>
             </div>
 
@@ -275,11 +283,13 @@ export default function SettlementPage() {
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis
-                      tickFormatter={(value) => `${value.toLocaleString()}원`}
+                      tickFormatter={(value) => formatCurrency(value)}
                       style={{ fontSize: '12px' }}
                     />
                     <Tooltip
-                      formatter={(value: number | undefined) => value !== undefined ? [formatCurrency(value), '매출액'] : ['-', '매출액']}
+                      formatter={(value: number | undefined) =>
+                        value !== undefined ? [formatCurrency(value), '매출액'] : ['-', '매출액']
+                      }
                       labelFormatter={(label) => `날짜: ${label}`}
                       contentStyle={{
                         backgroundColor: 'white',
@@ -331,18 +341,25 @@ export default function SettlementPage() {
                     </thead>
                     <tbody className="divide-y divide-content-bg">
                       {getPaginatedOrders().map((order) => (
-                        <tr key={order.orderId} className="hover:bg-content-bg/50 transition-colors">
+                        <tr
+                          key={order.orderId}
+                          className="hover:bg-content-bg/50 transition-colors"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Body className="text-primary-text">{formatDate(order.orderDate)}</Body>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Body className="text-primary-text font-mono text-caption">{order.orderId}</Body>
+                            <Body className="text-primary-text font-mono text-caption">
+                              {order.orderId}
+                            </Body>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Body className="text-primary-text">{order.customerId}</Body>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Body className="text-primary-text font-medium">{formatCurrency(order.total)}</Body>
+                            <Body className="text-primary-text font-medium">
+                              {formatCurrency(order.total)}
+                            </Body>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Body className="text-primary-text">{formatDate(order.paidAt)}</Body>
@@ -411,8 +428,12 @@ export default function SettlementPage() {
               </>
             ) : (
               <div className="bg-content-bg rounded-button p-12 text-center">
-                <div className="mb-4"><Inbox className="w-16 h-16 text-secondary-text/50" aria-hidden="true" /></div>
-                <Heading2 className="text-secondary-text mb-2">선택한 기간에 입금 확인된 주문이 없습니다</Heading2>
+                <div className="mb-4">
+                  <Inbox className="w-16 h-16 text-secondary-text/50" aria-hidden="true" />
+                </div>
+                <Heading2 className="text-secondary-text mb-2">
+                  선택한 기간에 입금 확인된 주문이 없습니다
+                </Heading2>
                 <Body className="text-secondary-text">다른 기간을 선택해주세요</Body>
               </div>
             )}
@@ -421,9 +442,25 @@ export default function SettlementPage() {
 
         {!report && !isLoading && (
           <div className="bg-content-bg rounded-button p-12 text-center">
-            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg></div>
+            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
             <Heading2 className="text-secondary-text mb-2">정산 리포트를 조회해주세요</Heading2>
-            <Body className="text-secondary-text">조회 기간을 선택하고 조회하기 버튼을 눌러주세요</Body>
+            <Body className="text-secondary-text">
+              조회 기간을 선택하고 조회하기 버튼을 눌러주세요
+            </Body>
           </div>
         )}
       </div>

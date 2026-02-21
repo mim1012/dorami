@@ -13,6 +13,7 @@ import { useToast } from '@/components/common/Toast';
 import type { ChatMessage } from '@/components/chat/types';
 import type { Product } from '@/lib/types/product';
 import { ProductStatus } from '@live-commerce/shared-types';
+import { formatPrice } from '@/lib/utils/price';
 
 // ── staging / dev 전용 (런타임 체크 — DCE 방지) ──
 
@@ -337,7 +338,7 @@ export default function LivePreviewPage() {
 
   const handleShare = () => {
     const shareData = {
-      title: 'DoReMi Live Commerce',
+      title: 'Doremi Live Commerce',
       text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
       url: window.location.href,
     };
@@ -378,19 +379,16 @@ export default function LivePreviewPage() {
                 {p.discountRate && p.discountRate > 0 ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/40 text-xs line-through">
-                      {(p.originalPrice || p.price).toLocaleString()}원
+                      {formatPrice(p.originalPrice || p.price)}
                     </span>
                     <span className="text-[#FF007A] font-black text-base">
-                      {Math.round(
-                        (p.originalPrice || p.price) * (1 - p.discountRate / 100),
-                      ).toLocaleString()}
-                      원
+                      {formatPrice(
+                        Math.round((p.originalPrice || p.price) * (1 - p.discountRate / 100)),
+                      )}
                     </span>
                   </div>
                 ) : (
-                  <p className="text-[#FF007A] font-black text-base">
-                    {p.price.toLocaleString()}원
-                  </p>
+                  <p className="text-[#FF007A] font-black text-base">{formatPrice(p.price)}</p>
                 )}
                 <p className="text-white/40 text-xs">재고 {p.stock}개</p>
               </div>
@@ -476,7 +474,7 @@ export default function LivePreviewPage() {
             <button
               onClick={() => {
                 const shareData = {
-                  title: 'DoReMi Live Commerce',
+                  title: 'Doremi Live Commerce',
                   text: '도레미 라이브 커머스에서 특별한 쇼핑을 만나보세요!',
                   url: window.location.href,
                 };
@@ -557,19 +555,20 @@ export default function LivePreviewPage() {
                     {products[0].discountRate && products[0].discountRate > 0 ? (
                       <>
                         <span className="text-white/40 text-xs line-through">
-                          {(products[0].originalPrice || products[0].price).toLocaleString()}원
+                          {formatPrice(products[0].originalPrice || products[0].price)}
                         </span>
                         <span className="text-[#FF007A] font-bold text-sm">
-                          {Math.round(
-                            (products[0].originalPrice || products[0].price) *
-                              (1 - (products[0].discountRate || 0) / 100),
-                          ).toLocaleString()}
-                          원
+                          {formatPrice(
+                            Math.round(
+                              (products[0].originalPrice || products[0].price) *
+                                (1 - (products[0].discountRate || 0) / 100),
+                            ),
+                          )}
                         </span>
                       </>
                     ) : (
                       <span className="text-[#FF007A] font-bold text-sm">
-                        {products[0].price.toLocaleString()}원
+                        {formatPrice(products[0].price)}
                       </span>
                     )}
                   </div>
@@ -627,19 +626,20 @@ export default function LivePreviewPage() {
                 {products[0].discountRate && products[0].discountRate > 0 ? (
                   <>
                     <span className="text-white/40 text-xs line-through">
-                      {(products[0].originalPrice || products[0].price).toLocaleString()}원
+                      {formatPrice(products[0].originalPrice || products[0].price)}
                     </span>
                     <p className="text-lg text-[#FF007A] font-bold">
-                      {Math.round(
-                        (products[0].originalPrice || products[0].price) *
-                          (1 - (products[0].discountRate || 0) / 100),
-                      ).toLocaleString()}
-                      원
+                      {formatPrice(
+                        Math.round(
+                          (products[0].originalPrice || products[0].price) *
+                            (1 - (products[0].discountRate || 0) / 100),
+                        ),
+                      )}
                     </p>
                   </>
                 ) : (
                   <p className="text-lg text-[#FF007A] font-bold">
-                    {products[0].price.toLocaleString()}원
+                    {formatPrice(products[0].price)}
                   </p>
                 )}
                 <p className="text-xs text-white/40">재고 {products[0].stock}</p>

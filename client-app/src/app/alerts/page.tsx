@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { apiClient } from '@/lib/api/client';
+import { formatPrice } from '@/lib/utils/price';
 import { usePushNotification } from '@/lib/hooks/use-push-notification';
 
 type AlertTab = '전체' | '주문' | '라이브' | '공지';
@@ -61,7 +62,7 @@ export default function AlertsPage() {
             id: `order-${order.id}`,
             type: 'order' as const,
             title: getOrderTitle(order.status),
-            message: `주문번호 ${order.orderNumber || order.id?.slice(0, 8)} · ${(order.totalAmount || 0).toLocaleString()}원`,
+            message: `주문번호 ${order.orderNumber || order.id?.slice(0, 8)} · ${formatPrice(order.totalAmount || 0)}`,
             time: formatTime(order.updatedAt || order.createdAt),
             read: order.status === 'DELIVERED',
             icon: getOrderIcon(order.status),

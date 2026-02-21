@@ -507,7 +507,7 @@ export default function LiveStreamPage() {
                     {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
                       <>
                         <span className="text-xs text-gray-400 line-through">
-                          ₩
+                          $
                           {(
                             featuredProduct.originalPrice ?? featuredProduct.price
                           ).toLocaleString()}
@@ -518,7 +518,7 @@ export default function LiveStreamPage() {
                       </>
                     ) : null}
                     <span className="text-sm font-bold text-[#FF007A]">
-                      ₩{featuredProduct.price.toLocaleString()}
+                      ${featuredProduct.price.toLocaleString()}
                     </span>
                   </div>
                 </div>

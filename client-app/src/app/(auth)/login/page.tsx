@@ -83,13 +83,13 @@ function LoginContent() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden">
             <Image
               src="/logo.png"
-              alt="DoReMi"
+              alt="Doremi"
               width={64}
               height={64}
               className="object-contain w-full h-full"
             />
           </div>
-          <Display className="text-hot-pink mb-2">DoReMi</Display>
+          <Display className="text-hot-pink mb-2">Doremi</Display>
           <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
         </div>
 

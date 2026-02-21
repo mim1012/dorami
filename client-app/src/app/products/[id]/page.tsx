@@ -10,6 +10,7 @@ import { ProductStatus } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
 import { useCart } from '@/lib/contexts/CartContext';
 import { Display, Heading2, Body } from '@/components/common/Typography';
+import { formatPrice } from '@/lib/utils/price';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 
@@ -153,21 +154,15 @@ export default function ProductDetailPage() {
             {product.discountRate && product.discountRate > 0 ? (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-secondary-text line-through">
-                  {(product.originalPrice ?? product.price).toLocaleString()}원
+                  {formatPrice(product.originalPrice ?? product.price)}
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-black text-error">{product.discountRate}%</span>
-                  <Display className="text-hot-pink">
-                    {product.price.toLocaleString()}
-                    <span className="text-lg font-bold">원</span>
-                  </Display>
+                  <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
                 </div>
               </div>
             ) : (
-              <Display className="text-hot-pink">
-                {product.price.toLocaleString()}
-                <span className="text-lg font-bold">원</span>
-              </Display>
+              <Display className="text-hot-pink">{formatPrice(product.price)}</Display>
             )}
             <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
           </div>
@@ -244,10 +239,7 @@ export default function ProductDetailPage() {
           <div className="bg-content-bg rounded-2xl p-4 border border-border-color">
             <div className="flex items-center justify-between">
               <Body className="text-secondary-text">총 금액</Body>
-              <Display className="text-hot-pink">
-                {(product.price * quantity).toLocaleString()}
-                <span className="text-lg font-bold">원</span>
-              </Display>
+              <Display className="text-hot-pink">{formatPrice(product.price * quantity)}</Display>
             </div>
           </div>
         </div>

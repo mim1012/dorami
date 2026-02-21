@@ -9,7 +9,11 @@ import { getProductsByStreamKey, type Product } from '@/lib/api/products';
 import { StreamProductsModal } from '@/components/live/StreamProductsModal';
 
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(price);
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(price);
 
 export default function LivePage() {
   const router = useRouter();
