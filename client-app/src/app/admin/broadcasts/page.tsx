@@ -62,6 +62,8 @@ interface GeneratedStreamKey {
   title: string;
   rtmpUrl: string;
   hlsUrl: string;
+  scheduledAt: string | null;
+  thumbnailUrl: string | null;
   expiresAt: string;
 }
 
@@ -81,6 +83,8 @@ export default function BroadcastsPage() {
   // Stream key generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [newStreamTitle, setNewStreamTitle] = useState('');
+  const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
+  const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -213,11 +217,14 @@ export default function BroadcastsPage() {
     setIsGenerating(true);
     setGenerateError(null);
     try {
-      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', {
-        title: newStreamTitle.trim(),
-      });
+      const body: Record<string, string> = { title: newStreamTitle.trim() };
+      if (newStreamScheduledAt) body.scheduledAt = new Date(newStreamScheduledAt).toISOString();
+      if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
+      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
       setNewStreamTitle('');
+      setNewStreamScheduledAt('');
+      setNewStreamThumbnailUrl('');
     } catch (err: any) {
       const message = err.message || '스트림 키 발급에 실패했습니다.';
       setGenerateError(message);
@@ -253,6 +260,8 @@ export default function BroadcastsPage() {
     setShowGenerateModal(false);
     setGeneratedStream(null);
     setNewStreamTitle('');
+    setNewStreamScheduledAt('');
+    setNewStreamThumbnailUrl('');
     setGenerateError(null);
   };
 
@@ -536,13 +545,36 @@ export default function BroadcastsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      방송 제목
+                      방송 제목 <span className="text-error">*</span>
                     </label>
                     <input
                       type="text"
                       value={newStreamTitle}
                       onChange={(e) => setNewStreamTitle(e.target.value)}
                       placeholder="예: 오늘의 라이브 방송"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      예정 방송 시간 <span className="text-secondary-text text-xs">(선택)</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newStreamScheduledAt}
+                      onChange={(e) => setNewStreamScheduledAt(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      썸네일 URL <span className="text-secondary-text text-xs">(선택)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={newStreamThumbnailUrl}
+                      onChange={(e) => setNewStreamThumbnailUrl(e.target.value)}
+                      placeholder="https://example.com/thumbnail.jpg"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>

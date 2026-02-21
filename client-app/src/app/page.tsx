@@ -196,6 +196,35 @@ export default function Home() {
     }
 
     fetchData();
+
+    const interval = setInterval(async () => {
+      try {
+        const apiStreams = await getUpcomingStreams(3);
+        if (apiStreams && apiStreams.length > 0) {
+          const lives = apiStreams.map((s) => ({
+            id: s.id,
+            streamKey: s.streamKey,
+            title: s.title,
+            scheduledTime: new Date(
+              s.scheduledTime || s.scheduledStartTime || Date.now() + 3600000,
+            ),
+            thumbnailUrl:
+              s.thumbnailUrl ||
+              'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+            isLive: s.isLive || false,
+          }));
+          setUpcomingLives(lives);
+          if (lives.length > 0) {
+            setNextLiveTime(new Date(lives[0].scheduledTime));
+            setIsNextLiveActive(lives[0].isLive);
+          }
+        }
+      } catch {
+        // silent fail on polling
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleSearch = (query: string) => {
@@ -282,7 +311,7 @@ export default function Home() {
               <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
                 <Image
                   src="/logo.png"
-                  alt="DoReMi"
+                  alt="Doremi"
                   width={48}
                   height={48}
                   className="object-contain w-full h-full"
@@ -290,7 +319,7 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
-                  DoReMi
+                  Doremi
                 </h1>
                 <p className="text-[10px] text-secondary-text -mt-0.5 tracking-[0.2em] uppercase font-semibold">
                   Live Shopping Experience

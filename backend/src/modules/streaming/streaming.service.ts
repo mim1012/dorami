@@ -36,13 +36,10 @@ export class StreamingService {
     try {
       const streams = await this.prisma.liveStream.findMany({
         where: {
-          status: 'PENDING',
-          expiresAt: {
-            gte: new Date(), // Only future streams
-          },
+          OR: [{ status: 'LIVE' }, { status: 'PENDING', expiresAt: { gte: new Date() } }],
         },
         orderBy: {
-          expiresAt: 'asc',
+          createdAt: 'asc',
         },
         take: limit,
         include: {
@@ -58,9 +55,9 @@ export class StreamingService {
       return streams.map((stream) => ({
         id: stream.id,
         title: stream.title,
-        scheduledTime: stream.expiresAt,
-        thumbnailUrl: null, // TODO: Add thumbnail support
-        isLive: false,
+        scheduledTime: stream.scheduledAt || stream.expiresAt,
+        thumbnailUrl: stream.thumbnailUrl || null,
+        isLive: stream.status === 'LIVE',
         streamer: {
           id: stream.user.id,
           name: stream.user.name,
@@ -312,11 +309,21 @@ export class StreamingService {
 
       // If PENDING, return the existing session so user can see their stream key
       this.logger.log(`Returning existing PENDING stream ${existingStream.id} for user ${userId}`);
-      // Update title if a new one was provided
+      // Update title/scheduledAt/thumbnailUrl if new values were provided
+      const pendingUpdates: Record<string, any> = {};
       if (dto.title && dto.title !== existingStream.title) {
+        pendingUpdates.title = dto.title;
+      }
+      if (dto.scheduledAt !== undefined) {
+        pendingUpdates.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+      }
+      if (dto.thumbnailUrl !== undefined) {
+        pendingUpdates.thumbnailUrl = dto.thumbnailUrl || null;
+      }
+      if (Object.keys(pendingUpdates).length > 0) {
         const updated = await this.prisma.liveStream.update({
           where: { id: existingStream.id },
-          data: { title: dto.title },
+          data: pendingUpdates,
         });
         return this.mapToResponseDto(updated);
       }
@@ -336,6 +343,8 @@ export class StreamingService {
         userId,
         streamKey,
         title: dto.title || 'Live Stream',
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+        thumbnailUrl: dto.thumbnailUrl || null,
         expiresAt,
         status: 'PENDING',
       },
@@ -806,7 +815,7 @@ export class StreamingService {
   }
 
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
-    const rtmpBase = this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost/live';
+    const rtmpBase = this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost:1935/live';
     const hlsBase = this.configService.get('HLS_SERVER_URL') || 'http://localhost:8080/hls';
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
@@ -821,6 +830,8 @@ export class StreamingService {
       hlsUrl,
       startedAt: session.startedAt,
       endedAt: session.endedAt,
+      scheduledAt: session.scheduledAt ?? null,
+      thumbnailUrl: session.thumbnailUrl ?? null,
       expiresAt: session.expiresAt,
       createdAt: session.createdAt,
     };

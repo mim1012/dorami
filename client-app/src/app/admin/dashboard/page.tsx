@@ -234,16 +234,16 @@ export default function AdminDashboardPage() {
                   style={{ fontSize: '12px', fill: '#6B7280' }}
                 />
                 <YAxis
-                  tickFormatter={(value) => `${(value / 10000).toFixed(0)}만`}
+                  tickFormatter={(value) => `$${value.toLocaleString()}`}
                   style={{ fontSize: '12px', fill: '#6B7280' }}
                 />
                 <Tooltip
                   formatter={(value: number | undefined) => {
                     if (value === undefined) return ['', '매출액'];
                     return [
-                      new Intl.NumberFormat('ko-KR', {
+                      new Intl.NumberFormat('en-US', {
                         style: 'currency',
-                        currency: 'KRW',
+                        currency: 'USD',
                         maximumFractionDigits: 0,
                       }).format(value),
                       '매출액',

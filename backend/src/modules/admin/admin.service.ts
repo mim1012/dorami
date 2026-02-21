@@ -131,7 +131,17 @@ export class AdminService {
       },
     });
 
-    // Map users to DTOs with order stats (placeholder for now, will be implemented in Epic 8)
+    // Batch fetch order stats for all users in this page
+    const userIds = users.map((u) => u.id);
+    const orderStats = await this.prisma.order.groupBy({
+      by: ['userId'],
+      where: { userId: { in: userIds }, paymentStatus: 'CONFIRMED' },
+      _count: { id: true },
+      _sum: { total: true },
+    });
+    const statsMap = new Map(orderStats.map((s) => [s.userId, s]));
+
+    // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => ({
       id: user.id,
       email: user.email,
@@ -141,8 +151,8 @@ export class AdminService {
       lastLoginAt: user.lastLoginAt,
       status: user.status,
       role: user.role,
-      totalOrders: 0, // Epic 8 dependency - will aggregate from Orders table
-      totalPurchaseAmount: 0, // Epic 8 dependency - will sum order totals
+      totalOrders: statsMap.get(user.id)?._count.id ?? 0,
+      totalPurchaseAmount: Number(statsMap.get(user.id)?._sum.total ?? 0),
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -385,11 +395,14 @@ export class AdminService {
 
     // 1. Total Orders (last 7 days vs previous 7 days)
     const last7DaysOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: last7DaysStart } },
+      where: { createdAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
     });
 
     const previous7DaysOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: previous7DaysStart, lt: last7DaysStart } },
+      where: {
+        createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+        paymentStatus: 'CONFIRMED',
+      },
     });
 
     const ordersTrend = this.calculateTrend(last7DaysOrders, previous7DaysOrders);
@@ -1162,28 +1175,24 @@ export class AdminService {
       }
     }
 
-    // Calculate user statistics (Epic 8 dependency - placeholder for now)
+    const userOrders = await this.prisma.order.findMany({
+      where: { userId, paymentStatus: 'CONFIRMED' },
+      select: { total: true, createdAt: true },
+    });
+    const totalOrders = userOrders.length;
+    const totalPurchaseAmount = userOrders.reduce((sum, o) => sum + Number(o.total), 0);
+    const averageOrderValue = totalOrders > 0 ? totalPurchaseAmount / totalOrders : 0;
+    const monthsSinceRegistration = Math.max(
+      1,
+      Math.floor((Date.now() - user.createdAt.getTime()) / (30 * 24 * 60 * 60 * 1000)),
+    );
+    const orderFrequency = totalOrders / monthsSinceRegistration;
     const statistics: UserStatisticsDto = {
-      totalOrders: 0,
-      totalPurchaseAmount: 0,
-      averageOrderValue: 0,
-      orderFrequency: 0,
+      totalOrders,
+      totalPurchaseAmount,
+      averageOrderValue,
+      orderFrequency,
     };
-
-    // TODO: Epic 8 - Calculate real statistics from orders
-    // const orders = await this.prisma.order.findMany({
-    //   where: { userId },
-    //   select: { total: true, createdAt: true }
-    // });
-    // statistics.totalOrders = orders.length;
-    // statistics.totalPurchaseAmount = orders.reduce((sum, o) => sum + Number(o.total), 0);
-    // statistics.averageOrderValue = statistics.totalOrders > 0
-    //   ? statistics.totalPurchaseAmount / statistics.totalOrders
-    //   : 0;
-    // const monthsSinceRegistration = differenceInMonths(new Date(), user.createdAt);
-    // statistics.orderFrequency = monthsSinceRegistration > 0
-    //   ? statistics.totalOrders / monthsSinceRegistration
-    //   : 0;
 
     return {
       id: user.id,

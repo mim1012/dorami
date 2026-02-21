@@ -70,6 +70,8 @@ model LiveStream {
   endedAt       DateTime?    @map("ended_at")
   totalDuration Int?         @map("total_duration") // seconds
   peakViewers   Int          @default(0) @map("peak_viewers")
+  scheduledAt   DateTime?    @map("scheduled_at")
+  thumbnailUrl  String?      @map("thumbnail_url")
   expiresAt     DateTime     @map("expires_at")
   createdAt     DateTime     @default(now()) @map("created_at")
 
