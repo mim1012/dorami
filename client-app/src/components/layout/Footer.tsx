@@ -139,7 +139,7 @@ export function Footer() {
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">호스팅제공자</span>
-                <span className="text-primary-text/80 font-medium">(주)비마이프렌즈</span>
+                <span className="text-primary-text/80 font-medium">(주)비즈솔루션</span>
               </div>
             </div>
           </div>
