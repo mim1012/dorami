@@ -460,7 +460,7 @@ export default function LiveStreamPage() {
           {layout.chat.visible && (
             <div
               className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto text-white"
-              style={{ bottom: layout.chat.bottom }}
+              style={{ bottom: featuredProduct ? '80px' : (layout.chat.bottom ?? '0px') }}
             >
               <ChatMessageList messages={allMessages} compact maxMessages={50} />
             </div>
@@ -482,50 +482,56 @@ export default function LiveStreamPage() {
               )}
             </div>
           )}
-        </div>
-
-        {/* 4. Featured product section — static, below video */}
-        {featuredProduct && (
-          <section
-            className="mx-3 mt-3 bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-            onClick={() => handleProductClick(featuredProduct)}
-          >
-            {featuredProduct.imageUrl && (
-              <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
-                <Image
-                  src={featuredProduct.imageUrl}
-                  alt={featuredProduct.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-900 font-semibold text-sm truncate">{featuredProduct.name}</p>
-              <div className="flex items-center gap-1.5">
-                {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
-                  <>
-                    <span className="text-xs text-gray-400 line-through">
-                      ₩{(featuredProduct.originalPrice ?? featuredProduct.price).toLocaleString()}
+          {/* Featured product overlay — bottom of video */}
+          {featuredProduct && (
+            <div className="absolute inset-x-3 bottom-2 z-20">
+              <section
+                className="bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                onClick={() => handleProductClick(featuredProduct)}
+              >
+                {featuredProduct.imageUrl && (
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
+                    <Image
+                      src={featuredProduct.imageUrl}
+                      alt={featuredProduct.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 font-semibold text-sm truncate">
+                    {featuredProduct.name}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
+                      <>
+                        <span className="text-xs text-gray-400 line-through">
+                          ₩
+                          {(
+                            featuredProduct.originalPrice ?? featuredProduct.price
+                          ).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-red-500 font-bold">
+                          {featuredProduct.discountRate}%
+                        </span>
+                      </>
+                    ) : null}
+                    <span className="text-sm font-bold text-[#FF007A]">
+                      ₩{featuredProduct.price.toLocaleString()}
                     </span>
-                    <span className="text-xs text-red-500 font-bold">
-                      {featuredProduct.discountRate}%
-                    </span>
-                  </>
-                ) : null}
-                <span className="text-sm font-bold text-[#FF007A]">
-                  ₩{featuredProduct.price.toLocaleString()}
-                </span>
-              </div>
+                  </div>
+                </div>
+                <button
+                  className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
+                  disabled={featuredProduct.status === 'SOLD_OUT'}
+                >
+                  구매하기
+                </button>
+              </section>
             </div>
-            <button
-              className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
-              disabled={featuredProduct.status === 'SOLD_OUT'}
-            >
-              구매하기
-            </button>
-          </section>
-        )}
+          )}
+        </div>
 
         {/* Spacer — prevents content from being hidden under the fixed bottom bar */}
         <div
