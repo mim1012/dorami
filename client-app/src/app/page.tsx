@@ -282,7 +282,7 @@ export default function Home() {
               <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
                 <Image
                   src="/logo.png"
-                  alt="DoRaMi"
+                  alt="DoReMi"
                   width={48}
                   height={48}
                   className="object-contain w-full h-full"
@@ -290,7 +290,7 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
-                  DoRaMi
+                  DoReMi
                 </h1>
                 <p className="text-[10px] text-secondary-text -mt-0.5 tracking-[0.2em] uppercase font-semibold">
                   Live Shopping Experience

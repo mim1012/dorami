@@ -13,7 +13,7 @@ export function Footer() {
           <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
             <Image
               src="/logo.png"
-              alt="DoRaMi"
+              alt="DoReMi"
               width={36}
               height={36}
               className="object-contain w-full h-full"
@@ -21,7 +21,7 @@ export function Footer() {
           </div>
           <div>
             <p className="text-sm font-black bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent leading-none">
-              DoRaMi
+              DoReMi
             </p>
             <p className="text-[10px] text-secondary-text tracking-widest uppercase mt-0.5">
               Live Shopping Experience
@@ -44,7 +44,7 @@ export function Footer() {
           <div className="space-y-1.5 text-[11px] text-secondary-text">
             <div className="flex gap-2">
               <span className="text-secondary-text/50 w-20 flex-shrink-0">상호명</span>
-              <span className="text-primary-text/80 font-medium">DoRaMi</span>
+              <span className="text-primary-text/80 font-medium">DoReMi</span>
             </div>
             <div className="flex gap-2">
               <span className="text-secondary-text/50 w-20 flex-shrink-0">대표자</span>
@@ -97,7 +97,7 @@ export function Footer() {
 
         {/* Copyright */}
         <p className="text-[10px] text-secondary-text/40 text-center pb-1">
-          © {new Date().getFullYear()} DoRaMi. All rights reserved.
+          © {new Date().getFullYear()} DoReMi. All rights reserved.
         </p>
       </div>
     </footer>

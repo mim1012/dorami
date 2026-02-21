@@ -83,7 +83,7 @@ function LoginContent() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden">
             <Image
               src="/logo.png"
-              alt="DoRaMi"
+              alt="DoReMi"
               width={64}
               height={64}
               className="object-contain w-full h-full"
