@@ -20,7 +20,7 @@ export function Footer() {
 
   return (
     <>
-      <footer className="relative mt-2 pb-2">
+      <footer className="relative mt-2 pb-20">
         {/* Gradient divider */}
         <div className="h-px w-full bg-gradient-to-r from-transparent via-hot-pink/60 to-transparent mb-6" />
 
