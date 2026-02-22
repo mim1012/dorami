@@ -62,6 +62,14 @@ export default function LiveStreamPage() {
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const { data: cartData } = useCart();
   const { activities: cartActivities } = useCartActivity(streamKey);
+  const hasExpiringItem =
+    cartData?.items?.some(
+      (item) =>
+        item.timerEnabled &&
+        item.expiresAt &&
+        item.status === 'ACTIVE' &&
+        new Date(item.expiresAt).getTime() - Date.now() < 60_000,
+    ) ?? false;
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -247,6 +255,13 @@ export default function LiveStreamPage() {
           p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
         ),
       );
+      setFeaturedProduct((prev) => {
+        if (prev && prev.id === data.data.productId) {
+          showToast('이 상품이 품절되었습니다.', 'error');
+          return { ...prev, status: ProductStatus.SOLD_OUT };
+        }
+        return prev;
+      });
     });
     return () => {
       ws.disconnect();
@@ -374,7 +389,10 @@ export default function LiveStreamPage() {
         size: selectedSize,
       });
 
-      showToast('장바구니에 담았어요!', 'success');
+      showToast('장바구니에 담았어요!', 'success', {
+        label: '장바구니 보기',
+        onClick: () => router.push('/cart'),
+      });
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
@@ -637,6 +655,7 @@ export default function LiveStreamPage() {
             onNotice={() => setIsNoticeOpen(true)}
             onCartOpen={() => setIsCartSheetOpen(true)}
             cartCount={cartData?.itemCount ?? 0}
+            hasExpiringItem={hasExpiringItem}
             onInquiry={handleInquiry}
           />
         </div>
@@ -764,6 +783,7 @@ export default function LiveStreamPage() {
               onNotice={() => setIsNoticeOpen(true)}
               onCartOpen={() => setIsCartSheetOpen(true)}
               cartCount={cartData?.itemCount ?? 0}
+              hasExpiringItem={hasExpiringItem}
               onInquiry={handleInquiry}
             />
             <ChatInput

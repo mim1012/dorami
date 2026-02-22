@@ -102,10 +102,20 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
           </div>
         </div>
         <button
-          className="px-6 py-2 bg-hot-pink text-white rounded-button hover:bg-hot-pink-dark transition-colors font-semibold"
+          className={`px-6 py-2 rounded-button font-semibold transition-colors ${
+            product.status === 'SOLD_OUT'
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
+          }`}
           disabled={product.status === 'SOLD_OUT'}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (product.status !== 'SOLD_OUT') {
+              onProductClick?.(product);
+            }
+          }}
         >
-          구매하기
+          {product.status === 'SOLD_OUT' ? '품절' : '구매하기'}
         </button>
       </div>
     </div>
