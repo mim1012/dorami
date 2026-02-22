@@ -89,7 +89,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: 'lax',
+      sameSite: this.isProduction ? 'strict' : 'lax',
       maxAge: this.accessTokenMaxAge,
       path: '/',
     };
@@ -102,7 +102,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: 'lax',
+      sameSite: this.isProduction ? 'strict' : 'lax',
       maxAge: this.refreshTokenMaxAge,
       path: '/',
     };
@@ -211,32 +211,29 @@ export class AuthController {
   @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('dev-login')
-  async devLogin(
-    @Body() body: { email: string; name?: string; role?: 'USER' | 'ADMIN' },
-    @Res() res: Response,
-  ) {
+  async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
     const devAuthEnabled = this.configService.get<string>('ENABLE_DEV_AUTH');
     if (devAuthEnabled !== 'true') {
       throw new ForbiddenException('Dev login is disabled');
     }
 
-    const { email, name, role } = body;
+    const { email, name } = body;
     if (!email) {
       return res.status(400).json({ message: 'email is required' });
     }
 
     // Upsert user to avoid race conditions with parallel test workers
+    // role is always forced to 'USER' — ADMIN cannot be granted via this endpoint
     const user = await this.prisma.user.upsert({
       where: { email },
       update: {
-        role: role || undefined,
         lastLoginAt: new Date(),
       },
       create: {
         kakaoId: `dev_${Date.now()}`,
         email,
         name: name || email.split('@')[0],
-        role: role || 'USER',
+        role: 'USER',
         status: 'ACTIVE',
         lastLoginAt: new Date(),
       },

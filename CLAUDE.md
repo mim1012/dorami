@@ -26,6 +26,7 @@ npm run dev:client           # Next.js dev server only
 # Infrastructure (PostgreSQL 16, Redis 7, SRS v6)
 npm run docker:up            # docker-compose up -d
 npm run docker:down
+npm run docker:logs          # Follow docker-compose logs
 
 # Database
 npm run prisma:generate      # Generate Prisma Client after schema changes
@@ -69,9 +70,9 @@ npm run build:shared         # Build shared-types package only
 
 - `cookieParser` → `helmet` → `compression` → `ValidationPipe` (whitelist + transform) → `BusinessExceptionFilter` → `TransformInterceptor` (wraps responses in `{data, success, timestamp}`) → `CsrfGuard` (Double Submit Cookie, disable with `CSRF_ENABLED=false`)
 
-**API prefix:** All routes under `/api` with URI versioning (`/api/v1/...`). Swagger at `/api/docs` (non-production).
+**API prefix:** All routes under `/api` with URI versioning (`/api/v1/...`). Swagger at `/api/docs` when `APP_ENV !== 'production'`.
 
-**Authentication:** Kakao OAuth → JWT. Access token 15min (HttpOnly cookie), refresh token 7 days. Dev login endpoint exists for E2E tests.
+**Authentication:** Kakao OAuth → JWT. Access token 15min (HttpOnly cookie), refresh token 7 days. Dev login endpoint exists for E2E tests (`POST /api/v1/auth/dev-login`).
 
 **Key custom decorators:**
 
@@ -81,17 +82,19 @@ npm run build:shared         # Build shared-types package only
 
 **Error handling:** `BusinessException` with named error codes (`business.exception.ts`). Predefined subclasses: `InsufficientStockException`, `CartExpiredException`, `OrderNotFoundException`, etc.
 
-**Key modules:** `auth`, `users`, `products`, `streaming`, `cart` (10-min expiration timer), `orders`, `reservation` (waiting list → promoted to cart), `chat` (WebSocket), `notifications` (Web Push VAPID), `points`, `settlement`, `restream` (FFmpeg multi-target), `admin` (audit logs)
+**Key modules:** `auth`, `users`, `products`, `streaming`, `cart` (10-min expiration timer), `orders`, `reservation` (waiting list → promoted to cart), `chat` (WebSocket), `notifications` (Web Push VAPID), `points`, `settlement`, `restream` (FFmpeg multi-target), `admin` (audit logs), `notices`, `upload`, `health` (liveness/readiness probes)
+
+**Health endpoints:** `GET /api/v1/health/live` (liveness), `GET /api/v1/health/ready` (readiness — checks DB + Redis)
 
 ### WebSocket Architecture (Non-standard)
 
-Socket.IO is **manually bootstrapped in `main.ts`**, not via NestJS's standard gateway DI wiring. A single `Server` instance is created, attached with the Redis adapter, and then three namespaces are configured inline:
+Socket.IO is **manually bootstrapped in `main.ts`**, not via NestJS's standard gateway DI wiring. A single `Server` instance is created, attached with the Redis adapter, and **all three namespaces' event handlers are implemented inline in `main.ts`**:
 
-- `/` — general stream room join/leave; also exposes `broadcastProduct*` methods on the `io` object for use by services
+- `/` — general stream room join/leave; exposes `broadcastProduct*` methods monkey-patched directly onto the `io` object for use by services
 - `/chat` — chat with Redis-backed history (`chat:{liveId}:history`, max 100 msgs, 24h TTL); rate-limited at 20 msgs/10s
 - `/streaming` — viewer count tracking via Redis counters (`stream:{streamKey}:viewers`)
 
-NestJS Gateways (e.g. `StreamingGateway`) still exist as classes with `@SubscribeMessage` handlers, but the actual connection lifecycle (`handleConnection`, `handleDisconnect`) runs from `main.ts`. The `CustomIoAdapter` bridges the pre-created server to NestJS's gateway system.
+**`SocketIoProvider`** (`modules/websocket/socket-io.provider.ts`) is a NestJS injectable singleton that holds the `Server` instance. It is set in `main.ts` after the server is created (`socketIoProvider.setServer(io)`) and can be injected into services that need to broadcast.
 
 **`stream:ended` event flow:** `StreamingController` → NestJS `EventEmitter2` (`stream:ended`) → `StreamingGateway.handleStreamEnded()` → broadcasts `stream:ended` to WebSocket room.
 
@@ -103,11 +106,14 @@ All socket connections require JWT authentication via `authenticateSocket()` mid
 
 - Client state: Zustand (`lib/store/auth.ts` — user, isAuthenticated)
 - Server state: TanStack Query v5 (`lib/hooks/queries/`)
-- Real-time: Socket.IO client
+- Real-time: Socket.IO client connecting to `NEXT_PUBLIC_WS_URL` (default `http://localhost:3001`)
 
 **API client** (`lib/api/client.ts`): Custom fetch wrapper with automatic CSRF token injection, 401 → token refresh (coalesced) → retry, response unwrapping from `{data}` envelope. All API functions in `lib/api/`. `ApiError` carries `statusCode`, `errorCode`, and `details`.
 
-**Proxy:** Next.js rewrites `/api/:path*` → `BACKEND_URL` (default `http://127.0.0.1:3001`). Frontend calls `/api/...` which proxies to backend.
+**Proxy** (`next.config.ts`):
+
+- `/api/:path*` → `${BACKEND_URL}/api/v1/:path*` (default `http://127.0.0.1:3001`)
+- `/live/live/:path*` and `/hls/:path*` → `${MEDIA_SERVER_URL}` (default `http://127.0.0.1:8080`) via fallback rewrites (only when no Next.js page matches)
 
 **Key custom hooks** (`client-app/src/hooks/`):
 
@@ -135,7 +141,7 @@ Key enum values to be aware of:
 
 Schema at `backend/prisma/schema.prisma`. Key models: `User`, `LiveStream`, `Product`, `Cart` (TTL-based), `Order`/`OrderItem`, `Reservation`, `PointBalance`/`PointTransaction`, `Settlement`, `ReStreamTarget`, `NotificationSubscription`, `AuditLog`, `SystemConfig`.
 
-Order IDs use `ORD-YYYYMMDD-XXXXX` format (not UUID). Shipping addresses are encrypted (AES-256-GCM via `EncryptionService`).
+Order IDs use `ORD-YYYYMMDD-XXXXX` format (not UUID). Shipping addresses are encrypted (AES-256-GCM via `EncryptionService`, requires `PROFILE_ENCRYPTION_KEY`).
 
 ### Streaming Infrastructure
 
@@ -163,11 +169,32 @@ SRS fires webhook callbacks to the backend to update `LiveStream.status` in the 
 
 - `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`
 
-**Optional:**
+**Important optional variables:**
 
+- `PROFILE_ENCRYPTION_KEY` — 64-char hex key for AES-256-GCM encryption of shipping addresses
+- `ADMIN_EMAILS` — comma-separated emails auto-assigned `ADMIN` role on first Kakao login
 - `CSRF_ENABLED=false` — disables CSRF guard (useful for API testing)
 - `CORS_ORIGINS` — comma-separated allowed origins (default: `http://localhost:3000`)
 - `PORT` — backend HTTP port (default: 3001)
+- `APP_ENV=production` — hides Swagger docs (separate from `NODE_ENV`)
+
+**Frontend env vars** (`.env.local`):
+
+- `NEXT_PUBLIC_WS_URL` — Socket.IO server URL (default `http://localhost:3001`)
+- `BACKEND_URL` — backend base for Next.js proxy (default `http://127.0.0.1:3001`)
+- `MEDIA_SERVER_URL` — SRS media server for Next.js proxy (default `http://127.0.0.1:8080`)
+
+## Commit Convention
+
+```
+feat:     new feature
+fix:      bug fix
+refactor: code change with no behavior change
+test:     test additions/modifications
+docs:     documentation only
+style:    formatting, no logic change
+chore:    build, config, dependency changes
+```
 
 ## Pre-commit Hooks
 
