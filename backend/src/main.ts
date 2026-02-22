@@ -115,13 +115,13 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor(app.get(Reflector)));
 
   // CSRF Protection Guard (Double Submit Cookie Pattern)
-  // Skip for development if CSRF_ENABLED=false
-  if (process.env.CSRF_ENABLED !== 'false') {
+  // Always enabled in production; can be disabled in non-production with CSRF_ENABLED=false
+  if (isProduction || process.env.CSRF_ENABLED !== 'false') {
     const reflector = app.get(Reflector);
     app.useGlobalGuards(new CsrfGuard(reflector));
     logger.log('CSRF protection enabled');
   } else {
-    logger.warn('CSRF protection disabled (CSRF_ENABLED=false)');
+    logger.warn('CSRF protection disabled (CSRF_ENABLED=false) — development only');
   }
 
   // CORS Configuration - Whitelist based
