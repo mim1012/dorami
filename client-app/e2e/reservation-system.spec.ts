@@ -13,7 +13,7 @@ import { createTestStream, ensureAuth } from './helpers/auth-helper';
 test.describe.configure({ mode: 'serial' });
 
 let streamKey: string = '431e28a837403e00f44c7ab7a0397251'; // Hardcoded for now
-let soldOutProductId: string = '6f0fc40e-61b0-4caa-a294-7c4157d26521'; // Manually created product with stock=1
+let soldOutProductId: string | null = null; // Set by setup test; null = setup was skipped
 
 test.describe('Reservation System (예비번호)', () => {
   test.setTimeout(90000);
@@ -122,7 +122,7 @@ test.describe('Reservation System (예비번호)', () => {
         });
         return { ok: res.ok, status: res.status };
       },
-      { productId: soldOutProductId },
+      { productId: soldOutProductId! },
     );
 
     if (!result.ok) {
@@ -163,7 +163,7 @@ test.describe('Reservation System (예비번호)', () => {
         const body = await res.json().catch(() => null);
         return { ok: res.ok, status: res.status, body };
       },
-      { productId: soldOutProductId },
+      { productId: soldOutProductId! },
     );
 
     expect(result.ok).toBe(false);
@@ -195,7 +195,7 @@ test.describe('Reservation System (예비번호)', () => {
         const data = await res.json();
         return { ok: true, data: data.data || data };
       },
-      { productId: soldOutProductId },
+      { productId: soldOutProductId! },
     );
 
     if (!reservation.ok) {

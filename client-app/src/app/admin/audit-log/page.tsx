@@ -127,14 +127,14 @@ export default function AuditLogPage() {
 
   if (isLoading && logs.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Body className="text-secondary-text">관리 기록을 불러오는 중...</Body>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -142,9 +142,7 @@ export default function AuditLogPage() {
             <FileText className="w-10 h-10" />
             관리 기록
           </Display>
-          <Body className="text-secondary-text">
-            모든 관리자 작업 및 변경 사항을 추적합니다
-          </Body>
+          <Body className="text-secondary-text">모든 관리자 작업 및 변경 사항을 추적합니다</Body>
         </div>
 
         {/* Filters */}
@@ -193,7 +191,12 @@ export default function AuditLogPage() {
             <Button variant="outline" size="sm" onClick={handleClearFilters}>
               초기화
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={logs.length === 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={logs.length === 0}
+            >
               <Download className="w-4 h-4 mr-2" />
               CSV 내보내기
             </Button>
@@ -247,12 +250,18 @@ export default function AuditLogPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <Caption className="text-secondary-text">{log.entity}</Caption>
-                          <Body className="text-primary-text font-mono text-caption">{log.entityId.substring(0, 12)}...</Body>
+                          <Body className="text-primary-text font-mono text-caption">
+                            {log.entityId.substring(0, 12)}...
+                          </Body>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <Caption className="text-secondary-text line-clamp-2">
-                          {JSON.stringify(log.changes)}
+                          {log.changes && typeof log.changes === 'object'
+                            ? Object.entries(log.changes as Record<string, unknown>)
+                                .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+                                .join(' | ')
+                            : String(log.changes ?? '-')}
                         </Caption>
                       </td>
                     </tr>
@@ -265,7 +274,8 @@ export default function AuditLogPage() {
             {meta.totalPages > 1 && (
               <div className="flex items-center justify-between bg-content-bg rounded-button px-6 py-4">
                 <Caption className="text-secondary-text">
-                  총 {meta.total}건 중 {(meta.page - 1) * meta.limit + 1}-{Math.min(meta.page * meta.limit, meta.total)}건 표시
+                  총 {meta.total}건 중 {(meta.page - 1) * meta.limit + 1}-
+                  {Math.min(meta.page * meta.limit, meta.total)}건 표시
                 </Caption>
 
                 <div className="flex items-center gap-2">
@@ -296,7 +306,21 @@ export default function AuditLogPage() {
           </>
         ) : (
           <div className="bg-content-bg rounded-button p-12 text-center">
-            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center"><svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg></div>
+            <div className="w-16 h-16 mb-4 rounded-xl bg-gray-100 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z"
+                />
+              </svg>
+            </div>
             <Heading2 className="text-secondary-text mb-2">기록이 없습니다</Heading2>
             <Body className="text-secondary-text">
               관리자가 작업을 수행하면 여기에 기록이 표시됩니다

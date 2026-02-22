@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCart } from '@/lib/contexts/CartContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCart, cartKeys } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
@@ -19,7 +20,9 @@ interface PointsConfig {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getTotalPrice, clearCart } = useCart();
+  const { data: cartData } = useCart();
+  const queryClient = useQueryClient();
+  const items = cartData?.items ?? [];
   const { user } = useAuth();
   const { data: balance } = usePointBalance();
 
@@ -29,13 +32,15 @@ export default function CheckoutPage() {
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
 
   useEffect(() => {
-    // 주문 완료 후 clearCart()로 items가 비워졌을 때 /cart로 리다이렉트 방지
-    if (items.length === 0 && !orderCompleted) {
+    // cartData 로딩 중엔 리다이렉트 방지, 로드 후 빈 경우만 /cart로 이동
+    if (cartData && items.length === 0 && !orderCompleted) {
       router.push('/cart');
     }
-  }, [items, router, orderCompleted]);
+  }, [cartData, items, router, orderCompleted]);
 
   // Load points config
   useEffect(() => {
@@ -50,7 +55,7 @@ export default function CheckoutPage() {
     loadConfig();
   }, []);
 
-  const orderTotal = getTotalPrice();
+  const orderTotal = cartData?.subtotal ?? 0;
 
   const maxPointsAllowed = pointsConfig
     ? Math.floor(orderTotal * (pointsConfig.pointMaxRedemptionPct / 100))
@@ -86,7 +91,7 @@ export default function CheckoutPage() {
 
   const handleSubmitOrder = async () => {
     if (!user) {
-      router.push('/login');
+      router.push('/login?reason=session_expired');
       return;
     }
 
@@ -102,7 +107,7 @@ export default function CheckoutPage() {
       const response = await apiClient.post<{ id: string }>('/orders/from-cart', body);
 
       setOrderCompleted(true);
-      clearCart();
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
       router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
       console.error('Order creation failed:', err);
@@ -114,7 +119,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (items.length === 0) {
+  if (!cartData || items.length === 0) {
     return null;
   }
 
@@ -131,7 +136,7 @@ export default function CheckoutPage() {
         {error && (
           <div className="bg-error/10 border border-error rounded-2xl p-4 mb-6 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
-            <Body className="text-error flex-1">{error}</Body>
+            <Body className="text-error flex-1 min-w-0 break-words">{error}</Body>
           </div>
         )}
 
@@ -140,16 +145,14 @@ export default function CheckoutPage() {
           <Heading2 className="text-hot-pink mb-4">주문 상품</Heading2>
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.productId} className="flex justify-between items-center">
-                <div className="flex-1">
-                  <Body className="text-primary-text">{item.productName}</Body>
+              <div key={item.id} className="flex justify-between items-center">
+                <div className="flex-1 min-w-0">
+                  <Body className="text-primary-text truncate">{item.productName}</Body>
                   <Body className="text-secondary-text text-sm">
                     {formatPrice(item.price)} x {item.quantity}개
                   </Body>
                 </div>
-                <Body className="text-primary-text font-bold">
-                  {formatPrice(item.price * item.quantity)}
-                </Body>
+                <Body className="text-primary-text font-bold">{formatPrice(item.subtotal)}</Body>
               </div>
             ))}
           </div>
@@ -261,7 +264,8 @@ export default function CheckoutPage() {
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                defaultChecked
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
                 className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
               />
               <Body className="text-primary-text text-sm flex-1">
@@ -271,7 +275,8 @@ export default function CheckoutPage() {
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                defaultChecked
+                checked={privacyAgreed}
+                onChange={(e) => setPrivacyAgreed(e.target.checked)}
                 className="mt-1 w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink focus:ring-2"
               />
               <Body className="text-primary-text text-sm flex-1">
@@ -288,7 +293,7 @@ export default function CheckoutPage() {
             size="lg"
             fullWidth
             onClick={handleSubmitOrder}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !termsAgreed || !privacyAgreed}
           >
             {isSubmitting ? '주문 처리 중...' : `${formatPrice(finalTotal)} 주문하기`}
           </Button>

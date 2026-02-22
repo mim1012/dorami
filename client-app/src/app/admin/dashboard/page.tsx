@@ -10,7 +10,6 @@ import {
   DollarSign,
   Clock,
   Radio,
-  Package,
   BarChart3,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -187,28 +186,6 @@ export default function AdminDashboardPage() {
             <Caption className="text-secondary-text mb-1">진행 중인 라이브</Caption>
             <Heading2 className="text-success mb-1">{stats.activeLiveStreams.formatted}</Heading2>
             <Caption className="text-secondary-text">현재 방송 중</Caption>
-          </div>
-
-          {/* 채팅 메시지 */}
-          <div className="bg-content-bg rounded-button p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-3 bg-purple-500/10 rounded-button">
-                <Package className="w-6 h-6 text-purple-500" />
-              </div>
-              <div
-                className={`flex items-center gap-1 ${stats.messages.trendUp ? 'text-success' : 'text-error'}`}
-              >
-                {stats.messages.trendUp ? (
-                  <TrendingUp className="w-4 h-4" />
-                ) : (
-                  <TrendingDown className="w-4 h-4" />
-                )}
-                <Caption className="font-medium">{stats.messages.trend}</Caption>
-              </div>
-            </div>
-            <Caption className="text-secondary-text mb-1">채팅 메시지</Caption>
-            <Heading2 className="text-primary-text mb-1">{stats.messages.formatted}</Heading2>
-            <Caption className="text-secondary-text">최근 7일</Caption>
           </div>
         </div>
 

@@ -126,9 +126,15 @@ async function request<T>(
       // Retry the original request with fresh token
       response = await executeFetch(url, options);
     } else {
-      // Refresh failed — throw error (let caller handle redirect)
-      // Do NOT hard-redirect here: it causes infinite loops when
-      // useAuth() calls /auth/me on the login page itself.
+      // Refresh failed.
+      // For non-auth endpoints: redirect to login with clear reason so users
+      // see "세션이 만료되었습니다" instead of a generic app error.
+      // Auth endpoints (/auth/, /users/me) are excluded to avoid loops —
+      // useAuth and useProfileGuard handle those redirects themselves.
+      const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
+      if (typeof window !== 'undefined' && !isAuthEndpoint) {
+        window.location.href = '/login?reason=session_expired';
+      }
       throw new ApiError(401, 'Session expired', 'SESSION_EXPIRED');
     }
   }
