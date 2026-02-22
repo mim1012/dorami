@@ -16,13 +16,17 @@ import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
 import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
+import LiveCartSheet from '@/components/live/LiveCartSheet';
+import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useCartActivity } from '@/hooks/useCartActivity';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
 import { Body, Heading2 } from '@/components/common/Typography';
 import type { Product } from '@/lib/types';
+import { ProductStatus } from '@live-commerce/shared-types';
 import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 
@@ -55,10 +59,15 @@ export default function LiveStreamPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
+  const { data: cartData } = useCart();
   const { activities: cartActivities } = useCartActivity(streamKey);
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [activeProductOverride, setActiveProductOverride] = useState<FeaturedProduct | null>(null);
+  const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const { showToast } = useToast();
 
   // ── FSM ────────────────────────────────────────────────────────────────────
@@ -190,7 +199,7 @@ export default function LiveStreamPage() {
     return () => vv.removeEventListener('resize', onResize);
   }, [dispatch]);
 
-  // ── Featured product fetch + real-time WS ──────────────────────────────────
+  // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -199,10 +208,21 @@ export default function LiveStreamPage() {
         );
         setFeaturedProduct(response.data.product);
       } catch {
-        // non-critical — leave featuredProduct as null
+        // non-critical
+      }
+    };
+    const fetchAllProducts = async () => {
+      try {
+        const response = await apiClient.get<Product[]>('/products', {
+          params: { streamKey, status: 'AVAILABLE' },
+        });
+        setAllProducts(response.data);
+      } catch {
+        // non-critical
       }
     };
     fetchFeatured();
+    fetchAllProducts();
 
     const ws = io(
       process.env.NEXT_PUBLIC_WS_URL ||
@@ -215,6 +235,19 @@ export default function LiveStreamPage() {
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
     });
+    ws.on('live:product:added', (data: any) => {
+      setAllProducts((prev) => [data.data, ...prev]);
+    });
+    ws.on('live:product:updated', (data: any) => {
+      setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+    });
+    ws.on('live:product:soldout', (data: any) => {
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
+        ),
+      );
+    });
     return () => {
       ws.disconnect();
     };
@@ -226,11 +259,11 @@ export default function LiveStreamPage() {
       setStreamStatus(response.data);
 
       if (response.data.status === 'OFFLINE') {
-        setError('This stream is not currently live');
+        setError('현재 방송 중이 아닙니다');
       }
     } catch (err: any) {
       console.error('Failed to fetch stream status:', err);
-      setError('Stream not found');
+      setError('방송을 찾을 수 없습니다');
     } finally {
       setIsLoading(false);
     }
@@ -246,6 +279,10 @@ export default function LiveStreamPage() {
     if (message.trim()) {
       chatSendMessage(message);
     }
+  };
+
+  const handleInquiry = () => {
+    window.open('https://pf.kakao.com/_DeEAX', '_blank', 'noopener,noreferrer');
   };
 
   if (isLoading) {
@@ -273,7 +310,9 @@ export default function LiveStreamPage() {
           <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center shadow-hot-pink">
             <MonitorOff className="w-14 h-14 text-white/40" aria-hidden="true" />
           </div>
-          <Heading2 className="text-white mb-3 text-2xl">{error || 'Stream not found'}</Heading2>
+          <Heading2 className="text-white mb-3 text-2xl">
+            {error || '방송을 찾을 수 없습니다'}
+          </Heading2>
           <p className="text-white/40 text-sm mb-8">스트림을 찾을 수 없거나 종료되었습니다</p>
           <button
             onClick={() => router.push('/')}
@@ -342,12 +381,27 @@ export default function LiveStreamPage() {
     }
   };
 
-  const layout = computeLayout(snapshot, !!featuredProduct);
+  const displayedProduct = activeProductOverride ?? featuredProduct;
+
+  const handleProductSelectFromSheet = (product: Product) => {
+    setActiveProductOverride({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      discountRate: product.discountRate,
+      imageUrl: product.imageUrl,
+      stock: product.stock,
+      status: product.status,
+    });
+  };
+
+  const layout = computeLayout(snapshot, !!displayedProduct);
 
   return (
-    <div className="live-fullscreen w-full bg-black lg:h-screen lg:flex lg:overflow-hidden">
+    <div className="live-fullscreen w-full bg-[#0d0d18] lg:h-screen lg:flex lg:overflow-hidden">
       {/* ── Left: Product List — Desktop only ── */}
-      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
+      <aside className="hidden lg:block w-[260px] xl:w-[300px] h-full overflow-y-auto bg-[#12121e] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]"></span>
@@ -358,7 +412,7 @@ export default function LiveStreamPage() {
       </aside>
 
       {/* ── MOBILE: flex-col scroll layout ── */}
-      <div className="flex lg:hidden flex-col w-full bg-black">
+      <div className="flex lg:hidden flex-col w-full bg-[#0d0d18] h-screen overflow-hidden">
         {/* 1. LIVE status bar — sticky top z-30 */}
         {layout.topBar.visible && (
           <div
@@ -386,7 +440,7 @@ export default function LiveStreamPage() {
                 stream !== 'error' ? (
                   <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="animate-ping [animation-duration:2s] absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                     </span>
                     <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
@@ -442,6 +496,10 @@ export default function LiveStreamPage() {
 
         {/* 3. Video player (16:9) with chat overlay inside */}
         <div className="relative w-full aspect-video bg-black">
+          {/* Top gradient scrim */}
+          <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
+          {/* Bottom gradient scrim */}
+          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none" />
           <VideoPlayer
             streamKey={streamKey}
             title={streamStatus.title}
@@ -455,16 +513,6 @@ export default function LiveStreamPage() {
               else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
             }}
           />
-
-          {/* Chat overlay — bottom 40% of video */}
-          {layout.chat.visible && (
-            <div
-              className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto text-white"
-              style={{ bottom: featuredProduct ? '80px' : (layout.chat.bottom ?? '0px') }}
-            >
-              <ChatMessageList messages={allMessages} compact maxMessages={50} />
-            </div>
-          )}
 
           {/* Center overlay */}
           {layout.centerOverlay.visible && (
@@ -482,86 +530,93 @@ export default function LiveStreamPage() {
               )}
             </div>
           )}
-          {/* Featured product overlay — bottom of video */}
-          {featuredProduct && (
-            <div className="absolute inset-x-3 bottom-2 z-20">
-              <section
-                className="bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-                onClick={() => handleProductClick(featuredProduct)}
-              >
-                {featuredProduct.imageUrl && (
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
-                    <Image
-                      src={featuredProduct.imageUrl}
-                      alt={featuredProduct.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 font-semibold text-sm truncate">
-                    {featuredProduct.name}
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
-                      <>
-                        <span className="text-xs text-gray-400 line-through">
-                          $
-                          {(
-                            featuredProduct.originalPrice ?? featuredProduct.price
-                          ).toLocaleString()}
-                        </span>
-                        <span className="text-xs text-red-500 font-bold">
-                          {featuredProduct.discountRate}%
-                        </span>
-                      </>
-                    ) : null}
-                    <span className="text-sm font-bold text-[#FF007A]">
-                      ${featuredProduct.price.toLocaleString()}
-                    </span>
-                  </div>
+        </div>
+
+        {/* 4. Active product card + trigger below video */}
+        <div className="px-4 pt-3 pb-2 space-y-2">
+          {displayedProduct && (
+            <div
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm cursor-pointer active:bg-white/10 transition-all"
+              onClick={() => handleProductClick(displayedProduct)}
+            >
+              {displayedProduct.imageUrl && (
+                <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
+                  <Image
+                    src={displayedProduct.imageUrl}
+                    alt={displayedProduct.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <button
-                  className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
-                  disabled={featuredProduct.status === 'SOLD_OUT'}
-                >
-                  구매하기
-                </button>
-              </section>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-semibold text-sm truncate">{displayedProduct.name}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {displayedProduct.discountRate && displayedProduct.discountRate > 0 ? (
+                    <>
+                      <span className="text-white/40 text-xs line-through">
+                        $
+                        {(
+                          displayedProduct.originalPrice ?? displayedProduct.price
+                        ).toLocaleString()}
+                      </span>
+                      <span className="text-red-400 text-xs font-bold">
+                        {displayedProduct.discountRate}%
+                      </span>
+                    </>
+                  ) : null}
+                  <span className="text-[#FF007A] font-black text-base">
+                    ${displayedProduct.price.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="h-10 min-w-[88px] px-4 py-2 bg-[#FF007A] text-white text-sm font-bold rounded-xl flex-shrink-0 active:bg-[#CC0062] active:scale-95 transition-all disabled:opacity-50"
+                disabled={displayedProduct.status === 'SOLD_OUT'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleProductClick(displayedProduct);
+                }}
+              >
+                구매하기
+              </button>
             </div>
+          )}
+          {allProducts.length > 0 && (
+            <button
+              onClick={() => allProducts.length > 1 && setIsProductSheetOpen(true)}
+              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/3 border border-white/8 active:bg-white/8 transition-all ${allProducts.length <= 1 ? 'opacity-0 pointer-events-none' : ''}`}
+            >
+              <span className="text-white/50 text-sm">전체 상품 보기</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/30 text-xs">{allProducts.length}개</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  className={`opacity-30 transition-transform duration-300 ${isProductSheetOpen ? 'rotate-90' : ''}`}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
           )}
         </div>
 
-        {/* Spacer — prevents content from being hidden under the fixed bottom bar */}
-        <div
-          className="flex-shrink-0"
-          style={{
-            height: layout.bottomInput.visible
-              ? 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))'
-              : 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
-          }}
-        />
-
-        {/* 5. Quick action bar — fixed at bottom z-40 */}
-        <div
-          className="fixed inset-x-0 bottom-0 z-40"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          <LiveQuickActionBar
-            streamTitle={streamStatus.title}
-            onNotice={() => setIsNoticeOpen(true)}
-          />
+        {/* 5. Chat feed — fills remaining space */}
+        <div className="flex-1 min-h-[120px] overflow-y-auto">
+          <ChatMessageList messages={allMessages} compact maxMessages={50} />
         </div>
 
-        {/* 6. Chat input bar — fixed above quick action bar z-40 */}
+        {/* 6. Chat input — in-flow above quick action bar */}
         {layout.bottomInput.visible && (
           <div
-            className="fixed inset-x-0 z-40 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
-            style={{
-              bottom: 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
-              height: 'var(--live-bottom-bar-h)',
-            }}
+            className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+            style={{ height: 'var(--live-bottom-bar-h)' }}
           >
             <ChatInput
               compact
@@ -571,6 +626,20 @@ export default function LiveStreamPage() {
             />
           </div>
         )}
+
+        {/* 7. Quick action bar — in-flow at bottom */}
+        <div
+          className="flex-shrink-0"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <LiveQuickActionBar
+            streamTitle={streamStatus.title}
+            onNotice={() => setIsNoticeOpen(true)}
+            onCartOpen={() => setIsCartSheetOpen(true)}
+            cartCount={cartData?.itemCount ?? 0}
+            onInquiry={handleInquiry}
+          />
+        </div>
       </div>
 
       {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
@@ -579,6 +648,10 @@ export default function LiveStreamPage() {
           {/* Center: Video + overlays */}
           <div className="flex flex-1 relative items-center justify-center">
             <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+              {/* Desktop top gradient scrim */}
+              <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none" />
+              {/* Desktop bottom gradient scrim */}
+              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/70 to-transparent z-10 pointer-events-none" />
               <VideoPlayer
                 streamKey={streamKey}
                 title={streamStatus.title}
@@ -678,7 +751,7 @@ export default function LiveStreamPage() {
           </div>
 
           {/* Right: Chat Panel */}
-          <div className="flex w-[320px] flex-col bg-[#0A0A0A] border-l border-white/5">
+          <div className="flex w-[320px] flex-col bg-[#12121e] border-l border-white/5">
             <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
             <ChatMessageList
               messages={allMessages}
@@ -689,6 +762,9 @@ export default function LiveStreamPage() {
             <LiveQuickActionBar
               streamTitle={streamStatus.title}
               onNotice={() => setIsNoticeOpen(true)}
+              onCartOpen={() => setIsCartSheetOpen(true)}
+              cartCount={cartData?.itemCount ?? 0}
+              onInquiry={handleInquiry}
             />
             <ChatInput
               ref={desktopInputRef}
@@ -703,6 +779,15 @@ export default function LiveStreamPage() {
         <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
       </div>
 
+      {/* Product List Bottom Sheet */}
+      <ProductListBottomSheet
+        isOpen={isProductSheetOpen}
+        onClose={() => setIsProductSheetOpen(false)}
+        products={allProducts}
+        activeProductId={displayedProduct?.id ?? null}
+        onSelectProduct={handleProductSelectFromSheet}
+      />
+
       {/* Product Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal
@@ -712,6 +797,9 @@ export default function LiveStreamPage() {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      {/* Cart Sheet */}
+      <LiveCartSheet isOpen={isCartSheetOpen} onClose={() => setIsCartSheetOpen(false)} />
 
       {/* Notice Modal */}
       <NoticeModal isOpen={isNoticeOpen} onClose={() => setIsNoticeOpen(false)} />

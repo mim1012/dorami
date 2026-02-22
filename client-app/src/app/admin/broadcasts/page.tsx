@@ -94,21 +94,20 @@ export default function BroadcastsPage() {
     null,
   );
 
-  // [DEV] Auth check disabled for development
-  // useEffect(() => {
-  //   if (!authLoading) {
-  //     if (!user) {
-  //       router.push('/login');
-  //     } else if (user.role !== 'ADMIN') {
-  //       router.push('/');
-  //     }
-  //   }
-  // }, [user, authLoading, router]);
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'ADMIN') {
+        router.push('/');
+      }
+    }
+  }, [user, authLoading, router]);
 
   // Fetch live status
   useEffect(() => {
     const fetchLiveStatus = async () => {
-      // [DEV] if (!user || user.role !== 'ADMIN') return;
+      if (!user || user.role !== 'ADMIN') return;
 
       try {
         const response = await apiClient.get<LiveStatusResponse>('/streaming/live-status');
@@ -128,7 +127,7 @@ export default function BroadcastsPage() {
   // Fetch stream history
   useEffect(() => {
     const fetchHistory = async () => {
-      // [DEV] if (!user || user.role !== 'ADMIN') return;
+      if (!user || user.role !== 'ADMIN') return;
 
       setIsLoading(true);
       setError(null);
@@ -160,7 +159,7 @@ export default function BroadcastsPage() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -265,14 +264,13 @@ export default function BroadcastsPage() {
     setGenerateError(null);
   };
 
-  // [DEV] Auth check disabled for development
-  // if (authLoading || (user && user?.role !== 'ADMIN')) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen">
-  //       <div className="text-secondary-text">Loading...</div>
-  //     </div>
-  //   );
-  // }
+  if (authLoading || !user || user?.role !== 'ADMIN') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-secondary-text">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -499,8 +497,7 @@ export default function BroadcastsPage() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
                 <div className="text-sm text-secondary-text">
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of{' '}
-                  {total} results
+                  전체 {total}건 중 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -508,14 +505,14 @@ export default function BroadcastsPage() {
                     disabled={page === 1}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    이전
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next
+                    다음
                   </button>
                 </div>
               </div>

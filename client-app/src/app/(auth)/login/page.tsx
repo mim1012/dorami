@@ -12,6 +12,7 @@ function LoginContent() {
   const { isAuthenticated, isLoading, refreshProfile } = useAuth();
 
   const error = searchParams.get('error');
+  const reason = searchParams.get('reason');
   const [devEmail, setDevEmail] = useState('');
   const [devRole, setDevRole] = useState<'USER' | 'ADMIN'>('USER');
   const [devLoading, setDevLoading] = useState(false);
@@ -92,6 +93,14 @@ function LoginContent() {
           <Display className="text-hot-pink mb-2">Doremi</Display>
           <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
         </div>
+
+        {reason === 'session_expired' && (
+          <div className="bg-warning-bg border border-warning/30 rounded-lg p-4">
+            <Body className="text-warning text-sm">
+              로그인 세션이 만료되었습니다. 다시 로그인해주세요.
+            </Body>
+          </div>
+        )}
 
         {error && (
           <div className="bg-error-bg border border-error/30 rounded-lg p-4">

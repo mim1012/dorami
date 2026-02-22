@@ -79,7 +79,12 @@ export default function CartPage() {
   };
 
   const handleRemoveItem = async (cartItemId: string) => {
-    const confirmed = await confirm({ title: '상품 삭제', message: '이 상품을 장바구니에서 삭제하시겠습니까?', confirmText: '삭제', variant: 'danger' });
+    const confirmed = await confirm({
+      title: '상품 삭제',
+      message: '이 상품을 장바구니에서 삭제하시겠습니까?',
+      confirmText: '삭제',
+      variant: 'danger',
+    });
     if (!confirmed) return;
     try {
       await apiClient.delete(`/cart/${cartItemId}`);
@@ -87,18 +92,6 @@ export default function CartPage() {
     } catch (err: any) {
       console.error('Failed to remove item:', err);
       showToast('삭제에 실패했습니다.', 'error');
-    }
-  };
-
-  const handleClearCart = async () => {
-    const confirmed = await confirm({ title: '장바구니 비우기', message: '장바구니를 비우시겠습니까?', confirmText: '비우기', variant: 'danger' });
-    if (!confirmed) return;
-    try {
-      await apiClient.delete('/cart');
-      await fetchCart();
-    } catch (err: any) {
-      console.error('Failed to clear cart:', err);
-      showToast('장바구니 비우기에 실패했습니다.', 'error');
     }
   };
 
@@ -136,8 +129,11 @@ export default function CartPage() {
 
         <div className="max-w-4xl mx-auto px-4 py-6">
           {error && (
-            <div className="bg-error/10 border border-error rounded-xl p-4 mb-6">
-              <Body className="text-error">{error}</Body>
+            <div className="bg-error/10 border border-error rounded-xl p-4 mb-6 flex items-center justify-between gap-3">
+              <Body className="text-error flex-1">{error}</Body>
+              <Button variant="outline" size="sm" onClick={fetchCart}>
+                재시도
+              </Button>
             </div>
           )}
 
@@ -193,15 +189,6 @@ export default function CartPage() {
                     {hasExpiredItems
                       ? '만료된 상품이 있습니다'
                       : `${formatPrice(cart.grandTotal)} 결제하기`}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    fullWidth
-                    onClick={handleClearCart}
-                    className="border-border-color text-secondary-text hover:bg-content-bg"
-                  >
-                    장바구니 비우기
                   </Button>
                   <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/')}>
                     계속 쇼핑하기

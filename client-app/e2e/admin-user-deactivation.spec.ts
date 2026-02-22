@@ -94,10 +94,7 @@ test.describe('Admin User Deactivation', () => {
     await expect(confirmModal).not.toBeVisible({ timeout: 15000 });
 
     // 페이지 이동 없이 차단 배너 즉시 표시 확인
-    const suspensionBanner = page
-      .locator('div')
-      .filter({ hasText: '차단된 회원 (블랙리스트)' })
-      .first();
+    const suspensionBanner = page.getByText('차단된 회원 (블랙리스트)').first();
     await expect(suspensionBanner).toBeVisible({ timeout: 8000 });
     console.log('✅ A-USR-DV-01: 관리자 상세 UI — 차단 배너 즉시 표시 확인 🚫');
 
@@ -220,8 +217,7 @@ test.describe('Admin User Deactivation', () => {
 
     // 차단 배너 제거 확인
     const bannerGone = await page
-      .locator('div')
-      .filter({ hasText: '차단된 회원 (블랙리스트)' })
+      .getByText('차단된 회원 (블랙리스트)')
       .first()
       .isVisible({ timeout: 5000 })
       .catch(() => false);

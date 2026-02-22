@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
+import type { CartSummary } from '@/lib/hooks/queries/use-cart';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 import type { CartActivity } from '@/components/live/CartActivityFeed';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
+import LiveCartSheet from '@/components/live/LiveCartSheet';
+import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import TestControlPanel from './TestControlPanel';
 import { useToast } from '@/components/common/Toast';
 import type { ChatMessage } from '@/components/chat/types';
@@ -129,6 +134,7 @@ const STREAM_TITLE = '도레미 라이브 커머스 미리보기';
 
 export default function LivePreviewPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const desktopInputRef = useRef<ChatInputHandle>(null);
   const startedAtRef = useRef(new Date());
@@ -151,8 +157,11 @@ export default function LivePreviewPage() {
   const [viewerCount, setViewerCount] = useState(147);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(MOCK_PRODUCTS[0] ?? null);
+  const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [chatSpeed, setChatSpeed] = useState(3500);
   const [cartCount, setCartCount] = useState(0);
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
   // Product detail modal state
@@ -253,6 +262,15 @@ export default function LivePreviewPage() {
     }
   }, [showViewerPulse]);
 
+  // activeProduct 동기화 — products 변경 시 현재 선택 유지, 없으면 첫 번째로 fallback
+  useEffect(() => {
+    setActiveProduct((prev) => {
+      if (!prev && products.length > 0) return products[0];
+      if (prev && !products.find((p) => p.id === prev.id)) return products[0] ?? null;
+      return products.find((p) => p.id === prev?.id) ?? prev;
+    });
+  }, [products]);
+
   const handleSendMessage = (message: string) => {
     if (!message.trim()) return;
     const newMsg: ChatMessage = {
@@ -280,6 +298,59 @@ export default function LivePreviewPage() {
     setCartActivities((prev) => [...prev, activity]);
     const options = [selectedColor, selectedSize].filter(Boolean).join(', ');
     showToast(`${product.name}${options ? ` (${options})` : ''} 장바구니에 담았어요!`, 'success');
+
+    // Update TanStack Query cart cache so LiveCartSheet reflects mock adds
+    queryClient.setQueryData<CartSummary>(cartKeys.summary(), (prev) => {
+      const currentItems = prev?.items ?? [];
+      const existingIdx = currentItems.findIndex(
+        (item) =>
+          item.productId === productId &&
+          item.color === selectedColor &&
+          item.size === selectedSize,
+      );
+      let updatedItems;
+      if (existingIdx >= 0) {
+        updatedItems = currentItems.map((item, i) =>
+          i === existingIdx
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                subtotal: item.price * (item.quantity + 1),
+                total: item.price * (item.quantity + 1),
+              }
+            : item,
+        );
+      } else {
+        const newItem = {
+          id: `mock-${Date.now()}`,
+          productId,
+          productName: product.name,
+          price: product.price,
+          quantity: 1,
+          color: selectedColor,
+          size: selectedSize,
+          shippingFee: product.shippingFee ?? 0,
+          timerEnabled: product.timerEnabled,
+          expiresAt: product.timerEnabled
+            ? new Date(Date.now() + product.timerDuration * 60 * 1000).toISOString()
+            : undefined,
+          status: 'ACTIVE' as const,
+          subtotal: product.price,
+          total: product.price,
+          remainingSeconds: product.timerEnabled ? product.timerDuration * 60 : undefined,
+          product: { imageUrl: product.imageUrl, status: 'AVAILABLE' as const },
+        };
+        updatedItems = [...currentItems, newItem];
+      }
+      const grandTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+      return {
+        items: updatedItems,
+        itemCount: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
+        subtotal: grandTotal,
+        totalShippingFee: 0,
+        grandTotal,
+      };
+    });
   };
 
   const handleProductClick = (productId: string) => {
@@ -375,12 +446,10 @@ export default function LivePreviewPage() {
     );
   }
 
-  const featuredProduct = products[0] ?? null;
-
   return (
-    <div className="live-fullscreen w-full bg-black lg:h-screen lg:flex lg:overflow-hidden">
+    <div className="live-fullscreen w-full bg-[#0d0d18] lg:h-screen lg:flex lg:overflow-hidden">
       {/* ── Left: Product List — Desktop only ── */}
-      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
+      <aside className="hidden lg:block w-[260px] xl:w-[300px] h-full overflow-y-auto bg-[#12121e] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]"></span>
@@ -392,7 +461,7 @@ export default function LivePreviewPage() {
             <div
               key={p.id}
               onClick={() => handleProductClick(p.id)}
-              className="flex items-center gap-3 p-3 rounded-2xl bg-content-bg hover:bg-border-color transition-all cursor-pointer"
+              className={`flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer border-l-2 ${p.id === activeProduct?.id ? 'bg-[#FF007A]/10 border-[#FF007A]' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
             >
               <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-content-bg">
                 {/* eslint-disable-next-line */}
@@ -422,7 +491,7 @@ export default function LivePreviewPage() {
       </aside>
 
       {/* ── Mobile: flex-col scroll layout ── */}
-      <div className="flex lg:hidden flex-col w-full bg-black">
+      <div className="flex lg:hidden flex-col w-full bg-[#0d0d18] h-screen overflow-hidden">
         {/* 1. Top status bar — sticky */}
         <div
           className="sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3"
@@ -443,7 +512,7 @@ export default function LivePreviewPage() {
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="animate-ping [animation-duration:2s] absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                 </span>
                 <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
@@ -479,8 +548,12 @@ export default function LivePreviewPage() {
 
         {/* 2. Video (16:9) with overlays inside */}
         <div className="relative w-full aspect-video bg-black">
+          {/* Top gradient scrim */}
+          <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
+          {/* Bottom gradient scrim */}
+          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none" />
           {/* Mock video background */}
-          <div className="w-full h-full bg-[#111] flex items-center justify-center relative overflow-hidden">
+          <div className="w-full h-full bg-[#12121e] flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#FF007A]/10 rounded-full blur-3xl animate-pulse" />
               <div
@@ -497,100 +570,114 @@ export default function LivePreviewPage() {
               <p className="text-white/30 text-xs font-medium">LIVE PREVIEW</p>
             </div>
           </div>
+        </div>
 
-          {/* Chat overlay — bottom 40%, pushed up when featured product exists */}
-          <div
-            className="absolute inset-x-3 z-10 max-h-[40%] overflow-y-auto text-white"
-            style={{ bottom: featuredProduct ? '80px' : '0px' }}
-          >
-            <ChatMessageList messages={allMessages} compact maxMessages={50} />
-          </div>
-
-          {/* Featured product — white card overlay (same as real page) */}
-          {featuredProduct && (
-            <div className="absolute inset-x-3 bottom-2 z-20">
-              <section
-                className="bg-white rounded-2xl shadow-lg px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-                onClick={() => handleProductClick(featuredProduct.id)}
-              >
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+        {/* 3a. Active product card + trigger */}
+        <div className="px-4 pt-3 pb-2 space-y-2">
+          {activeProduct && (
+            <div
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm active:bg-white/10 transition-all cursor-pointer"
+              onClick={() => handleProductClick(activeProduct.id)}
+            >
+              {activeProduct.imageUrl && (
+                <div className="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
                   {/* eslint-disable-next-line */}
                   <img
-                    src={featuredProduct.imageUrl}
-                    alt={featuredProduct.name}
+                    src={activeProduct.imageUrl}
+                    alt={activeProduct.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 font-semibold text-sm truncate">
-                    {featuredProduct.name}
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
-                      <>
-                        <span className="text-xs text-gray-400 line-through">
-                          {formatPrice(featuredProduct.originalPrice ?? featuredProduct.price)}
-                        </span>
-                        <span className="text-xs text-red-500 font-bold">
-                          {featuredProduct.discountRate}%
-                        </span>
-                      </>
-                    ) : null}
-                    <span className="text-sm font-bold text-[#FF007A]">
-                      {formatPrice(
-                        featuredProduct.discountRate && featuredProduct.discountRate > 0
-                          ? Math.round(
-                              (featuredProduct.originalPrice ?? featuredProduct.price) *
-                                (1 - featuredProduct.discountRate / 100),
-                            )
-                          : featuredProduct.price,
-                      )}
-                    </span>
-                  </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{activeProduct.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {activeProduct.discountRate && activeProduct.discountRate > 0 ? (
+                    <>
+                      <span className="text-white/35 text-xs line-through">
+                        {formatPrice(activeProduct.originalPrice ?? activeProduct.price)}
+                      </span>
+                      <span className="text-red-400 text-xs font-bold">
+                        {activeProduct.discountRate}%
+                      </span>
+                    </>
+                  ) : null}
+                  <span className="text-[#FF007A] font-black text-sm">
+                    {formatPrice(
+                      activeProduct.discountRate && activeProduct.discountRate > 0
+                        ? Math.round(
+                            (activeProduct.originalPrice ?? activeProduct.price) *
+                              (1 - activeProduct.discountRate / 100),
+                          )
+                        : activeProduct.price,
+                    )}
+                  </span>
                 </div>
-                <button
-                  className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(featuredProduct.id);
-                  }}
-                >
-                  구매하기
-                </button>
-              </section>
+              </div>
+              <button
+                className="h-10 min-w-[88px] flex-shrink-0 px-4 py-2 bg-[#FF007A] text-white text-sm font-bold rounded-xl active:scale-95 transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToCart(activeProduct.id);
+                }}
+              >
+                구매하기
+              </button>
             </div>
+          )}
+          {products.length > 0 && (
+            <button
+              onClick={() => products.length > 1 && setIsProductSheetOpen(true)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/5 border border-white/10 active:bg-white/10 transition-all ${products.length <= 1 ? 'opacity-0 pointer-events-none' : ''}`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]" />
+                <span className="text-white text-sm font-bold">전체 상품 보기</span>
+                <span className="text-white/40 text-xs">{products.length}개</span>
+              </div>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                className={`opacity-40 transition-transform duration-300 ${isProductSheetOpen ? 'rotate-90' : ''}`}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           )}
         </div>
 
-        {/* 3. Spacer — prevents content from hiding under fixed bottom bars */}
-        <div
-          className="flex-shrink-0"
-          style={{
-            height: 'calc(var(--live-total-bottom-h) + env(safe-area-inset-bottom, 0px))',
-          }}
-        />
-
-        {/* 4. Fixed bottom: LiveQuickActionBar */}
-        <div
-          className="fixed inset-x-0 bottom-0 z-40"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          <LiveQuickActionBar streamTitle={STREAM_TITLE} />
+        {/* 4. Chat feed — fills remaining space */}
+        <div className="flex-1 min-h-[120px] overflow-y-auto">
+          <ChatMessageList messages={allMessages} compact maxMessages={50} />
         </div>
 
-        {/* 5. Fixed above quick action bar: ChatInput */}
+        {/* 5. Chat input — in-flow */}
         <div
-          className="fixed inset-x-0 z-40 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
-          style={{
-            bottom: 'calc(var(--live-quick-action-h) + env(safe-area-inset-bottom, 0px))',
-            height: 'var(--live-bottom-bar-h)',
-          }}
+          className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+          style={{ height: 'var(--live-bottom-bar-h)' }}
         >
           <ChatInput
             compact
             disabled={false}
             onSendMessage={handleSendMessage}
             ref={mobileInputRef}
+          />
+        </div>
+
+        {/* 6. Quick action bar — in-flow at bottom */}
+        <div
+          className="flex-shrink-0"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <LiveQuickActionBar
+            streamTitle={STREAM_TITLE}
+            onCartOpen={() => setIsCartSheetOpen(true)}
+            cartCount={cartCount}
           />
         </div>
       </div>
@@ -601,6 +688,10 @@ export default function LivePreviewPage() {
           {/* Center: Video + overlays */}
           <div className="flex flex-1 relative items-center justify-center">
             <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+              {/* Desktop top gradient scrim */}
+              <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none" />
+              {/* Desktop bottom gradient scrim */}
+              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/70 to-transparent z-10 pointer-events-none" />
               {/* Mock video */}
               <div className="w-full h-full bg-white flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 overflow-hidden">
@@ -717,10 +808,14 @@ export default function LivePreviewPage() {
           </div>
 
           {/* Right: Chat Panel (same structure as real page) */}
-          <div className="flex w-[320px] flex-col bg-[#0A0A0A] border-l border-white/5">
+          <div className="flex w-[320px] flex-col bg-[#12121e] border-l border-white/5">
             <ChatHeader userCount={viewerCount} isConnected={true} compact={false} />
             <ChatMessageList messages={allMessages} compact={false} />
-            <LiveQuickActionBar streamTitle={STREAM_TITLE} />
+            <LiveQuickActionBar
+              streamTitle={STREAM_TITLE}
+              onCartOpen={() => setIsCartSheetOpen(true)}
+              cartCount={cartCount}
+            />
             <ChatInput
               ref={desktopInputRef}
               onSendMessage={handleSendMessage}
@@ -730,55 +825,53 @@ export default function LivePreviewPage() {
           </div>
         </div>
 
-        {/* Bottom: Featured Product Bar (same as FeaturedProductBar component) */}
-        {featuredProduct && (
+        {/* Bottom: Active Product Bar */}
+        {activeProduct && (
           <div
-            className="w-full bg-content-bg/95 backdrop-blur-md border-t border-border-color p-4 cursor-pointer hover:bg-content-bg transition-colors"
-            onClick={() => handleProductClick(featuredProduct.id)}
+            className="w-full bg-[#12121e]/95 backdrop-blur-md border-t border-white/10 p-4 cursor-pointer hover:bg-[#1a1a2e] transition-colors"
+            onClick={() => handleProductClick(activeProduct.id)}
           >
             <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
-              <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-primary-black">
+              <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-white/5">
                 {/* eslint-disable-next-line */}
                 <img
-                  src={featuredProduct.imageUrl}
-                  alt={featuredProduct.name}
+                  src={activeProduct.imageUrl}
+                  alt={activeProduct.name}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm text-primary-text font-semibold truncate">
-                  {featuredProduct.name}
-                </h3>
+                <h3 className="text-sm text-white font-semibold truncate">{activeProduct.name}</h3>
                 <div className="flex items-center gap-2">
-                  {featuredProduct.discountRate && featuredProduct.discountRate > 0 ? (
+                  {activeProduct.discountRate && activeProduct.discountRate > 0 ? (
                     <>
-                      <span className="text-secondary-text text-xs line-through">
-                        {formatPrice(featuredProduct.originalPrice ?? featuredProduct.price)}
+                      <span className="text-white/40 text-xs line-through">
+                        {formatPrice(activeProduct.originalPrice ?? activeProduct.price)}
                       </span>
-                      <span className="text-xs text-error font-bold">
-                        {featuredProduct.discountRate}%
+                      <span className="text-xs text-red-400 font-bold">
+                        {activeProduct.discountRate}%
                       </span>
-                      <p className="text-lg text-hot-pink font-bold">
+                      <p className="text-lg text-[#FF007A] font-bold">
                         {formatPrice(
                           Math.round(
-                            (featuredProduct.originalPrice ?? featuredProduct.price) *
-                              (1 - featuredProduct.discountRate / 100),
+                            (activeProduct.originalPrice ?? activeProduct.price) *
+                              (1 - activeProduct.discountRate / 100),
                           ),
                         )}
                       </p>
                     </>
                   ) : (
-                    <p className="text-lg text-hot-pink font-bold">
-                      {formatPrice(featuredProduct.price)}
+                    <p className="text-lg text-[#FF007A] font-bold">
+                      {formatPrice(activeProduct.price)}
                     </p>
                   )}
-                  <p className="text-xs text-secondary-text">재고 {featuredProduct.stock}</p>
+                  <p className="text-xs text-white/40">재고 {activeProduct.stock}</p>
                 </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddToCart(featuredProduct.id);
+                  handleAddToCart(activeProduct.id);
                 }}
                 className="px-6 py-2 bg-hot-pink text-white rounded-full hover:bg-hot-pink/80 transition-colors font-semibold"
               >
@@ -788,6 +881,18 @@ export default function LivePreviewPage() {
           </div>
         )}
       </div>
+
+      {/* Product List Bottom Sheet */}
+      <ProductListBottomSheet
+        isOpen={isProductSheetOpen}
+        onClose={() => setIsProductSheetOpen(false)}
+        products={products}
+        activeProductId={activeProduct?.id ?? null}
+        onSelectProduct={(p) => setActiveProduct(p)}
+      />
+
+      {/* Cart Sheet */}
+      <LiveCartSheet isOpen={isCartSheetOpen} onClose={() => setIsCartSheetOpen(false)} />
 
       {/* Product Detail Modal */}
       {selectedProduct && (
@@ -808,7 +913,16 @@ export default function LivePreviewPage() {
         onAddProduct={handleAddProduct}
         onRemoveProduct={handleRemoveProduct}
         cartCount={cartCount}
-        onResetCart={() => setCartCount(0)}
+        onResetCart={() => {
+          setCartCount(0);
+          queryClient.setQueryData<CartSummary>(cartKeys.summary(), {
+            items: [],
+            itemCount: 0,
+            subtotal: 0,
+            totalShippingFee: 0,
+            grandTotal: 0,
+          });
+        }}
         onShare={handleShare}
         chatSpeed={chatSpeed}
         products={products}

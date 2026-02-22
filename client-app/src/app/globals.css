@@ -65,8 +65,8 @@
   --live-quick-action-h: 52px;
   --live-total-bottom-h: calc(var(--live-bottom-bar-h) + var(--live-quick-action-h));
 
-  /* Bottom Nav */
-  --bottom-nav-height: 80px;
+  /* Bottom Nav — 4rem (h-16) + iOS home bar safe area */
+  --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
 
   /* Border Radius */
   --radius-card: 12px;
@@ -111,6 +111,11 @@
 }
 
 /* Base Styles */
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--primary-black);
   color: var(--primary-text);

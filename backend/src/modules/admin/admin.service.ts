@@ -441,7 +441,7 @@ export class AdminService {
     // 5. Top 5 Selling Products
     const topProducts = await this.prisma.orderItem.groupBy({
       by: ['productId', 'productName'],
-      where: { productId: { not: null } },
+      where: { productId: { not: null }, order: { paymentStatus: 'CONFIRMED' } },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: 'desc' } },
       take: 5,

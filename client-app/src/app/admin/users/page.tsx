@@ -234,7 +234,7 @@ function AdminUsersContent() {
   const hasActiveFilters = debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="mb-8">
         <Display className="text-hot-pink mb-2">회원 관리</Display>
         <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
@@ -325,10 +325,6 @@ function AdminUsersContent() {
                 })}
               </div>
             </div>
-
-            <Body className="text-secondary-text text-caption">
-              참고: 주문수 및 구매액 필터는 Epic 8에서 추가될 예정입니다
-            </Body>
           </div>
         )}
       </div>
@@ -367,7 +363,7 @@ export default function AdminUsersPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <Body>불러오는 중...</Body>
         </div>
       }

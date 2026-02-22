@@ -109,6 +109,29 @@ export default function SettlementPage() {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!report) return;
+    const headers = ['주문ID', '주문일시', '고객ID', '결제금액', '결제확인일시'];
+    const rows = report.orders.map((o) => [
+      o.orderId,
+      o.orderDate,
+      o.customerId,
+      o.total.toString(),
+      o.paidAt,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    a.href = url;
+    a.download = `settlement_${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -187,7 +210,7 @@ export default function SettlementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <Display className="text-hot-pink mb-2">정산 관리</Display>
@@ -227,6 +250,11 @@ export default function SettlementPage() {
               className="md:mb-0"
             >
               {isLoading ? '조회 중...' : '조회하기'}
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!report}>
+              <Download className="w-4 h-4 mr-2" />
+              CSV 내보내기
             </Button>
           </div>
 
