@@ -5,14 +5,20 @@ import { X, CheckCircle, XCircle, Info } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info';
 
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (message: string, type?: ToastType, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -20,20 +26,23 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = Math.random().toString(36).substring(7);
-    const newToast = { id, message, type };
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'info', action?: ToastAction) => {
+      const id = Math.random().toString(36).substring(7);
+      const newToast = { id, message, type, action };
 
-    setToasts((prev) => {
-      const updated = [...prev, newToast];
-      return updated.length > 5 ? updated.slice(-5) : updated;
-    });
+      setToasts((prev) => {
+        const updated = [...prev, newToast];
+        return updated.length > 5 ? updated.slice(-5) : updated;
+      });
 
-    // Auto-dismiss after 4 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, 4000);
-  }, []);
+      // Auto-dismiss after 4 seconds
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, 4000);
+    },
+    [],
+  );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -52,6 +61,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+  const handleAction = () => {
+    toast.action?.onClick();
+    onClose();
+  };
   const icons = {
     success: <CheckCircle className="w-5 h-5 text-success" />,
     error: <XCircle className="w-5 h-5 text-error" />,
@@ -77,6 +90,14 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     >
       {icons[toast.type]}
       <p className={`text-sm font-medium ${textColors[toast.type]} flex-1`}>{toast.message}</p>
+      {toast.action && (
+        <button
+          onClick={handleAction}
+          className="text-sm font-semibold text-hot-pink hover:underline whitespace-nowrap"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         onClick={onClose}
         className="text-secondary-text hover:text-primary-text transition-colors"

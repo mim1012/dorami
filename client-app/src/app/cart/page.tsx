@@ -67,6 +67,14 @@ export default function CartPage() {
     }
   };
 
+  const handleCartExpired = async () => {
+    showToast(
+      '예약 시간이 만료되어 장바구니에서 제거되었습니다. 라이브 방송에서 다시 담아주세요.',
+      'error',
+    );
+    await fetchCart();
+  };
+
   const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
     if (newQuantity < 1 || newQuantity > 10) return;
     try {
@@ -153,7 +161,7 @@ export default function CartPage() {
                         시간 내에 결제하지 않으면 예약이 자동으로 취소됩니다.
                       </Caption>
                     </div>
-                    <CartTimer expiresAt={cart.earliestExpiration} onExpired={fetchCart} />
+                    <CartTimer expiresAt={cart.earliestExpiration} onExpired={handleCartExpired} />
                   </div>
                 )}
 
@@ -165,7 +173,7 @@ export default function CartPage() {
                       item={item}
                       onUpdateQuantity={handleUpdateQuantity}
                       onRemove={handleRemoveItem}
-                      onTimerExpired={fetchCart}
+                      onTimerExpired={handleCartExpired}
                     />
                   ))}
                 </div>

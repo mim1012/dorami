@@ -9,6 +9,7 @@ interface LiveQuickActionBarProps {
   onNotice?: () => void;
   onCartOpen?: () => void;
   cartCount?: number;
+  hasExpiringItem?: boolean;
 }
 
 export default function LiveQuickActionBar({
@@ -17,6 +18,7 @@ export default function LiveQuickActionBar({
   onNotice,
   onCartOpen,
   cartCount,
+  hasExpiringItem,
 }: LiveQuickActionBarProps) {
   const router = useRouter();
 
@@ -72,18 +74,18 @@ export default function LiveQuickActionBar({
       <div className="w-px h-5 bg-white/10" />
       <button
         onClick={onCartOpen}
-        className="flex flex-col items-center gap-0.5 text-white/70 hover:text-white active:scale-90 transition-all flex-1 py-2"
+        className={`flex flex-col items-center gap-0.5 active:scale-90 transition-all flex-1 py-2 ${hasExpiringItem ? 'text-error' : 'text-white/70 hover:text-white'}`}
         aria-label="장바구니"
       >
         <div className="relative">
-          <ShoppingCart className="w-5 h-5" />
+          <ShoppingCart className={`w-5 h-5 ${hasExpiringItem ? 'animate-pulse' : ''}`} />
           {cartCount != null && cartCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-hot-pink rounded-full text-[9px] font-black text-white flex items-center justify-center">
               {cartCount > 9 ? '9+' : cartCount}
             </span>
           )}
         </div>
-        <span className="text-[10px] font-medium">장바구니</span>
+        <span className="text-[10px] font-medium">{hasExpiringItem ? '곧 만료' : '장바구니'}</span>
       </button>
       <div className="w-px h-5 bg-white/10" />
       <button
