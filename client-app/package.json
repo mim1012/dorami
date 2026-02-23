@@ -34,6 +34,12 @@
     "zod": "^3.24.1",
     "zustand": "^5.0.10"
   },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "1.30.2",
+    "lightningcss-linux-x64-musl": "1.30.2",
+    "lightningcss-darwin-x64": "1.30.2",
+    "lightningcss-darwin-arm64": "1.30.2"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
