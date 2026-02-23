@@ -52,8 +52,8 @@ describe('AuthService', () => {
             get: jest.fn((key: string, defaultValue?: string) => {
               const config: Record<string, string> = {
                 ADMIN_EMAILS: '',
-                JWT_ACCESS_EXPIRES_IN: '15m',
-                JWT_REFRESH_EXPIRES_IN: '7d',
+                JWT_ACCESS_EXPIRES_IN: '1h',
+                JWT_REFRESH_EXPIRES_IN: '30d',
                 AUTH_BLACKLIST_TTL_SECONDS: '900',
               };
               return config[key] || defaultValue;
@@ -138,25 +138,19 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException for invalid token', async () => {
       jest.spyOn(redisService, 'get').mockResolvedValue('different-token');
 
-      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if token not found in Redis', async () => {
       jest.spyOn(redisService, 'get').mockResolvedValue(null);
 
-      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should return new tokens on successful refresh', async () => {
