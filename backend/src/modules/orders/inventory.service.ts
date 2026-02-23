@@ -31,11 +31,7 @@ export class InventoryService {
           }
 
           if (product.quantity < quantity) {
-            throw new InsufficientStockException(
-              productId,
-              product.quantity,
-              quantity,
-            );
+            throw new InsufficientStockException(productId, product.quantity, quantity);
           }
 
           // Decrease stock
@@ -86,6 +82,37 @@ export class InventoryService {
   }
 
   /**
+   * Batch stock decrease using a provided transaction client (for atomic multi-op transactions)
+   * Use this when you need stock decrease to be part of a larger transaction (e.g., order creation)
+   */
+  async batchDecreaseStockTx(
+    tx: Prisma.TransactionClient,
+    items: { productId: string; quantity: number }[],
+  ): Promise<void> {
+    for (const item of items) {
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      if (!product) {
+        throw new ProductNotFoundException(item.productId);
+      }
+
+      if (product.quantity < item.quantity) {
+        throw new InsufficientStockException(item.productId, product.quantity, item.quantity);
+      }
+
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          quantity: product.quantity - item.quantity,
+          status: product.quantity - item.quantity === 0 ? 'SOLD_OUT' : product.status,
+        },
+      });
+    }
+  }
+
+  /**
    * Batch stock decrease for multiple products
    */
   async batchDecreaseStock(
@@ -103,21 +130,14 @@ export class InventoryService {
           }
 
           if (product.quantity < item.quantity) {
-            throw new InsufficientStockException(
-              item.productId,
-              product.quantity,
-              item.quantity,
-            );
+            throw new InsufficientStockException(item.productId, product.quantity, item.quantity);
           }
 
           await tx.product.update({
             where: { id: item.productId },
             data: {
               quantity: product.quantity - item.quantity,
-              status:
-                product.quantity - item.quantity === 0
-                  ? 'SOLD_OUT'
-                  : product.status,
+              status: product.quantity - item.quantity === 0 ? 'SOLD_OUT' : product.status,
             },
           });
         }

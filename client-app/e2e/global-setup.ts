@@ -105,21 +105,32 @@ async function authenticate(
 
   // 2. If USER, complete profile using the same API context (cookies auto-forwarded)
   if (role === 'USER') {
-    const profileRes = await apiContext.post('/api/v1/users/complete-profile', {
-      data: {
-        depositorName: 'E2E테스트',
-        instagramId: `@e2e_user_${Date.now()}`,
-        fullName: 'E2E Test User',
-        address1: '123 Test Street',
-        address2: 'Apt 1',
-        city: 'New York',
-        state: 'NY',
-        zip: '10001',
-        phone: '(212) 555-1234',
-      },
-    });
-    if (!profileRes.ok()) {
-      console.warn(`complete-profile: ${profileRes.status()} (may already have profile)`);
+    // GET request triggers CSRF token cookie generation (guard sets csrf-token cookie on GET)
+    const meCheck = await apiContext.get('/api/v1/users/me');
+    const meCheckData = meCheck.ok() ? (await meCheck.json()).data : null;
+
+    // Only call complete-profile if fields are missing
+    if (!meCheckData?.instagramId || !meCheckData?.depositorName) {
+      const state = await apiContext.storageState();
+      const csrfToken = state.cookies.find((c) => c.name === 'csrf-token')?.value ?? '';
+
+      const profileRes = await apiContext.post('/api/v1/users/complete-profile', {
+        headers: { 'X-CSRF-Token': csrfToken },
+        data: {
+          depositorName: 'E2E테스트',
+          instagramId: `@e2e_user_${user.id?.slice(0, 8) ?? 'test'}`,
+          fullName: 'E2E Test User',
+          address1: '123 Test Street',
+          address2: 'Apt 1',
+          city: 'New York',
+          state: 'NY',
+          zip: '10001',
+          phone: '(212) 555-1234',
+        },
+      });
+      if (!profileRes.ok()) {
+        console.warn(`complete-profile: ${profileRes.status()} ${await profileRes.text()}`);
+      }
     }
   }
 
@@ -128,6 +139,16 @@ async function authenticate(
   if (meRes.ok()) {
     const meData = await meRes.json();
     user = meData.data || user;
+  }
+
+  // Verify USER profile is complete — if not, useProfileGuard will redirect all
+  // profile-guarded routes (/cart, /my-page) to /profile/register during tests.
+  if (role === 'USER' && (!user?.instagramId || !user?.depositorName)) {
+    throw new Error(
+      `global-setup: USER profile incomplete after complete-profile call. ` +
+        `instagramId=${user?.instagramId}, depositorName=${user?.depositorName}. ` +
+        `Check that /api/v1/users/complete-profile succeeded and /api/v1/users/me returns the updated fields.`,
+    );
   }
 
   await apiContext.dispose();

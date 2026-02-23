@@ -1,57 +1,78 @@
+# syntax=docker/dockerfile:1
+
+# ============================================
+# Stage 1: 빌드 (builder)
+# - 의존성 파일을 먼저 복사하여 Docker 레이어 캐시 활용
+# - 소스 변경 시 npm ci 레이어는 캐시됨
+# ============================================
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache git
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# 루트 package.json + workspaces 구조 복사
-COPY package.json ./
-COPY packages/shared-types ./packages/shared-types
+# 의존성 파일만 먼저 복사 (Docker 레이어 캐시 최적화)
+COPY package.json package-lock.json ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY backend/package.json ./backend/
 COPY client-app/package.json ./client-app/
 
-# workspace 기반으로 의존성 설치 (shared-types + client-app)
-RUN npm install --legacy-peer-deps --ignore-scripts
+# BuildKit 캐시 마운트로 npm 캐시 영속화 + npm ci로 결정적 설치
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
-# shared-types 빌드
-RUN npm run build:shared
-
-# client-app 소스 복사
+# 소스 코드 복사 (위 레이어가 캐시되므로 소스 변경 시 여기부터 재실행)
+COPY packages/shared-types ./packages/shared-types
 COPY client-app ./client-app
 
-ARG NEXT_PUBLIC_ENABLE_DEV_AUTH=false
-ARG NEXT_PUBLIC_PREVIEW_ENABLED=false
-ARG NEXT_PUBLIC_APP_ENV=production
-
+# 환경변수 플레이스홀더 (런타임에 docker-entrypoint.sh로 치환)
 ENV NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL__
 ENV NEXT_PUBLIC_WS_URL=__NEXT_PUBLIC_WS_URL__
 ENV NEXT_PUBLIC_CDN_URL=__NEXT_PUBLIC_CDN_URL__
-ENV NEXT_PUBLIC_ENABLE_DEV_AUTH=${NEXT_PUBLIC_ENABLE_DEV_AUTH}
-ENV NEXT_PUBLIC_PREVIEW_ENABLED=${NEXT_PUBLIC_PREVIEW_ENABLED}
+ENV NEXT_PUBLIC_ENABLE_DEV_AUTH=__NEXT_PUBLIC_ENABLE_DEV_AUTH__
+ENV NEXT_PUBLIC_PREVIEW_ENABLED=__NEXT_PUBLIC_PREVIEW_ENABLED__
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=__NEXT_PUBLIC_VAPID_PUBLIC_KEY__
 ENV NEXT_PUBLIC_KAKAO_JS_KEY=__NEXT_PUBLIC_KAKAO_JS_KEY__
 ENV NEXT_PUBLIC_SENTRY_DSN=__NEXT_PUBLIC_SENTRY_DSN__
 ENV NEXT_PUBLIC_APP_VERSION=__NEXT_PUBLIC_APP_VERSION__
-ENV NEXT_PUBLIC_APP_ENV=${NEXT_PUBLIC_APP_ENV}
+ENV NEXT_PUBLIC_APP_ENV=__NEXT_PUBLIC_APP_ENV__
 
-RUN cd client-app && npm run build
+# 텔레메트리 비활성화
+ENV NEXT_TELEMETRY_DISABLED=1
 
+# shared-types 빌드 후 Next.js 빌드
+RUN npm run build:shared && cd client-app && npm run build
+
+# ============================================
+# Stage 2: 프로덕션 이미지 (runner)
+# ============================================
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
+# standalone 빌드 결과물만 복사 (node_modules 불필요)
 COPY --from=builder --chown=nextjs:nodejs /app/client-app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/client-app/.next/static ./client-app/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/client-app/public ./client-app/public
 
-COPY client-app/docker-entrypoint.sh /docker-entrypoint.sh
+# 런타임 환경변수 치환 스크립트
+COPY --chown=nextjs:nodejs client-app/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 USER nextjs
 
 EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "client-app/server.js"]

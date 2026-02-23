@@ -33,13 +33,6 @@
   --spacing-bottom-nav: var(--bottom-nav-height);
 }
 
-/* Pretendard Font */
-@font-face {
-  font-family: 'Pretendard';
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
-}
 
 /* CSS Variables for Theme Tokens */
 :root {
@@ -64,8 +57,16 @@
   --warning-bg: #FFF7ED;
   --info-bg: #EFF6FF;
 
-  /* Bottom Nav */
-  --bottom-nav-height: 80px;
+  /* Live page layout tokens */
+  --live-bottom-bar-h: 60px;
+  --live-product-bar-h: 76px;
+  --live-top-bar-h: 60px;
+  --live-gap: 12px;
+  --live-quick-action-h: 52px;
+  --live-total-bottom-h: calc(var(--live-bottom-bar-h) + var(--live-quick-action-h));
+
+  /* Bottom Nav — 4rem (h-16) + iOS home bar safe area */
+  --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
 
   /* Border Radius */
   --radius-card: 12px;
@@ -110,6 +111,11 @@
 }
 
 /* Base Styles */
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--primary-black);
   color: var(--primary-text);
@@ -450,4 +456,34 @@ body {
     border: none;
     box-shadow: none;
   }
+}
+
+/* ── Live page notice marquee ── */
+@keyframes scrollNotice {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.notice-track {
+  display: flex;
+  white-space: nowrap;
+  animation: scrollNotice 15s linear infinite;
+}
+
+/* ── Bottom Sheet slide-up animation ── */
+@keyframes slide-up-sheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-slide-up-sheet {
+  animation: slide-up-sheet 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Backdrop fade-in ── */
+@keyframes fade-in-backdrop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in-backdrop {
+  animation: fade-in-backdrop 0.2s ease-out forwards;
 }

@@ -8,25 +8,39 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // WebSocket connection - connect to /chat namespace
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const baseUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const socket = io(`${baseUrl}/chat`, {
       transports: ['websocket'],
       withCredentials: true,
+      auth: token ? { token } : undefined,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
     });
 
     socketRef.current = socket;
 
     // Connection events
     socket.on('connect', () => {
-      console.log('[Chat] WebSocket connected');
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] WebSocket connected');
       setIsConnected(true);
 
       // Join chat room (gateway expects liveId)
       socket.emit('chat:join-room', { liveId: streamKey });
     });
 
+    // Re-join room after reconnection (network switch, background recovery)
+    socket.io.on('reconnect', () => {
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] Reconnected, re-joining room');
+      socket.emit('chat:join-room', { liveId: streamKey });
+    });
+
     socket.on('disconnect', () => {
-      console.log('[Chat] WebSocket disconnected');
+      if (process.env.NODE_ENV !== 'production') console.log('[Chat] WebSocket disconnected');
       setIsConnected(false);
     });
 

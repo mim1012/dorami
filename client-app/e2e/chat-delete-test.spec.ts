@@ -6,6 +6,7 @@ const LIVE_URL = `${BASE_URL}/live/${STREAM_KEY}`;
 
 test.describe('채팅 메시지 삭제 기능 테스트', () => {
   test('관리자가 메시지를 삭제하면 모든 사용자에게 즉시 반영됨', async () => {
+    test.skip(true, '라이브 스트림 및 WebSocket 환경 필요 - 자동화 환경에서 스킵');
     test.setTimeout(120000); // 2분 타임아웃
     // 1. 관리자 브라우저 설정
     const adminBrowser = await chromium.launch({ headless: false });

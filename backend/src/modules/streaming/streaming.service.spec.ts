@@ -235,7 +235,8 @@ describe('StreamingService', () => {
           endedAt: expect.any(Date),
         },
       });
-      expect(redisService.del).toHaveBeenCalledWith('stream:stream-2');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
       expect(eventEmitter.emit).toHaveBeenCalledWith('stream:ended', { streamId: 'stream-2' });
     });
 
@@ -338,6 +339,7 @@ describe('StreamingService', () => {
         data: {
           status: 'LIVE',
           startedAt: expect.any(Date),
+          expiresAt: expect.any(Date),
         },
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith('stream:started', {
@@ -468,6 +470,177 @@ describe('StreamingService', () => {
       expect(redisService.del).toHaveBeenCalledTimes(2);
       expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');
       expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
+    });
+  });
+
+  describe('updateStream', () => {
+    it('should update title of PENDING stream', async () => {
+      const updated = { ...mockStream, title: '새 방송 제목' };
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
+
+      const result = await service.updateStream('stream-1', 'user-1', { title: '새 방송 제목' });
+
+      expect(result.title).toBe('새 방송 제목');
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { title: '새 방송 제목' },
+      });
+    });
+
+    it('should update expiresAt of PENDING stream', async () => {
+      const newExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const updated = { ...mockStream, expiresAt: newExpiresAt };
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
+
+      const result = await service.updateStream('stream-1', 'user-1', {
+        expiresAt: newExpiresAt.toISOString(),
+      });
+
+      expect(result.expiresAt).toEqual(newExpiresAt);
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { expiresAt: expect.any(Date) },
+      });
+    });
+
+    it('should throw STREAM_NOT_FOUND when stream not found', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.updateStream('invalid-id', 'user-1', { title: '제목' })).rejects.toThrow(
+        BusinessException,
+      );
+    });
+
+    it('should throw INVALID_STREAM_STATE when stream is LIVE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+
+      await expect(service.updateStream('stream-2', 'user-1', { title: '제목' })).rejects.toThrow(
+        BusinessException,
+      );
+    });
+
+    it('should only update provided fields', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockStream as any);
+
+      await service.updateStream('stream-1', 'user-1', {});
+
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: {},
+      });
+    });
+  });
+
+  describe('cancelStream', () => {
+    it('should cancel PENDING stream and set status to OFFLINE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue({
+        ...mockStream,
+        status: 'OFFLINE',
+      } as any);
+      jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
+
+      await service.cancelStream('stream-1', 'user-1');
+
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { status: 'OFFLINE' },
+      });
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:viewers');
+    });
+
+    it('should throw STREAM_NOT_FOUND when stream not found', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.cancelStream('invalid-id', 'user-1')).rejects.toThrow(BusinessException);
+    });
+
+    it('should throw INVALID_STREAM_STATE when stream is LIVE', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+
+      await expect(service.cancelStream('stream-2', 'user-1')).rejects.toThrow(BusinessException);
+    });
+
+    it('should throw STREAM_NOT_FOUND when userId does not match', async () => {
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.cancelStream('stream-1', 'wrong-user')).rejects.toThrow(
+        BusinessException,
+      );
+    });
+  });
+
+  // ── getFeaturedProduct smoke tests (FSM data integrity) ───────────────────────
+  describe('getFeaturedProduct', () => {
+    const mockProduct = {
+      id: 'prod-1',
+      name: '테스트 상품',
+      price: { toNumber: () => 29900 },
+      imageUrl: 'https://example.com/img.jpg',
+      quantity: 10,
+      colorOptions: ['빨강', '파랑'],
+      sizeOptions: ['S', 'M', 'L'],
+      status: 'AVAILABLE',
+      streamKey: 'abc123',
+    };
+
+    it('should return null when no featured product in Redis', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue(null);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).toBeNull();
+      expect(redisService.get).toHaveBeenCalledWith('stream:abc123:featured-product');
+      expect(prismaService.product.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('should return shaped product when Redis has valid product id', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-1');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('prod-1');
+      expect(result.name).toBe('테스트 상품');
+      expect(result.price).toBe(29900);
+      expect(result.stock).toBe(10);
+      expect(result.status).toBe('AVAILABLE');
+      expect(result.colorOptions).toEqual(['빨강', '파랑']);
+    });
+
+    it('should clean up stale Redis entry and return null when product deleted from DB', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-deleted');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(result).toBeNull();
+      // stale Redis key must be cleaned up — data integrity
+      expect(redisService.del).toHaveBeenCalledWith('stream:abc123:featured-product');
+    });
+
+    it('should use correct Redis key format: stream:{streamKey}:featured-product', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue(null);
+
+      await service.getFeaturedProduct('my-stream-key');
+
+      expect(redisService.get).toHaveBeenCalledWith('stream:my-stream-key:featured-product');
+    });
+
+    it('should return numeric price (not Decimal object) for FSM card rendering', async () => {
+      jest.spyOn(redisService, 'get').mockResolvedValue('prod-1');
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
+
+      const result = await service.getFeaturedProduct('abc123');
+
+      expect(typeof result.price).toBe('number');
+      expect(result.price).toBe(29900);
     });
   });
 });

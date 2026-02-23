@@ -12,6 +12,7 @@ interface NotificationTemplate {
   name: string;
   type: string;
   template: string;
+  kakaoTemplateCode: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,10 +42,12 @@ export default function NotificationSettingsPage() {
     }
   };
 
-  const handleTemplateChange = (id: string, newTemplate: string) => {
-    setTemplates((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, template: newTemplate } : t))
-    );
+  const handleTemplateChange = (
+    id: string,
+    field: 'template' | 'kakaoTemplateCode',
+    value: string,
+  ) => {
+    setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
   };
 
   const handleSave = async (template: NotificationTemplate) => {
@@ -55,6 +58,7 @@ export default function NotificationSettingsPage() {
     try {
       await apiClient.patch(`/admin/notification-templates/${template.id}`, {
         template: template.template,
+        kakaoTemplateCode: template.kakaoTemplateCode,
       });
       setSuccessMessage(`Template "${template.name}" saved successfully`);
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -80,6 +84,8 @@ export default function NotificationSettingsPage() {
         return [...commonVars, '{trackingNumber}'];
       case 'RESERVATION_PROMOTED':
         return [...commonVars, '{productName}'];
+      case 'LIVE_START':
+        return ['{streamTitle}'];
       default:
         return commonVars;
     }
@@ -148,11 +154,29 @@ export default function NotificationSettingsPage() {
                   </label>
                   <textarea
                     value={template.template}
-                    onChange={(e) => handleTemplateChange(template.id, e.target.value)}
+                    onChange={(e) => handleTemplateChange(template.id, 'template', e.target.value)}
                     rows={6}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-hot-pink focus:ring-2 focus:ring-hot-pink/20 resize-none font-mono text-sm"
                     placeholder="Enter your notification template..."
                   />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-primary-text mb-2">
+                    카카오 템플릿 코드
+                  </label>
+                  <input
+                    type="text"
+                    value={template.kakaoTemplateCode || ''}
+                    onChange={(e) =>
+                      handleTemplateChange(template.id, 'kakaoTemplateCode', e.target.value)
+                    }
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-hot-pink focus:ring-2 focus:ring-hot-pink/20 text-sm"
+                    placeholder="예: KA01TP..."
+                  />
+                  <p className="mt-1 text-xs text-secondary-text">
+                    카카오 비즈니스 센터에서 심사 승인 후 받은 템플릿 코드를 입력하세요
+                  </p>
                 </div>
 
                 <div className="bg-info-bg rounded-lg p-3">
@@ -178,7 +202,8 @@ export default function NotificationSettingsPage() {
         {templates.length === 0 && (
           <div className="text-center py-16">
             <Body className="text-secondary-text mb-4">
-              No notification templates found. Templates will be created automatically when the system is initialized.
+              No notification templates found. Templates will be created automatically when the
+              system is initialized.
             </Body>
           </div>
         )}

@@ -350,6 +350,22 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   emailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  alimtalkEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  solapiApiKey?: string;
+
+  @IsOptional()
+  @IsString()
+  solapiApiSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  kakaoChannelId?: string;
 }
 
 // Shipping Messages DTO
@@ -377,10 +393,16 @@ export class UpdateShippingMessagesDto {
 
 // Notification Template DTO
 export class UpdateNotificationTemplateDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
-  template: string;
+  template?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  kakaoTemplateCode?: string;
 }
 
 export class UpdateOrderStatusDto {

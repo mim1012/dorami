@@ -63,8 +63,8 @@ export function PointsConfiguration() {
   };
 
   const exampleOrderTotal = 50000;
-  const exampleEarning = Math.floor(exampleOrderTotal * config.pointEarningRate / 100);
-  const exampleMaxUsage = Math.floor(exampleOrderTotal * config.pointMaxRedemptionPct / 100);
+  const exampleEarning = Math.floor((exampleOrderTotal * config.pointEarningRate) / 100);
+  const exampleMaxUsage = Math.floor((exampleOrderTotal * config.pointMaxRedemptionPct) / 100);
 
   if (isLoading) {
     return (
@@ -171,9 +171,7 @@ export function PointsConfiguration() {
                 type="checkbox"
                 id="pointExpirationEnabled"
                 checked={config.pointExpirationEnabled}
-                onChange={(e) =>
-                  setConfig({ ...config, pointExpirationEnabled: e.target.checked })
-                }
+                onChange={(e) => setConfig({ ...config, pointExpirationEnabled: e.target.checked })}
                 className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
               />
               <label htmlFor="pointExpirationEnabled" className="cursor-pointer">
@@ -203,14 +201,25 @@ export function PointsConfiguration() {
             <div className="bg-gray-50 rounded-button p-4 border border-gray-200">
               <Body className="text-primary-text font-medium mb-2">적용 예시</Body>
               <Caption className="text-secondary-text">
-                {new Intl.NumberFormat('ko-KR').format(exampleOrderTotal)}원 주문 시:
+                {new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  maximumFractionDigits: 0,
+                }).format(exampleOrderTotal)}{' '}
+                주문 시:
               </Caption>
               <div className="mt-2 space-y-1">
                 <Caption className="text-primary-text">
-                  적립 포인트: <span className="text-success font-medium">{new Intl.NumberFormat('ko-KR').format(exampleEarning)} P</span>
+                  적립 포인트:{' '}
+                  <span className="text-success font-medium">
+                    {new Intl.NumberFormat('ko-KR').format(exampleEarning)} P
+                  </span>
                 </Caption>
                 <Caption className="text-primary-text">
-                  최대 사용 가능: <span className="text-info font-medium">{new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P</span>
+                  최대 사용 가능:{' '}
+                  <span className="text-info font-medium">
+                    {new Intl.NumberFormat('ko-KR').format(exampleMaxUsage)} P
+                  </span>
                 </Caption>
               </div>
             </div>

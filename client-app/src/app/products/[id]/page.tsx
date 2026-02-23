@@ -4,23 +4,29 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
-import { getProductById, type Product } from '@/lib/api/products';
+import { getProductById } from '@/lib/api/products';
+import type { Product } from '@/lib/types';
+import { ProductStatus } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
 import { useCart } from '@/lib/contexts/CartContext';
 import { Display, Heading2, Body } from '@/components/common/Typography';
+import { formatPrice } from '@/lib/utils/price';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 
 const MOCK_PRODUCT: Product = {
   id: 'mock-1',
+  streamKey: '',
   name: '샘플 상품',
-  description: '이 상품은 현재 서버에서 불러올 수 없어 임시로 표시됩니다.',
   price: 29900,
   stock: 10,
   imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
-  status: 'AVAILABLE',
+  status: ProductStatus.AVAILABLE,
   colorOptions: [],
   sizeOptions: [],
+  shippingFee: 0,
+  timerEnabled: false,
+  timerDuration: 0,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -55,13 +61,6 @@ export default function ProductDetailPage() {
     }
     fetchProduct();
   }, [id]);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-    }).format(price);
-  };
 
   const maxQuantity = product ? Math.min(product.stock || 0, 10) : 1;
 
@@ -152,10 +151,10 @@ export default function ProductDetailPage() {
           {/* Name & Price */}
           <div>
             <Heading2 className="text-primary-text text-2xl mb-2">{product.name}</Heading2>
-            {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+            {product.discountRate && product.discountRate > 0 ? (
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-secondary-text line-through">
-                  {formatPrice(product.originalPrice)}
+                  {formatPrice(product.originalPrice ?? product.price)}
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-black text-error">{product.discountRate}%</span>
@@ -167,14 +166,6 @@ export default function ProductDetailPage() {
             )}
             <Body className="text-secondary-text text-sm mt-1">재고: {product.stock}개</Body>
           </div>
-
-          {/* Description */}
-          {product.description && (
-            <div className="border-t border-border-color pt-4">
-              <Body className="text-primary-text font-semibold mb-2">상품 설명</Body>
-              <Body className="text-secondary-text leading-relaxed">{product.description}</Body>
-            </div>
-          )}
 
           {/* Color Selector */}
           {colors.length > 0 && (

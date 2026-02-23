@@ -9,6 +9,8 @@ export interface LiveProduct {
   name: string;
   description?: string;
   price: number;
+  originalPrice?: number;
+  discountRate?: number;
   stock: number;
   status: 'AVAILABLE' | 'SOLD_OUT';
   imageUrl?: string;
@@ -26,9 +28,10 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -47,9 +50,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
       <div className="w-full bg-gradient-to-r from-content-bg/80 to-content-bg/90 backdrop-blur-sm rounded-2xl p-6 border border-border-color">
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <ShoppingBag className="w-12 h-12 text-secondary-text mb-3 opacity-50" />
-          <Body className="text-secondary-text">
-            라이브 중 소개될 상품을 기다려주세요
-          </Body>
+          <Body className="text-secondary-text">라이브 중 소개될 상품을 기다려주세요</Body>
         </div>
       </div>
     );
@@ -61,13 +62,9 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
       <div className="flex items-center justify-between mb-4 px-2">
         <div className="flex items-center gap-2">
           <ShoppingBag className="w-5 h-5 text-hot-pink" />
-          <Heading2 className="text-hot-pink">
-            라이브 상품
-          </Heading2>
+          <Heading2 className="text-hot-pink">라이브 상품</Heading2>
         </div>
-        <Body className="text-secondary-text text-xs">
-          {products.length}개
-        </Body>
+        <Body className="text-secondary-text text-xs">{products.length}개</Body>
       </div>
 
       {/* Horizontal Scroll Container */}
@@ -106,7 +103,9 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
 
                 {/* Stock Badge */}
                 <div className="absolute top-2 right-2">
-                  <div className={`${stockStatus.bgColor} ${stockStatus.color} text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm`}>
+                  <div
+                    className={`${stockStatus.bgColor} ${stockStatus.color} text-xs font-bold px-2 py-1 rounded-full backdrop-blur-sm`}
+                  >
                     {stockStatus.text}
                   </div>
                 </div>
@@ -114,9 +113,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
                 {/* Sold Out Overlay */}
                 {isUnavailable && (
                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                    <Body className="text-error font-bold text-lg">
-                      품절
-                    </Body>
+                    <Body className="text-error font-bold text-lg">품절</Body>
                   </div>
                 )}
               </div>
@@ -126,9 +123,21 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
                 <Body className="text-primary-text font-semibold line-clamp-2 mb-1 text-sm">
                   {product.name}
                 </Body>
-                <Body className="text-hot-pink font-bold text-base">
-                  {formatPrice(product.price)}
-                </Body>
+                {product.discountRate && product.discountRate > 0 ? (
+                  <div>
+                    <span className="text-secondary-text text-xs line-through mr-1">
+                      {formatPrice(product.originalPrice ?? product.price)}
+                    </span>
+                    <span className="text-error text-xs font-bold">{product.discountRate}%</span>
+                    <Body className="text-hot-pink font-bold text-base">
+                      {formatPrice(product.price)}
+                    </Body>
+                  </div>
+                ) : (
+                  <Body className="text-hot-pink font-bold text-base">
+                    {formatPrice(product.price)}
+                  </Body>
+                )}
                 {product.description && (
                   <Body className="text-secondary-text text-xs line-clamp-2 mt-1">
                     {product.description}
@@ -144,10 +153,7 @@ export function ProductCarousel({ streamKey, products, onProductClick }: Product
       {products.length > 2 && (
         <div className="flex justify-center mt-2 gap-1">
           {Array.from({ length: Math.ceil(products.length / 2) }).map((_, index) => (
-            <div
-              key={index}
-              className="w-1.5 h-1.5 rounded-full bg-border-color"
-            />
+            <div key={index} className="w-1.5 h-1.5 rounded-full bg-border-color" />
           ))}
         </div>
       )}

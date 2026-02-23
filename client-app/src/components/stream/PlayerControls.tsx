@@ -13,7 +13,6 @@ interface PlayerControlsProps {
   isPlaying: boolean;
   volume: number;
   isMuted: boolean;
-  latency: number;
   onPlayPause: () => void;
   onVolumeChange: (volume: number) => void;
   onMuteToggle: () => void;
@@ -24,7 +23,6 @@ export default function PlayerControls({
   isPlaying,
   volume,
   isMuted,
-  latency,
   onPlayPause,
   onVolumeChange,
   onMuteToggle,
@@ -64,11 +62,7 @@ export default function PlayerControls({
   return (
     <>
       {/* Tap area for mobile */}
-      <div
-        className="absolute inset-0 md:hidden"
-        onClick={handleTap}
-        aria-label="Show controls"
-      />
+      <div className="absolute inset-0 md:hidden" onClick={handleTap} aria-label="Show controls" />
 
       {/* Controls */}
       <div
@@ -113,11 +107,6 @@ export default function PlayerControls({
               aria-label="Volume control"
             />
           </div>
-
-          {/* Latency indicator - hidden on mobile */}
-          <span className="hidden md:block text-secondary-text text-sm ml-auto">
-            {latency > 0 && `${latency}s behind live`}
-          </span>
 
           {/* Fullscreen - touch-optimized size */}
           <button

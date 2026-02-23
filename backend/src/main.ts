@@ -61,7 +61,7 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'", 'wss:', 'ws:'],
@@ -69,7 +69,7 @@ async function bootstrap() {
           objectSrc: ["'none'"],
           mediaSrc: ["'self'", 'https:'],
           frameSrc: ["'none'"],
-          upgradeInsecureRequests: null, // Disable for HTTP staging; enable when HTTPS is configured
+          upgradeInsecureRequests: isProduction ? [] : null,
         },
       },
       crossOriginEmbedderPolicy: false, // Required for loading external resources
@@ -112,16 +112,16 @@ async function bootstrap() {
   app.useGlobalFilters(new BusinessExceptionFilter());
 
   // Global Response Transformer
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(new TransformInterceptor(app.get(Reflector)));
 
   // CSRF Protection Guard (Double Submit Cookie Pattern)
-  // Skip for development if CSRF_ENABLED=false
-  if (process.env.CSRF_ENABLED !== 'false') {
+  // Always enabled in production; can be disabled in non-production with CSRF_ENABLED=false
+  if (isProduction || process.env.CSRF_ENABLED !== 'false') {
     const reflector = app.get(Reflector);
     app.useGlobalGuards(new CsrfGuard(reflector));
     logger.log('CSRF protection enabled');
   } else {
-    logger.warn('CSRF protection disabled (CSRF_ENABLED=false)');
+    logger.warn('CSRF protection disabled (CSRF_ENABLED=false) — development only');
   }
 
   // CORS Configuration - Whitelist based
@@ -162,6 +162,8 @@ async function bootstrap() {
       credentials: true,
     },
     transports: ['websocket', 'polling'],
+    pingInterval: 10000,
+    pingTimeout: 5000,
   });
 
   // Attach Redis adapter to Socket.IO
@@ -308,10 +310,30 @@ async function bootstrap() {
 
       // Handle chat:join-room
       socket.on('chat:join-room', async (payload: { liveId: string }) => {
+        if (!rateLimitCheck(socket, 'chat:join-room', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `live:${payload.liveId}`;
         await socket.join(roomName);
 
         logger.log(`📥 User ${authenticatedSocket.user.userId} joined room ${roomName}`);
+
+        // Send recent chat history (last 50 messages from Redis)
+        try {
+          const historyKey = `chat:${payload.liveId}:history`;
+          const messages = await pubClient.lRange(historyKey, -50, -1);
+          if (messages.length > 0) {
+            socket.emit('chat:history', {
+              type: 'chat:history',
+              data: {
+                liveId: payload.liveId,
+                messages: messages.map((m) => JSON.parse(String(m))),
+              },
+            });
+          }
+        } catch (err) {
+          logger.warn(`Failed to load chat history for ${payload.liveId}: ${err}`);
+        }
 
         // Notify room members
         chatNamespace.to(roomName).emit('chat:user-joined', {
@@ -335,6 +357,9 @@ async function bootstrap() {
 
       // Handle chat:leave-room
       socket.on('chat:leave-room', async (payload: { liveId: string }) => {
+        if (!rateLimitCheck(socket, 'chat:leave-room', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `live:${payload.liveId}`;
         await socket.leave(roomName);
 
@@ -393,16 +418,26 @@ async function bootstrap() {
 
         const roomName = `live:${payload.liveId}`;
 
+        const messageData = {
+          id: Date.now().toString(),
+          liveId: payload.liveId,
+          userId: authenticatedSocket.user.userId,
+          message: sanitizedMessage,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Store message in Redis (async, non-blocking, max 100 messages, 24h TTL)
+        const historyKey = `chat:${payload.liveId}:history`;
+        pubClient
+          .rPush(historyKey, JSON.stringify(messageData))
+          .then(() => pubClient.lTrim(historyKey, -100, -1))
+          .then(() => pubClient.expire(historyKey, 86400))
+          .catch((err) => logger.warn(`Failed to cache chat message: ${err}`));
+
         // Broadcast to all clients in room
         chatNamespace.to(roomName).emit('chat:message', {
           type: 'chat:message',
-          data: {
-            id: Date.now().toString(),
-            liveId: payload.liveId,
-            userId: authenticatedSocket.user.userId,
-            message: sanitizedMessage,
-            timestamp: new Date().toISOString(),
-          },
+          data: messageData,
         });
 
         socket.emit('chat:send-message:success', {
@@ -506,6 +541,9 @@ async function bootstrap() {
 
       // Handle stream:viewer:join
       socket.on('stream:viewer:join', async (payload: { streamKey: string }) => {
+        if (!rateLimitCheck(socket, 'stream:viewer:join', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
 
@@ -541,6 +579,9 @@ async function bootstrap() {
 
       // Handle stream:viewer:leave
       socket.on('stream:viewer:leave', async (payload: { streamKey: string }) => {
+        if (!rateLimitCheck(socket, 'stream:viewer:leave', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const { streamKey } = payload;
         const roomName = `stream:${streamKey}`;
 
@@ -631,6 +672,9 @@ async function bootstrap() {
 
       // Handle join:stream
       socket.on('join:stream', async (data: { streamId: string }) => {
+        if (!rateLimitCheck(socket, 'join:stream', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `stream:${data.streamId}`;
         await socket.join(roomName);
 
@@ -645,6 +689,9 @@ async function bootstrap() {
 
       // Handle leave:stream
       socket.on('leave:stream', async (data: { streamId: string }) => {
+        if (!rateLimitCheck(socket, 'leave:stream', { windowMs: 10000, maxEvents: 10 })) {
+          return;
+        }
         const roomName = `stream:${data.streamId}`;
         await socket.leave(roomName);
 

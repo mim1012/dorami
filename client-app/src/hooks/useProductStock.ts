@@ -7,10 +7,12 @@ import { create } from 'zustand';
 // ── Stock store ──
 interface StockState {
   stocks: Record<string, number>; // productId -> quantity
-  soldOut: Set<string>;           // productId set
+  soldOut: Set<string>; // productId set
   updateStock: (productId: string, stock: number) => void;
   markSoldOut: (productId: string) => void;
-  setInitialStocks: (products: Array<{ id: string; stock?: number; quantity?: number; status?: string }>) => void;
+  setInitialStocks: (
+    products: Array<{ id: string; stock?: number; quantity?: number; status?: string }>,
+  ) => void;
 }
 
 export const useStockStore = create<StockState>((set) => ({
@@ -52,7 +54,9 @@ export const useStockStore = create<StockState>((set) => ({
 }));
 
 // ── WebSocket hook for real-time stock updates ──
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
 /**
  * useProductStock
@@ -75,63 +79,65 @@ export function useProductStock(streamKey?: string) {
 
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
-      // No auth required for anonymous stock watching
       autoConnect: true,
     });
 
     // ── Global stock changed event ──
-    socket.on('product:stock:changed', (payload: {
-      productId: string;
-      oldStock: number;
-      newStock: number;
-    }) => {
-      updateStock(payload.productId, payload.newStock);
-    });
+    socket.on(
+      'product:stock:changed',
+      (payload: { productId: string; oldStock: number; newStock: number }) => {
+        updateStock(payload.productId, payload.newStock);
+      },
+    );
 
     // ── Stream-scoped product updated ──
-    socket.on('live:product:updated', (payload: {
-      type: string;
-      data: {
-        id: string;
-        stock: number;
-        status: string;
-      };
-    }) => {
-      const product = payload.data;
-      updateStock(product.id, product.stock);
-      if (product.status === 'SOLD_OUT') {
-        markSoldOut(product.id);
-      }
-    });
+    socket.on(
+      'live:product:updated',
+      (payload: {
+        type: string;
+        data: {
+          id: string;
+          stock: number;
+          status: string;
+        };
+      }) => {
+        const product = payload.data;
+        updateStock(product.id, product.stock);
+        if (product.status === 'SOLD_OUT') {
+          markSoldOut(product.id);
+        }
+      },
+    );
 
     // ── Stream-scoped sold out event ──
-    socket.on('live:product:soldout', (payload: {
-      type: string;
-      data: { productId: string };
-    }) => {
+    socket.on('live:product:soldout', (payload: { type: string; data: { productId: string } }) => {
       markSoldOut(payload.data.productId);
     });
 
     // ── Low stock warning ──
-    socket.on('product:low-stock', (payload: {
-      type: string;
-      data: {
-        productId: string;
-        remainingStock: number;
-      };
-    }) => {
-      updateStock(payload.data.productId, payload.data.remainingStock);
-    });
+    socket.on(
+      'product:low-stock',
+      (payload: {
+        type: string;
+        data: {
+          productId: string;
+          remainingStock: number;
+        };
+      }) => {
+        updateStock(payload.data.productId, payload.data.remainingStock);
+      },
+    );
 
     socket.on('connect', () => {
       console.log('[useProductStock] Connected to WebSocket');
       // Join stream room if streamKey provided
       if (streamKey) {
-        socket.emit('stream:join', { streamKey });
+        socket.emit('join:stream', { streamId: streamKey });
       }
     });
 
@@ -148,7 +154,7 @@ export function useProductStock(streamKey?: string) {
     return () => {
       if (socketRef.current) {
         if (streamKey) {
-          socketRef.current.emit('stream:leave', { streamKey });
+          socketRef.current.emit('leave:stream', { streamId: streamKey });
         }
         socketRef.current.disconnect();
         socketRef.current = null;

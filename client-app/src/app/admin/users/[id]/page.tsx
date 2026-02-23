@@ -70,7 +70,7 @@ export default function AdminUserDetailPage() {
       setSelectedStatus(response.data.status);
     } catch (err: any) {
       console.error('Failed to fetch user detail:', err);
-      setError(err.response?.data?.message || 'Failed to load user details');
+      setError(err.response?.data?.message || '회원 정보를 불러오는데 실패했습니다');
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +93,10 @@ export default function AdminUserDetailPage() {
       setShowConfirmModal(false);
       await fetchUserDetail();
 
-      showToast('사용자 상태가 변경되었습니다.', 'success');
+      showToast('회원 상태가 변경되었습니다.', 'success');
     } catch (err: any) {
       console.error('Failed to update user status:', err);
-      setError(err.response?.data?.message || 'Failed to update user status');
+      setError(err.response?.data?.message || '상태 변경에 실패했습니다');
       setSelectedStatus(user?.status || '');
     } finally {
       setIsUpdating(false);
@@ -111,7 +111,7 @@ export default function AdminUserDetailPage() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -124,7 +124,17 @@ export default function AdminUserDetailPage() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      ACTIVE: '활성',
+      INACTIVE: '비활성',
+      SUSPENDED: '차단 (블랙리스트)',
+    };
+    return labels[status] || status;
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -139,7 +149,7 @@ export default function AdminUserDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Body>Loading user details...</Body>
+        <Body>회원 정보를 불러오는 중...</Body>
       </div>
     );
   }
@@ -149,9 +159,9 @@ export default function AdminUserDetailPage() {
       <div className="min-h-screen bg-white py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
-            <Body className="text-error">{error || 'User not found'}</Body>
+            <Body className="text-error">{error || '회원을 찾을 수 없습니다'}</Body>
           </div>
-          <Button onClick={() => router.push('/admin/users')}>Back to User List</Button>
+          <Button onClick={() => router.push('/admin/users')}>회원 목록으로</Button>
         </div>
       </div>
     );
@@ -163,11 +173,11 @@ export default function AdminUserDetailPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <Display className="text-hot-pink mb-2">User Details</Display>
+            <Display className="text-hot-pink mb-2">회원 상세</Display>
             <Body className="text-secondary-text">{user.instagramId || user.email}</Body>
           </div>
           <Button variant="outline" onClick={() => router.push('/admin/users')}>
-            ← Back to User List
+            ← 회원 목록
           </Button>
         </div>
 
@@ -177,59 +187,77 @@ export default function AdminUserDetailPage() {
           </div>
         )}
 
-        {/* Profile and Statistics Grid */}
+        {/* Blacklist Warning Banner */}
+        {user.status === 'SUSPENDED' && (
+          <div className="bg-error/10 border-2 border-error rounded-button p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">🚫</span>
+            <div>
+              <Body className="text-error font-bold">차단된 회원 (블랙리스트)</Body>
+              <Caption className="text-error">
+                방송 참여, 장바구니, 알림 등 모든 기능 사용 불가 | 차단일:{' '}
+                {formatDate(user.suspendedAt)}
+              </Caption>
+            </div>
+          </div>
+        )}
+
+        {/* Profile and Address Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* User Profile Card */}
           <div className="bg-content-bg rounded-button p-6">
-            <Heading2 className="text-hot-pink mb-4">User Profile</Heading2>
+            <Heading2 className="text-hot-pink mb-4">회원 정보</Heading2>
 
             <div className="space-y-4">
               <div>
-                <Body className="text-secondary-text text-caption">Instagram ID</Body>
+                <Body className="text-secondary-text text-caption">인스타그램</Body>
                 <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Email</Body>
+                <Body className="text-secondary-text text-caption">이메일</Body>
                 <Body>{user.email}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Name</Body>
+                <Body className="text-secondary-text text-caption">이름</Body>
                 <Body>{user.name}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Depositor Name</Body>
+                <Body className="text-secondary-text text-caption">입금자명</Body>
                 <Body>{user.depositorName || '-'}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Registration Date</Body>
+                <Body className="text-secondary-text text-caption">가입일</Body>
                 <Body>{formatDate(user.createdAt)}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Last Login</Body>
+                <Body className="text-secondary-text text-caption">최근 접속</Body>
                 <Body>{formatDate(user.lastLoginAt)}</Body>
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">Status</Body>
+                <Body className="text-secondary-text text-caption">상태</Body>
                 <select
                   value={selectedStatus}
                   onChange={(e) => handleStatusChange(e.target.value)}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink"
+                  className={`mt-1 block w-full px-4 py-2 border rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink ${
+                    selectedStatus === 'SUSPENDED'
+                      ? 'border-error bg-error/5 text-error font-bold'
+                      : 'border-gray-300'
+                  }`}
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="SUSPENDED">Suspended</option>
+                  <option value="ACTIVE">활성</option>
+                  <option value="INACTIVE">비활성</option>
+                  <option value="SUSPENDED">차단 (블랙리스트)</option>
                 </select>
               </div>
 
               {user.suspendedAt && (
                 <div>
-                  <Body className="text-secondary-text text-caption">Suspended At</Body>
+                  <Body className="text-secondary-text text-caption">차단일</Body>
                   <Body className="text-error">{formatDate(user.suspendedAt)}</Body>
                 </div>
               )}
@@ -238,7 +266,7 @@ export default function AdminUserDetailPage() {
 
           {/* Shipping Address Card */}
           <div className="bg-content-bg rounded-button p-6">
-            <Heading2 className="text-hot-pink mb-4">Shipping Address</Heading2>
+            <Heading2 className="text-hot-pink mb-4">배송지</Heading2>
 
             {user.shippingAddress ? (
               <div className="space-y-2">
@@ -246,60 +274,56 @@ export default function AdminUserDetailPage() {
                 <Body>{user.shippingAddress.address1}</Body>
                 {user.shippingAddress.address2 && <Body>{user.shippingAddress.address2}</Body>}
                 <Body>
-                  {user.shippingAddress.city}, {user.shippingAddress.state}{' '}
+                  {user.shippingAddress.city} {user.shippingAddress.state}{' '}
                   {user.shippingAddress.zip}
                 </Body>
-                <Body>Phone: {user.shippingAddress.phone}</Body>
+                <Body>연락처: {user.shippingAddress.phone}</Body>
               </div>
             ) : (
-              <Body className="text-secondary-text">No shipping address provided</Body>
+              <Body className="text-secondary-text">배송지 미등록</Body>
             )}
           </div>
         </div>
 
         {/* User Statistics */}
         <div className="bg-content-bg rounded-button p-6 mb-6">
-          <Heading2 className="text-hot-pink mb-4">User Statistics</Heading2>
+          <Heading2 className="text-hot-pink mb-4">주문 통계</Heading2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <Display className="text-hot-pink">{user.statistics.totalOrders}</Display>
-              <Body className="text-secondary-text text-caption">Total Orders</Body>
+              <Body className="text-secondary-text text-caption">총 주문</Body>
             </div>
 
             <div className="text-center">
               <Display className="text-hot-pink">
                 {formatCurrency(user.statistics.totalPurchaseAmount)}
               </Display>
-              <Body className="text-secondary-text text-caption">Total Purchase</Body>
+              <Body className="text-secondary-text text-caption">총 구매액</Body>
             </div>
 
             <div className="text-center">
               <Display className="text-hot-pink">
                 {formatCurrency(user.statistics.averageOrderValue)}
               </Display>
-              <Body className="text-secondary-text text-caption">Average Order Value</Body>
+              <Body className="text-secondary-text text-caption">평균 주문액</Body>
             </div>
 
             <div className="text-center">
               <Display className="text-hot-pink">
                 {user.statistics.orderFrequency.toFixed(1)}
               </Display>
-              <Body className="text-secondary-text text-caption">Orders/Month</Body>
+              <Body className="text-secondary-text text-caption">월 주문 수</Body>
             </div>
           </div>
-
-          <Body className="text-secondary-text text-caption mt-4">
-            Note: Order statistics will be available in Epic 8
-          </Body>
         </div>
 
         {/* Points Section */}
         <div className="bg-content-bg rounded-button p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <Heading2 className="text-hot-pink">Reward Points</Heading2>
+            <Heading2 className="text-hot-pink">적립 포인트</Heading2>
             <Button variant="outline" size="sm" onClick={() => setShowPointsModal(true)}>
-              Adjust Points
+              포인트 조정
             </Button>
           </div>
 
@@ -309,36 +333,36 @@ export default function AdminUserDetailPage() {
                 <Display className="text-hot-pink">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.currentBalance)}
                 </Display>
-                <Caption className="text-secondary-text">Current Balance</Caption>
+                <Caption className="text-secondary-text">현재 잔액</Caption>
               </div>
               <div className="text-center">
                 <Display className="text-success">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeEarned)}
                 </Display>
-                <Caption className="text-secondary-text">Lifetime Earned</Caption>
+                <Caption className="text-secondary-text">총 적립</Caption>
               </div>
               <div className="text-center">
                 <Display className="text-info">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeUsed)}
                 </Display>
-                <Caption className="text-secondary-text">Lifetime Used</Caption>
+                <Caption className="text-secondary-text">총 사용</Caption>
               </div>
               <div className="text-center">
                 <Display className="text-gray-500">
                   {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeExpired)}
                 </Display>
-                <Caption className="text-secondary-text">Expired</Caption>
+                <Caption className="text-secondary-text">만료</Caption>
               </div>
             </div>
           ) : (
-            <Body className="text-secondary-text">No points data available</Body>
+            <Body className="text-secondary-text">포인트 데이터 없음</Body>
           )}
         </div>
 
         {/* Order History Placeholder */}
         <div className="bg-content-bg rounded-button p-6">
-          <Heading2 className="text-hot-pink mb-4">Order History</Heading2>
-          <Body className="text-secondary-text">Order history will be available in Epic 8</Body>
+          <Heading2 className="text-hot-pink mb-4">주문 내역</Heading2>
+          <Body className="text-secondary-text">주문 내역은 추후 제공 예정입니다</Body>
         </div>
       </div>
 
@@ -358,20 +382,28 @@ export default function AdminUserDetailPage() {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-button p-6 max-w-md w-full mx-4">
-            <Heading2 className="text-hot-pink mb-4">Confirm Status Update</Heading2>
+            <Heading2 className="text-hot-pink mb-4">상태 변경 확인</Heading2>
             <Body className="mb-6">
               {selectedStatus === 'SUSPENDED'
-                ? 'Are you sure you want to suspend this user? They will not be able to log in.'
-                : `Are you sure you want to change the user status to ${selectedStatus}?`}
+                ? '이 회원을 차단(블랙리스트)하시겠습니까? 방송 참여, 장바구니, 알림 등 모든 기능을 사용할 수 없게 됩니다.'
+                : `이 회원의 상태를 "${getStatusLabel(selectedStatus)}"(으)로 변경하시겠습니까?`}
             </Body>
+            {selectedStatus === 'SUSPENDED' && (
+              <div className="bg-error/10 border border-error rounded-button p-3 mb-4">
+                <Caption className="text-error">
+                  차단 시 해당 회원은 로그인, 방송 시청, 채팅, 장바구니, 주문, 알림 수신 등 모든
+                  서비스 이용이 제한됩니다.
+                </Caption>
+              </div>
+            )}
             <div className="flex gap-4">
               <Button
                 variant="primary"
                 onClick={confirmStatusUpdate}
                 disabled={isUpdating}
-                className="flex-1"
+                className={`flex-1 ${selectedStatus === 'SUSPENDED' ? 'bg-error hover:bg-error/80 border-error' : ''}`}
               >
-                {isUpdating ? 'Updating...' : 'Confirm'}
+                {isUpdating ? '처리중...' : selectedStatus === 'SUSPENDED' ? '차단하기' : '확인'}
               </Button>
               <Button
                 variant="outline"
@@ -379,7 +411,7 @@ export default function AdminUserDetailPage() {
                 disabled={isUpdating}
                 className="flex-1"
               >
-                Cancel
+                취소
               </Button>
             </div>
           </div>

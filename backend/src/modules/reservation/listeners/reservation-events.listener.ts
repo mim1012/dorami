@@ -31,10 +31,11 @@ export class ReservationEventsListener {
 
   /**
    * Epic 7: Handle reservation:promoted event
-   * Send KakaoTalk notification when promoted
+   * KakaoTalk/Web Push notification is handled by NotificationEventsListener
+   * (notifications/listeners/notification-events.listener.ts)
    */
   @OnEvent('reservation:promoted')
-  async handleReservationPromoted(payload: {
+  handleReservationPromoted(payload: {
     reservationId: string;
     userId: string;
     productId: string;
@@ -43,13 +44,7 @@ export class ReservationEventsListener {
     expiresAt: Date;
   }) {
     this.logger.log(
-      `Reservation promoted: ${payload.reservationId} (#${payload.reservationNumber}), expires at: ${payload.expiresAt}`,
-    );
-
-    // TODO: Send KakaoTalk notification (Epic 7 Story 7-4)
-    // For now, just log
-    this.logger.log(
-      `[KakaoTalk Notification] User ${payload.userId}: Your turn for ${payload.productName}! 10 minutes to complete order.`,
+      `Reservation promoted: ${payload.reservationId} (#${payload.reservationNumber}) for ${payload.productName}, expires at: ${payload.expiresAt}`,
     );
   }
 

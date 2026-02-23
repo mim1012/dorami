@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X, Timer } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Product, ProductStatus } from '@/lib/types/product';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductDetailModalProps {
   product: Product;
@@ -68,26 +69,26 @@ export default function ProductDetailModal({
           <div>
             <Heading2 className="text-primary-text mb-2">{product.name}</Heading2>
             <div className="flex flex-col gap-1">
-              {product.discountRate && product.discountRate > 0 && product.originalPrice ? (
+              {product.discountRate && product.discountRate > 0 ? (
                 <>
                   <span className="text-sm text-secondary-text line-through">
-                    ₩{product.originalPrice.toLocaleString()}
+                    {formatPrice(product.originalPrice ?? product.price)}
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-error">{product.discountRate}%</span>
                     <span className="text-[32px] font-bold text-hot-pink">
-                      ₩{product.price.toLocaleString()}
+                      {formatPrice(product.price)}
                     </span>
                   </div>
                 </>
               ) : (
                 <span className="text-[32px] font-bold text-hot-pink">
-                  ₩{product.price.toLocaleString()}
+                  {formatPrice(product.price)}
                 </span>
               )}
               {product.shippingFee > 0 && (
                 <Caption className="text-secondary-text">
-                  배송비 +₩{product.shippingFee.toLocaleString()}
+                  배송비 +{formatPrice(product.shippingFee)}
                 </Caption>
               )}
             </div>

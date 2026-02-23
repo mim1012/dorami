@@ -41,24 +41,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
+import type { Product as BaseProduct } from '@/lib/types';
+
+interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface ProductFormData {
@@ -181,9 +168,7 @@ function SortableRow({
         )}
       </td>
       <td className="px-4 py-4 text-center">
-        <Body
-          className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}
-        >
+        <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
         </Body>
       </td>
@@ -318,9 +303,10 @@ export default function AdminProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -395,14 +381,7 @@ export default function AdminProductsPage() {
   const uploadSingleImage = async (file: File): Promise<string> => {
     const formDataToUpload = new FormData();
     formDataToUpload.append('file', file);
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
-    const response = await fetch(`${apiBase}/upload/image`, {
-      method: 'POST',
-      body: formDataToUpload,
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Upload failed');
-    const result = await response.json();
+    const result = await apiClient.post<{ url: string }>('/upload/image', formDataToUpload);
     return result.data.url;
   };
 
@@ -758,7 +737,9 @@ export default function AdminProductsPage() {
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-secondary-text mx-auto mb-4 opacity-30" />
             <Body className="text-secondary-text mb-4">
-              {products.length === 0 ? '등록된 상품이 없습니다' : '필터 조건에 맞는 상품이 없습니다'}
+              {products.length === 0
+                ? '등록된 상품이 없습니다'
+                : '필터 조건에 맞는 상품이 없습니다'}
             </Body>
             {products.length === 0 && (
               <Button variant="primary" onClick={() => handleOpenModal()}>
@@ -865,7 +846,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격 (원)"
+              label="가격 ($)"
               name="price"
               type="number"
               value={formData.price}
@@ -907,7 +888,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="배송비 (원)"
+              label="배송비 ($)"
               name="shippingFee"
               type="number"
               value={formData.shippingFee}

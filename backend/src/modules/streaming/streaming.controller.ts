@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Patch,
+  Delete,
   Get,
   Param,
   Body,
@@ -18,36 +19,54 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
 import {
   StartStreamDto,
+  UpdateStreamDto,
   GenerateKeyDto,
   StreamHistoryQueryDto,
   RtmpCallbackDto,
   SrsCallbackDto,
 } from './dto/streaming.dto';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { SkipCsrf } from '../../common/guards/csrf.guard';
+import { SkipTransform } from '../../common/decorators/skip-transform.decorator';
 
 @Controller('streaming')
 export class StreamingController {
   private readonly logger = new Logger(StreamingController.name);
 
-  constructor(private streamingService: StreamingService) {}
+  constructor(
+    private streamingService: StreamingService,
+    private configService: ConfigService,
+  ) {}
 
   private isPrivateIp(ip: string | undefined): boolean {
     if (!ip) {
       return false;
     }
     const normalized = ip.replace(/^::ffff:/, '');
-    return (
-      normalized === '127.0.0.1' ||
-      normalized === '::1' ||
-      normalized.startsWith('10.') ||
-      normalized.startsWith('172.') ||
-      normalized.startsWith('192.168.') ||
-      normalized === 'localhost'
-    );
+
+    // Loopback
+    if (normalized === '127.0.0.1' || normalized === '::1' || normalized === 'localhost') {
+      return true;
+    }
+    // 10.0.0.0/8
+    if (normalized.startsWith('10.')) {
+      return true;
+    }
+    // 192.168.0.0/16
+    if (normalized.startsWith('192.168.')) {
+      return true;
+    }
+    // 172.16.0.0/12 (172.16.x.x – 172.31.x.x)
+    if (normalized.startsWith('172.')) {
+      const second = parseInt(normalized.split('.')[1], 10);
+      return second >= 16 && second <= 31;
+    }
+    return false;
   }
 
   @Post('start')
@@ -67,6 +86,23 @@ export class StreamingController {
   async stopStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
     await this.streamingService.stopStream(streamId, userId);
     return { message: 'Stream ended successfully' };
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async updateStream(
+    @Param('id') streamId: string,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateStreamDto,
+  ) {
+    return this.streamingService.updateStream(streamId, userId, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
+    await this.streamingService.cancelStream(streamId, userId);
   }
 
   @Public()
@@ -120,6 +156,7 @@ export class StreamingController {
    * Returns 200 OK to allow, 403 Forbidden to reject
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('auth')
   @HttpCode(HttpStatus.OK)
@@ -145,6 +182,7 @@ export class StreamingController {
    * Called when OBS stops streaming
    */
   @Public()
+  @SkipCsrf()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('done')
   @HttpCode(HttpStatus.OK)
@@ -164,24 +202,55 @@ export class StreamingController {
    * Called when OBS starts streaming to validate stream key
    * Returns { code: 0 } to allow, { code: 1 } to reject
    */
+  /**
+   * Validate SRS webhook request: private IP + optional shared secret
+   */
+  private validateSrsWebhook(req: Request): boolean {
+    const clientIp = req.ip || req.socket?.remoteAddress;
+    if (!this.isPrivateIp(clientIp)) {
+      this.logger.warn(`SRS callback rejected from external IP: ${clientIp}`);
+      return false;
+    }
+
+    const secret = this.configService.get<string>('SRS_WEBHOOK_SECRET');
+    if (secret) {
+      const provided = req.headers['x-srs-secret'] || req.query?.['secret'];
+      if (!provided || provided !== secret) {
+        this.logger.warn('SRS callback rejected: missing or invalid webhook secret');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   @Public()
+  @SkipCsrf()
+  @SkipTransform()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-auth')
   @HttpCode(HttpStatus.OK)
   async authenticateSrsStream(@Body() dto: SrsCallbackDto, @Req() req: Request) {
     const clientIp = req.ip || req.socket?.remoteAddress;
-    if (!this.isPrivateIp(clientIp)) {
-      this.logger.warn(`SRS auth rejected from external IP: ${clientIp}`);
+    this.logger.log(
+      `SRS on_publish: stream=${dto.stream} app=${dto.app} clientIp=${clientIp} srcIp=${dto.ip} client_id=${dto.client_id}`,
+    );
+
+    if (!this.validateSrsWebhook(req)) {
+      this.logger.warn(
+        `SRS auth rejected [IP_NOT_PRIVATE]: clientIp=${clientIp} stream=${dto.stream}`,
+      );
       return { code: 1 };
     }
 
     const isAuthenticated = await this.streamingService.authenticateStream(dto.stream, dto.ip);
 
     if (!isAuthenticated) {
-      this.logger.warn(`SRS auth failed for stream key: ${dto.stream}`);
+      this.logger.warn(`SRS auth rejected [INVALID_STREAM_KEY]: stream=${dto.stream} ip=${dto.ip}`);
       return { code: 1 };
     }
 
+    this.logger.log(`SRS auth approved: stream=${dto.stream}`);
     return { code: 0 };
   }
 
@@ -190,17 +259,34 @@ export class StreamingController {
    * Called when OBS stops streaming
    */
   @Public()
+  @SkipCsrf()
+  @SkipTransform()
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-done')
   @HttpCode(HttpStatus.OK)
   async handleSrsStreamDone(@Body() dto: SrsCallbackDto, @Req() req: Request) {
-    const clientIp = req.ip || req.socket?.remoteAddress;
-    if (!this.isPrivateIp(clientIp)) {
-      this.logger.warn(`SRS done rejected from external IP: ${clientIp}`);
+    if (!this.validateSrsWebhook(req)) {
       return { code: 1 };
     }
 
     await this.streamingService.handleStreamDone(dto.stream);
+    return { code: 0 };
+  }
+
+  /**
+   * SRS heartbeat callback (every ~10s)
+   * Used for monitoring SRS health
+   */
+  @Public()
+  @SkipCsrf()
+  @SkipTransform()
+  @SkipThrottle({ short: true, medium: true, long: true })
+  @Post('srs-heartbeat')
+  @HttpCode(HttpStatus.OK)
+  async handleSrsHeartbeat(@Req() req: Request) {
+    if (!this.validateSrsWebhook(req)) {
+      return { code: 1 };
+    }
     return { code: 0 };
   }
 

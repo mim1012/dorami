@@ -62,6 +62,8 @@ interface GeneratedStreamKey {
   title: string;
   rtmpUrl: string;
   hlsUrl: string;
+  scheduledAt: string | null;
+  thumbnailUrl: string | null;
   expiresAt: string;
 }
 
@@ -81,6 +83,8 @@ export default function BroadcastsPage() {
   // Stream key generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [newStreamTitle, setNewStreamTitle] = useState('');
+  const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
+  const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -90,21 +94,20 @@ export default function BroadcastsPage() {
     null,
   );
 
-  // [DEV] Auth check disabled for development
-  // useEffect(() => {
-  //   if (!authLoading) {
-  //     if (!user) {
-  //       router.push('/login');
-  //     } else if (user.role !== 'ADMIN') {
-  //       router.push('/');
-  //     }
-  //   }
-  // }, [user, authLoading, router]);
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'ADMIN') {
+        router.push('/');
+      }
+    }
+  }, [user, authLoading, router]);
 
   // Fetch live status
   useEffect(() => {
     const fetchLiveStatus = async () => {
-      // [DEV] if (!user || user.role !== 'ADMIN') return;
+      if (!user || user.role !== 'ADMIN') return;
 
       try {
         const response = await apiClient.get<LiveStatusResponse>('/streaming/live-status');
@@ -124,7 +127,7 @@ export default function BroadcastsPage() {
   // Fetch stream history
   useEffect(() => {
     const fetchHistory = async () => {
-      // [DEV] if (!user || user.role !== 'ADMIN') return;
+      if (!user || user.role !== 'ADMIN') return;
 
       setIsLoading(true);
       setError(null);
@@ -156,7 +159,7 @@ export default function BroadcastsPage() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -213,11 +216,14 @@ export default function BroadcastsPage() {
     setIsGenerating(true);
     setGenerateError(null);
     try {
-      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', {
-        title: newStreamTitle.trim(),
-      });
+      const body: Record<string, string> = { title: newStreamTitle.trim() };
+      if (newStreamScheduledAt) body.scheduledAt = new Date(newStreamScheduledAt).toISOString();
+      if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
+      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
       setNewStreamTitle('');
+      setNewStreamScheduledAt('');
+      setNewStreamThumbnailUrl('');
     } catch (err: any) {
       const message = err.message || '스트림 키 발급에 실패했습니다.';
       setGenerateError(message);
@@ -228,11 +234,24 @@ export default function BroadcastsPage() {
 
   const handleCopyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for HTTP / non-secure context
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      alert('복사에 실패했습니다. 직접 선택하여 복사해주세요.');
     }
   };
 
@@ -240,17 +259,18 @@ export default function BroadcastsPage() {
     setShowGenerateModal(false);
     setGeneratedStream(null);
     setNewStreamTitle('');
+    setNewStreamScheduledAt('');
+    setNewStreamThumbnailUrl('');
     setGenerateError(null);
   };
 
-  // [DEV] Auth check disabled for development
-  // if (authLoading || (user && user?.role !== 'ADMIN')) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen">
-  //       <div className="text-secondary-text">Loading...</div>
-  //     </div>
-  //   );
-  // }
+  if (authLoading || !user || user?.role !== 'ADMIN') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-secondary-text">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -424,8 +444,23 @@ export default function BroadcastsPage() {
                         <div className="text-sm font-medium text-primary-text">{stream.title}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text font-mono">
-                          {stream.streamKey}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm text-secondary-text font-mono truncate max-w-[120px]">
+                            {stream.streamKey.slice(0, 8)}...
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
+                            }
+                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
+                            title="스트림 키 복사"
+                          >
+                            {copiedField === `key-${stream.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-success" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-secondary-text" />
+                            )}
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -462,8 +497,7 @@ export default function BroadcastsPage() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
                 <div className="text-sm text-secondary-text">
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of{' '}
-                  {total} results
+                  전체 {total}건 중 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -471,14 +505,14 @@ export default function BroadcastsPage() {
                     disabled={page === 1}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    이전
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next
+                    다음
                   </button>
                 </div>
               </div>
@@ -508,13 +542,36 @@ export default function BroadcastsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      방송 제목
+                      방송 제목 <span className="text-error">*</span>
                     </label>
                     <input
                       type="text"
                       value={newStreamTitle}
                       onChange={(e) => setNewStreamTitle(e.target.value)}
                       placeholder="예: 오늘의 라이브 방송"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      예정 방송 시간 <span className="text-secondary-text text-xs">(선택)</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newStreamScheduledAt}
+                      onChange={(e) => setNewStreamScheduledAt(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      썸네일 URL <span className="text-secondary-text text-xs">(선택)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={newStreamThumbnailUrl}
+                      onChange={(e) => setNewStreamThumbnailUrl(e.target.value)}
+                      placeholder="https://example.com/thumbnail.jpg"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>

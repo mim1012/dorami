@@ -23,6 +23,7 @@ export class TokenPayload {
   userId: string; // User ID (duplicate of sub for clarity)
   email: string; // User email
   kakaoId: string;
+  name: string; // User display name
   role: string;
   type?: string; // 'access' or 'refresh'
   jti?: string; // unique token ID for blacklisting

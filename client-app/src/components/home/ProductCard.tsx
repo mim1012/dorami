@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductCardProps {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   imageUrl: string;
   isNew?: boolean;
   discount?: number;
@@ -16,14 +18,13 @@ interface ProductCardProps {
 export function ProductCard({
   name,
   price,
+  originalPrice,
   imageUrl,
   isNew = false,
   discount,
   onClick,
   size = 'normal',
 }: ProductCardProps) {
-  const discountedPrice = discount ? price * (1 - discount / 100) : price;
-
   return (
     <div
       onClick={onClick}
@@ -88,10 +89,10 @@ export function ProductCard({
           {name}
         </h3>
         <div className="flex flex-col gap-0.5">
-          {discount !== undefined && discount > 0 && (
+          {discount !== undefined && discount > 0 && originalPrice !== undefined && (
             <span className="text-xs text-secondary-text line-through">
               <span className="sr-only">정가 </span>
-              {price.toLocaleString()}원
+              {formatPrice(originalPrice)}
             </span>
           )}
           <div className="flex items-baseline gap-1">
@@ -103,8 +104,7 @@ export function ProductCard({
             )}
             <span className="text-lg font-black text-hot-pink tracking-tight">
               <span className="sr-only">판매가 </span>
-              {discountedPrice.toLocaleString()}
-              <span className="text-sm font-bold">원</span>
+              {formatPrice(price)}
             </span>
           </div>
         </div>
