@@ -133,6 +133,16 @@ async function request<T>(
       // useAuth and useProfileGuard handle those redirects themselves.
       const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
       if (typeof window !== 'undefined' && !isAuthEndpoint) {
+        // Synchronously clear persisted auth before the page reload so that
+        // the login page never sees stale isAuthenticated=true from localStorage.
+        // Without this, window.location.href fires before setUser(null) can
+        // persist, causing the login page to immediately redirect back to '/'
+        // and creating an infinite redirect loop.
+        try {
+          localStorage.removeItem('auth-storage');
+        } catch {
+          // ignore — storage may be unavailable (e.g. private browsing restrictions)
+        }
         window.location.href = '/login?reason=session_expired';
       }
       throw new ApiError(401, 'Session expired', 'SESSION_EXPIRED');
