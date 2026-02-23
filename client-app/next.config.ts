@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         },
         {
           source: '/hls/:path*',
-          destination: `${mediaServerUrl}/hls/:path*`,
+          destination: `${mediaServerUrl}/live/:path*`,
         },
       ],
     };
