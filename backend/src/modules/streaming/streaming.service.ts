@@ -816,7 +816,9 @@ export class StreamingService {
   }
 
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
-    const rtmpBase = this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost:1935/live';
+    const rtmpBase = (
+      this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost:1935/live'
+    ).replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
     const hlsBase = this.configService.get('HLS_SERVER_URL') || 'http://localhost:8080/hls';
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;

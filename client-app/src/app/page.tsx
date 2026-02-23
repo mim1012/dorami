@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
@@ -16,8 +15,6 @@ import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
 import { Footer } from '@/components/layout/Footer';
-import { apiClient } from '@/lib/api/client';
-import { Zap } from 'lucide-react';
 import Image from 'next/image';
 
 // ── Fallback mock data ──
@@ -128,16 +125,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const liveSectionRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
-
-  // 공지사항 — 라이브 페이지와 동일한 소스
-  const { data: notice } = useQuery<{ text: string | null }>({
-    queryKey: ['notice', 'current'],
-    queryFn: async () => {
-      const response = await apiClient.get<{ text: string | null }>('/notices/current');
-      return response.data;
-    },
-    refetchInterval: 15000,
-  });
 
   useEffect(() => {
     setHeroVisible(true);
@@ -399,21 +386,6 @@ export default function Home() {
           )}
         </div>
       </header>
-
-      {/* Notice Banner */}
-      {notice?.text && (
-        <div className="bg-[rgba(255,100,100,0.92)] px-3 py-1.5 overflow-hidden">
-          <div className="flex items-center gap-2">
-            <Zap className="w-3 h-3 text-white flex-shrink-0" />
-            <div className="overflow-hidden flex-1">
-              <div className="notice-track text-white text-[11px] font-medium">
-                <span className="pr-12">{notice.text}</span>
-                <span className="pr-12">{notice.text}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Live Countdown Banner */}
       <LiveCountdownBanner
