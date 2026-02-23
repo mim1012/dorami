@@ -34,6 +34,35 @@ function getCsrfToken(): string | null {
 // Token refresh state - prevents multiple concurrent refresh calls
 let refreshPromise: Promise<boolean> | null = null;
 
+// CSRF token bootstrap state - prevents concurrent fetches
+let csrfBootstrapPromise: Promise<void> | null = null;
+
+/**
+ * Ensure the CSRF token cookie exists in the browser.
+ *
+ * The backend sets the cookie via Set-Cookie on GET responses, but Next.js
+ * rewrites (App Router + standalone) may not forward those headers reliably.
+ * This fetches /api/csrf — a Next.js Route Handler that sets the cookie
+ * directly, bypassing the proxy — so mutations always have the token.
+ */
+async function ensureCsrfToken(): Promise<void> {
+  if (typeof document === 'undefined') return;
+  if (getCsrfToken()) return; // already present
+
+  if (!csrfBootstrapPromise) {
+    csrfBootstrapPromise = fetch('/api/csrf', { credentials: 'include' })
+      .then(
+        () => {}, // discard Response → Promise<void>
+        () => {}, // best-effort: 403 from caller if this fails
+      )
+      .finally(() => {
+        csrfBootstrapPromise = null;
+      });
+  }
+
+  await csrfBootstrapPromise;
+}
+
 async function refreshAccessToken(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -107,6 +136,12 @@ async function request<T>(
     if (queryString) {
       url += `?${queryString}`;
     }
+  }
+
+  // For non-GET requests, ensure the CSRF cookie is present before sending.
+  // This is a no-op when the cookie already exists (fast path).
+  if (options?.method && options.method !== 'GET') {
+    await ensureCsrfToken();
   }
 
   let response = await executeFetch(url, options);
