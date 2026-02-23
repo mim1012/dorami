@@ -224,7 +224,7 @@ export default function LiveStreamPage() {
         const response = await apiClient.get<Product[]>('/products', {
           params: { streamKey, status: 'AVAILABLE' },
         });
-        setAllProducts(response.data);
+        setAllProducts(response.data ?? []);
       } catch {
         // non-critical
       }
@@ -399,7 +399,10 @@ export default function LiveStreamPage() {
     }
   };
 
-  const displayedProduct = activeProductOverride ?? featuredProduct;
+  const displayedProduct: FeaturedProduct | null =
+    activeProductOverride ??
+    featuredProduct ??
+    (allProducts.length > 0 ? (allProducts[0] as FeaturedProduct) : null);
 
   const handleProductSelectFromSheet = (product: Product) => {
     setActiveProductOverride({
@@ -519,7 +522,7 @@ export default function LiveStreamPage() {
         )}
 
         {/* 3. Video player (16:9) with chat overlay inside */}
-        <div className="relative w-full aspect-video bg-black">
+        <div className="relative w-full aspect-video bg-black flex-shrink-0 overflow-hidden">
           {/* Top gradient scrim */}
           <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
           {/* Bottom gradient scrim */}
@@ -557,7 +560,7 @@ export default function LiveStreamPage() {
         </div>
 
         {/* 4. Active product card + trigger below video */}
-        <div className="px-4 pt-3 pb-2 space-y-2">
+        <div className="px-4 pt-3 pb-2 space-y-2 flex-shrink-0">
           {displayedProduct && (
             <div
               className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm cursor-pointer active:bg-white/10 transition-all"
@@ -606,10 +609,10 @@ export default function LiveStreamPage() {
               </button>
             </div>
           )}
-          {allProducts.length > 0 && (
+          {allProducts.length > 1 && (
             <button
-              onClick={() => allProducts.length > 1 && setIsProductSheetOpen(true)}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/3 border border-white/8 active:bg-white/8 transition-all ${allProducts.length <= 1 ? 'opacity-0 pointer-events-none' : ''}`}
+              onClick={() => setIsProductSheetOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/3 border border-white/8 active:bg-white/8 transition-all"
             >
               <span className="text-white/50 text-sm">전체 상품 보기</span>
               <div className="flex items-center gap-1.5">
@@ -632,7 +635,7 @@ export default function LiveStreamPage() {
         </div>
 
         {/* 5. Chat feed — fills remaining space */}
-        <div className="flex-1 min-h-[120px] overflow-y-auto">
+        <div className="flex-1 min-h-[60px] overflow-y-auto">
           <ChatMessageList messages={allMessages} compact maxMessages={50} />
         </div>
 
@@ -672,7 +675,7 @@ export default function LiveStreamPage() {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Center: Video + overlays */}
           <div className="flex flex-1 relative items-center justify-center">
-            <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+            <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black overflow-hidden">
               {/* Desktop top gradient scrim */}
               <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none" />
               {/* Desktop bottom gradient scrim */}
