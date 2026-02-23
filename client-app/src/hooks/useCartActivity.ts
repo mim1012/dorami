@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { generateId } from '@/lib/utils/uuid';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 
 export interface CartActivityEvent {
   id: string;
@@ -29,6 +31,7 @@ const MAX_ACTIVITIES = 50;
 
 export function useCartActivity(streamKey: string) {
   const [activities, setActivities] = useState<CartActivityEvent[]>([]);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const baseUrl =
@@ -71,13 +74,17 @@ export function useCartActivity(streamKey: string) {
         ];
         return next.length > MAX_ACTIVITIES ? next.slice(-MAX_ACTIVITIES) : next;
       });
+
+      // Immediately invalidate cart query so /cart page reflects the new item
+      // without waiting for the next refetch interval
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
     });
 
     return () => {
       socket.emit('leave:stream', { streamId: streamKey });
       socket.disconnect();
     };
-  }, [streamKey]);
+  }, [streamKey, queryClient]);
 
   const clearActivities = useCallback(() => setActivities([]), []);
 

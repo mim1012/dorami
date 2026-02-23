@@ -540,6 +540,7 @@ export class StreamingService {
       return {
         isLive: false,
         streamId: null,
+        streamKey: null,
         title: null,
         duration: null,
         viewerCount: 0,
@@ -560,6 +561,7 @@ export class StreamingService {
     return {
       isLive: true,
       streamId: liveStream.id,
+      streamKey: liveStream.streamKey,
       title: liveStream.title,
       duration,
       viewerCount,
