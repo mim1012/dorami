@@ -20,7 +20,6 @@ import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
 import { useCart } from '@/lib/hooks/queries/use-cart';
-import { useCartActivity } from '@/hooks/useCartActivity';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
@@ -66,7 +65,9 @@ export default function LiveStreamPage() {
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const { data: cartData } = useCart();
-  const { activities: cartActivities } = useCartActivity(streamKey);
+  const [cartActivities, setCartActivities] = useState<
+    Array<{ id: string; userName: string; productName: string; timestamp: string }>
+  >([]);
   const hasExpiringItem =
     cartData?.items?.some(
       (item) =>
@@ -292,6 +293,21 @@ export default function LiveStreamPage() {
           return { ...prev, status: ProductStatus.SOLD_OUT };
         }
         return prev;
+      });
+    });
+    ws.on('cart:item-added', (payload: any) => {
+      const data = payload.data ?? payload;
+      setCartActivities((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            userName: data.userName || '익명',
+            productName: data.productName || '',
+            timestamp: data.timestamp || new Date().toISOString(),
+          },
+        ];
+        return next.length > 50 ? next.slice(-50) : next;
       });
     });
     return () => {

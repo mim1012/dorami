@@ -50,20 +50,26 @@ export class ProductsService {
    */
   @LogErrors('create product')
   async create(createDto: CreateProductDto): Promise<ProductResponseDto> {
+    // Trim streamKey to prevent whitespace-induced mismatches
+    const streamKey = createDto.streamKey?.trim() || undefined;
+
     // Verify stream exists (only if streamKey provided)
-    if (createDto.streamKey) {
+    if (streamKey) {
+      this.logger.log(`Verifying LiveStream for key: "${streamKey}"`);
       const stream = await this.prisma.liveStream.findUnique({
-        where: { streamKey: createDto.streamKey },
+        where: { streamKey },
       });
 
       if (!stream) {
-        throw new NotFoundException(`LiveStream with key ${createDto.streamKey} not found`);
+        this.logger.error(`LiveStream not found for key: "${streamKey}"`);
+        throw new NotFoundException(`LiveStream with key ${streamKey} not found`);
       }
+      this.logger.log(`LiveStream found: id=${stream.id}, status=${stream.status}`);
     }
 
     const product = await this.prisma.product.create({
       data: {
-        streamKey: createDto.streamKey,
+        streamKey: streamKey ?? null,
         name: createDto.name,
         price: new Decimal(createDto.price),
         quantity: createDto.stock,

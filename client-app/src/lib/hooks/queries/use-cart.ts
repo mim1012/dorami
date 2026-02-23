@@ -55,7 +55,7 @@ export function useCart() {
       if (data?.items?.some((item) => item.timerEnabled && item.remainingSeconds)) {
         return 10000; // 10 seconds
       }
-      return 60000; // 1 minute
+      return 30000; // 30 seconds (reduced from 60s to keep cart in sync with live stream activity)
     },
   });
 }
@@ -69,7 +69,33 @@ export function useUpdateCartItem() {
       const response = await apiClient.patch(`/v1/cart/${itemId}`, { quantity });
       return response.data;
     },
-    onSuccess: () => {
+    onMutate: async ({ itemId, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: cartKeys.summary() });
+      const previous = queryClient.getQueryData<CartSummary>(cartKeys.summary());
+
+      queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
+        if (!old) return old;
+        const items = old.items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
+        const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const totalShippingFee = items.reduce((sum, i) => sum + i.shippingFee, 0);
+        return {
+          ...old,
+          items,
+          itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+          subtotal,
+          totalShippingFee,
+          grandTotal: subtotal + totalShippingFee,
+        };
+      });
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(cartKeys.summary(), context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
     },
   });
@@ -84,7 +110,33 @@ export function useRemoveCartItem() {
       const response = await apiClient.delete(`/v1/cart/${itemId}`);
       return response.data;
     },
-    onSuccess: () => {
+    onMutate: async (itemId) => {
+      await queryClient.cancelQueries({ queryKey: cartKeys.summary() });
+      const previous = queryClient.getQueryData<CartSummary>(cartKeys.summary());
+
+      queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
+        if (!old) return old;
+        const items = old.items.filter((item) => item.id !== itemId);
+        const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const totalShippingFee = items.reduce((sum, i) => sum + i.shippingFee, 0);
+        return {
+          ...old,
+          items,
+          itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+          subtotal,
+          totalShippingFee,
+          grandTotal: subtotal + totalShippingFee,
+        };
+      });
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(cartKeys.summary(), context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
     },
   });
@@ -99,7 +151,31 @@ export function useClearCart() {
       const response = await apiClient.delete('/v1/cart');
       return response.data;
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: cartKeys.summary() });
+      const previous = queryClient.getQueryData<CartSummary>(cartKeys.summary());
+
+      queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: [],
+          itemCount: 0,
+          subtotal: 0,
+          totalShippingFee: 0,
+          grandTotal: 0,
+          earliestExpiration: undefined,
+        };
+      });
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(cartKeys.summary(), context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
     },
   });

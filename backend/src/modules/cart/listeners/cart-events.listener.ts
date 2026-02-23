@@ -25,11 +25,18 @@ export class CartEventsListener {
     productId: string;
     productName: string;
     quantity: number;
-    streamKey: string;
+    streamKey: string | null;
   }) {
     this.logger.log(
       `Cart added: User ${payload.userName} (${payload.userId}), Product ${payload.productName} x${payload.quantity}`,
     );
+
+    if (!payload.streamKey) {
+      this.logger.warn(
+        `Cart added event for product ${payload.productId} has no streamKey — skipping broadcast`,
+      );
+      return;
+    }
 
     const roomName = `stream:${payload.streamKey}`;
 

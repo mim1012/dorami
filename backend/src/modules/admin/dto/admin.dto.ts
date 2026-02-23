@@ -138,6 +138,7 @@ export class DashboardStatsDto {
 export class LiveStatusDto {
   isLive: boolean;
   streamId: string | null;
+  streamKey: string | null;
   title: string | null;
   duration: string | null; // HH:MM:SS format
   viewerCount: number;

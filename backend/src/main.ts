@@ -8,6 +8,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { CsrfGuard } from './common/guards';
 import cookieParser from 'cookie-parser';
 import { SocketIoProvider } from './modules/websocket/socket-io.provider';
+import { PrismaService } from './common/prisma/prisma.service';
 import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
@@ -16,6 +17,7 @@ import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { CustomIoAdapter } from './common/adapters/custom-io.adapter';
 import { JwtService } from '@nestjs/jwt';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { authenticateSocket } from './common/middleware/ws-jwt-auth.middleware';
 import { rateLimitCheck } from './common/middleware/ws-rate-limit.middleware';
 
@@ -285,6 +287,8 @@ async function bootstrap() {
 
   // Get service instances from app context
   const jwtService = app.get(JwtService);
+  const prismaService = app.get(PrismaService);
+  const eventEmitter = app.get(EventEmitter2);
 
   // Manually create /chat namespace with full ChatGateway logic
   const chatNamespace = io.of('/chat');
@@ -418,10 +422,23 @@ async function bootstrap() {
 
         const roomName = `live:${payload.liveId}`;
 
+        // Fetch user's instagramId for display in chat
+        let username = '익명';
+        try {
+          const user = await prismaService.user.findUnique({
+            where: { id: authenticatedSocket.user.userId },
+            select: { instagramId: true },
+          });
+          username = user?.instagramId || '익명';
+        } catch {
+          // Fallback to anonymous
+        }
+
         const messageData = {
           id: Date.now().toString(),
           liveId: payload.liveId,
           userId: authenticatedSocket.user.userId,
+          username,
           message: sanitizedMessage,
           timestamp: new Date().toISOString(),
         };
@@ -652,6 +669,19 @@ async function bootstrap() {
       });
       socket.disconnect();
     }
+  });
+
+  // Listen for stream:ended events from StreamingService and broadcast to /streaming namespace
+  // (Replaces the dead StreamingGateway.handleStreamEnded which was never registered in any module)
+  eventEmitter.on('stream:ended', (payload: { streamId: string; streamKey?: string }) => {
+    if (!payload.streamKey) {
+      return;
+    }
+    const roomName = `stream:${payload.streamKey}`;
+    logger.log(`Broadcasting stream:ended to room ${roomName}`);
+    streamingNamespace.to(roomName).emit('stream:ended', {
+      streamKey: payload.streamKey,
+    });
   });
 
   // Create root namespace (/) with WebsocketGateway logic

@@ -236,6 +236,7 @@ export default function AdminProductsPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [activeLiveStreamKey, setActiveLiveStreamKey] = useState<string>('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -272,6 +273,23 @@ export default function AdminProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [filterStreamKey]);
+
+  // Fetch active live stream key to pre-populate product form
+  useEffect(() => {
+    const fetchActiveLiveKey = async () => {
+      try {
+        const response = await apiClient.get<{ isLive: boolean; streamKey: string | null }>(
+          '/streaming/live-status',
+        );
+        if (response.data.isLive && response.data.streamKey) {
+          setActiveLiveStreamKey(response.data.streamKey);
+        }
+      } catch {
+        // Non-critical — form still works without it
+      }
+    };
+    fetchActiveLiveKey();
+  }, []);
 
   // Client-side filtered products (Feature 5)
   const filteredProducts = useMemo(() => {
@@ -465,7 +483,7 @@ export default function AdminProductsPage() {
     } else {
       setEditingProduct(null);
       setFormData({
-        streamKey: '',
+        streamKey: activeLiveStreamKey,
         name: '',
         price: '',
         stock: '',
@@ -514,7 +532,10 @@ export default function AdminProductsPage() {
       if (editingProduct) {
         await apiClient.patch(`/products/${editingProduct.id}`, basePayload);
       } else {
-        await apiClient.post('/products', { streamKey: formData.streamKey, ...basePayload });
+        await apiClient.post('/products', {
+          streamKey: formData.streamKey.trim() || undefined,
+          ...basePayload,
+        });
       }
 
       fetchProducts();
@@ -831,7 +852,11 @@ export default function AdminProductsPage() {
             onChange={(e) => setFormData({ ...formData, streamKey: e.target.value })}
             placeholder="예: abc123def456"
             fullWidth
-            helperText="라이브 방송에 연결하려면 Stream Key를 입력하세요 (선택사항)"
+            helperText={
+              activeLiveStreamKey && !editingProduct
+                ? '현재 라이브 방송의 Stream Key가 자동 입력되었습니다'
+                : '라이브 방송에 연결하려면 Stream Key를 입력하세요 (선택사항)'
+            }
           />
 
           <Input

@@ -167,9 +167,9 @@ export class CartService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { name: true },
+        select: { instagramId: true },
       });
-      userName = user?.name || '익명';
+      userName = user?.instagramId || '익명';
     } catch {
       // Fallback to anonymous
     }
