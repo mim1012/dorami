@@ -314,6 +314,7 @@ model NotificationTemplate {
   name      String   @unique
   type      String // ORDER_CONFIRMATION, PAYMENT_REMINDER, etc.
   template  String   @db.Text
+  kakaoTemplateCode  String  @default("") @map("kakao_template_code")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -343,6 +344,12 @@ model SystemConfig {
 
   // Notification Settings
   emailNotificationsEnabled Boolean @default(true) @map("email_notifications_enabled")
+
+  // Alimtalk (카카오 알림톡) Settings
+  alimtalkEnabled      Boolean @default(false) @map("alimtalk_enabled")
+  solapiApiKey         String  @default("") @map("solapi_api_key")
+  solapiApiSecret      String  @default("") @map("solapi_api_secret")
+  kakaoChannelId       String  @default("") @map("kakao_channel_id")
 
   // Points Configuration (Epic 13)
   pointsEnabled          Boolean @default(false) @map("points_enabled")

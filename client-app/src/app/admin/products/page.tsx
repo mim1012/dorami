@@ -381,14 +381,7 @@ export default function AdminProductsPage() {
   const uploadSingleImage = async (file: File): Promise<string> => {
     const formDataToUpload = new FormData();
     formDataToUpload.append('file', file);
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
-    const response = await fetch(`${apiBase}/upload/image`, {
-      method: 'POST',
-      body: formDataToUpload,
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Upload failed');
-    const result = await response.json();
+    const result = await apiClient.post<{ url: string }>('/upload/image', formDataToUpload);
     return result.data.url;
   };
 

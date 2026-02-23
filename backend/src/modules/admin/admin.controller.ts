@@ -158,7 +158,7 @@ export class AdminController {
     @Param('id') id: string,
     @Body() dto: UpdateNotificationTemplateDto,
   ) {
-    return this.adminService.updateNotificationTemplate(id, dto.template);
+    return this.adminService.updateNotificationTemplate(id, dto.template, dto.kakaoTemplateCode);
   }
 
   @Get('settlement')

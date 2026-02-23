@@ -605,6 +605,10 @@ export class AdminService {
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
+      alimtalkEnabled: config.alimtalkEnabled,
+      solapiApiKey: config.solapiApiKey,
+      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
+      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -631,6 +635,18 @@ export class AdminService {
     if (dto.emailNotificationsEnabled !== undefined) {
       updateData.emailNotificationsEnabled = dto.emailNotificationsEnabled;
     }
+    if (dto.alimtalkEnabled !== undefined) {
+      updateData.alimtalkEnabled = dto.alimtalkEnabled;
+    }
+    if (dto.solapiApiKey !== undefined) {
+      updateData.solapiApiKey = dto.solapiApiKey;
+    }
+    if (dto.solapiApiSecret !== undefined && dto.solapiApiSecret !== '••••••••') {
+      updateData.solapiApiSecret = dto.solapiApiSecret;
+    }
+    if (dto.kakaoChannelId !== undefined) {
+      updateData.kakaoChannelId = dto.kakaoChannelId;
+    }
 
     const config = await this.prisma.systemConfig.upsert({
       where: { id: 'system' },
@@ -648,6 +664,10 @@ export class AdminService {
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
+      alimtalkEnabled: config.alimtalkEnabled,
+      solapiApiKey: config.solapiApiKey,
+      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
+      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -1281,7 +1301,7 @@ export class AdminService {
   /**
    * Update notification template
    */
-  async updateNotificationTemplate(id: string, template: string) {
+  async updateNotificationTemplate(id: string, template?: string, kakaoTemplateCode?: string) {
     const existingTemplate = await this.prisma.notificationTemplate.findUnique({
       where: { id },
     });
@@ -1290,9 +1310,17 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
+    const updateData: { template?: string; kakaoTemplateCode?: string } = {};
+    if (template !== undefined) {
+      updateData.template = template;
+    }
+    if (kakaoTemplateCode !== undefined) {
+      updateData.kakaoTemplateCode = kakaoTemplateCode;
+    }
+
     const updated = await this.prisma.notificationTemplate.update({
       where: { id },
-      data: { template },
+      data: updateData,
     });
 
     return {

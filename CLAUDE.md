@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Dorami is a **live commerce MVP platform** — a one-seller livestreaming e-commerce app where a seller broadcasts product demos and sells directly to viewers in real-time. Korean-language product targeting Korean market.
 
+**Production domain:** `https://www.doremi-live.com`
+
 **Monorepo structure** using npm workspaces:
 
 - `backend/` — NestJS 11 API server (port 3001)
@@ -115,15 +117,21 @@ All socket connections require JWT authentication via `authenticateSocket()` mid
 - `/api/:path*` → `${BACKEND_URL}/api/v1/:path*` (default `http://127.0.0.1:3001`)
 - `/live/live/:path*` and `/hls/:path*` → `${MEDIA_SERVER_URL}` (default `http://127.0.0.1:8080`) via fallback rewrites (only when no Next.js page matches)
 
-**Key custom hooks** (`client-app/src/hooks/`):
+**Hook locations:**
 
+- Feature hooks: `client-app/src/hooks/` — real-time and UI logic
+- TanStack Query hooks: `client-app/src/lib/hooks/queries/` — server state
+
+**Key feature hooks** (`client-app/src/hooks/`):
+
+- `useLiveLayoutMachine` — multi-FSM hook managing the live page's `connection` / `stream` / `uiMode` / `overlay` states. Dispatches typed `LiveEvent`s, derives a `LiveSnapshot` enum (`LIVE_NORMAL` | `LIVE_TYPING` | `RETRYING` | `NO_STREAM` | `ENDED`), and computes a `LiveLayout` descriptor. `deriveSnapshot` and `computeLayout` are exported for unit tests.
 - `useChatConnection` — manages `/chat` Socket.IO namespace, exposes `sendMessage`, `deleteMessage`
 - `useChatMessages` — accumulates messages from `chat:message` events
 - `useCartActivity` — listens for cart add events, shown as system messages in chat overlay
 - `useProductStock` — real-time stock updates via WebSocket
 - `useNotifications` — Web Push subscription management
 
-**Live page** (`app/live/[streamKey]/page.tsx`): Three-column desktop layout (product list | video | chat); single-column mobile with overlay chat + featured product inline card. `VideoPlayer` accepts `onStreamError` callback to toggle the LIVE badge and controls when the HLS/FLV stream has an error.
+**Live page** (`app/live/[streamKey]/page.tsx`): Layout is driven by `useLiveLayoutMachine`. `VideoPlayer` tries HTTP-FLV (mpegts.js) first for low latency, then falls back to HLS (hls.js) on error. Props: `onStreamError` (legacy toggle), `onStreamStateChange` (fires typed `VideoStreamEvent` — `PLAY_OK` | `STALL` | `MEDIA_ERROR` | `STREAM_ENDED`; feeds the layout FSM), `hideErrorOverlay` (suppresses the built-in `ErrorOverlay` when the parent handles error display). Dev mode shows a KPI overlay (first-frame ms, rebuffer count, stall duration, reconnect count).
 
 **Playwright E2E:** Two projects — `user` (ignores `admin-*.spec.ts`) and `admin` (matches `admin-*.spec.ts`). Global setup pre-authenticates via dev login. Auth state stored in `e2e/.auth/`.
 
@@ -174,7 +182,7 @@ SRS fires webhook callbacks to the backend to update `LiveStream.status` in the 
 - `PROFILE_ENCRYPTION_KEY` — 64-char hex key for AES-256-GCM encryption of shipping addresses
 - `ADMIN_EMAILS` — comma-separated emails auto-assigned `ADMIN` role on first Kakao login
 - `CSRF_ENABLED=false` — disables CSRF guard (useful for API testing)
-- `CORS_ORIGINS` — comma-separated allowed origins (default: `http://localhost:3000`)
+- `CORS_ORIGINS` — comma-separated allowed origins (default: `http://localhost:3000`; production: `https://doremi-live.com,https://www.doremi-live.com`)
 - `PORT` — backend HTTP port (default: 3001)
 - `APP_ENV=production` — hides Swagger docs (separate from `NODE_ENV`)
 

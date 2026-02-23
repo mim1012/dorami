@@ -441,8 +441,14 @@ export default function LiveStreamPage() {
           >
             <div className="flex items-center justify-between pb-3">
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg flex-shrink-0">
-                  <span className="text-white text-xs font-black">D</span>
+                <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+                  <Image
+                    src="/logo.png"
+                    alt="Doremi"
+                    width={32}
+                    height={32}
+                    className="object-contain w-full h-full"
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="text-white font-bold text-sm leading-tight line-clamp-1">
