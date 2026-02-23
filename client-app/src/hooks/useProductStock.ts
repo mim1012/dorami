@@ -3,6 +3,9 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { create } from 'zustand';
+import { ReconnectionCircuitBreaker } from '@/lib/socket/circuit-breaker';
+import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
+import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
 
 // ── Stock store ──
 interface StockState {
@@ -64,6 +67,11 @@ const WS_URL =
  * Connects to the WebSocket server and listens for product stock events.
  * Uses a global Zustand store so stock updates are shared across components.
  *
+ * Circuit Breaker가 적용되어 연속 실패 시 무한 재연결을 방지한다.
+ * - 10회 실패(Socket.IO reconnectionAttempts) 후에도 연결 불가 시 Circuit Breaker 발동
+ * - connect_error 마다 실패 카운터 증가, 성공 시 초기화
+ * - reconnect_attempt 에서 Circuit Breaker OPEN 상태면 소켓 강제 해제
+ *
  * Events handled:
  * - product:stock:changed  (global broadcast from ProductAlertHandler)
  * - live:product:updated   (stream-scoped broadcast)
@@ -73,6 +81,19 @@ export function useProductStock(streamKey?: string) {
   const socketRef = useRef<Socket | null>(null);
   const { updateStock, markSoldOut } = useStockStore();
 
+  // Circuit Breaker 인스턴스: config 값 참조
+  // useRef로 보관해 렌더링 사이에도 상태를 유지한다
+  const stockConfig = RECONNECT_CONFIG.default;
+  const circuitBreakerRef = useRef(
+    new ReconnectionCircuitBreaker(
+      stockConfig.circuitBreakerThreshold,
+      stockConfig.circuitBreakerCooldownMs,
+    ),
+  );
+
+  // 마지막 connect_error가 인증(토큰 만료) 에러였는지 추적
+  const lastAuthErrorRef = useRef(false);
+
   const connect = useCallback(() => {
     // Don't create duplicate connections
     if (socketRef.current?.connected) return;
@@ -81,9 +102,9 @@ export function useProductStock(streamKey?: string) {
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
+      reconnectionAttempts: stockConfig.maxAttempts,
+      reconnectionDelay: stockConfig.delays[0],
+      reconnectionDelayMax: stockConfig.delays[stockConfig.delays.length - 1],
       autoConnect: true,
     });
 
@@ -135,6 +156,11 @@ export function useProductStock(streamKey?: string) {
 
     socket.on('connect', () => {
       console.log('[useProductStock] Connected to WebSocket');
+
+      // 연결 성공 → 실패 카운터 및 인증 에러 플래그 초기화
+      circuitBreakerRef.current.recordSuccess();
+      lastAuthErrorRef.current = false;
+
       // Join stream room if streamKey provided
       if (streamKey) {
         socket.emit('join:stream', { streamId: streamKey });
@@ -143,6 +169,60 @@ export function useProductStock(streamKey?: string) {
 
     socket.on('connect_error', (err) => {
       console.warn('[useProductStock] WebSocket connection error:', err.message);
+
+      // 인증 에러(토큰 만료 등) 여부를 기록해 다음 reconnect_attempt에서 갱신 시도
+      if (isAuthError(err)) {
+        lastAuthErrorRef.current = true;
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[useProductStock] 인증 에러 감지 — 다음 재연결 시 토큰 갱신 예정');
+        }
+      }
+
+      // 연결 실패를 Circuit Breaker에 기록한다
+      circuitBreakerRef.current.recordFailure();
+    });
+
+    /**
+     * 재연결 시도 직전에 Circuit Breaker를 확인하고 JWT 토큰을 갱신한다.
+     *
+     * 1. Circuit Breaker OPEN 상태면 소켓을 강제 해제해 무한 루프를 방지한다.
+     * 2. 인증 에러가 있었던 경우 토큰 갱신을 시도한다.
+     *    - 갱신 성공: 재연결 진행 (새 accessToken 쿠키가 자동 첨부됨)
+     *    - 갱신 실패: Circuit Breaker에 실패 기록 후 강제 로그아웃
+     */
+    socket.io.on('reconnect_attempt', async () => {
+      if (!circuitBreakerRef.current.canAttemptReconnect()) {
+        const { cooldownRemainingMs } = circuitBreakerRef.current.getState();
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[useProductStock] Circuit Breaker OPEN — 재연결 차단. ` +
+              `${Math.ceil(cooldownRemainingMs / 1000)}초 후 재시도 가능`,
+          );
+        }
+        socket.disconnect();
+        return;
+      }
+
+      // 마지막 인증 에러 여부 확인 후 토큰 갱신 시도
+      if (lastAuthErrorRef.current) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[useProductStock] 인증 에러 감지 — 토큰 갱신 시도');
+        }
+        const refreshed = await refreshAuthToken();
+        if (!refreshed) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[useProductStock] 토큰 갱신 실패 — 강제 로그아웃');
+          }
+          circuitBreakerRef.current.recordFailure();
+          socket.disconnect();
+          forceLogout();
+          return;
+        }
+        lastAuthErrorRef.current = false;
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[useProductStock] 토큰 갱신 성공 — 재연결 진행');
+        }
+      }
     });
 
     socketRef.current = socket;
