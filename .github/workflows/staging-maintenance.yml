@@ -12,6 +12,7 @@ on:
           - status
           - logs-backend
           - logs-frontend
+          - logs-srs
           - restart
           - restart-backend
           - restart-frontend
@@ -51,6 +52,9 @@ jobs:
               ;;
             logs-frontend)
               CMD="docker compose -f docker-compose.staging.yml logs --tail=200 frontend"
+              ;;
+            logs-srs)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 srs"
               ;;
             restart)
               CMD="docker compose -f docker-compose.staging.yml restart"
