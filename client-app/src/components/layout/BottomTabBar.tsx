@@ -40,7 +40,7 @@ export function BottomTabBar() {
     } else if (tab.id === 'live') {
       try {
         const streams = await getActiveStreams();
-        const liveStream = streams.find((s) => s.status === 'LIVE' && s.streamKey);
+        const liveStream = streams.find((s) => s.isLive && s.streamKey);
         if (liveStream?.streamKey) {
           router.push(`/live/${liveStream.streamKey}`);
         } else {

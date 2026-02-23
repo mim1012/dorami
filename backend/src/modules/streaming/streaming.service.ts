@@ -54,6 +54,7 @@ export class StreamingService {
 
       return streams.map((stream) => ({
         id: stream.id,
+        streamKey: stream.streamKey,
         title: stream.title,
         scheduledTime: stream.scheduledAt || stream.expiresAt,
         thumbnailUrl: stream.thumbnailUrl || null,

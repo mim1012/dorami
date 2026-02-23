@@ -138,6 +138,12 @@ export function Footer() {
                 </a>
               </div>
               <div className="flex gap-2">
+                <span className="text-secondary-text/50 w-20 flex-shrink-0">사업장 주소</span>
+                <span className="text-primary-text/80 font-medium">
+                  경기도 용인시 수지구 상현로 5, 401-40호 (상현동,상현프라자)
+                </span>
+              </div>
+              <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">호스팅제공자</span>
                 <span className="text-primary-text/80 font-medium">(주)비즈솔루션</span>
               </div>
