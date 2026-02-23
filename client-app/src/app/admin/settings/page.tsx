@@ -20,6 +20,10 @@ interface SystemSettings {
   bankAccountHolder: string;
   defaultShippingFee: number;
   emailNotificationsEnabled: boolean;
+  alimtalkEnabled: boolean;
+  solapiApiKey: string;
+  solapiApiSecret: string;
+  kakaoChannelId: string;
 }
 
 export default function AdminSettingsPage() {
@@ -30,6 +34,10 @@ export default function AdminSettingsPage() {
     bankAccountHolder: '',
     defaultShippingFee: 3000,
     emailNotificationsEnabled: true,
+    alimtalkEnabled: false,
+    solapiApiKey: '',
+    solapiApiSecret: '',
+    kakaoChannelId: '',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -207,6 +215,56 @@ export default function AdminSettingsPage() {
                 </label>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Alimtalk Settings */}
+        <div className="bg-content-bg rounded-button p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Bell className="w-6 h-6 text-hot-pink" />
+            <Heading2 className="text-primary-text">알림톡 설정 (카카오 알림톡)</Heading2>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="alimtalkEnabled"
+                checked={settings.alimtalkEnabled}
+                onChange={(e) => setSettings({ ...settings, alimtalkEnabled: e.target.checked })}
+                className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
+              />
+              <label htmlFor="alimtalkEnabled" className="text-primary-text cursor-pointer">
+                <Body>알림톡 활성화</Body>
+              </label>
+            </div>
+            <Input
+              label="솔라피 API Key"
+              type="text"
+              value={settings.solapiApiKey}
+              onChange={(e) => setSettings({ ...settings, solapiApiKey: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="솔라피 API Secret"
+              type="password"
+              value={settings.solapiApiSecret}
+              onChange={(e) => setSettings({ ...settings, solapiApiSecret: e.target.value })}
+              placeholder={
+                settings.solapiApiSecret === '••••••••' ? '저장된 시크릿 (변경 시 입력)' : ''
+              }
+              fullWidth
+            />
+            <Input
+              label="카카오 채널 ID (pfId)"
+              type="text"
+              value={settings.kakaoChannelId}
+              onChange={(e) => setSettings({ ...settings, kakaoChannelId: e.target.value })}
+              fullWidth
+            />
+            <Caption className="text-secondary-text">
+              솔라피(solapi.com)에서 발급받은 API Key와 Secret을 입력하세요. 카카오 채널 ID(pfId)는
+              카카오 비즈니스 채널 등록 후 발급됩니다.
+            </Caption>
           </div>
         </div>
 

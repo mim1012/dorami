@@ -92,9 +92,6 @@ export class CsrfGuard implements CanActivate {
       });
     }
 
-    // Rotate token after successful validation (optional, for extra security)
-    this.ensureCsrfToken(request, response, true);
-
     return true;
   }
 

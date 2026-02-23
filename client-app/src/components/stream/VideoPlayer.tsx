@@ -535,10 +535,10 @@ export default function VideoPlayer({
   };
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="absolute inset-0 bg-black">
       <video
         ref={videoRef}
-        className="w-full h-full object-cover"
+        className="block w-full h-full object-cover"
         playsInline
         muted
         aria-label="Live stream video player"
