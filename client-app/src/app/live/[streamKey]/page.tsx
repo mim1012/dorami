@@ -552,8 +552,8 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* 3. Video player (16:9) with chat overlay inside */}
-        <div className="relative w-full aspect-video bg-black flex-shrink-0 overflow-hidden">
+        {/* 3. Video player (60vh) with chat overlay inside */}
+        <div className="relative w-full h-[60vh] bg-black flex-shrink-0 overflow-hidden">
           {/* Top gradient scrim */}
           <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
           {/* Bottom gradient scrim */}
@@ -590,7 +590,27 @@ export default function LiveStreamPage() {
           )}
         </div>
 
-        {/* 4. Active product card + trigger below video */}
+        {/* 4. Chat feed — fills remaining space */}
+        <div className="flex-1 min-h-[80px] overflow-y-auto">
+          <ChatMessageList messages={allMessages} compact maxMessages={50} />
+        </div>
+
+        {/* 5. Chat input — in-flow above product card */}
+        {layout.bottomInput.visible && (
+          <div
+            className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+            style={{ height: 'var(--live-bottom-bar-h)' }}
+          >
+            <ChatInput
+              compact
+              disabled={layout.bottomInput.disabled || !isConnected}
+              onSendMessage={handleMobileSendMessage}
+              ref={mobileInputRef}
+            />
+          </div>
+        )}
+
+        {/* 6. Active product card + trigger at bottom */}
         <div className="px-4 pt-3 pb-2 space-y-2 flex-shrink-0">
           {displayedProduct && (
             <div
@@ -664,26 +684,6 @@ export default function LiveStreamPage() {
             </button>
           )}
         </div>
-
-        {/* 5. Chat feed — fills remaining space */}
-        <div className="flex-1 min-h-[60px] overflow-y-auto">
-          <ChatMessageList messages={allMessages} compact maxMessages={50} />
-        </div>
-
-        {/* 6. Chat input — in-flow above quick action bar */}
-        {layout.bottomInput.visible && (
-          <div
-            className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
-            style={{ height: 'var(--live-bottom-bar-h)' }}
-          >
-            <ChatInput
-              compact
-              disabled={layout.bottomInput.disabled || !isConnected}
-              onSendMessage={handleMobileSendMessage}
-              ref={mobileInputRef}
-            />
-          </div>
-        )}
 
         {/* 7. Quick action bar — in-flow at bottom */}
         <div
