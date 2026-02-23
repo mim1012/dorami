@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
@@ -15,6 +16,8 @@ import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
 import { Footer } from '@/components/layout/Footer';
+import { apiClient } from '@/lib/api/client';
+import { Zap } from 'lucide-react';
 import Image from 'next/image';
 
 // ── Fallback mock data ──
@@ -76,7 +79,7 @@ function getMockUpcomingLives(now: number) {
       title: '신상 뷰티 제품 특집 라이브',
       scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
       thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
-      isLive: true,
+      isLive: false,
     },
     {
       id: '2',
@@ -125,6 +128,16 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const liveSectionRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
+
+  // 공지사항 — 라이브 페이지와 동일한 소스
+  const { data: notice } = useQuery<{ text: string | null }>({
+    queryKey: ['notice', 'current'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ text: string | null }>('/notices/current');
+      return response.data;
+    },
+    refetchInterval: 15000,
+  });
 
   useEffect(() => {
     setHeroVisible(true);
@@ -387,6 +400,21 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Notice Banner */}
+      {notice?.text && (
+        <div className="bg-[rgba(255,100,100,0.92)] px-3 py-1.5 overflow-hidden">
+          <div className="flex items-center gap-2">
+            <Zap className="w-3 h-3 text-white flex-shrink-0" />
+            <div className="overflow-hidden flex-1">
+              <div className="notice-track text-white text-[11px] font-medium">
+                <span className="pr-12">{notice.text}</span>
+                <span className="pr-12">{notice.text}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Live Countdown Banner */}
       <LiveCountdownBanner
         liveStartTime={nextLiveTime}
@@ -449,7 +477,7 @@ export default function Home() {
               이번 주<br />
               인기 상품
             </h3>
-            <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도라미 에디터 추천!</p>
+            <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도레미 에디터 추천!</p>
             <button
               onClick={() => router.push('/shop')}
               className="bg-white text-[#FF007A] px-7 py-3 rounded-full text-sm font-black hover:bg-white/90 transition-all active:scale-95 shadow-lg"

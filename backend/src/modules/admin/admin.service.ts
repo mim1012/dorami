@@ -1045,6 +1045,7 @@ export class AdminService {
         orderId: updated.id,
         status: updated.status,
         shippingStatus: updated.shippingStatus,
+        trackingNumber: updated.trackingNumber,
         shippedAt: updated.shippedAt,
         deliveredAt: updated.deliveredAt,
       },

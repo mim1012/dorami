@@ -248,6 +248,7 @@ model Order {
   paymentMethod   PaymentMethod  @default(BANK_TRANSFER) @map("payment_method")
   paymentStatus   PaymentStatus  @default(PENDING) @map("payment_status")
   shippingStatus  ShippingStatus @default(PENDING) @map("shipping_status")
+  trackingNumber  String?        @map("tracking_number")
   status          OrderStatus    @default(PENDING_PAYMENT)
   paidAt          DateTime?      @map("paid_at")
   shippedAt       DateTime?      @map("shipped_at")
