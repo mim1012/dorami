@@ -162,6 +162,7 @@ jobs:
   smoke-test:
     name: Smoke Tests
     needs: [deploy]
+    if: always() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: staging
 
