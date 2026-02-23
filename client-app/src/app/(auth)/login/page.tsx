@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Body } from '@/components/common/Typography';
+import Image from 'next/image';
 
 function LoginContent() {
   const router = useRouter();
@@ -11,16 +12,24 @@ function LoginContent() {
   const { isAuthenticated, isLoading, refreshProfile } = useAuth();
 
   const error = searchParams.get('error');
+  const reason = searchParams.get('reason');
   const [devEmail, setDevEmail] = useState('');
   const [devRole, setDevRole] = useState<'USER' | 'ADMIN'>('USER');
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
+  const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       router.push('/');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    // 런타임에 체크 (docker-entrypoint.sh가 플레이스홀더를 치환한 후 실행됨)
+    const val = String(process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH || '');
+    setIsDevAuthEnabled(val === 'true');
+  }, []);
 
   const handleKakaoLogin = () => {
     window.location.href = '/api/auth/kakao';
@@ -72,12 +81,26 @@ function LoginContent() {
     <div className="min-h-screen bg-primary-black flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
-            <span className="text-white font-black text-2xl">D</span>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden">
+            <Image
+              src="/logo.png"
+              alt="Doremi"
+              width={64}
+              height={64}
+              className="object-contain w-full h-full"
+            />
           </div>
-          <Display className="text-hot-pink mb-2">DoReMi</Display>
+          <Display className="text-hot-pink mb-2">Doremi</Display>
           <Body className="text-secondary-text">라이브 쇼핑의 새로운 경험</Body>
         </div>
+
+        {reason === 'session_expired' && (
+          <div className="bg-warning-bg border border-warning/30 rounded-lg p-4">
+            <Body className="text-warning text-sm">
+              로그인 세션이 만료되었습니다. 다시 로그인해주세요.
+            </Body>
+          </div>
+        )}
 
         {error && (
           <div className="bg-error-bg border border-error/30 rounded-lg p-4">
@@ -106,7 +129,7 @@ function LoginContent() {
         </div>
 
         {/* Dev Login Section — only rendered when NEXT_PUBLIC_ENABLE_DEV_AUTH=true */}
-        {process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true' && (
+        {isDevAuthEnabled && (
           <div className="pt-4 border-t border-border-color">
             <div className="p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
               <p className="text-xs text-secondary-text">스테이징 테스트 전용</p>

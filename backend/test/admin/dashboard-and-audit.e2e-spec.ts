@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
@@ -16,7 +17,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalInterceptors(new TransformInterceptor(moduleFixture.get(Reflector)));
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -43,14 +44,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
       const last7Days = new Date(now);
       last7Days.setDate(last7Days.getDate() - 3);
 
-      const testUser = await prisma.user.findFirst() || await prisma.user.create({
-        data: {
-          kakaoId: 'kakao-test-dashboard',
-          name: 'Test User Dashboard',
-          email: 'test@example.com',
-          role: 'USER',
-        },
-      });
+      const testUser =
+        (await prisma.user.findFirst()) ||
+        (await prisma.user.create({
+          data: {
+            kakaoId: 'kakao-test-dashboard',
+            name: 'Test User Dashboard',
+            email: 'test@example.com',
+            role: 'USER',
+          },
+        }));
 
       // Create orders
       await prisma.order.createMany({
@@ -128,14 +131,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
     });
 
     it('should calculate trends correctly', async () => {
-      const testUser = await prisma.user.findFirst() || await prisma.user.create({
-        data: {
-          kakaoId: 'kakao-trend-test',
-          name: 'Trend Test User',
-          email: 'trend-test@example.com',
-          role: 'USER',
-        },
-      });
+      const testUser =
+        (await prisma.user.findFirst()) ||
+        (await prisma.user.create({
+          data: {
+            kakaoId: 'kakao-trend-test',
+            name: 'Trend Test User',
+            email: 'trend-test@example.com',
+            role: 'USER',
+          },
+        }));
 
       // Create more orders in last 7 days than previous 7 days
       const last7DaysStart = new Date();
@@ -194,9 +199,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         },
       });
 
-      const response = await request(app.getHttpServer())
-        .get('/admin/dashboard/stats')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/admin/dashboard/stats').expect(200);
 
       expect(response.body.orders.trendUp).toBe(true);
       expect(response.body.revenue.trendUp).toBe(true);
@@ -205,15 +208,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
   describe('GET /admin/audit-logs (Epic 12 Story 12.3)', () => {
     it('should return paginated audit logs', async () => {
-      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
-        await prisma.user.create({
+      const adminUser =
+        (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) ||
+        (await prisma.user.create({
           data: {
             kakaoId: 'kakao-admin-audit',
             name: 'Admin Audit',
             email: 'admin@example.com',
             role: 'ADMIN',
           },
-        });
+        }));
 
       // Create audit logs
       await prisma.auditLog.createMany({
@@ -235,9 +239,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         ],
       });
 
-      const response = await request(app.getHttpServer())
-        .get('/admin/audit-logs')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/admin/audit-logs').expect(200);
 
       expect(response.body.data).toBeDefined();
       expect(response.body.data.length).toBeGreaterThanOrEqual(2);
@@ -246,15 +248,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
     });
 
     it('should filter audit logs by action type', async () => {
-      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
-        await prisma.user.create({
+      const adminUser =
+        (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) ||
+        (await prisma.user.create({
           data: {
             kakaoId: 'kakao-filter-admin',
             name: 'Filter Admin',
             email: 'filter-admin@example.com',
             role: 'ADMIN',
           },
-        });
+        }));
 
       await prisma.auditLog.createMany({
         data: [
@@ -291,15 +294,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
     });
 
     it('should filter audit logs by date range', async () => {
-      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
-        await prisma.user.create({
+      const adminUser =
+        (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) ||
+        (await prisma.user.create({
           data: {
             kakaoId: 'kakao-date-admin',
             name: 'Date Admin',
             email: 'date-admin@example.com',
             role: 'ADMIN',
           },
-        });
+        }));
 
       const oldDate = new Date('2024-01-01');
       const recentDate = new Date('2024-01-15');
@@ -331,22 +335,26 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         .expect(200);
 
       expect(response.body.data).toBeDefined();
-      expect(response.body.data.every((log: any) =>
-        new Date(log.timestamp) >= new Date('2024-01-10') &&
-        new Date(log.timestamp) <= new Date('2024-01-20')
-      )).toBe(true);
+      expect(
+        response.body.data.every(
+          (log: any) =>
+            new Date(log.timestamp) >= new Date('2024-01-10') &&
+            new Date(log.timestamp) <= new Date('2024-01-20'),
+        ),
+      ).toBe(true);
     });
 
     it('should handle pagination correctly', async () => {
-      const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) ||
-        await prisma.user.create({
+      const adminUser =
+        (await prisma.user.findFirst({ where: { role: 'ADMIN' } })) ||
+        (await prisma.user.create({
           data: {
             kakaoId: 'kakao-pagination-admin',
             name: 'Pagination Admin',
             email: 'pagination-admin@example.com',
             role: 'ADMIN',
           },
-        });
+        }));
 
       // Create 60 audit logs
       const logs = Array.from({ length: 60 }, (_, i) => ({

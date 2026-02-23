@@ -47,7 +47,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className={`border-t border-border-color bg-black/30 backdrop-blur-sm ${
+      className={`w-full border-t border-border-color bg-black/30 backdrop-blur-sm ${
         compact ? 'p-2' : 'p-3'
       }`}
     >

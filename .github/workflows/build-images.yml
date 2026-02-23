@@ -8,10 +8,19 @@ on:
 
 jobs:
   build:
+    name: Build (${{ matrix.service }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            dockerfile: ./backend/Dockerfile
+          - service: frontend
+            dockerfile: ./client-app/Dockerfile
     outputs:
       image_tag: ${{ steps.version.outputs.tag }}
 
@@ -29,26 +38,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Backend - environment-agnostic build
-      - uses: docker/build-push-action@v5
+      # 서비스별 병렬 빌드 + 스코프별 캐시 분리
+      - name: Build and Push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./backend/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/dorami-backend:sha-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/dorami-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Frontend - no NEXT_PUBLIC_ build-args (uses placeholders)
-      - uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./client-app/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/dorami-frontend:sha-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/dorami-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max

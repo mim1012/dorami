@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/common/prisma/prisma.service';
@@ -16,7 +17,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalInterceptors(new TransformInterceptor(moduleFixture.get(Reflector)));
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -30,8 +31,9 @@ describe('Store Products API (Epic 11) - E2E', () => {
 
   beforeAll(async () => {
     // Find or create test user for live streams
-    testUser = await prisma.user.findUnique({ where: { id: 'test-user-store-products' } }) ||
-      await prisma.user.create({
+    testUser =
+      (await prisma.user.findUnique({ where: { id: 'test-user-store-products' } })) ||
+      (await prisma.user.create({
         data: {
           id: 'test-user-store-products',
           kakaoId: 'kakao-test-store',
@@ -39,7 +41,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
           email: 'store@example.com',
           role: 'USER',
         },
-      });
+      }));
   });
 
   afterAll(async () => {
@@ -59,9 +61,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
 
   describe('GET /products/store', () => {
     it('should return empty array when no store products exist', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/products/store')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/products/store').expect(200);
 
       expect(response.body.data.data).toEqual([]);
       expect(response.body.data.meta.total).toBe(0);
@@ -125,9 +125,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
         },
       });
 
-      const response = await request(app.getHttpServer())
-        .get('/products/store')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/products/store').expect(200);
 
       expect(response.body.data.data).toHaveLength(2);
       expect(response.body.data.meta.total).toBe(2);
@@ -210,9 +208,7 @@ describe('Store Products API (Epic 11) - E2E', () => {
         },
       });
 
-      const response = await request(app.getHttpServer())
-        .get('/products/store')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/products/store').expect(200);
 
       expect(response.body.data.data).toHaveLength(1);
       expect(response.body.data.data[0].name).toBe('Available Product');

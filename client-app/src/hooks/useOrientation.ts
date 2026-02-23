@@ -1,31 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type Orientation = 'portrait' | 'landscape';
 
+function getSnapshot(): Orientation {
+  return window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
+}
+
+function getServerSnapshot(): Orientation {
+  return 'portrait';
+}
+
+function subscribe(callback: () => void) {
+  window.addEventListener('orientationchange', callback);
+  window.addEventListener('resize', callback);
+  return () => {
+    window.removeEventListener('orientationchange', callback);
+    window.removeEventListener('resize', callback);
+  };
+}
+
+/**
+ * SSR-safe orientation detection using useSyncExternalStore.
+ * Server snapshot returns 'portrait' to match initial SSR HTML.
+ */
 export function useOrientation(): Orientation {
-  const [orientation, setOrientation] = useState<Orientation>('portrait');
-
-  useEffect(() => {
-    const handleOrientationChange = () => {
-      if (window.matchMedia('(orientation: landscape)').matches) {
-        setOrientation('landscape');
-      } else {
-        setOrientation('portrait');
-      }
-    };
-
-    // Initial check
-    handleOrientationChange();
-
-    // Listen to orientation changes
-    window.addEventListener('orientationchange', handleOrientationChange);
-    window.addEventListener('resize', handleOrientationChange);
-
-    return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      window.removeEventListener('resize', handleOrientationChange);
-    };
-  }, []);
-
-  return orientation;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

@@ -14,8 +14,10 @@ export function useProfileGuard() {
     if (isLoading) return;
 
     if (!user) {
-      // Not authenticated, redirect to login
-      router.push('/login');
+      // Not authenticated — redirect to login.
+      // Pass reason so login page can show "세션이 만료되었습니다" instead of
+      // silently landing on the login screen.
+      router.push('/login?reason=session_expired');
       return;
     }
 

@@ -78,27 +78,42 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Parse a JWT expiresIn string (e.g. "1h", "30d") to seconds for Redis TTL.
+   */
+  private parseExpiresInToSeconds(expiresIn: string): number {
+    const match = /^(\d+)([smhd])$/.exec(expiresIn);
+    if (!match) {
+      return 30 * 24 * 60 * 60;
+    } // fallback: 30 days
+    const value = parseInt(match[1], 10);
+    const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+    return value * (multipliers[match[2]] ?? 86400);
+  }
+
   async login(user: User): Promise<LoginResponseDto> {
     const payload: TokenPayload = {
       sub: user.id,
       userId: user.id, // Add userId for JWT strategy compatibility
       email: user.email, // Include email per Story 2.1 spec
       kakaoId: user.kakaoId,
+      name: user.name,
       role: user.role,
     };
 
     const accessToken = this.jwtService.sign(
       { ...payload, type: 'access', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m' },
+      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '1h' },
     );
 
+    const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') || '30d';
     const refreshToken = this.jwtService.sign(
       { ...payload, type: 'refresh', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN') || '7d' },
+      { expiresIn: refreshExpiresIn },
     );
 
-    // Store refresh token in Redis (TTL: 7 days)
-    const refreshTokenTTL = 7 * 24 * 60 * 60; // 7 days in seconds
+    // Store refresh token in Redis with TTL derived from JWT_REFRESH_EXPIRES_IN
+    const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
     try {
       await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
     } catch (error) {

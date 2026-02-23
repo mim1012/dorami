@@ -38,11 +38,11 @@ test.describe('Admin Products CRUD', () => {
 
     await streamKeyInput.fill(testStreamKey);
     await page.getByLabel('상품명').fill(testProductName);
-    await page.getByLabel('가격 (원)').fill('29000');
+    await page.getByLabel('가격 ($)').fill('29000');
     await page.getByLabel('재고').fill('50');
     await page.getByLabel('색상 옵션 (쉼표로 구분)').fill('Red, Blue, Black');
     await page.getByLabel('사이즈 옵션 (쉼표로 구분)').fill('S, M, L, XL');
-    await page.getByLabel('배송비 (원)').fill('3000');
+    await page.getByLabel('배송비 ($)').fill('3000');
 
     // Submit the form — button text is "등록하기", becomes "저장 중..." while submitting
     await page.getByRole('button', { name: '등록하기', exact: true }).click();
@@ -77,7 +77,7 @@ test.describe('Admin Products CRUD', () => {
     // Update product details
     const updatedProductName = `${testProductName} Updated`;
     await page.getByLabel('상품명').fill(updatedProductName);
-    await page.getByLabel('가격 (원)').fill('35000');
+    await page.getByLabel('가격 ($)').fill('35000');
     await page.getByLabel('재고').fill('30');
 
     // Submit update — button text is "수정하기"

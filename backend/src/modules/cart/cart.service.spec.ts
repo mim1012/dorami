@@ -86,18 +86,25 @@ describe('CartService', () => {
   describe('addToCart', () => {
     it('should add new product to cart with timer', async () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
-      jest
-        .spyOn(prismaService.cart, 'aggregate')
-        .mockResolvedValue({
-          _sum: { quantity: 0 },
-          _count: 0,
-          _avg: { quantity: null },
-          _min: { quantity: null },
-          _max: { quantity: null },
-        } as any);
+      jest.spyOn(prismaService.cart, 'aggregate').mockResolvedValue({
+        _sum: { quantity: 0 },
+        _count: 0,
+        _avg: { quantity: null },
+        _min: { quantity: null },
+        _max: { quantity: null },
+      } as any);
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prismaService.cart, 'create').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
+            create: jest.fn().mockResolvedValue(mockCartItem),
+          },
+        };
+        return callback(tx);
+      });
 
       const result = await service.addToCart('user-1', {
         productId: 'product-1',
@@ -111,7 +118,8 @@ describe('CartService', () => {
       expect(result.productId).toBe('product-1');
       expect(result.timerEnabled).toBe(true);
       expect(result.expiresAt).toBeDefined();
-      expect(prismaService.cart.create).toHaveBeenCalled();
+      // cart.create is called inside the $transaction callback on tx, not on prismaService directly
+      expect(prismaService.$transaction).toHaveBeenCalled();
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'cart:added',
         expect.objectContaining({
@@ -200,6 +208,15 @@ describe('CartService', () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prismaService.cart, 'create').mockResolvedValue(noTimerCartItem as any);
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
+            create: jest.fn().mockResolvedValue(noTimerCartItem),
+          },
+        };
+        return callback(tx);
+      });
 
       const result = await service.addToCart('user-1', {
         productId: 'product-1',

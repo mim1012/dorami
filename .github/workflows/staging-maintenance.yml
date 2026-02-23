@@ -4,15 +4,28 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: 'Command to run on staging server'
+        description: 'Maintenance command to run'
         required: true
-        default: 'docker compose -f docker-compose.staging.yml ps'
-        type: string
+        default: 'status'
+        type: choice
+        options:
+          - status
+          - logs-backend
+          - logs-frontend
+          - logs-srs
+          - restart
+          - restart-backend
+          - restart-frontend
+          - db-migrate
+          - disk-usage
+          - docker-cleanup
 
 jobs:
   run:
-    name: Run Command
+    name: Run Maintenance Command
     runs-on: ubuntu-latest
+    environment: staging
+
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.8.0
@@ -24,7 +37,48 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Execute Command
+      - name: Execute Whitelisted Command
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          USER: ${{ secrets.STAGING_USER }}
+          COMMAND: ${{ inputs.command }}
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            'cd /opt/dorami && ${{ inputs.command }}'
+          case "$COMMAND" in
+            status)
+              CMD="docker compose -f docker-compose.staging.yml ps"
+              ;;
+            logs-backend)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 backend"
+              ;;
+            logs-frontend)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 frontend"
+              ;;
+            logs-srs)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 srs"
+              ;;
+            restart)
+              CMD="docker compose -f docker-compose.staging.yml restart"
+              ;;
+            restart-backend)
+              CMD="docker compose -f docker-compose.staging.yml restart backend"
+              ;;
+            restart-frontend)
+              CMD="docker compose -f docker-compose.staging.yml restart frontend"
+              ;;
+            db-migrate)
+              CMD="docker compose -f docker-compose.staging.yml exec -T postgres psql -U dorami -d live_commerce -c 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;'"
+              ;;
+            disk-usage)
+              CMD="df -h / && docker system df"
+              ;;
+            docker-cleanup)
+              CMD="docker system prune -af --volumes --filter 'until=24h' && docker builder prune -af"
+              ;;
+            *)
+              echo "Unknown command: $COMMAND"
+              exit 1
+              ;;
+          esac
+
+          echo "Executing: $CMD"
+          ssh $USER@$HOST "cd /opt/dorami && $CMD"

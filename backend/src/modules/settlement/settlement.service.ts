@@ -150,15 +150,15 @@ export class SettlementService {
       });
     });
 
-    // Format currency columns (KRW)
-    const currencyFormat = '[$₩-ko-KR] #,##0';
+    // Format currency columns (USD)
+    const currencyFormat = '[$$-en-US] #,##0';
     ordersSheet.getColumn('subtotal').numFmt = currencyFormat;
     ordersSheet.getColumn('shippingFee').numFmt = currencyFormat;
     ordersSheet.getColumn('total').numFmt = currencyFormat;
 
     // Sheet 2: Summary
     const summarySheet = workbook.addWorksheet('요약');
-    
+
     summarySheet.columns = [
       { header: '항목', key: 'label', width: 25 },
       { header: '값', key: 'value', width: 20 },

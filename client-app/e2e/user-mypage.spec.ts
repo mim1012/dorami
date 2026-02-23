@@ -1,11 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuth } from './helpers/auth-helper';
+import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 /**
  * 마이페이지 & 배송지 관리 E2E 테스트
  *
  * user storageState(프로필 완성된 사용자)로 실행됩니다.
  * 마이페이지 접근, 프로필 확인, 배송지 수정, 주문 내역 네비게이션을 테스트합니다.
+ *
+ * beforeEach에서 fresh devLogin을 수행하여 15분 access token 만료 문제를 방지합니다.
+ * 각 테스트는 gotoWithRetry를 사용하여 rate-limit 등으로 인한 auth 리다이렉트를 재시도합니다.
  */
 test.describe('My Page', () => {
   test.setTimeout(60000);
@@ -15,10 +18,13 @@ test.describe('My Page', () => {
   });
 
   test('should display my page with profile sections', async ({ page }) => {
-    await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/my-page', {
+      waitForSelector: 'text=마이페이지',
+      role: 'USER',
+    });
 
     // 페이지 타이틀 확인
-    await expect(page.getByText('마이페이지')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('마이페이지').first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('프로필 관리 및 주문 내역 확인')).toBeVisible();
 
     // 배송지 정보 섹션 확인
@@ -29,7 +35,10 @@ test.describe('My Page', () => {
   });
 
   test('should show shipping address or empty state', async ({ page }) => {
-    await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/my-page', {
+      waitForSelector: 'text=배송지 정보',
+      role: 'USER',
+    });
     await expect(page.getByText('배송지 정보')).toBeVisible({ timeout: 15000 });
 
     // 배송지가 있거나 없는 상태 중 하나
@@ -49,7 +58,10 @@ test.describe('My Page', () => {
   });
 
   test('should open address edit modal and validate fields', async ({ page }) => {
-    await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/my-page', {
+      waitForSelector: 'text=배송지 정보',
+      role: 'USER',
+    });
     await expect(page.getByText('배송지 정보')).toBeVisible({ timeout: 15000 });
 
     // 수정 버튼 클릭
@@ -75,7 +87,10 @@ test.describe('My Page', () => {
   });
 
   test('should edit and save shipping address', async ({ page }) => {
-    await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/my-page', {
+      waitForSelector: 'text=배송지 정보',
+      role: 'USER',
+    });
     await expect(page.getByText('배송지 정보')).toBeVisible({ timeout: 15000 });
 
     // 수정 모달 열기
@@ -107,7 +122,10 @@ test.describe('My Page', () => {
   });
 
   test('should cancel address edit without saving', async ({ page }) => {
-    await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/my-page', {
+      waitForSelector: 'text=배송지 정보',
+      role: 'USER',
+    });
     await expect(page.getByText('배송지 정보')).toBeVisible({ timeout: 15000 });
 
     // 모달 열기
@@ -135,15 +153,19 @@ test.describe('Order History Page', () => {
   });
 
   test('should display order history or empty state', async ({ page }) => {
-    await page.goto('/orders', { waitUntil: 'domcontentloaded' });
+    await gotoWithRetry(page, '/orders', {
+      waitForSelector: 'text=주문 내역',
+      role: 'USER',
+    });
 
     // 페이지 타이틀 확인
-    await expect(page.getByText('주문 내역')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('주문 내역').first()).toBeVisible({ timeout: 15000 });
 
     // 페이지 로딩 대기 후 주문이 있거나 없는 상태 중 하나 확인
     // isVisible()은 즉시 체크하므로 waitFor로 먼저 대기
     const emptyLocator = page.getByText('주문 내역이 없습니다');
-    const orderLocator = page.getByText('주문번호:').first();
+    // orders/page.tsx line 229: <Body>주문번호: {order.id}</Body> — 텍스트가 합쳐져 있으므로 정규식 사용
+    const orderLocator = page.getByText(/주문번호:/).first();
 
     // 둘 중 하나가 나타날 때까지 대기
     await Promise.race([
@@ -164,11 +186,14 @@ test.describe('Order History Page', () => {
   });
 
   test('should navigate to shopping from empty order state', async ({ page }) => {
-    await page.goto('/orders', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('주문 내역')).toBeVisible({ timeout: 15000 });
+    await gotoWithRetry(page, '/orders', {
+      waitForSelector: 'text=주문 내역',
+      role: 'USER',
+    });
+    await expect(page.getByText('주문 내역').first()).toBeVisible({ timeout: 15000 });
 
     const emptyLocator = page.getByText('주문 내역이 없습니다');
-    const orderLocator = page.getByText('주문번호:').first();
+    const orderLocator = page.getByText(/주문번호:/).first();
 
     await Promise.race([
       emptyLocator.waitFor({ timeout: 10000 }).catch(() => {}),

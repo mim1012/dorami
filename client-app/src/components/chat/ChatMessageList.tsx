@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ChatMessage from './ChatMessage';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from './types';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ShoppingCart } from 'lucide-react';
 
 interface ChatMessageListProps {
   messages: ChatMessageType[];
@@ -23,9 +24,7 @@ export default function ChatMessageList({
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Limit messages if maxMessages is specified
-  const displayMessages = maxMessages
-    ? messages.slice(-maxMessages)
-    : messages;
+  const displayMessages = maxMessages ? messages.slice(-maxMessages) : messages;
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -62,53 +61,55 @@ export default function ChatMessageList({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className={`h-full overflow-y-auto scrollbar-thin scrollbar-thumb-hot-pink scrollbar-track-transparent ${
+        className={`h-full overflow-y-auto flex flex-col scrollbar-thin scrollbar-thumb-hot-pink scrollbar-track-transparent ${
           compact ? 'px-2 py-1' : 'px-4 py-2'
         }`}
       >
         {displayMessages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-secondary-text text-caption text-center px-4">
-              채팅이 비어 있습니다.<br />
-              첫 메시지를 남겨보세요!
-            </p>
-          </div>
+          !compact && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-secondary-text text-caption text-center px-4">
+                채팅이 비어 있습니다.
+                <br />첫 메시지를 남겨보세요!
+              </p>
+            </div>
+          )
         ) : (
-          displayMessages.map((message) => {
-            // System message rendering (e.g., cart/purchase notifications)
-            if (message.username === SYSTEM_USERNAME) {
-              return (
-                <div
-                  key={message.id}
-                  className={`animate-fade-in flex items-start gap-2 ${
-                    compact ? 'mb-1.5 px-3 py-1' : 'mb-2 px-4 py-1.5'
-                  }`}
-                >
-                  <span className="flex-shrink-0 bg-amber-500/20 text-amber-400 text-[11px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                    시스템
-                  </span>
-                  <p
-                    className={`text-amber-200/90 whitespace-pre-wrap break-words ${
-                      compact ? 'text-[13px] leading-snug' : 'text-sm'
-                    }`}
+          <>
+            <div className="flex-grow" />
+            {displayMessages.map((message) => {
+              // System message rendering (e.g., cart/purchase notifications)
+              if (message.username === SYSTEM_USERNAME) {
+                return (
+                  <div
+                    key={message.id}
+                    className={`animate-fade-in ${compact ? 'mb-1.5 px-1' : 'mb-2 px-2'}`}
                   >
-                    {message.message}
-                  </p>
-                </div>
+                    <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-[#FF007A]/20 border border-[#FF007A]/30">
+                      <ShoppingCart className="w-3 h-3 text-[#FF007A] flex-shrink-0" />
+                      <span
+                        className={`text-[#FF007A] font-semibold ${
+                          compact ? 'text-[12px]' : 'text-[13px]'
+                        }`}
+                      >
+                        {message.message}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  compact={compact}
+                  isAdmin={isAdmin}
+                  onDelete={onDeleteMessage}
+                />
               );
-            }
-
-            return (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                compact={compact}
-                isAdmin={isAdmin}
-                onDelete={onDeleteMessage}
-              />
-            );
-          })
-
+            })}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>

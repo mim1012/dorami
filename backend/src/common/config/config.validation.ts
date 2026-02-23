@@ -65,7 +65,7 @@ export const configValidationSchema = Joi.object({
   // Streaming (Optional)
   RTMP_SERVER_URL: Joi.string().optional(),
   HLS_SERVER_URL: Joi.string().optional(),
-  RTMP_INTERNAL_URL: Joi.string().optional().default('rtmp://nginx-rtmp:1935/live'),
+  RTMP_INTERNAL_URL: Joi.string().optional().default('rtmp://srs:1935/live'),
 
   // Web Push (VAPID) - Optional
   VAPID_PUBLIC_KEY: Joi.string().optional(),

@@ -11,6 +11,7 @@ import {
   FeaturedProduct,
 } from '@/lib/api/featured-products';
 import { useConfirm } from '@/components/common/ConfirmDialog';
+import { formatPrice } from '@/lib/utils/price';
 
 interface FeaturedProductManagerProps {
   streamKey: string;
@@ -154,10 +155,7 @@ export default function FeaturedProductManager({
       {error && (
         <div className="bg-error-bg border border-error/20 rounded-lg p-4 flex items-center justify-between">
           <p className="text-sm text-error">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="text-error hover:text-error/80"
-          >
+          <button onClick={() => setError(null)} className="text-error hover:text-error/80">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -180,7 +178,7 @@ export default function FeaturedProductManager({
                 {currentFeatured.name}
               </h4>
               <p className="text-lg font-bold text-hot-pink mb-2">
-                {currentFeatured.price.toLocaleString()}원
+                {formatPrice(currentFeatured.price)}
               </p>
               <div className="flex items-center gap-4 text-sm text-secondary-text">
                 <span>재고: {currentFeatured.stock}개</span>
@@ -202,11 +200,7 @@ export default function FeaturedProductManager({
               disabled={isUpdating}
               className="px-3 py-1.5 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUpdating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                '해제'
-              )}
+              {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : '해제'}
             </button>
           </div>
         </div>
@@ -215,9 +209,7 @@ export default function FeaturedProductManager({
       {/* Product Selector */}
       {showProductSelector && (
         <div className="border-t border-gray-200 pt-4">
-          <h4 className="text-sm font-semibold text-primary-text mb-3">
-            상품 선택
-          </h4>
+          <h4 className="text-sm font-semibold text-primary-text mb-3">상품 선택</h4>
 
           {availableProducts.length === 0 ? (
             <div className="text-center py-8 text-secondary-text">
@@ -252,11 +244,10 @@ export default function FeaturedProductManager({
                         {product.name}
                       </h5>
                       <p className="text-sm font-bold text-hot-pink mb-1">
-                        {product.price.toLocaleString()}원
+                        {formatPrice(product.price)}
                       </p>
                       <p className="text-xs text-secondary-text">
-                        재고: {product.stock}개
-                        {isOutOfStock && ' (품절)'}
+                        재고: {product.stock}개{isOutOfStock && ' (품절)'}
                       </p>
                     </div>
                     <button

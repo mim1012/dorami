@@ -8,6 +8,7 @@ test.describe('채팅 메시지 삭제 수동 테스트', () => {
   test.setTimeout(120000); // 2분 타임아웃
 
   test('관리자와 사용자 브라우저 동시 실행', async ({ browser }) => {
+    test.skip(true, '수동 테스트 - 자동화 환경에서 스킵');
     // 관리자 컨텍스트
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();

@@ -66,9 +66,10 @@ export default function OrdersPage() {
   }, [user, authLoading, router]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -87,11 +88,21 @@ export default function OrdersPage() {
       case 'PENDING':
         return { text: '입금 대기', color: 'text-warning', icon: Clock, bgColor: 'bg-warning/20' };
       case 'CONFIRMED':
-        return { text: '결제 확인', color: 'text-success', icon: CheckCircle, bgColor: 'bg-success/10' };
+        return {
+          text: '결제 확인',
+          color: 'text-success',
+          icon: CheckCircle,
+          bgColor: 'bg-success/10',
+        };
       case 'FAILED':
         return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
       default:
-        return { text: status, color: 'text-secondary-text', icon: Package, bgColor: 'bg-border-color' };
+        return {
+          text: status,
+          color: 'text-secondary-text',
+          icon: Package,
+          bgColor: 'bg-border-color',
+        };
     }
   };
 
@@ -166,9 +177,7 @@ export default function OrdersPage() {
             <div className="text-center py-16">
               <Package className="w-24 h-24 text-secondary-text mx-auto mb-6 opacity-30" />
               <Heading2 className="text-primary-text mb-4">주문 내역이 없습니다</Heading2>
-              <Body className="text-secondary-text mb-8">
-                라이브 방송에서 상품을 주문해보세요
-              </Body>
+              <Body className="text-secondary-text mb-8">라이브 방송에서 상품을 주문해보세요</Body>
               <Button variant="primary" size="lg" onClick={() => router.push('/')}>
                 쇼핑하러 가기
               </Button>
@@ -209,7 +218,9 @@ export default function OrdersPage() {
                       <Body className="text-secondary-text text-sm">
                         {formatDate(order.createdAt)}
                       </Body>
-                      <div className={`${paymentStatus.bgColor} ${paymentStatus.color} px-3 py-1 rounded-full flex items-center gap-1.5`}>
+                      <div
+                        className={`${paymentStatus.bgColor} ${paymentStatus.color} px-3 py-1 rounded-full flex items-center gap-1.5`}
+                      >
                         <StatusIcon className="w-4 h-4" />
                         <Body className="text-sm font-semibold">{paymentStatus.text}</Body>
                       </div>
@@ -222,7 +233,10 @@ export default function OrdersPage() {
                   {/* Order Items */}
                   <div className="p-4">
                     {order.items.map((item, index) => (
-                      <div key={item.id} className={index > 0 ? 'mt-3 pt-3 border-t border-border-color' : ''}>
+                      <div
+                        key={item.id}
+                        className={index > 0 ? 'mt-3 pt-3 border-t border-border-color' : ''}
+                      >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <Body className="text-primary-text font-semibold mb-1">
@@ -252,9 +266,7 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
-                      <Display className="text-hot-pink">
-                        {formatPrice(order.total)}
-                      </Display>
+                      <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
                     </div>
                   </div>
 

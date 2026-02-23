@@ -3,8 +3,16 @@
 import { X } from 'lucide-react';
 import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
 
-const KAKAO_CHANNEL_URL = 'https://pf.kakao.com/_your_kakao_channel';
-const INSTAGRAM_URL = 'https://www.instagram.com/_your_instagram';
+const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_DeEAX';
+const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
+
+// 카카오톡 채널 채팅 URL
+const KAKAO_CHANNEL_URL = KAKAO_CHANNEL_ID
+  ? `https://pf.kakao.com/${KAKAO_CHANNEL_ID}/chat`
+  : 'mailto:422sss@live.com';
+
+// 인스타그램 DM 딥링크 — 모바일에서 앱으로 바로 이동
+const INSTAGRAM_URL = `https://ig.me/m/${INSTAGRAM_ID}`;
 
 interface InquiryBottomSheetProps {
   isOpen: boolean;
@@ -63,7 +71,9 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
             </div>
             <div className="text-left">
               <p className="text-primary-text font-semibold text-[15px]">인스타그램 문의</p>
-              <p className="text-secondary-text text-xs mt-0.5">인스타그램 DM으로 문의하세요</p>
+              <p className="text-secondary-text text-xs mt-0.5">
+                @{INSTAGRAM_ID} · DM으로 문의하세요
+              </p>
             </div>
           </button>
         </div>

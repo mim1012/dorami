@@ -9,26 +9,7 @@ import { Display, Heading2, Body, Caption } from '@/components/common/Typography
 import { Button } from '@/components/common/Button';
 import { ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
-import { ProductStatus } from '@live-commerce/shared-types';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  stock: number;
-  status: ProductStatus;
-  streamKey: string;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  isNew?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Product } from '@/lib/types';
 
 interface StoreResponse {
   data: Product[];
@@ -192,7 +173,9 @@ export default function StorePage() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
+                  originalPrice={product.originalPrice}
                   imageUrl={product.imageUrl || '/images/placeholder-product.jpg'}
+                  discount={product.discountRate || 0}
                   onClick={() => handleProductClick(product)}
                 />
               ))}
@@ -202,7 +185,8 @@ export default function StorePage() {
             {meta.totalPages > 1 && (
               <div className="flex flex-col md:flex-row items-center justify-between bg-content-bg rounded-button px-6 py-4 gap-4">
                 <Caption className="text-secondary-text">
-                  Showing {(meta.page - 1) * 24 + 1}-{Math.min(meta.page * 24, meta.total)} of {meta.total} products
+                  Showing {(meta.page - 1) * 24 + 1}-{Math.min(meta.page * 24, meta.total)} of{' '}
+                  {meta.total} products
                 </Caption>
 
                 <div className="flex items-center gap-2">
