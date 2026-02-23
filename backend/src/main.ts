@@ -9,6 +9,7 @@ import { CsrfGuard } from './common/guards';
 import cookieParser from 'cookie-parser';
 import { SocketIoProvider } from './modules/websocket/socket-io.provider';
 import { PrismaService } from './common/prisma/prisma.service';
+import { StreamingService } from './modules/streaming/streaming.service';
 import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
@@ -63,8 +64,9 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          // In production Swagger is disabled so we don't need unsafe-inline for scripts/styles
+          scriptSrc: isProduction ? ["'none'"] : ["'self'", "'unsafe-inline'"],
+          styleSrc: isProduction ? ["'none'"] : ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'", 'wss:', 'ws:'],
           fontSrc: ["'self'", 'https:', 'data:'],
@@ -74,11 +76,29 @@ async function bootstrap() {
           upgradeInsecureRequests: isProduction ? [] : null,
         },
       },
+      // HSTS: enforce HTTPS for 1 year, include subdomains
+      strictTransportSecurity: isProduction
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
+      // Prevent MIME-type sniffing
+      xContentTypeOptions: true,
+      // Clickjacking protection
+      xFrameOptions: { action: 'deny' },
+      // Referrer policy: don't leak full URL to third parties
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginEmbedderPolicy: false, // Required for loading external resources
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
-  logger.log('Security headers (helmet) enabled');
+  // Permissions-Policy: restrict browser features
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+    );
+    next();
+  });
+  logger.log('Security headers (helmet + permissions-policy) enabled');
 
   // Response Compression
   app.use(
@@ -289,6 +309,7 @@ async function bootstrap() {
   const jwtService = app.get(JwtService);
   const prismaService = app.get(PrismaService);
   const eventEmitter = app.get(EventEmitter2);
+  const streamingService = app.get(StreamingService);
 
   // Manually create /chat namespace with full ChatGateway logic
   const chatNamespace = io.of('/chat');
@@ -674,14 +695,51 @@ async function bootstrap() {
   // Listen for stream:ended events from StreamingService and broadcast to /streaming namespace
   // (Replaces the dead StreamingGateway.handleStreamEnded which was never registered in any module)
   eventEmitter.on('stream:ended', (payload: { streamId: string; streamKey?: string }) => {
-    if (!payload.streamKey) {
-      return;
-    }
-    const roomName = `stream:${payload.streamKey}`;
-    logger.log(`Broadcasting stream:ended to room ${roomName}`);
-    streamingNamespace.to(roomName).emit('stream:ended', {
-      streamKey: payload.streamKey,
-    });
+    void (async () => {
+      if (!payload.streamKey) {
+        return;
+      }
+      const roomName = `stream:${payload.streamKey}`;
+      logger.log(`Broadcasting stream:ended to room ${roomName}`);
+      streamingNamespace.to(roomName).emit('stream:ended', {
+        streamKey: payload.streamKey,
+      });
+
+      // Broadcast upcoming streams update to all connected clients
+      try {
+        const streams = await streamingService.getUpcomingStreams(3);
+        io.emit('upcoming:updated', { streams });
+        logger.log('Broadcasted upcoming:updated to all clients after stream ended');
+      } catch (error) {
+        logger.warn(`Failed to broadcast upcoming:updated: ${error}`);
+      }
+    })();
+  });
+
+  // Listen for stream:started events
+  eventEmitter.on('stream:started', (_payload: { streamId: string; streamKey?: string }) => {
+    void (async () => {
+      try {
+        const streams = await streamingService.getUpcomingStreams(3);
+        io.emit('upcoming:updated', { streams });
+        logger.log('Broadcasted upcoming:updated to all clients after stream started');
+      } catch (error) {
+        logger.warn(`Failed to broadcast upcoming:updated: ${error}`);
+      }
+    })();
+  });
+
+  // Listen for stream:created events
+  eventEmitter.on('stream:created', (_payload: { streamId: string }) => {
+    void (async () => {
+      try {
+        const streams = await streamingService.getUpcomingStreams(3);
+        io.emit('upcoming:updated', { streams });
+        logger.log('Broadcasted upcoming:updated to all clients after stream created');
+      } catch (error) {
+        logger.warn(`Failed to broadcast upcoming:updated: ${error}`);
+      }
+    })();
   });
 
   // Create root namespace (/) with WebsocketGateway logic
