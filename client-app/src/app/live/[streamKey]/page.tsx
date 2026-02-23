@@ -29,6 +29,7 @@ import type { Product } from '@/lib/types';
 import { ProductStatus } from '@live-commerce/shared-types';
 import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
+import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -81,6 +82,32 @@ export default function LiveStreamPage() {
   // ── FSM ────────────────────────────────────────────────────────────────────
   const { snapshot, stream, dispatch } = useLiveLayoutMachine();
   const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
+
+  // ── Reconnect timing: RETRYING → LIVE_NORMAL transition ───────────────────
+  const retryStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (snapshot === 'RETRYING' && retryStartRef.current === null) {
+      retryStartRef.current = performance.now();
+    } else if (snapshot === 'LIVE_NORMAL' && retryStartRef.current !== null) {
+      const reconnectDurationMs = Math.round(performance.now() - retryStartRef.current);
+      retryStartRef.current = null;
+      sendStreamMetrics({
+        streamKey,
+        timestamp: new Date().toISOString(),
+        metrics: {
+          firstFrameMs: 0,
+          rebufferCount: 0,
+          stallDurationMs: 0,
+          reconnectCount: 1,
+          totalConnectionTimeMs: reconnectDurationMs,
+        },
+        connectionState: 'RECONNECTING',
+      }).catch(() => {});
+    } else if (snapshot !== 'RETRYING') {
+      // Reset timer if we left RETRYING without recovering (e.g. ENDED)
+      retryStartRef.current = null;
+    }
+  }, [snapshot, streamKey]);
 
   // Shared chat connection — used by both mobile and desktop chat UI
   const {

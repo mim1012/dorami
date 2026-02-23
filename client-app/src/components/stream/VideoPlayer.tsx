@@ -3,16 +3,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
-
-// Module-level Set to ensure only one viewer:join per streamKey across
-// mobile + desktop VideoPlayer instances rendered simultaneously
-const activeViewerKeys = new Set<string>();
+import { sendStreamMetrics, buildStreamMetrics } from '@/lib/analytics/stream-metrics';
+import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import LiveBadge from './LiveBadge';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
 import StreamEndedOverlay from './StreamEndedOverlay';
+
+// Module-level Set to ensure only one viewer:join per streamKey across
+// mobile + desktop VideoPlayer instances rendered simultaneously
+const activeViewerKeys = new Set<string>();
 
 export type VideoStreamEvent =
   | { type: 'PLAY_OK' }
@@ -377,6 +379,14 @@ export default function VideoPlayer({
       if (m.stallStartTime > 0) {
         m.totalStallDuration += performance.now() - m.stallStartTime;
         m.stallStartTime = 0;
+        // ERROR threshold: cumulative stall > 30s
+        if (m.totalStallDuration > 30_000) {
+          sendStreamMetrics(buildStreamMetrics(streamKey, m, 'RECONNECTING')).catch(() => {});
+        }
+      }
+      // WARNING threshold: first frame took > 5s
+      if (m.firstFrameTime > 0 && m.firstFrameTime - m.playStartTime > 5_000) {
+        sendStreamMetrics(buildStreamMetrics(streamKey, m, 'CONNECTED')).catch(() => {});
       }
       // 10초 안정 재생 후 FLV retry 카운터 리셋 (일시적 오류 후 카운터 소진 방지)
       if (flvRetryCountRef.current > 0) {
@@ -411,7 +421,17 @@ export default function VideoPlayer({
               // 재연결 5회 초과 시 에러 표시 (무한 루프 방지)
               if (metricsRef.current.reconnectCount > 5) {
                 setError('Connection lost. Please refresh.');
+                // Final FAILED metrics report
+                sendStreamMetrics(
+                  buildStreamMetrics(streamKey, metricsRef.current, 'FAILED'),
+                ).catch(() => {});
                 return;
+              }
+              // WARNING: frequent reconnect
+              if (metricsRef.current.reconnectCount > 3) {
+                sendStreamMetrics(
+                  buildStreamMetrics(streamKey, metricsRef.current, 'RECONNECTING'),
+                ).catch(() => {});
               }
               if (mpegtsPlayerRef.current && !flvRetryInProgressRef.current) {
                 mpegtsPlayerRef.current.unload();
@@ -486,13 +506,14 @@ export default function VideoPlayer({
       process.env.NEXT_PUBLIC_WS_URL ||
       (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
+    const streamingConfig = RECONNECT_CONFIG.streaming;
     const socket = io(`${wsUrl}/streaming`, {
       transports: ['websocket'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 3000,
+      reconnectionAttempts: streamingConfig.maxAttempts,
+      reconnectionDelay: streamingConfig.delays[0],
+      reconnectionDelayMax: streamingConfig.delays[streamingConfig.delays.length - 1],
     });
 
     socket.on('connect', () => {
@@ -507,6 +528,10 @@ export default function VideoPlayer({
       metricsRef.current.reconnectCount++;
       syncKpi();
       socket.emit('stream:viewer:join', { streamKey });
+      // Report reconnect metrics
+      sendStreamMetrics(buildStreamMetrics(streamKey, metricsRef.current, 'RECONNECTING')).catch(
+        () => {},
+      );
     });
 
     socket.on(
@@ -527,6 +552,10 @@ export default function VideoPlayer({
         if (videoRef.current) {
           videoRef.current.pause();
         }
+        // Final metrics: session summary on stream end
+        sendStreamMetrics(buildStreamMetrics(streamKey, metricsRef.current, 'CONNECTED')).catch(
+          () => {},
+        );
       }
     });
 
