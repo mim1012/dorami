@@ -552,8 +552,8 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* 3. Video player (60vh) with chat overlay inside */}
-        <div className="relative w-full h-[60vh] bg-black flex-shrink-0 overflow-hidden">
+        {/* 3. Video player (50vh) with chat overlay inside */}
+        <div className="relative w-full h-[50vh] bg-black flex-shrink-0 overflow-hidden">
           {/* Top gradient scrim */}
           <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
           {/* Bottom gradient scrim */}
@@ -591,7 +591,7 @@ export default function LiveStreamPage() {
         </div>
 
         {/* 4. Chat feed — fills remaining space */}
-        <div className="flex-1 min-h-[80px] overflow-y-auto">
+        <div className="flex-1 min-h-[160px] overflow-y-auto">
           <ChatMessageList messages={allMessages} compact maxMessages={50} />
         </div>
 
