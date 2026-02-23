@@ -3,12 +3,14 @@ import { NoticesService } from './notices.service';
 import { CreateNoticeDto } from './dto/create-notice.dto';
 import { UpdateNoticeDto } from './dto/update-notice.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('notices')
 export class NoticesController {
   constructor(private readonly noticesService: NoticesService) {}
 
   @Get('current')
+  @Public()
   getCurrentNotice() {
     return this.noticesService.getCurrentNotice();
   }
