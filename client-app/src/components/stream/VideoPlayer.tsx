@@ -91,7 +91,12 @@ export default function VideoPlayer({
   }, [streamEnded]);
 
   // Stream URLs
-  const flvUrl = `/live/live/${streamKey}.flv`;
+  // FLV must be an absolute URL: mpegts.js runs fetch() inside a Web Worker when
+  // enableWorker=true, and workers cannot resolve relative paths (no document base URL).
+  const flvUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/live/live/${streamKey}.flv`
+      : `/live/live/${streamKey}.flv`;
   const hlsUrl = process.env.NEXT_PUBLIC_CDN_URL
     ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}.m3u8`
     : `/hls/${streamKey}.m3u8`;
