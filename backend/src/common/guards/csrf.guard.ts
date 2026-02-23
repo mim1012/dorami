@@ -104,9 +104,14 @@ export class CsrfGuard implements CanActivate {
     if (!existingToken || forceNew) {
       const newToken = this.generateCsrfToken();
 
+      // Use x-forwarded-proto to detect HTTPS — NODE_ENV='production' even on
+      // HTTP staging environments, so it cannot be used as the secure indicator.
+      const proto: string = (request.headers['x-forwarded-proto'] as string) ?? '';
+      const isHttps = proto === 'https' || (request.socket as any)?.encrypted === true;
+
       response.cookie('csrf-token', newToken, {
         httpOnly: false, // Must be readable by JavaScript
-        secure: process.env.NODE_ENV === 'production',
+        secure: isHttps,
         sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         path: '/',
