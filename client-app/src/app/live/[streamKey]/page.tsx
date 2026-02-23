@@ -30,6 +30,7 @@ import { ProductStatus } from '@live-commerce/shared-types';
 import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
+import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -53,6 +54,9 @@ export default function LiveStreamPage() {
   const params = useParams();
   const router = useRouter();
   const streamKey = params.streamKey as string;
+
+  // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
+  useTokenAutoRefresh(streamKey);
 
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);

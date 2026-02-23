@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { generateId } from '@/lib/utils/uuid';
 
 export interface CartActivityEvent {
   id: string;
@@ -59,7 +60,7 @@ export function useCartActivity(streamKey: string) {
         const next = [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateId(),
             userId: data.userId,
             userName: data.userName,
             userColor: data.userColor,
