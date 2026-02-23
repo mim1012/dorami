@@ -17,8 +17,11 @@ const nextConfig: NextConfig = {
     const mediaServerUrl = process.env.MEDIA_SERVER_URL || 'http://127.0.0.1:8080';
 
     return {
-      beforeFiles: [
+      afterFiles: [
         // API proxy: backend 서버로 전달
+        // NOTE: afterFiles (not beforeFiles) so that Next.js Route Handlers
+        // (e.g. /api/csrf) are checked first and served directly, then any
+        // remaining /api/* requests fall through to the backend.
         {
           source: '/api/:path*',
           destination: `${backendUrl}/api/v1/:path*`,
