@@ -22,9 +22,14 @@ export async function GET(request: NextRequest) {
   const token = crypto.randomBytes(32).toString('hex');
   const response = NextResponse.json({ token });
 
+  // Use request protocol to determine secure flag — NODE_ENV is always 'production'
+  // in standalone builds, so it cannot be used to detect HTTP staging environments.
+  const proto = request.headers.get('x-forwarded-proto') ?? '';
+  const isHttps = proto === 'https' || request.url.startsWith('https://');
+
   response.cookies.set('csrf-token', token, {
     httpOnly: false, // Must be readable by JavaScript (getCsrfToken in client.ts)
-    secure: process.env.NODE_ENV === 'production',
+    secure: isHttps,
     sameSite: 'strict',
     maxAge: 24 * 60 * 60, // 24 hours in seconds
     path: '/',
