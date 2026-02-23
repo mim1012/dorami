@@ -167,14 +167,27 @@ export class AdminController {
   }
 
   @Post('orders/bulk-notify')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max CSV
+      fileFilter: (_req, file, callback) => {
+        const allowedMimes = new Set([
+          'text/csv',
+          'application/csv',
+          'application/vnd.ms-excel',
+          'text/plain',
+        ]);
+        const hasAllowedExt = file.originalname.toLowerCase().endsWith('.csv');
+        if (!hasAllowedExt || !allowedMimes.has(file.mimetype)) {
+          return callback(new BadRequestException('Only CSV files are allowed'), false);
+        }
+        callback(null, true);
+      },
+    }),
+  )
   async bulkNotifyShipping(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
-    }
-
-    if (!file.originalname.endsWith('.csv')) {
-      throw new BadRequestException('File must be a CSV');
     }
 
     const csvContent = file.buffer.toString('utf-8');
@@ -287,16 +300,22 @@ export class AdminController {
     });
 
     // 5. SRS active streams via API (best-effort)
+    // SSRF guard: only allow requests to known internal hosts
     let srsStreams = 0;
     try {
       const srsHost = process.env.SRS_API_URL || 'http://localhost:1985';
-      const res = await fetch(`${srsHost}/api/v1/streams/`);
-      if (res.ok) {
-        const data = await res.json();
-        srsStreams = data.streams?.length || 0;
+      const parsedSrsUrl = new URL(srsHost);
+      const allowedSrsHosts = new Set(['localhost', '127.0.0.1', 'srs', '::1']);
+      if (allowedSrsHosts.has(parsedSrsUrl.hostname)) {
+        const safeUrl = `${parsedSrsUrl.origin}/api/v1/streams/`;
+        const srsRes = await fetch(safeUrl, { signal: AbortSignal.timeout(3000) });
+        if (srsRes.ok) {
+          const data = (await srsRes.json()) as { streams?: unknown[] };
+          srsStreams = data.streams?.length ?? 0;
+        }
       }
     } catch {
-      // SRS unreachable — skip
+      // SRS unreachable or invalid URL — skip
     }
 
     return {

@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -153,6 +153,11 @@ export class AuthController {
 
   @Public()
   @SkipCsrf()
+  @Throttle({
+    short: { limit: 5, ttl: 10000 },
+    medium: { limit: 10, ttl: 60000 },
+    long: { limit: 20, ttl: 300000 },
+  })
   @Post('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
     try {
@@ -174,11 +179,12 @@ export class AuthController {
       return res.json({
         data: { message: 'Token refreshed successfully' },
       });
-    } catch (error) {
+    } catch {
+      // Never leak internal error details from token refresh — always return generic 401
       return res.status(401).json({
         statusCode: 401,
         errorCode: 'TOKEN_REFRESH_FAILED',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Token refresh failed',
       });
     }
   }
@@ -188,9 +194,19 @@ export class AuthController {
   async logout(@CurrentUser('userId') userId: string, @Res() res: Response) {
     await this.authService.logout(userId);
 
-    // Clear cookies per Story 2.1
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    // Clear cookies — options must match what was set so the browser honours the deletion
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: this.isProduction,
+      sameSite: this.isProduction ? 'strict' : 'lax',
+      path: '/',
+    });
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: this.isProduction,
+      sameSite: this.isProduction ? 'strict' : 'lax',
+      path: '/',
+    });
 
     return res.json({
       data: { message: 'Logged out successfully' },
@@ -210,7 +226,11 @@ export class AuthController {
    */
   @Public()
   @SkipCsrf()
-  @SkipThrottle({ short: true, medium: true, long: true })
+  @Throttle({
+    short: { limit: 3, ttl: 10000 },
+    medium: { limit: 5, ttl: 60000 },
+    long: { limit: 10, ttl: 300000 },
+  })
   @Post('dev-login')
   async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
     const devAuthEnabled = this.configService.get<string>('ENABLE_DEV_AUTH');
@@ -225,13 +245,14 @@ export class AuthController {
 
     // Upsert user to avoid race conditions with parallel test workers
     // role is always forced to 'USER' — ADMIN cannot be granted via this endpoint
+    const { randomUUID } = await import('crypto');
     const user = await this.prisma.user.upsert({
       where: { email },
       update: {
         lastLoginAt: new Date(),
       },
       create: {
-        kakaoId: `dev_${Date.now()}`,
+        kakaoId: `dev_${randomUUID()}`,
         email,
         name: name || email.split('@')[0],
         role: 'USER',
