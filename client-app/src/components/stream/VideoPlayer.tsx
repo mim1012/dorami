@@ -370,6 +370,8 @@ export default function VideoPlayer({
       }
       setIsBuffering(false);
       setError(null);
+      // 배속 강제 고정 — 라이브 커머스는 실시간 동기화 필수
+      video.playbackRate = 1.0;
       const m = metricsRef.current;
       // Record first frame time
       if (m.firstFrameTime === 0 && m.playStartTime > 0) {
@@ -454,9 +456,17 @@ export default function VideoPlayer({
       }
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
+    // playbackRate 변경 감지 — 사용자가 배속 조절 시 다시 1.0으로 리셋
+    const onRateChange = () => {
+      if (video.playbackRate !== 1.0) {
+        video.playbackRate = 1.0;
+      }
+    };
+
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
     video.addEventListener('stalled', onStalled);
+    video.addEventListener('ratechange', onRateChange);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
     initializeFlvPlayer();
@@ -466,6 +476,7 @@ export default function VideoPlayer({
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
+      video.removeEventListener('ratechange', onRateChange);
       if (bufferingTimerRef.current) {
         clearTimeout(bufferingTimerRef.current);
         bufferingTimerRef.current = null;
