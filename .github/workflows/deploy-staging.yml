@@ -50,6 +50,7 @@ jobs:
   deploy:
     name: Deploy to Staging
     needs: [build]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: staging

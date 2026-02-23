@@ -66,7 +66,7 @@ jobs:
               CMD="docker compose -f docker-compose.staging.yml restart frontend"
               ;;
             db-migrate)
-              CMD="docker compose -f docker-compose.staging.yml exec -T backend npx prisma migrate deploy"
+              CMD="docker compose -f docker-compose.staging.yml exec -T postgres psql -U dorami -d live_commerce -c 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;'"
               ;;
             disk-usage)
               CMD="df -h / && docker system df"
