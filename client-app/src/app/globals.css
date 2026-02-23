@@ -460,8 +460,8 @@ body {
 
 /* ── Live page notice marquee ── */
 @keyframes scrollNotice {
-  0%   { transform: translateX(-50%); }
-  100% { transform: translateX(0); }
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .notice-track {

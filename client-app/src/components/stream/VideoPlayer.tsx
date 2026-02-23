@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
+
+// Module-level Set to ensure only one viewer:join per streamKey across
+// mobile + desktop VideoPlayer instances rendered simultaneously
+const activeViewerKeys = new Set<string>();
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import LiveBadge from './LiveBadge';
@@ -492,7 +496,10 @@ export default function VideoPlayer({
     });
 
     socket.on('connect', () => {
-      socket.emit('stream:viewer:join', { streamKey });
+      if (!activeViewerKeys.has(streamKey)) {
+        activeViewerKeys.add(streamKey);
+        socket.emit('stream:viewer:join', { streamKey });
+      }
     });
 
     // Re-join room after reconnection (WiFi switch, background recovery)
@@ -528,7 +535,10 @@ export default function VideoPlayer({
 
   const disconnectWebSocket = () => {
     if (socketRef.current) {
-      socketRef.current.emit('stream:viewer:leave', { streamKey });
+      if (activeViewerKeys.has(streamKey)) {
+        activeViewerKeys.delete(streamKey);
+        socketRef.current.emit('stream:viewer:leave', { streamKey });
+      }
       socketRef.current.disconnect();
       socketRef.current = null;
     }
