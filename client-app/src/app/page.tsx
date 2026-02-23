@@ -222,7 +222,7 @@ export default function Home() {
       } catch {
         // silent fail on polling
       }
-    }, 30000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);

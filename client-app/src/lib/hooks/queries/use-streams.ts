@@ -56,6 +56,7 @@ export function useUpcomingStreams(limit = 3) {
       });
       return response.data;
     },
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 }
 

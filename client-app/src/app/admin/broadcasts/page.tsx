@@ -120,7 +120,7 @@ export default function BroadcastsPage() {
     fetchLiveStatus();
 
     // Refresh every 10 seconds
-    const interval = setInterval(fetchLiveStatus, 10000);
+    const interval = setInterval(fetchLiveStatus, 10000); // 관리자는 이미 10초
     return () => clearInterval(interval);
   }, [user]);
 
