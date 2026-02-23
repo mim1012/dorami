@@ -152,6 +152,7 @@ export class AuthController {
   }
 
   @Public()
+  @SkipCsrf()
   @Post('refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {
     try {
