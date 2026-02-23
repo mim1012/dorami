@@ -47,10 +47,10 @@ export class AuthController {
 
     // Parse JWT expiration times from environment (e.g., "15m" -> 900000ms)
     this.accessTokenMaxAge = this.parseJwtExpiration(
-      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m'),
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '1h'),
     );
     this.refreshTokenMaxAge = this.parseJwtExpiration(
-      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
     );
   }
 
