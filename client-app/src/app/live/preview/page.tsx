@@ -284,7 +284,11 @@ export default function LivePreviewPage() {
     setMessages((prev) => [...prev.slice(-30), newMsg]);
   };
 
-  const handleAddToCart = (productId: string, selectedColor?: string, selectedSize?: string) => {
+  const handleAddToCart = async (
+    productId: string,
+    selectedColor?: string,
+    selectedSize?: string,
+  ) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
     setCartCount((prev) => prev + 1);
