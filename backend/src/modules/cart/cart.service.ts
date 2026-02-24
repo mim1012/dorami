@@ -151,7 +151,7 @@ export class CartService {
           quantity,
           color,
           size,
-          shippingFee: product.shippingFee,
+          shippingFee: new Decimal(0),
           timerEnabled: product.timerEnabled,
           expiresAt,
           status: 'ACTIVE',
@@ -207,7 +207,7 @@ export class CartService {
 
     const items = cartItems.map((item) => this.mapToResponseDto(item as CartModel));
 
-    return this.calculateCartSummary(items);
+    return this.calculateCartSummary(items, userId);
   }
 
   /**
@@ -415,11 +415,76 @@ export class CartService {
   }
 
   /**
-   * Calculate cart summary
+   * Calculate cart summary with global shipping fee
+   * Shipping is per-order based on SystemConfig settings:
+   * - If broadcast freeShippingEnabled AND subtotal >= freeShippingThreshold: $0
+   * - Else if shipping state === 'CA': caShippingFee
+   * - Else: defaultShippingFee
    */
-  private calculateCartSummary(items: CartItemResponseDto[]): CartSummaryDto {
+  private async calculateCartSummary(
+    items: CartItemResponseDto[],
+    userId?: string,
+  ): Promise<CartSummaryDto> {
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-    const totalShippingFee = items.reduce((sum, item) => sum + item.shippingFee, 0);
+
+    // Calculate global shipping fee
+    let totalShippingFee = 0;
+
+    if (items.length > 0) {
+      // Fetch system config for shipping settings
+      const config = await this.prisma.systemConfig.findFirst();
+      const defaultShippingFee =
+        config?.defaultShippingFee !== null && config?.defaultShippingFee !== undefined
+          ? Number(config.defaultShippingFee)
+          : 10;
+      const caShippingFee =
+        config?.caShippingFee !== null && config?.caShippingFee !== undefined
+          ? Number(config.caShippingFee)
+          : 8;
+      const freeShippingThreshold =
+        config?.freeShippingThreshold !== null && config?.freeShippingThreshold !== undefined
+          ? Number(config.freeShippingThreshold)
+          : 150;
+
+      // Check if any product's live stream has freeShippingEnabled
+      let freeShippingEnabled = false;
+      if (items.length > 0) {
+        const productIds = [...new Set(items.map((item) => item.productId))];
+        const products = await this.prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { streamKey: true },
+        });
+        const streamKeys = [
+          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
+        ] as string[];
+        if (streamKeys.length > 0) {
+          const streams = await this.prisma.liveStream.findMany({
+            where: { streamKey: { in: streamKeys } },
+            select: { freeShippingEnabled: true },
+          });
+          freeShippingEnabled = streams.some((s) => s.freeShippingEnabled);
+        }
+      }
+
+      // Check if free shipping conditions are met
+      if (freeShippingEnabled && subtotal >= freeShippingThreshold) {
+        totalShippingFee = 0;
+      } else {
+        // Determine shipping fee based on user's shipping state
+        let isCA = false;
+        if (userId) {
+          const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { shippingAddress: true },
+          });
+          if (user?.shippingAddress) {
+            const address = user.shippingAddress as Record<string, any>;
+            isCA = address.state === 'CA';
+          }
+        }
+        totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
+      }
+    }
 
     // Find earliest expiration
     const expiringItems = items.filter((item) => item.expiresAt);
@@ -474,8 +539,12 @@ export class CartService {
    * Map Prisma model to Response DTO
    */
   private mapToResponseDto(cartItem: CartModel): CartItemResponseDto {
-    const price = parseFloat(cartItem.price.toString());
-    const shippingFee = parseFloat(cartItem.shippingFee.toString());
+    const price =
+      cartItem.price !== null && cartItem.price !== undefined ? Number(cartItem.price) : 0;
+    const shippingFee =
+      cartItem.shippingFee !== null && cartItem.shippingFee !== undefined
+        ? Number(cartItem.shippingFee)
+        : 0;
     const subtotal = price * cartItem.quantity;
     const total = subtotal + shippingFee;
 

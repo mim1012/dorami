@@ -55,7 +55,13 @@ export default function ProductDetailModal({
         {/* Product Image */}
         <div className="relative w-full aspect-square bg-primary-black">
           {product.imageUrl ? (
-            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="object-cover"
+              unoptimized={product.imageUrl.startsWith('/uploads/')}
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="text-secondary-text">No Image</span>

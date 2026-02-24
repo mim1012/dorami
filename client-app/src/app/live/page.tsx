@@ -133,8 +133,19 @@ export default function LivePage() {
                         onClick={() => router.push(`/live/${stream.streamKey}`)}
                         className="relative aspect-video bg-white rounded-t-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
                       >
-                        {/* 비디오 플레이스홀더 */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-hot-pink/30 to-purple-600/30" />
+                        {/* 썸네일 이미지 */}
+                        {stream.thumbnailUrl && (
+                          <img
+                            src={stream.thumbnailUrl}
+                            alt={stream.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        )}
+
+                        {/* 그라디언트 오버레이 (텍스트 가독성 + 썸네일 없을 때 배경) */}
+                        <div
+                          className={`absolute inset-0 ${stream.thumbnailUrl ? 'bg-gradient-to-t from-black/70 via-black/20 to-transparent' : 'bg-gradient-to-br from-hot-pink/30 to-purple-600/30'}`}
+                        />
 
                         {/* 오버레이 정보 */}
                         <div className="absolute inset-0 p-4 flex flex-col justify-between">

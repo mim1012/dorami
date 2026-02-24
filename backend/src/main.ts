@@ -49,7 +49,8 @@ async function bootstrap() {
   logger.log('AppModule created');
 
   // Serve static files from uploads directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // process.cwd() == backend/ (workspace root), __dirname == dist/src/ after compile
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
   logger.log('Static assets configured');
