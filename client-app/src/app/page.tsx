@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
@@ -197,6 +198,36 @@ export default function Home() {
 
     fetchData();
 
+    // WebSocket connection for real-time upcoming streams updates
+    const ws = io(
+      process.env.NEXT_PUBLIC_WS_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
+      {
+        withCredentials: true,
+      },
+    );
+
+    ws.on('upcoming:updated', (data: { streams: any[] }) => {
+      if (data.streams && data.streams.length > 0) {
+        const lives = data.streams.map((s) => ({
+          id: s.id,
+          streamKey: s.streamKey,
+          title: s.title,
+          scheduledTime: new Date(s.scheduledTime || s.scheduledStartTime || Date.now() + 3600000),
+          thumbnailUrl:
+            s.thumbnailUrl ||
+            'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+          isLive: s.isLive || false,
+        }));
+        setUpcomingLives(lives);
+        if (lives.length > 0) {
+          setNextLiveTime(new Date(lives[0].scheduledTime));
+          setIsNextLiveActive(lives[0].isLive);
+        }
+      }
+    });
+
+    // Keep HTTP polling as fallback (10s interval)
     const interval = setInterval(async () => {
       try {
         const apiStreams = await getUpcomingStreams(3);
@@ -224,7 +255,10 @@ export default function Home() {
       }
     }, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      ws.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleSearch = (query: string) => {

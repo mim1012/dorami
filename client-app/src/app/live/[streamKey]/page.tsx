@@ -626,80 +626,52 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* 6. Active product card + trigger at bottom */}
-        <div className="px-4 pt-3 pb-2 space-y-2 flex-shrink-0">
-          {displayedProduct && (
-            <div
-              className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm cursor-pointer active:bg-white/10 transition-all"
-              onClick={() => handleProductClick(displayedProduct)}
-            >
-              {displayedProduct.imageUrl && (
-                <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
-                  <Image
-                    src={displayedProduct.imageUrl}
-                    alt={displayedProduct.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm truncate">{displayedProduct.name}</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {displayedProduct.discountRate && displayedProduct.discountRate > 0 ? (
-                    <>
-                      <span className="text-white/40 text-xs line-through">
-                        $
-                        {(
-                          displayedProduct.originalPrice ?? displayedProduct.price
-                        ).toLocaleString()}
-                      </span>
-                      <span className="text-red-400 text-xs font-bold">
-                        {displayedProduct.discountRate}%
-                      </span>
-                    </>
-                  ) : null}
-                  <span className="text-[#FF007A] font-black text-base">
-                    ${displayedProduct.price.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <button
-                className="h-10 min-w-[88px] px-4 py-2 bg-[#FF007A] text-white text-sm font-bold rounded-xl flex-shrink-0 active:bg-[#CC0062] active:scale-95 transition-all disabled:opacity-50"
-                disabled={displayedProduct.status === 'SOLD_OUT'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleProductClick(displayedProduct);
-                }}
-              >
-                구매하기
-              </button>
+        {/* 6. Horizontal scroll product cards */}
+        {allProducts.length > 0 && (
+          <div className="flex-shrink-0 px-3 pb-3 pt-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+              {allProducts.map((product) => {
+                const isSoldOut = product.status === ProductStatus.SOLD_OUT;
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => !isSoldOut && handleProductClick(product)}
+                    className={`snap-start shrink-0 w-[160px] flex items-center gap-2.5
+                               p-3 rounded-2xl border transition-all
+                               ${
+                                 isSoldOut
+                                   ? 'opacity-50 cursor-not-allowed bg-white/3 border-white/5'
+                                   : 'cursor-pointer bg-white/5 border-white/10 active:bg-white/10'
+                               }`}
+                  >
+                    {/* 썸네일 */}
+                    <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                      {product.imageUrl && (
+                        <Image
+                          src={product.imageUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    {/* 이름 + 가격 */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-xs font-semibold truncate">{product.name}</p>
+                      {isSoldOut ? (
+                        <p className="text-white/40 text-xs mt-0.5">품절</p>
+                      ) : (
+                        <p className="text-[#FF007A] text-xs font-black mt-0.5">
+                          {product.price.toLocaleString()}원
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-          {allProducts.length > 1 && (
-            <button
-              onClick={() => setIsProductSheetOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/3 border border-white/8 active:bg-white/8 transition-all"
-            >
-              <span className="text-white/50 text-sm">전체 상품 보기</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-white/30 text-xs">{allProducts.length}개</span>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  className={`opacity-30 transition-transform duration-300 ${isProductSheetOpen ? 'rotate-90' : ''}`}
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 7. Quick action bar — in-flow at bottom */}
         <div
