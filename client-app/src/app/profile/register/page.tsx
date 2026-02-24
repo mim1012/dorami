@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
 import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
 import { US_STATES } from '@/lib/constants/us-states';
@@ -69,6 +70,13 @@ export default function ProfileRegisterPage() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  // 이미 프로필이 완성된 유저가 이 페이지에 오면 홈으로 이동
+  useEffect(() => {
+    if (!authLoading && user?.instagramId && user?.depositorName) {
+      router.replace('/');
     }
   }, [user, authLoading, router]);
 
@@ -154,6 +162,12 @@ export default function ProfileRegisterPage() {
     try {
       await apiClient.post('/users/complete-profile', formData);
       await refreshProfile();
+      // refreshProfile은 실패해도 throw하지 않으므로, 스토어 상태를 직접 확인
+      const updatedUser = useAuthStore.getState().user;
+      if (!updatedUser?.instagramId || !updatedUser?.depositorName) {
+        setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
       router.push('/');
     } catch (error: any) {
       console.error('Profile completion error:', error);
