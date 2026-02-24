@@ -249,6 +249,8 @@ export default function AdminProductsPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
+  const [defaultShippingFee, setDefaultShippingFee] = useState('');
+
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
     name: '',
@@ -256,7 +258,7 @@ export default function AdminProductsPage() {
     stock: '',
     colorOptions: '',
     sizeOptions: '',
-    shippingFee: '3000',
+    shippingFee: '',
     freeShippingMessage: '',
     timerEnabled: false,
     timerDuration: '10',
@@ -289,6 +291,16 @@ export default function AdminProductsPage() {
       }
     };
     fetchActiveLiveKey();
+  }, []);
+
+  // Load default shipping fee from settings
+  useEffect(() => {
+    apiClient
+      .get<{ defaultShippingFee: number }>('/admin/config/settings')
+      .then(({ data }) => {
+        setDefaultShippingFee(String(data.defaultShippingFee ?? ''));
+      })
+      .catch(() => {});
   }, []);
 
   // Client-side filtered products (Feature 5)
@@ -489,7 +501,7 @@ export default function AdminProductsPage() {
         stock: '',
         colorOptions: '',
         sizeOptions: '',
-        shippingFee: '3000',
+        shippingFee: defaultShippingFee,
         freeShippingMessage: '',
         timerEnabled: false,
         timerDuration: '10',
