@@ -74,6 +74,10 @@ test-results/
 playwright-report/
 screenshots/
 
+# User uploads (track directory structure, ignore uploaded files)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Temporary
 test_output.txt
 temp/
