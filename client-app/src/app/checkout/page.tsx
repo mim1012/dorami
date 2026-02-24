@@ -55,7 +55,9 @@ export default function CheckoutPage() {
     loadConfig();
   }, []);
 
-  const orderTotal = cartData?.subtotal ?? 0;
+  const orderSubtotal = cartData?.subtotal ?? 0;
+  const shippingFee = cartData?.totalShippingFee ?? 0;
+  const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig
     ? Math.floor(orderTotal * (pointsConfig.pointMaxRedemptionPct / 100))
@@ -162,11 +164,13 @@ export default function CheckoutPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <Body className="text-secondary-text">상품 금액</Body>
-              <Body className="text-primary-text">{formatPrice(orderTotal)}</Body>
+              <Body className="text-primary-text">{formatPrice(orderSubtotal)}</Body>
             </div>
             <div className="flex justify-between items-center">
               <Body className="text-secondary-text">배송비</Body>
-              <Body className="text-primary-text">무료</Body>
+              <Body className="text-primary-text">
+                {shippingFee === 0 ? '무료' : formatPrice(shippingFee)}
+              </Body>
             </div>
             {effectivePointsUsed > 0 && (
               <div className="flex justify-between items-center">

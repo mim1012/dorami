@@ -171,6 +171,7 @@ export default function FeaturedProductManager({
                 alt={currentFeatured.name}
                 fill
                 className="object-cover"
+                unoptimized={(currentFeatured.imageUrl || '').startsWith('/uploads/')}
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -237,6 +238,7 @@ export default function FeaturedProductManager({
                         alt={product.name}
                         fill
                         className="object-cover"
+                        unoptimized={(product.imageUrl || '').startsWith('/uploads/')}
                       />
                     </div>
                     <div className="flex-1 min-w-0">

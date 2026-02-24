@@ -59,9 +59,6 @@ export function CartItemCard({
           <div className="flex items-center justify-between">
             <div>
               <Body className="text-hot-pink font-bold text-lg">{formatPrice(item.price)}</Body>
-              {item.shippingFee > 0 && (
-                <Caption className="text-secondary-text">배송비: {formatPrice(item.shippingFee)}</Caption>
-              )}
             </div>
 
             {item.status === 'ACTIVE' && (

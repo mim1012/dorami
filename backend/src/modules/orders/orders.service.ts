@@ -30,7 +30,6 @@ interface OrderWithItems extends Order {
 // Type for order totals calculation
 interface OrderTotalsInput {
   price: Decimal | number;
-  shippingFee: Decimal | number;
   quantity: number;
 }
 
@@ -77,12 +76,14 @@ export class OrdersService {
       const cartItems = await this.prisma.cart.findMany({
         where: { userId, status: 'ACTIVE' },
       });
-      const totals = this.calculateOrderTotals(
+      const cartProductIds = cartItems.map((item) => item.productId);
+      const totals = await this.calculateOrderTotals(
         cartItems.map((item) => ({
           price: item.price,
-          shippingFee: item.shippingFee,
           quantity: item.quantity,
         })),
+        userId,
+        cartProductIds,
       );
       await this.pointsService.validateRedemption(userId, pointsToUse, totals.total);
     }
@@ -127,13 +128,15 @@ export class OrdersService {
         });
       }
 
-      // Calculate totals using shared helper (DRY)
-      const totals = this.calculateOrderTotals(
+      // Calculate totals using shared helper (DRY) - now with global shipping
+      const cartProductIds = cartItems.map((item) => item.productId);
+      const totals = await this.calculateOrderTotals(
         cartItems.map((item) => ({
           price: item.price,
-          shippingFee: item.shippingFee,
           quantity: item.quantity,
         })),
+        userId,
+        cartProductIds,
       );
 
       // Apply point discount
@@ -145,7 +148,7 @@ export class OrdersService {
         productName: item.productName,
         quantity: item.quantity,
         price: item.price,
-        shippingFee: item.shippingFee,
+        shippingFee: new Decimal(0),
         color: item.color,
         size: item.size,
         Product: {
@@ -255,20 +258,21 @@ export class OrdersService {
         productName: product.name,
         quantity: item.quantity,
         price: product.price,
-        shippingFee: product.shippingFee,
+        shippingFee: new Decimal(0),
         Product: {
           connect: { id: product.id },
         },
       };
     });
 
-    // Calculate totals using shared helper (DRY)
-    const totals = this.calculateOrderTotals(
+    // Calculate totals using shared helper (DRY) - now with global shipping
+    const totals = await this.calculateOrderTotals(
       orderItemsData.map((item) => ({
         price: item.price,
-        shippingFee: item.shippingFee,
         quantity: item.quantity,
       })),
+      userId,
+      productIds,
     );
 
     // Generate unique order ID outside transaction (uses Redis, not transactional)
@@ -357,18 +361,71 @@ export class OrdersService {
 
   /**
    * Calculate order totals from items (DRY - used by createOrderFromCart and createOrder)
+   * Shipping is now per-order based on global SystemConfig settings:
+   * - If broadcast freeShippingEnabled AND subtotal >= freeShippingThreshold: $0
+   * - Else if shipping state === 'CA': caShippingFee
+   * - Else: defaultShippingFee
    */
-  private calculateOrderTotals(items: OrderTotalsInput[]): OrderTotals {
+  private async calculateOrderTotals(
+    items: OrderTotalsInput[],
+    userId?: string,
+    productIds?: string[],
+  ): Promise<OrderTotals> {
     let subtotal = 0;
-    let totalShippingFee = 0;
 
     items.forEach((item) => {
       const price = typeof item.price === 'number' ? item.price : Number(item.price);
-      const shippingFee =
-        typeof item.shippingFee === 'number' ? item.shippingFee : Number(item.shippingFee);
       subtotal += price * item.quantity;
-      totalShippingFee += shippingFee;
     });
+
+    // Calculate global shipping fee
+    let totalShippingFee = 0;
+
+    if (items.length > 0) {
+      const config = await this.prisma.systemConfig.findFirst();
+      const defaultShippingFee = config ? parseFloat(config.defaultShippingFee.toString()) : 10;
+      const caShippingFee = config ? parseFloat(config.caShippingFee.toString()) : 8;
+      const freeShippingThreshold = config
+        ? parseFloat(config.freeShippingThreshold.toString())
+        : 150;
+
+      // Check if any product's live stream has freeShippingEnabled
+      let freeShippingEnabled = false;
+      if (productIds && productIds.length > 0) {
+        const products = await this.prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { streamKey: true },
+        });
+        const streamKeys = [
+          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
+        ] as string[];
+        if (streamKeys.length > 0) {
+          const streams = await this.prisma.liveStream.findMany({
+            where: { streamKey: { in: streamKeys } },
+            select: { freeShippingEnabled: true },
+          });
+          freeShippingEnabled = streams.some((s) => s.freeShippingEnabled);
+        }
+      }
+
+      if (freeShippingEnabled && subtotal >= freeShippingThreshold) {
+        totalShippingFee = 0;
+      } else {
+        // Determine by user's shipping state
+        let isCA = false;
+        if (userId) {
+          const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { shippingAddress: true },
+          });
+          if (user?.shippingAddress) {
+            const address = user.shippingAddress as Record<string, any>;
+            isCA = address.state === 'CA';
+          }
+        }
+        totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
+      }
+    }
 
     return {
       subtotal,

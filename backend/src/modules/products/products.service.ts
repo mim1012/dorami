@@ -26,8 +26,6 @@ interface ProductUpdateData {
   quantity?: number;
   colorOptions?: string[];
   sizeOptions?: string[];
-  shippingFee?: Decimal;
-  freeShippingMessage?: string | null;
   timerEnabled?: boolean;
   timerDuration?: number;
   imageUrl?: string | null;
@@ -75,8 +73,8 @@ export class ProductsService {
         quantity: createDto.stock,
         colorOptions: createDto.colorOptions || [],
         sizeOptions: createDto.sizeOptions || [],
-        shippingFee: new Decimal(createDto.shippingFee || 0),
-        freeShippingMessage: createDto.freeShippingMessage,
+        shippingFee: new Decimal(0),
+        freeShippingMessage: null,
         timerEnabled: createDto.timerEnabled || false,
         timerDuration: createDto.timerDuration || 10,
         imageUrl: createDto.imageUrl,
@@ -190,12 +188,7 @@ export class ProductsService {
     if (updateDto.sizeOptions !== undefined) {
       updateData.sizeOptions = updateDto.sizeOptions;
     }
-    if (updateDto.shippingFee !== undefined) {
-      updateData.shippingFee = new Decimal(updateDto.shippingFee);
-    }
-    if (updateDto.freeShippingMessage !== undefined) {
-      updateData.freeShippingMessage = updateDto.freeShippingMessage;
-    }
+    // shippingFee and freeShippingMessage are deprecated (global shipping now)
     if (updateDto.timerEnabled !== undefined) {
       updateData.timerEnabled = updateDto.timerEnabled;
     }

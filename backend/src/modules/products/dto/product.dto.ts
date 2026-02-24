@@ -8,7 +8,6 @@ import {
   Min,
   Max,
   MaxLength,
-  IsUrl,
   IsNotEmpty,
   ArrayMinSize,
   ArrayMaxSize,
@@ -74,16 +73,22 @@ export class CreateProductDto {
   @IsString({ each: true })
   sizeOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Shipping fee in KRW', example: 3000, default: 0 })
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
+  @ApiPropertyOptional({
+    description: 'Shipping fee (deprecated - use global settings)',
+    deprecated: true,
+    default: 0,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Type(() => Number)
   shippingFee?: number;
 
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
   @ApiPropertyOptional({
-    description: 'Free shipping message',
-    example: 'Free shipping over $50',
+    description: 'Free shipping message (deprecated - use global settings)',
+    deprecated: true,
     maxLength: 50,
   })
   @IsOptional()
@@ -104,12 +109,12 @@ export class CreateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 60,
+    maximum: 4800,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(60)
+  @Max(4800)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -118,7 +123,7 @@ export class CreateProductDto {
     example: 'https://example.com/product.jpg',
   })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @ApiPropertyOptional({
@@ -128,7 +133,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
-  @IsUrl({}, { each: true })
+  @IsString({ each: true })
   images?: string[];
 
   @ApiPropertyOptional({
@@ -226,16 +231,21 @@ export class UpdateProductDto {
   @IsString({ each: true })
   sizeOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Shipping fee in KRW', example: 3000 })
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
+  @ApiPropertyOptional({
+    description: 'Shipping fee (deprecated - use global settings)',
+    deprecated: true,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Type(() => Number)
   shippingFee?: number;
 
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
   @ApiPropertyOptional({
-    description: 'Free shipping message',
-    example: 'Free shipping over $50',
+    description: 'Free shipping message (deprecated - use global settings)',
+    deprecated: true,
     maxLength: 50,
   })
   @IsOptional()
@@ -252,12 +262,12 @@ export class UpdateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 60,
+    maximum: 4800,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(60)
+  @Max(4800)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -266,7 +276,7 @@ export class UpdateProductDto {
     example: 'https://example.com/product.jpg',
   })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @ApiPropertyOptional({
@@ -276,7 +286,7 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
-  @IsUrl({}, { each: true })
+  @IsString({ each: true })
   images?: string[];
 
   @ApiPropertyOptional({
