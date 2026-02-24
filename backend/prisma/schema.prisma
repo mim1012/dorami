@@ -363,6 +363,10 @@ model SystemConfig {
   pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
   pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
 
+  // Zelle Payment Settings
+  zelleEmail          String  @default("") @map("zelle_email")
+  zelleRecipientName  String  @default("") @map("zelle_recipient_name")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
