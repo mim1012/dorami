@@ -38,9 +38,12 @@ export class StreamingService {
         where: {
           OR: [{ status: 'LIVE' }, { status: 'PENDING', expiresAt: { gte: new Date() } }],
         },
-        orderBy: {
-          createdAt: 'asc',
-        },
+        orderBy: [
+          // LIVE 스트림 우선, 그 다음 scheduledAt 오름차순
+          { status: 'asc' }, // LIVE < OFFLINE < PENDING (alphabetical) — 별도 정렬로 보완
+          { scheduledAt: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'asc' },
+        ],
         take: limit,
         include: {
           user: {
@@ -52,11 +55,17 @@ export class StreamingService {
         },
       });
 
-      return streams.map((stream) => ({
+      // LIVE 스트림을 맨 앞으로 정렬
+      const sorted = [
+        ...streams.filter((s) => s.status === 'LIVE'),
+        ...streams.filter((s) => s.status !== 'LIVE'),
+      ];
+
+      return sorted.map((stream) => ({
         id: stream.id,
         streamKey: stream.streamKey,
         title: stream.title,
-        scheduledTime: stream.scheduledAt || stream.expiresAt,
+        scheduledTime: stream.scheduledAt ?? null, // expiresAt fallback 제거
         thumbnailUrl: stream.thumbnailUrl || null,
         isLive: stream.status === 'LIVE',
         streamer: {
@@ -137,12 +146,15 @@ export class StreamingService {
       );
     }
 
-    const data: { title?: string; expiresAt?: Date } = {};
+    const data: { title?: string; expiresAt?: Date; thumbnailUrl?: string | null } = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
     }
     if (dto.expiresAt !== undefined) {
       data.expiresAt = new Date(dto.expiresAt);
+    }
+    if (dto.thumbnailUrl !== undefined) {
+      data.thumbnailUrl = dto.thumbnailUrl || null;
     }
 
     const updated = await this.prisma.liveStream.update({

@@ -39,6 +39,10 @@ export class UpdateStreamDto {
   @IsDateString()
   @IsOptional()
   expiresAt?: string; // ISO 8601 format
+
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
 }
 
 export class StreamStatusDto {
