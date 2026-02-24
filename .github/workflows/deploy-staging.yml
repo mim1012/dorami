@@ -102,6 +102,9 @@ jobs:
             export STAGING_HOST=${HOST}
             docker compose -f docker-compose.staging.yml pull
 
+            echo "=== Resolving any failed migrations ==="
+            docker compose -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
+
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
 
