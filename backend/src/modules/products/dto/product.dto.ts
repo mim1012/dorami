@@ -8,7 +8,6 @@ import {
   Min,
   Max,
   MaxLength,
-  IsUrl,
   IsNotEmpty,
   ArrayMinSize,
   ArrayMaxSize,
@@ -61,7 +60,9 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   colorOptions?: string[];
 
   @ApiPropertyOptional({
@@ -71,19 +72,27 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   sizeOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Shipping fee in KRW', example: 3000, default: 0 })
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
+  @ApiPropertyOptional({
+    description: 'Shipping fee (deprecated - use global settings)',
+    deprecated: true,
+    default: 0,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Type(() => Number)
   shippingFee?: number;
 
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
   @ApiPropertyOptional({
-    description: 'Free shipping message',
-    example: 'Free shipping over $50',
+    description: 'Free shipping message (deprecated - use global settings)',
+    deprecated: true,
     maxLength: 50,
   })
   @IsOptional()
@@ -104,12 +113,12 @@ export class CreateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 60,
+    maximum: 2880,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(60)
+  @Max(2880)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -118,7 +127,7 @@ export class CreateProductDto {
     example: 'https://example.com/product.jpg',
   })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @ApiPropertyOptional({
@@ -128,7 +137,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
-  @IsUrl({}, { each: true })
+  @IsString({ each: true })
   images?: string[];
 
   @ApiPropertyOptional({
@@ -213,7 +222,9 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   colorOptions?: string[];
 
   @ApiPropertyOptional({
@@ -223,19 +234,26 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   sizeOptions?: string[];
 
-  @ApiPropertyOptional({ description: 'Shipping fee in KRW', example: 3000 })
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
+  @ApiPropertyOptional({
+    description: 'Shipping fee (deprecated - use global settings)',
+    deprecated: true,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Type(() => Number)
   shippingFee?: number;
 
+  /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
   @ApiPropertyOptional({
-    description: 'Free shipping message',
-    example: 'Free shipping over $50',
+    description: 'Free shipping message (deprecated - use global settings)',
+    deprecated: true,
     maxLength: 50,
   })
   @IsOptional()
@@ -252,12 +270,12 @@ export class UpdateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 60,
+    maximum: 2880,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(60)
+  @Max(2880)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -266,7 +284,7 @@ export class UpdateProductDto {
     example: 'https://example.com/product.jpg',
   })
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @ApiPropertyOptional({
@@ -276,7 +294,7 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
-  @IsUrl({}, { each: true })
+  @IsString({ each: true })
   images?: string[];
 
   @ApiPropertyOptional({
@@ -287,6 +305,38 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description: 'Display NEW badge on product card',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isNew?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Discount rate percentage (0-100)',
+    example: 15,
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  discountRate?: number;
+
+  @ApiPropertyOptional({
+    description: 'Original price before discount',
+    example: 35000,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  originalPrice?: number;
 
   // Legacy field support (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })

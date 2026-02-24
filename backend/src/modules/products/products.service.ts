@@ -26,13 +26,14 @@ interface ProductUpdateData {
   quantity?: number;
   colorOptions?: string[];
   sizeOptions?: string[];
-  shippingFee?: Decimal;
-  freeShippingMessage?: string | null;
   timerEnabled?: boolean;
   timerDuration?: number;
   imageUrl?: string | null;
   images?: string[];
   status?: PrismaProductStatus;
+  isNew?: boolean;
+  discountRate?: Decimal | null;
+  originalPrice?: Decimal | null;
 }
 
 @Injectable()
@@ -75,12 +76,21 @@ export class ProductsService {
         quantity: createDto.stock,
         colorOptions: createDto.colorOptions || [],
         sizeOptions: createDto.sizeOptions || [],
-        shippingFee: new Decimal(createDto.shippingFee || 0),
-        freeShippingMessage: createDto.freeShippingMessage,
+        shippingFee: new Decimal(0),
+        freeShippingMessage: null,
         timerEnabled: createDto.timerEnabled || false,
         timerDuration: createDto.timerDuration || 10,
         imageUrl: createDto.imageUrl,
         images: createDto.images || [],
+        isNew: createDto.isNew || false,
+        discountRate:
+          createDto.discountRate !== null && createDto.discountRate !== undefined
+            ? new Decimal(createDto.discountRate)
+            : null,
+        originalPrice:
+          createDto.originalPrice !== null && createDto.originalPrice !== undefined
+            ? new Decimal(createDto.originalPrice)
+            : null,
       },
     });
 
@@ -190,12 +200,7 @@ export class ProductsService {
     if (updateDto.sizeOptions !== undefined) {
       updateData.sizeOptions = updateDto.sizeOptions;
     }
-    if (updateDto.shippingFee !== undefined) {
-      updateData.shippingFee = new Decimal(updateDto.shippingFee);
-    }
-    if (updateDto.freeShippingMessage !== undefined) {
-      updateData.freeShippingMessage = updateDto.freeShippingMessage;
-    }
+    // shippingFee and freeShippingMessage are deprecated (global shipping now)
     if (updateDto.timerEnabled !== undefined) {
       updateData.timerEnabled = updateDto.timerEnabled;
     }
@@ -210,6 +215,21 @@ export class ProductsService {
     }
     if (updateDto.status !== undefined) {
       updateData.status = updateDto.status as PrismaProductStatus;
+    }
+    if (updateDto.isNew !== undefined) {
+      updateData.isNew = updateDto.isNew;
+    }
+    if (updateDto.discountRate !== undefined) {
+      updateData.discountRate =
+        updateDto.discountRate !== null && updateDto.discountRate !== undefined
+          ? new Decimal(updateDto.discountRate)
+          : null;
+    }
+    if (updateDto.originalPrice !== undefined) {
+      updateData.originalPrice =
+        updateDto.originalPrice !== null && updateDto.originalPrice !== undefined
+          ? new Decimal(updateDto.originalPrice)
+          : null;
     }
 
     const product = await this.prisma.product.update({

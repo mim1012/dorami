@@ -113,6 +113,29 @@ export class InventoryService {
   }
 
   /**
+   * Batch stock restore using a provided transaction client (for atomic cancellation)
+   */
+  async batchRestoreStockTx(
+    tx: Prisma.TransactionClient,
+    items: { productId: string; quantity: number }[],
+  ): Promise<void> {
+    for (const item of items) {
+      const product = await tx.product.findUnique({ where: { id: item.productId } });
+      if (!product) {
+        continue;
+      } // Product may have been deleted
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          quantity: { increment: item.quantity },
+          // Only restore to AVAILABLE if currently SOLD_OUT (don't override other statuses)
+          ...(product.status === 'SOLD_OUT' ? { status: 'AVAILABLE' } : {}),
+        },
+      });
+    }
+  }
+
+  /**
    * Batch stock decrease for multiple products
    */
   async batchDecreaseStock(

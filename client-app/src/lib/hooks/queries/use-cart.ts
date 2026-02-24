@@ -46,7 +46,7 @@ export function useCart() {
   return useQuery({
     queryKey: cartKeys.summary(),
     queryFn: async () => {
-      const response = await apiClient.get<CartSummary>('/v1/cart');
+      const response = await apiClient.get<CartSummary>('/cart');
       return response.data;
     },
     refetchInterval: (query) => {
@@ -66,7 +66,7 @@ export function useUpdateCartItem() {
 
   return useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const response = await apiClient.patch(`/v1/cart/${itemId}`, { quantity });
+      const response = await apiClient.patch(`/cart/${itemId}`, { quantity });
       return response.data;
     },
     onMutate: async ({ itemId, quantity }) => {
@@ -77,14 +77,12 @@ export function useUpdateCartItem() {
         if (!old) return old;
         const items = old.items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
         const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-        const totalShippingFee = items.reduce((sum, i) => sum + i.shippingFee, 0);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
           subtotal,
-          totalShippingFee,
-          grandTotal: subtotal + totalShippingFee,
+          grandTotal: subtotal + old.totalShippingFee,
         };
       });
 
@@ -107,7 +105,7 @@ export function useRemoveCartItem() {
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      const response = await apiClient.delete(`/v1/cart/${itemId}`);
+      const response = await apiClient.delete(`/cart/${itemId}`);
       return response.data;
     },
     onMutate: async (itemId) => {
@@ -118,14 +116,12 @@ export function useRemoveCartItem() {
         if (!old) return old;
         const items = old.items.filter((item) => item.id !== itemId);
         const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-        const totalShippingFee = items.reduce((sum, i) => sum + i.shippingFee, 0);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
           subtotal,
-          totalShippingFee,
-          grandTotal: subtotal + totalShippingFee,
+          grandTotal: subtotal + old.totalShippingFee,
         };
       });
 
@@ -148,7 +144,7 @@ export function useClearCart() {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await apiClient.delete('/v1/cart');
+      const response = await apiClient.delete('/cart');
       return response.data;
     },
     onMutate: async () => {

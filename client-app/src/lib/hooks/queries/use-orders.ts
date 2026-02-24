@@ -21,10 +21,9 @@ export function useOrders(status?: OrderStatus, page = 1, limit = 20) {
     queryFn: async () => {
       const params: Record<string, any> = { page, limit };
       if (status) params.status = status;
-      const response = await apiClient.get<{ items: Order[]; total: number }>(
-        '/v1/orders',
-        { params }
-      );
+      const response = await apiClient.get<{ items: Order[]; total: number }>('/orders', {
+        params,
+      });
       return response.data;
     },
   });
@@ -35,7 +34,7 @@ export function useOrder(orderId: string) {
   return useQuery({
     queryKey: orderKeys.detail(orderId),
     queryFn: async () => {
-      const response = await apiClient.get<Order>(`/v1/orders/${orderId}`);
+      const response = await apiClient.get<Order>(`/orders/${orderId}`);
       return response.data;
     },
     enabled: !!orderId,
@@ -52,7 +51,7 @@ export function useCreateOrder() {
       depositorName: string;
       instagramId: string;
     }) => {
-      const response = await apiClient.post<Order>('/v1/orders', data);
+      const response = await apiClient.post<Order>('/orders', data);
       return response.data;
     },
     onSuccess: () => {
@@ -68,7 +67,7 @@ export function useCancelOrder() {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      const response = await apiClient.patch(`/v1/orders/${orderId}/cancel`);
+      const response = await apiClient.patch(`/orders/${orderId}/cancel`);
       return response.data;
     },
     onSuccess: (_, orderId) => {

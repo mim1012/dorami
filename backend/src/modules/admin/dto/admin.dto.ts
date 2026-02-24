@@ -328,13 +328,23 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(60)
+  @Max(4800)
   defaultCartTimerMinutes?: number;
 
   @IsOptional()
   @IsNumber()
   @Min(0)
   defaultShippingFee?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  caShippingFee?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  freeShippingThreshold?: number;
 
   @IsOptional()
   @IsString()

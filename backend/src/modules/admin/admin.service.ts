@@ -601,6 +601,14 @@ export class AdminService {
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
+      caShippingFee:
+        config.caShippingFee !== null && config.caShippingFee !== undefined
+          ? parseFloat(config.caShippingFee.toString())
+          : 8,
+      freeShippingThreshold:
+        config.freeShippingThreshold !== null && config.freeShippingThreshold !== undefined
+          ? parseFloat(config.freeShippingThreshold.toString())
+          : 150,
       bankName: config.bankName,
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
@@ -622,6 +630,12 @@ export class AdminService {
     }
     if (dto.defaultShippingFee !== undefined) {
       updateData.defaultShippingFee = dto.defaultShippingFee;
+    }
+    if (dto.caShippingFee !== undefined) {
+      updateData.caShippingFee = dto.caShippingFee;
+    }
+    if (dto.freeShippingThreshold !== undefined) {
+      updateData.freeShippingThreshold = dto.freeShippingThreshold;
     }
     if (dto.bankName !== undefined) {
       updateData.bankName = dto.bankName;
@@ -660,6 +674,14 @@ export class AdminService {
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
+      caShippingFee:
+        config.caShippingFee !== null && config.caShippingFee !== undefined
+          ? parseFloat(config.caShippingFee.toString())
+          : 8,
+      freeShippingThreshold:
+        config.freeShippingThreshold !== null && config.freeShippingThreshold !== undefined
+          ? parseFloat(config.freeShippingThreshold.toString())
+          : 150,
       bankName: config.bankName,
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,

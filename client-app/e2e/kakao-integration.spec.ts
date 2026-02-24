@@ -12,7 +12,7 @@ import { test, expect } from '@playwright/test';
 test.describe('카카오 연동 테스트', () => {
   test.beforeEach(async ({ page }) => {
     // 백엔드 서버 헬스체크 (through Next.js proxy)
-    const response = await page.request.get('/api/v1/health/ready').catch(() => null);
+    const response = await page.request.get('/api/health/ready').catch(() => null);
     if (!response?.ok()) {
       console.log('⚠️ 헬스체크 실패 (프록시 경유) - 테스트 계속 진행');
     }
@@ -31,7 +31,7 @@ test.describe('카카오 연동 테스트', () => {
 
         if (await kakaoLoginLink.isVisible({ timeout: 2000 }).catch(() => false)) {
           const href = await kakaoLoginLink.getAttribute('href');
-          expect(href).toContain('/api/v1/auth/kakao');
+          expect(href).toContain('/api/auth/kakao');
           console.log('✅ 카카오 로그인 링크 확인:', href);
         } else {
           await expect(kakaoLoginButton).toBeVisible();
@@ -45,7 +45,7 @@ test.describe('카카오 연동 테스트', () => {
     test('카카오 인증 API 엔드포인트 확인', async ({ page }) => {
       // 카카오 로그인 시작 엔드포인트 호출 시 리다이렉트 확인
       const response = await page.request
-        .get('/api/v1/auth/kakao', {
+        .get('/api/auth/kakao', {
           maxRedirects: 0,
         })
         .catch(() => null);
@@ -72,7 +72,7 @@ test.describe('카카오 연동 테스트', () => {
 
     test('카카오 콜백 엔드포인트 존재 확인', async ({ page }) => {
       // 콜백 엔드포인트에 직접 접근 (인증 없이는 실패해야 정상)
-      const response = await page.request.get('/api/v1/auth/kakao/callback');
+      const response = await page.request.get('/api/auth/kakao/callback');
 
       // 인증 없이 접근하면 302, 400, 401, 404 중 하나
       // 404는 Passport가 state 파라미터 없이 리다이렉트 처리할 때 발생 가능
@@ -85,7 +85,7 @@ test.describe('카카오 연동 테스트', () => {
   test.describe('2. 카카오 로그인 후 사용자 정보', () => {
     test('Dev 로그인으로 카카오 사용자 시뮬레이션', async ({ page }) => {
       // Dev 로그인 엔드포인트 사용 (ENABLE_DEV_AUTH=true 필요)
-      const response = await page.request.post('/api/v1/auth/dev-login', {
+      const response = await page.request.post('/api/auth/dev-login', {
         data: {
           email: 'kakao_test@example.com',
           name: '카카오 테스트',
@@ -116,7 +116,7 @@ test.describe('카카오 연동 테스트', () => {
 
     test('로그인 후 /auth/me 엔드포인트로 사용자 정보 확인', async ({ page }) => {
       // Dev 로그인 (page.goto로 실제 페이지 방문하여 쿠키 설정)
-      const loginResponse = await page.request.post('/api/v1/auth/dev-login', {
+      const loginResponse = await page.request.post('/api/auth/dev-login', {
         data: {
           email: 'kakao_me_test@example.com',
           name: '카카오 ME',
@@ -136,7 +136,7 @@ test.describe('카카오 연동 테스트', () => {
       await page.goto('/');
 
       // 이제 /auth/me 호출
-      const meResponse = await page.request.get('/api/v1/auth/me');
+      const meResponse = await page.request.get('/api/auth/me');
 
       if (meResponse.ok()) {
         const body = await meResponse.json();
@@ -158,7 +158,7 @@ test.describe('카카오 연동 테스트', () => {
   test.describe('3. 카카오톡 알림 전송', () => {
     test.beforeEach(async ({ page }) => {
       // 모든 알림 테스트 전에 Dev 로그인
-      const response = await page.request.post('/api/v1/auth/dev-login', {
+      const response = await page.request.post('/api/auth/dev-login', {
         data: {
           email: 'notification_test@example.com',
           name: '알림 테스트',
@@ -181,7 +181,7 @@ test.describe('카카오 연동 테스트', () => {
       // 실제 주문 생성 테스트 (API 호출)
       // 주문 생성 API가 있는 경우 테스트
       const orderResponse = await page.request
-        .post('/api/v1/orders', {
+        .post('/api/orders', {
           data: {
             items: [{ productId: 'test-product-1', quantity: 1, price: 10000 }],
             depositorName: '알림테스트',
@@ -309,7 +309,7 @@ test.describe('카카오 연동 테스트', () => {
       console.log('   - KAKAO_CLIENT_ID: 카카오 REST API 키');
       console.log('   - KAKAO_CLIENT_SECRET: 카카오 Client Secret (선택)');
       console.log(
-        '   - KAKAO_CALLBACK_URL: 콜백 URL (예: http://localhost:3001/api/v1/auth/kakao/callback)',
+        '   - KAKAO_CALLBACK_URL: 콜백 URL (예: http://localhost:3001/api/auth/kakao/callback)',
       );
 
       console.log('\n✅ 카카오톡 메시지 환경 변수:');
@@ -350,8 +350,8 @@ test.describe('카카오 연동 통합 시나리오', () => {
   test('전체 플로우: 카카오 로그인 → 주문 → 알림', async ({ page }) => {
     console.log('\n🎯 카카오 연동 전체 플로우:');
     console.log('1. 사용자가 "카카오로 시작하기" 클릭');
-    console.log('2. /api/v1/auth/kakao → 카카오 로그인 페이지 리다이렉트');
-    console.log('3. 카카오 로그인 완료 → /api/v1/auth/kakao/callback');
+    console.log('2. /api/auth/kakao → 카카오 로그인 페이지 리다이렉트');
+    console.log('3. 카카오 로그인 완료 → /api/auth/kakao/callback');
     console.log('4. 사용자 정보 저장 (kakaoId, email, nickname, profileImage)');
     console.log('5. JWT 토큰 발급 및 쿠키 저장');
     console.log('6. 프로필 완성 여부 확인:');

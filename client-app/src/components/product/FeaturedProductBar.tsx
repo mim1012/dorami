@@ -81,7 +81,13 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
       <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
         <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-primary-black">
           {product.imageUrl && (
-            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="object-cover"
+              unoptimized={product.imageUrl.startsWith('/uploads/')}
+            />
           )}
         </div>
         <div className="flex-1 min-w-0">

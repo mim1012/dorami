@@ -33,6 +33,7 @@ function CartItemRow({ item }: { item: CartItem }) {
             fill
             className="object-cover"
             sizes="56px"
+            unoptimized={item.product.imageUrl.startsWith('/uploads/')}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -141,7 +142,11 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
           </div>
           <div className="flex justify-between text-xs text-white/40 mb-4">
             <span>배송비</span>
-            <span>무료</span>
+            <span>
+              {(cartData?.totalShippingFee ?? 0) === 0
+                ? '무료'
+                : formatPrice(cartData?.totalShippingFee ?? 0)}
+            </span>
           </div>
           <button
             onClick={() => {

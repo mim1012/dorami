@@ -70,6 +70,7 @@ model LiveStream {
   endedAt       DateTime?    @map("ended_at")
   totalDuration Int?         @map("total_duration") // seconds
   peakViewers   Int          @default(0) @map("peak_viewers")
+  freeShippingEnabled Boolean  @default(false) @map("free_shipping_enabled")
   scheduledAt   DateTime?    @map("scheduled_at")
   thumbnailUrl  String?      @map("thumbnail_url")
   expiresAt     DateTime     @map("expires_at")
@@ -336,7 +337,9 @@ model SystemConfig {
 
   // General Settings
   defaultCartTimerMinutes  Int     @default(10) @map("default_cart_timer_minutes")
-  defaultShippingFee       Decimal @default(3000) @db.Decimal(10, 2) @map("default_shipping_fee")
+  defaultShippingFee       Decimal @default(10) @db.Decimal(10, 2) @map("default_shipping_fee")
+  caShippingFee            Decimal @default(8) @db.Decimal(10, 2) @map("ca_shipping_fee")
+  freeShippingThreshold    Decimal @default(150) @db.Decimal(10, 2) @map("free_shipping_threshold")
 
   // Bank Account Settings
   bankName           String  @default("KB국민은행") @map("bank_name")
@@ -359,6 +362,10 @@ model SystemConfig {
   pointMaxRedemptionPct  Int     @default(50) @map("point_max_redemption_pct") // max % of order payable with points
   pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
   pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
+
+  // Zelle Payment Settings
+  zelleEmail          String  @default("") @map("zelle_email")
+  zelleRecipientName  String  @default("") @map("zelle_recipient_name")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

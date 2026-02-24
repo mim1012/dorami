@@ -85,7 +85,7 @@ async function authenticate(
   // 1. Call dev-login API at Node.js level (bypasses CORS)
   const apiContext = await request.newContext({ baseURL: BACKEND_URL });
 
-  const loginRes = await apiContext.post('/api/v1/auth/dev-login', {
+  const loginRes = await apiContext.post('/api/auth/dev-login', {
     data: { email, name: `E2E ${role}`, role },
   });
 
@@ -106,7 +106,7 @@ async function authenticate(
   // 2. If USER, complete profile using the same API context (cookies auto-forwarded)
   if (role === 'USER') {
     // GET request triggers CSRF token cookie generation (guard sets csrf-token cookie on GET)
-    const meCheck = await apiContext.get('/api/v1/users/me');
+    const meCheck = await apiContext.get('/api/users/me');
     const meCheckData = meCheck.ok() ? (await meCheck.json()).data : null;
 
     // Only call complete-profile if fields are missing
@@ -114,7 +114,7 @@ async function authenticate(
       const state = await apiContext.storageState();
       const csrfToken = state.cookies.find((c) => c.name === 'csrf-token')?.value ?? '';
 
-      const profileRes = await apiContext.post('/api/v1/users/complete-profile', {
+      const profileRes = await apiContext.post('/api/users/complete-profile', {
         headers: { 'X-CSRF-Token': csrfToken },
         data: {
           depositorName: 'E2E테스트',
@@ -135,7 +135,7 @@ async function authenticate(
   }
 
   // 3. Fetch full user profile
-  const meRes = await apiContext.get('/api/v1/users/me');
+  const meRes = await apiContext.get('/api/users/me');
   if (meRes.ok()) {
     const meData = await meRes.json();
     user = meData.data || user;
@@ -147,7 +147,7 @@ async function authenticate(
     throw new Error(
       `global-setup: USER profile incomplete after complete-profile call. ` +
         `instagramId=${user?.instagramId}, depositorName=${user?.depositorName}. ` +
-        `Check that /api/v1/users/complete-profile succeeded and /api/v1/users/me returns the updated fields.`,
+        `Check that /api/users/complete-profile succeeded and /api/users/me returns the updated fields.`,
     );
   }
 
