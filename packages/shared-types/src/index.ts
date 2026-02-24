@@ -195,15 +195,18 @@ export interface Product {
   id: string;
   streamKey: string;
   name: string;
-  price: string; // Decimal as string
-  quantity: number;
+  price: number;
+  stock: number;
   colorOptions: string[];
   sizeOptions: string[];
-  shippingFee: string; // Decimal as string
+  shippingFee: number;
   freeShippingMessage?: string;
   timerEnabled: boolean;
   timerDuration: number;
   imageUrl?: string;
+  isNew?: boolean;
+  discountRate?: number;
+  originalPrice?: number;
   status: ProductStatus;
   createdAt: string;
   updatedAt: string;
@@ -608,11 +611,15 @@ export function isApiError(obj: any): obj is ApiError {
   return obj && typeof obj.code === 'string' && typeof obj.message === 'string';
 }
 
-export function isSuccessResponse<T>(response: ApiResponse<T>): response is ApiResponse<T> & { success: true; data: T } {
+export function isSuccessResponse<T>(
+  response: ApiResponse<T>,
+): response is ApiResponse<T> & { success: true; data: T } {
   return response.success === true && response.data !== undefined;
 }
 
-export function isErrorResponse(response: ApiResponse<any>): response is ApiResponse<any> & { success: false; error: ApiError } {
+export function isErrorResponse(
+  response: ApiResponse<any>,
+): response is ApiResponse<any> & { success: false; error: ApiError } {
   return response.success === false && response.error !== undefined;
 }
 

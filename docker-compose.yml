@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     ports:
       - '6379:6379'
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -45,7 +45,7 @@ services:
       - '1935:1935'  # RTMP
       - '8080:8080'  # HTTP-FLV + HLS
     volumes:
-      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/srs.conf:ro
+      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
 
 volumes:
   postgres_data:

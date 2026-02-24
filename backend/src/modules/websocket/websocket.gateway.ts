@@ -52,9 +52,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   async handleConnection(client: Socket) {
     try {
-      // Extract and verify JWT token
+      // Extract and verify JWT token — auth.token, Authorization header, or HTTP-only cookie
+      const cookieHeader = client.handshake.headers.cookie as string | undefined;
+      const cookieToken = cookieHeader
+        ? (cookieHeader.match(/(?:^|;\s*)accessToken=([^;]*)/) || [])[1] || null
+        : null;
       const token =
-        client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
+        client.handshake.auth.token ||
+        client.handshake.headers.authorization?.split(' ')[1] ||
+        cookieToken;
 
       if (!token) {
         this.logger.warn(`Client ${client.id} connected without token`);

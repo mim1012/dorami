@@ -27,18 +27,16 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
   const isDeleted = message.isDeleted || false;
 
   return (
-    <div className={`animate-fade-in ${compact ? 'mb-2 px-3 py-2' : 'mb-3'} ${isDeleted ? 'opacity-50' : ''}`}>
+    <div
+      className={`animate-fade-in ${compact ? 'mb-2 px-3 py-2' : 'mb-3'} ${isDeleted ? 'opacity-50' : ''}`}
+    >
       {/* Username + Timestamp */}
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className={`text-hot-pink font-semibold ${
-          compact ? 'text-[13px]' : 'text-caption'
-        }`}>
+        <span className={`text-hot-pink font-semibold ${compact ? 'text-[13px]' : 'text-caption'}`}>
           @{message.username}
         </span>
         <div className="flex items-center gap-2">
-          <span className={`text-secondary-text ${
-            compact ? 'text-[11px]' : 'text-small'
-          }`}>
+          <span className={`text-white/50 ${compact ? 'text-[11px]' : 'text-small'}`}>
             {formatTime(message.timestamp)}
           </span>
           {isAdmin && !isDeleted && onDelete && (
@@ -54,9 +52,11 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
       </div>
 
       {/* Message Text */}
-      <p className={`text-primary-text whitespace-pre-wrap break-words ${
-        compact ? 'text-[14px] leading-tight' : 'text-body'
-      } ${isDeleted ? 'italic' : ''}`}>
+      <p
+        className={`text-white whitespace-pre-wrap break-words ${
+          compact ? 'text-[14px] leading-tight' : 'text-body'
+        } ${isDeleted ? 'italic' : ''}`}
+      >
         {isDeleted ? '관리자에 의해 삭제된 메시지입니다.' : message.message}
       </p>
     </div>
@@ -65,6 +65,11 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
 
 // Memoize to prevent unnecessary re-renders
 export default React.memo(ChatMessage, (prev, next) => {
-  return prev.message.id === next.message.id &&
-         prev.message.message === next.message.message;
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.message === next.message.message &&
+    prev.message.isDeleted === next.message.isDeleted &&
+    prev.compact === next.compact &&
+    prev.isAdmin === next.isAdmin
+  );
 });

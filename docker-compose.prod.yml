@@ -272,14 +272,20 @@ services:
     image: nginx:alpine
     container_name: dorami-proxy-prod
     restart: always
+    # DOMAIN env var is required for SSL certificate path substitution (envsubst)
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required (e.g. doremi.shop)}
     ports:
       - '80:80'
       - '443:443'
     volumes:
-      - ./infrastructure/docker/nginx-proxy/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx-proxy/nginx.prod.conf:/etc/nginx/nginx.conf.template:ro
       - ./infrastructure/docker/nginx-proxy/conf.d:/etc/nginx/conf.d:ro
       - certbot_conf:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
+    # envsubst replaces ${DOMAIN} in the template; $$DOMAIN escapes docker-compose variable interpolation
+    command: >
+      /bin/sh -c "envsubst '$$DOMAIN' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
     depends_on:
       - frontend
       - backend

@@ -65,10 +65,19 @@ export const configValidationSchema = Joi.object({
   // Streaming (Optional)
   RTMP_SERVER_URL: Joi.string().optional(),
   HLS_SERVER_URL: Joi.string().optional(),
-  RTMP_INTERNAL_URL: Joi.string().optional().default('rtmp://nginx-rtmp:1935/live'),
+  RTMP_INTERNAL_URL: Joi.string().optional().default('rtmp://srs:1935/live'),
+  SRS_API_URL: Joi.string().uri().optional().default('http://localhost:1985'),
 
   // Web Push (VAPID) - Optional
   VAPID_PUBLIC_KEY: Joi.string().optional(),
   VAPID_PRIVATE_KEY: Joi.string().optional(),
   VAPID_SUBJECT: Joi.string().optional(),
+
+  // Redis full URL (alternative to host/port/password)
+  REDIS_URL: Joi.string().uri().optional(),
+
+  // Feature flags
+  ENABLE_DEV_AUTH: Joi.string().valid('true', 'false').default('false'),
+  CSRF_ENABLED: Joi.string().valid('true', 'false').optional(),
+  COOKIE_SECURE: Joi.string().valid('true', 'false').optional(),
 });

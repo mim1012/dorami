@@ -76,7 +76,7 @@ test.describe('Admin Settings Page', () => {
     await expect(page.getByText('이메일 알림 활성화')).toBeVisible();
 
     // 배송 설정
-    await expect(page.getByText('기본 배송비 (원)')).toBeVisible();
+    await expect(page.getByText('기본 배송비 ($)')).toBeVisible();
 
     console.log('Notification and shipping settings displayed');
   });

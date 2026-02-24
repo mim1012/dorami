@@ -19,6 +19,7 @@ out/
 .env
 .env*.local
 .env.production
+.env.staging
 
 # IDE
 .vscode/
@@ -65,6 +66,7 @@ _bmad/
 # Private keys
 *.pem
 *.key
+*.ppk
 
 # Playwright
 **/e2e/.auth/

@@ -22,7 +22,6 @@ interface OrderListItem {
   instagramId: string;
   status: string;
   paymentStatus: string;
-  shippingStatus: string;
   subtotal: number;
   shippingFee: number;
   total: number;
@@ -71,12 +70,6 @@ function AdminOrdersContent() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<string[]>(
     searchParams.get('orderStatus')?.split(',').filter(Boolean) || [],
   );
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string[]>(
-    searchParams.get('paymentStatus')?.split(',').filter(Boolean) || [],
-  );
-  const [shippingStatusFilter, setShippingStatusFilter] = useState<string[]>(
-    searchParams.get('shippingStatus')?.split(',').filter(Boolean) || [],
-  );
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
@@ -103,9 +96,6 @@ function AdminOrdersContent() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
-    if (paymentStatusFilter.length > 0) params.set('paymentStatus', paymentStatusFilter.join(','));
-    if (shippingStatusFilter.length > 0)
-      params.set('shippingStatus', shippingStatusFilter.join(','));
 
     router.push(`/admin/orders?${params.toString()}`, { scroll: false });
   }, [
@@ -117,8 +107,6 @@ function AdminOrdersContent() {
     dateFrom,
     dateTo,
     orderStatusFilter,
-    paymentStatusFilter,
-    shippingStatusFilter,
     router,
   ]);
 
@@ -142,8 +130,6 @@ function AdminOrdersContent() {
         if (dateFrom) params.dateFrom = dateFrom;
         if (dateTo) params.dateTo = dateTo;
         if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
-        if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter;
-        if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter;
 
         const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
 
@@ -169,8 +155,6 @@ function AdminOrdersContent() {
     dateFrom,
     dateTo,
     orderStatusFilter,
-    paymentStatusFilter,
-    shippingStatusFilter,
   ]);
 
   const handleSort = (key: string) => {
@@ -197,25 +181,13 @@ function AdminOrdersContent() {
     setDateFrom('');
     setDateTo('');
     setOrderStatusFilter([]);
-    setPaymentStatusFilter([]);
-    setShippingStatusFilter([]);
     setPage(1);
   };
 
-  const handleStatusToggle = (status: string, filterType: 'order' | 'payment' | 'shipping') => {
-    if (filterType === 'order') {
-      setOrderStatusFilter((prev) =>
-        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
-      );
-    } else if (filterType === 'payment') {
-      setPaymentStatusFilter((prev) =>
-        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
-      );
-    } else {
-      setShippingStatusFilter((prev) =>
-        prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
-      );
-    }
+  const handleStatusToggle = (status: string) => {
+    setOrderStatusFilter((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+    );
     setPage(1);
   };
 
@@ -246,8 +218,6 @@ function AdminOrdersContent() {
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
       if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
-      if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter;
-      if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter;
 
       const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
       setOrders(response.data.orders);
@@ -295,8 +265,6 @@ function AdminOrdersContent() {
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
       if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter.join(',');
-      if (paymentStatusFilter.length > 0) params.paymentStatus = paymentStatusFilter.join(',');
-      if (shippingStatusFilter.length > 0) params.shippingStatus = shippingStatusFilter.join(',');
 
       const queryStr = new URLSearchParams(params).toString();
 
@@ -341,14 +309,15 @@ function AdminOrdersContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
-  const getStatusBadge = (status: string, type: 'order' | 'payment' | 'shipping') => {
-    const orderColors: Record<string, string> = {
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
       PENDING: 'bg-warning/10 text-warning border-warning',
       PENDING_PAYMENT: 'bg-warning/10 text-warning border-warning',
       CONFIRMED: 'bg-success/10 text-success border-success',
@@ -358,21 +327,7 @@ function AdminOrdersContent() {
       CANCELLED: 'bg-error/10 text-error border-error',
     };
 
-    const paymentColors: Record<string, string> = {
-      PENDING: 'bg-warning/10 text-warning border-warning',
-      CONFIRMED: 'bg-success/10 text-success border-success',
-      PAID: 'bg-success/10 text-success border-success',
-      FAILED: 'bg-error/10 text-error border-error',
-    };
-
-    const shippingColors: Record<string, string> = {
-      PENDING: 'bg-secondary-text/10 text-secondary-text border-secondary-text',
-      PROCESSING: 'bg-warning/10 text-warning border-warning',
-      SHIPPED: 'bg-info/10 text-info border-info',
-      DELIVERED: 'bg-success/10 text-success border-success',
-    };
-
-    const orderLabels: Record<string, string> = {
+    const labels: Record<string, string> = {
       PENDING: '입금 대기',
       PENDING_PAYMENT: '입금 대기',
       CONFIRMED: '결제 완료',
@@ -382,28 +337,9 @@ function AdminOrdersContent() {
       CANCELLED: '취소됨',
     };
 
-    const paymentLabels: Record<string, string> = {
-      PENDING: '입금 대기',
-      CONFIRMED: '결제 확인',
-      FAILED: '결제 실패',
-      PAID: '결제 완료',
-    };
-
-    const shippingLabels: Record<string, string> = {
-      PENDING: '대기',
-      PREPARING: '준비중',
-      PROCESSING: '준비중',
-      SHIPPED: '배송중',
-      DELIVERED: '배송 완료',
-    };
-
-    const colorMap =
-      type === 'order' ? orderColors : type === 'payment' ? paymentColors : shippingColors;
-    const labelMap =
-      type === 'order' ? orderLabels : type === 'payment' ? paymentLabels : shippingLabels;
     const color =
-      colorMap[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
-    const label = labelMap[status] || status;
+      colors[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text';
+    const label = labels[status] || status;
 
     return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{label}</span>;
   };
@@ -434,17 +370,7 @@ function AdminOrdersContent() {
     {
       key: 'status',
       label: '주문 상태',
-      render: (order) => getStatusBadge(order.status, 'order'),
-    },
-    {
-      key: 'paymentStatus',
-      label: '결제',
-      render: (order) => getStatusBadge(order.paymentStatus, 'payment'),
-    },
-    {
-      key: 'shippingStatus',
-      label: '배송',
-      render: (order) => getStatusBadge(order.shippingStatus, 'shipping'),
+      render: (order) => getStatusBadge(order.status),
     },
     {
       key: 'total',
@@ -462,12 +388,6 @@ function AdminOrdersContent() {
       label: '주문일',
       sortable: true,
       render: (order) => formatDate(order.createdAt),
-    },
-    {
-      key: 'paidAt',
-      label: '결제일',
-      sortable: true,
-      render: (order) => formatDate(order.paidAt),
     },
     {
       key: 'actions',
@@ -504,13 +424,7 @@ function AdminOrdersContent() {
     },
   ];
 
-  const hasActiveFilters =
-    debouncedSearch ||
-    dateFrom ||
-    dateTo ||
-    orderStatusFilter.length > 0 ||
-    paymentStatusFilter.length > 0 ||
-    shippingStatusFilter.length > 0;
+  const hasActiveFilters = debouncedSearch || dateFrom || dateTo || orderStatusFilter.length > 0;
 
   if (authLoading || (user && user.role !== 'ADMIN')) {
     return (
@@ -605,7 +519,7 @@ function AdminOrdersContent() {
                 ].map(({ value, label }) => (
                   <button
                     key={value}
-                    onClick={() => handleStatusToggle(value, 'order')}
+                    onClick={() => handleStatusToggle(value)}
                     className={`px-4 py-2 rounded-button text-caption transition-colors ${
                       orderStatusFilter.includes(value)
                         ? 'bg-hot-pink text-white'
@@ -618,54 +532,7 @@ function AdminOrdersContent() {
               </div>
             </div>
 
-            {/* Payment Status Filter */}
-            <div>
-              <Body className="text-primary-text font-medium mb-2">결제 상태</Body>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 'PENDING', label: '대기' },
-                  { value: 'CONFIRMED', label: '확인' },
-                  { value: 'FAILED', label: '실패' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => handleStatusToggle(value, 'payment')}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                      paymentStatusFilter.includes(value)
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-white text-secondary-text hover:bg-gray-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Shipping Status Filter */}
-            <div>
-              <Body className="text-primary-text font-medium mb-2">배송 상태</Body>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 'PENDING', label: '대기' },
-                  { value: 'PROCESSING', label: '준비중' },
-                  { value: 'SHIPPED', label: '배송중' },
-                  { value: 'DELIVERED', label: '배송완료' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => handleStatusToggle(value, 'shipping')}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
-                      shippingStatusFilter.includes(value)
-                        ? 'bg-hot-pink text-white'
-                        : 'bg-white text-secondary-text hover:bg-gray-100'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 배송사 미연동 — 배송/결제 필터 불필요 */}
           </div>
         )}
       </div>

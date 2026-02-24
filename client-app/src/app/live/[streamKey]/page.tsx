@@ -4,7 +4,9 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
+import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
@@ -13,15 +15,21 @@ import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 import ProductList from '@/components/product/ProductList';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import FeaturedProductBar from '@/components/product/FeaturedProductBar';
-import CartActivityFeed from '@/components/live/CartActivityFeed';
-import { useCartActivity } from '@/hooks/useCartActivity';
+import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
+import LiveCartSheet from '@/components/live/LiveCartSheet';
+import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
+import { NoticeModal } from '@/components/notices/NoticeModal';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
 import { Body, Heading2 } from '@/components/common/Typography';
+import type { Product } from '@/lib/types';
 import { ProductStatus } from '@live-commerce/shared-types';
 import { MonitorOff, Loader, Eye, Zap } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
+import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
+import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -30,29 +38,12 @@ interface StreamStatus {
   title: string;
 }
 
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
-  isNew?: boolean;
-  status: ProductStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface FeaturedProduct {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
+  discountRate?: number;
   imageUrl?: string;
   stock: number;
   status: string;
@@ -63,15 +54,65 @@ export default function LiveStreamPage() {
   const router = useRouter();
   const streamKey = params.streamKey as string;
 
+  // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
+  useTokenAutoRefresh(streamKey);
+
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { activities: cartActivities } = useCartActivity(streamKey);
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
+  const { data: cartData } = useCart();
+  const [cartActivities, setCartActivities] = useState<
+    Array<{ id: string; userName: string; productName: string; timestamp: string }>
+  >([]);
+  const hasExpiringItem =
+    cartData?.items?.some(
+      (item) =>
+        item.timerEnabled &&
+        item.expiresAt &&
+        item.status === 'ACTIVE' &&
+        new Date(item.expiresAt).getTime() - Date.now() < 60_000,
+    ) ?? false;
   const [viewerCount, setViewerCount] = useState(0);
   const [showViewerPulse, setShowViewerPulse] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [activeProductOverride, setActiveProductOverride] = useState<FeaturedProduct | null>(null);
+  const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const { showToast } = useToast();
+
+  // ── FSM ────────────────────────────────────────────────────────────────────
+  const { snapshot, stream, dispatch } = useLiveLayoutMachine();
+  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
+
+  // ── Reconnect timing: RETRYING → LIVE_NORMAL transition ───────────────────
+  const retryStartRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (snapshot === 'RETRYING' && retryStartRef.current === null) {
+      retryStartRef.current = performance.now();
+    } else if (snapshot === 'LIVE_NORMAL' && retryStartRef.current !== null) {
+      const reconnectDurationMs = Math.round(performance.now() - retryStartRef.current);
+      retryStartRef.current = null;
+      sendStreamMetrics({
+        streamKey,
+        timestamp: new Date().toISOString(),
+        metrics: {
+          firstFrameMs: 0,
+          rebufferCount: 0,
+          stallDurationMs: 0,
+          reconnectCount: 1,
+          totalConnectionTimeMs: reconnectDurationMs,
+        },
+        connectionState: 'RECONNECTING',
+      }).catch(() => {});
+    } else if (snapshot !== 'RETRYING') {
+      // Reset timer if we left RETRYING without recovering (e.g. ENDED)
+      retryStartRef.current = null;
+    }
+  }, [snapshot, streamKey]);
 
   // Shared chat connection — used by both mobile and desktop chat UI
   const {
@@ -91,10 +132,7 @@ export default function LiveStreamPage() {
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
-  // Featured product for mobile inline card
-  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
-
-  // Notice banner (reuses NoticeBox pattern)
+  // Notice banner
   const { data: notice } = useQuery<{ text: string | null }>({
     queryKey: ['notice', 'current'],
     queryFn: async () => {
@@ -171,7 +209,37 @@ export default function LiveStreamPage() {
     return () => clearInterval(interval);
   }, [streamStatus?.startedAt]);
 
-  // Fetch featured product for mobile inline card
+  // ── Socket → FSM dispatch ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+    const handleConnect = () => dispatch({ type: 'CONNECT_OK' });
+    const handleDisconnect = () => dispatch({ type: 'CONNECT_FAIL' });
+    const handleReconnectAttempt = () => dispatch({ type: 'CONNECT_START' });
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.io.on('reconnect_attempt', handleReconnectAttempt);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.io.off('reconnect_attempt', handleReconnectAttempt);
+    };
+  }, [socket, dispatch]);
+
+  // ── Keyboard detection via visualViewport ──────────────────────────────────
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const ratio = vv.height / window.screen.height;
+      dispatch(ratio < 0.75 ? { type: 'OPEN_KEYBOARD' } : { type: 'CLOSE_KEYBOARD' });
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, [dispatch]);
+
+  // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
@@ -180,10 +248,71 @@ export default function LiveStreamPage() {
         );
         setFeaturedProduct(response.data.product);
       } catch {
-        // silently fail — featured product is optional
+        // non-critical
+      }
+    };
+    const fetchAllProducts = async () => {
+      try {
+        const response = await apiClient.get<Product[]>('/products', {
+          params: { streamKey, status: 'AVAILABLE' },
+        });
+        setAllProducts(response.data ?? []);
+      } catch {
+        // non-critical
       }
     };
     fetchFeatured();
+    fetchAllProducts();
+
+    const ws = io(
+      process.env.NEXT_PUBLIC_WS_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
+      {
+        withCredentials: true,
+      },
+    );
+    ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
+    ws.on('stream:featured-product:updated', (data: any) => {
+      if (data.streamKey === streamKey) setFeaturedProduct(data.product);
+    });
+    ws.on('live:product:added', (data: any) => {
+      setAllProducts((prev) => [data.data, ...prev]);
+    });
+    ws.on('live:product:updated', (data: any) => {
+      setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+    });
+    ws.on('live:product:soldout', (data: any) => {
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
+        ),
+      );
+      setFeaturedProduct((prev) => {
+        if (prev && prev.id === data.data.productId) {
+          showToast('이 상품이 품절되었습니다.', 'error');
+          return { ...prev, status: ProductStatus.SOLD_OUT };
+        }
+        return prev;
+      });
+    });
+    ws.on('cart:item-added', (payload: any) => {
+      const data = payload.data ?? payload;
+      setCartActivities((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random()}`,
+            userName: data.userName || '익명',
+            productName: data.productName || '',
+            timestamp: data.timestamp || new Date().toISOString(),
+          },
+        ];
+        return next.length > 50 ? next.slice(-50) : next;
+      });
+    });
+    return () => {
+      ws.disconnect();
+    };
   }, [streamKey]);
 
   const fetchStreamStatus = async () => {
@@ -192,11 +321,11 @@ export default function LiveStreamPage() {
       setStreamStatus(response.data);
 
       if (response.data.status === 'OFFLINE') {
-        setError('This stream is not currently live');
+        setError('현재 방송 중이 아닙니다');
       }
     } catch (err: any) {
       console.error('Failed to fetch stream status:', err);
-      setError('Stream not found');
+      setError('방송을 찾을 수 없습니다');
     } finally {
       setIsLoading(false);
     }
@@ -212,6 +341,10 @@ export default function LiveStreamPage() {
     if (message.trim()) {
       chatSendMessage(message);
     }
+  };
+
+  const handleInquiry = () => {
+    window.open('https://pf.kakao.com/_DeEAX', '_blank', 'noopener,noreferrer');
   };
 
   if (isLoading) {
@@ -239,7 +372,9 @@ export default function LiveStreamPage() {
           <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center shadow-hot-pink">
             <MonitorOff className="w-14 h-14 text-white/40" aria-hidden="true" />
           </div>
-          <Heading2 className="text-white mb-3 text-2xl">{error || 'Stream not found'}</Heading2>
+          <Heading2 className="text-white mb-3 text-2xl">
+            {error || '방송을 찾을 수 없습니다'}
+          </Heading2>
           <p className="text-white/40 text-sm mb-8">스트림을 찾을 수 없거나 종료되었습니다</p>
           <button
             onClick={() => router.push('/')}
@@ -272,9 +407,20 @@ export default function LiveStreamPage() {
     );
   }
 
-  const handleProductClick = (product: Product | FeaturedProduct) => {
-    setSelectedProduct(product as Product);
-    setIsModalOpen(true);
+  const handleProductClick = async (product: Product | FeaturedProduct) => {
+    if ('streamKey' in product && 'colorOptions' in product) {
+      setSelectedProduct(product as Product);
+      setIsModalOpen(true);
+    } else {
+      try {
+        const response = await apiClient.get<Product>(`/products/${product.id}`);
+        setSelectedProduct(response.data);
+        setIsModalOpen(true);
+      } catch (err) {
+        console.error('Failed to fetch product details:', err);
+        showToast('상품 정보를 불러올 수 없습니다.', 'error');
+      }
+    }
   };
 
   const handleAddToCart = async (
@@ -290,17 +436,40 @@ export default function LiveStreamPage() {
         size: selectedSize,
       });
 
-      showToast('장바구니에 담았어요!', 'success');
+      showToast('장바구니에 담았어요!', 'success', {
+        label: '장바구니 보기',
+        onClick: () => router.push('/cart'),
+      });
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
     }
   };
 
+  const displayedProduct: FeaturedProduct | null =
+    activeProductOverride ??
+    featuredProduct ??
+    (allProducts.length > 0 ? (allProducts[0] as FeaturedProduct) : null);
+
+  const handleProductSelectFromSheet = (product: Product) => {
+    setActiveProductOverride({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      discountRate: product.discountRate,
+      imageUrl: product.imageUrl,
+      stock: product.stock,
+      status: product.status,
+    });
+  };
+
+  const layout = computeLayout(snapshot, !!displayedProduct);
+
   return (
-    <div className="live-fullscreen w-full h-screen flex bg-black overflow-hidden">
-      {/* Left: Product List - Desktop Only */}
-      <aside className="hidden lg:block w-[300px] h-full overflow-y-auto bg-[#0A0A0A] border-r border-white/5">
+    <div className="live-fullscreen w-full bg-[#0d0d18] lg:h-screen lg:flex lg:overflow-hidden">
+      {/* ── Left: Product List — Desktop only ── */}
+      <aside className="hidden lg:block w-[260px] xl:w-[300px] h-full overflow-y-auto bg-[#12121e] border-r border-white/5">
         <div className="p-4 border-b border-white/10">
           <h2 className="text-white font-black text-lg flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]"></span>
@@ -310,203 +479,340 @@ export default function LiveStreamPage() {
         <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
       </aside>
 
-      {/* Center: Video Container */}
-      <div className="flex-1 relative flex items-center justify-center">
-        <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black">
+      {/* ── MOBILE: flex-col scroll layout ── */}
+      <div className="flex lg:hidden flex-col w-full bg-[#0d0d18] h-screen overflow-hidden">
+        {/* 1. LIVE status bar — sticky top z-30 */}
+        {layout.topBar.visible && (
+          <div
+            className={`sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3 transition-opacity ${
+              layout.topBar.dim ? 'opacity-40' : 'opacity-100'
+            }`}
+            style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+          >
+            <div className="flex items-center justify-between pb-3">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+                  <Image
+                    src="/logo.png"
+                    alt="Doremi"
+                    width={32}
+                    height={32}
+                    className="object-contain w-full h-full"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight line-clamp-1">
+                    {streamStatus.title}
+                  </p>
+                  {(snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING') && (
+                    <p className="text-white/60 text-[10px] font-mono">{elapsedTime}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {(snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING') &&
+                stream !== 'error' ? (
+                  <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping [animation-duration:2s] absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                    </span>
+                    <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10">
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white/40 animate-pulse" />
+                    <span className="text-white/60 text-[10px] font-bold">연결 중...</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10">
+                  <Eye className="w-3 h-3 text-white/70" />
+                  <span className="text-white text-[10px] font-bold">
+                    {viewerCount.toLocaleString()}
+                  </span>
+                </div>
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"
+                  aria-label="닫기"
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Notice banner — sticky z-20 (only when text exists) */}
+        {notice?.text && (
+          <div className="sticky z-20 bg-[rgba(255,100,100,0.92)] px-3 py-1.5 overflow-hidden">
+            <div className="flex items-center gap-2">
+              <Zap className="w-3 h-3 text-white flex-shrink-0" />
+              <div className="overflow-hidden flex-1">
+                <div className="notice-track text-white text-[11px] font-medium">
+                  <span className="pr-12">{notice.text}</span>
+                  <span className="pr-12">{notice.text}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Video player (50vh) with chat overlay inside */}
+        <div className="relative w-full h-[50vh] bg-black flex-shrink-0 overflow-hidden">
+          {/* Top gradient scrim */}
+          <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
+          {/* Bottom gradient scrim */}
+          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none" />
           <VideoPlayer
             streamKey={streamKey}
             title={streamStatus.title}
             onViewerCountChange={handleViewerCountChange}
+            onStreamError={setVideoError}
+            hideErrorOverlay
+            onStreamStateChange={(e) => {
+              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
+              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
+              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
+              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
+            }}
           />
 
-          {/* ═══════════ MOBILE TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 px-3 py-3 flex items-center justify-between lg:hidden">
-            {/* Brand avatar + label */}
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg">
-                <span className="text-white text-xs font-black">D</span>
-              </div>
-              <span className="text-white font-bold text-sm drop-shadow-lg">도라미LIVE</span>
-            </div>
-
-            {/* Live timer + Viewer count */}
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                </span>
-                <span className="text-white text-[11px] font-mono font-bold">{elapsedTime}</span>
-              </div>
-              <div className="flex items-center gap-1 bg-black/50 backdrop-blur-xl px-2.5 py-1.5 rounded-full border border-white/10">
-                <Eye className="w-3.5 h-3.5 text-white/70" />
-                <span className="text-white text-[11px] font-bold">
-                  {viewerCount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 hidden lg:flex items-center justify-between">
-            {/* Back button */}
-            <button
-              onClick={() => router.push('/')}
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="뒤로가기"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            {/* LIVE badge + Viewer count */}
-            <div className="flex items-center gap-2">
-              {/* LIVE badge with glow */}
-              <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                </span>
-                <span className="text-white text-xs font-black tracking-wider">
-                  LIVE<span className="sr-only"> 현재 생방송 중</span>
-                </span>
-              </div>
-
-              {/* Viewer count with pulse on increase */}
-              <div
-                className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
+          {/* Center overlay */}
+          {layout.centerOverlay.visible && (
+            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
+              <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
+                {layout.centerOverlay.message}
+              </p>
+              {snapshot === 'ENDED' && (
+                <button
+                  onClick={() => router.push('/')}
+                  className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
                 >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span className="text-white text-xs font-bold">{viewerCount.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* Share button */}
-            <button
-              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
-              aria-label="공유하기"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16,6 12,2 8,6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Stream title — Desktop only */}
-          <div className="absolute top-[68px] left-4 right-20 z-20 hidden lg:block">
-            <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
-              {streamStatus.title}
-            </h1>
-          </div>
-
-          {/* ═══════════ MOBILE NOTICE BANNER ═══════════ */}
-          {notice?.text && (
-            <div className="absolute top-14 left-3 right-3 z-20 lg:hidden">
-              <div className="bg-amber-500/20 backdrop-blur-sm border border-amber-500/30 rounded-lg px-3 py-2 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <p className="text-amber-200 text-xs line-clamp-1 font-medium">{notice.text}</p>
-              </div>
+                  홈으로
+                </button>
+              )}
             </div>
           )}
+        </div>
 
-          {/* ═══════════ CART ACTIVITY FEED — Desktop only ═══════════ */}
-          <div className="hidden lg:block">
-            <CartActivityFeed activities={cartActivities} />
+        {/* 4. Chat feed — fills remaining space */}
+        <div className="flex-1 min-h-[160px] overflow-y-auto">
+          <ChatMessageList messages={allMessages} compact maxMessages={50} />
+        </div>
+
+        {/* 5. Chat input — in-flow above product card */}
+        {layout.bottomInput.visible && (
+          <div
+            className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
+            style={{ height: 'var(--live-bottom-bar-h)' }}
+          >
+            <ChatInput
+              compact
+              disabled={layout.bottomInput.disabled || !isConnected}
+              onSendMessage={handleMobileSendMessage}
+              ref={mobileInputRef}
+            />
           </div>
+        )}
 
-          {/* ═══════════ MOBILE BOTTOM SECTION ═══════════ */}
-          <div className="absolute bottom-0 left-0 right-0 z-20 lg:hidden flex flex-col pointer-events-none">
-            {/* Chat messages overlay */}
-            <div className="h-[28vh] mb-1">
-              <ChatMessageList messages={allMessages} compact maxMessages={30} />
-            </div>
-
-            {/* Featured product inline card */}
-            {featuredProduct && (
-              <div className="px-3 pb-2 pointer-events-auto">
-                <div
-                  className="bg-black/60 backdrop-blur-md rounded-xl p-2.5 flex items-center gap-3 border border-white/10"
-                  onClick={() => handleProductClick(featuredProduct)}
-                >
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0 relative">
-                    {featuredProduct.imageUrl && (
-                      <Image
-                        src={featuredProduct.imageUrl}
-                        alt={featuredProduct.name}
-                        fill
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
-                      {featuredProduct.name}
-                    </p>
-                    <p className="text-[#FF007A] font-bold text-sm">
-                      ₩{featuredProduct.price.toLocaleString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleProductClick(featuredProduct);
-                    }}
-                    className="bg-[#FF007A] hover:bg-[#E00070] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex-shrink-0"
+        {/* 6. Horizontal scroll product cards */}
+        {allProducts.length > 0 && (
+          <div className="flex-shrink-0 px-3 pb-3 pt-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+              {allProducts.map((product) => {
+                const isSoldOut = product.status === ProductStatus.SOLD_OUT;
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => !isSoldOut && handleProductClick(product)}
+                    className={`snap-start shrink-0 w-[160px] flex items-center gap-2.5
+                               p-3 rounded-2xl border transition-all
+                               ${
+                                 isSoldOut
+                                   ? 'opacity-50 cursor-not-allowed bg-white/3 border-white/5'
+                                   : 'cursor-pointer bg-white/5 border-white/10 active:bg-white/10'
+                               }`}
                   >
-                    구매
-                  </button>
-                </div>
-              </div>
-            )}
+                    {/* 썸네일 */}
+                    <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5">
+                      {product.imageUrl && (
+                        <Image
+                          src={product.imageUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    {/* 이름 + 가격 */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-xs font-semibold truncate">{product.name}</p>
+                      {isSoldOut ? (
+                        <p className="text-white/40 text-xs mt-0.5">품절</p>
+                      ) : (
+                        <p className="text-[#FF007A] text-xs font-black mt-0.5">
+                          {product.price.toLocaleString()}원
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-            {/* Chat input */}
-            <div className="pointer-events-auto">
-              <ChatInput
-                ref={mobileInputRef}
-                onSendMessage={handleMobileSendMessage}
-                disabled={!isConnected}
-                compact
+        {/* 7. Quick action bar — in-flow at bottom */}
+        <div
+          className="flex-shrink-0"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <LiveQuickActionBar
+            streamTitle={streamStatus.title}
+            onNotice={() => setIsNoticeOpen(true)}
+            onCartOpen={() => setIsCartSheetOpen(true)}
+            cartCount={cartData?.itemCount ?? 0}
+            hasExpiringItem={hasExpiringItem}
+            onInquiry={handleInquiry}
+          />
+        </div>
+      </div>
+
+      {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
+      <div className="hidden lg:flex flex-1 flex-col min-h-0">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Center: Video + overlays */}
+          <div className="flex flex-1 relative items-center justify-center">
+            <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black overflow-hidden">
+              {/* Desktop top gradient scrim */}
+              <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none" />
+              {/* Desktop bottom gradient scrim */}
+              <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/70 to-transparent z-10 pointer-events-none" />
+              <VideoPlayer
+                streamKey={streamKey}
+                title={streamStatus.title}
+                onViewerCountChange={handleViewerCountChange}
+                onStreamError={setVideoError}
               />
+
+              {/* ═══════════ DESKTOP TOP BAR ═══════════ */}
+              <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between">
+                {/* Back button */}
+                <button
+                  onClick={() => router.push('/')}
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="뒤로가기"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* LIVE badge + Viewer count */}
+                <div className="flex items-center gap-2">
+                  {videoError ? (
+                    <div className="flex items-center gap-1.5 bg-black/50 px-3.5 py-1.5 rounded-full border border-white/10">
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white/40 animate-pulse" />
+                      <span className="text-white/60 text-xs font-bold">연결 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+                      <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                      </span>
+                      <span className="text-white text-xs font-black tracking-wider">
+                        LIVE<span className="sr-only"> 현재 생방송 중</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Viewer count with pulse on increase */}
+                  <div
+                    className={`flex items-center gap-1.5 bg-black/40 backdrop-blur-xl px-3 py-1.5 rounded-full transition-all duration-300 border border-white/10 ${showViewerPulse ? 'scale-110 bg-[#FF007A]/30' : 'scale-100'}`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span className="text-white text-xs font-bold">
+                      {viewerCount.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Share button */}
+                <button
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white hover:bg-black/60 transition-all active:scale-90 border border-white/10"
+                  aria-label="공유하기"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                    <polyline points="16,6 12,2 8,6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Stream title */}
+              <div className="absolute top-[68px] left-4 right-20 z-20">
+                <h1 className="text-white font-black text-base drop-shadow-lg line-clamp-1 text-glow-pink">
+                  {streamStatus.title}
+                </h1>
+              </div>
             </div>
           </div>
 
-          {/* Chat — Desktop Only (right side panel, shared connection) */}
-          <div className="hidden lg:flex absolute top-0 right-0 w-[320px] h-full flex-col z-20">
+          {/* Right: Chat Panel */}
+          <div className="flex w-[320px] flex-col bg-[#12121e] border-l border-white/5">
             <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
             <ChatMessageList
               messages={allMessages}
               compact={false}
               isAdmin={isAdmin}
               onDeleteMessage={chatDeleteMessage}
+            />
+            <LiveQuickActionBar
+              streamTitle={streamStatus.title}
+              onNotice={() => setIsNoticeOpen(true)}
+              onCartOpen={() => setIsCartSheetOpen(true)}
+              cartCount={cartData?.itemCount ?? 0}
+              hasExpiringItem={hasExpiringItem}
+              onInquiry={handleInquiry}
             />
             <ChatInput
               ref={desktopInputRef}
@@ -516,10 +822,19 @@ export default function LiveStreamPage() {
             />
           </div>
         </div>
+
+        {/* Bottom: Featured Product Bar */}
+        <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
       </div>
 
-      {/* Bottom: Featured Product Bar — Desktop Only */}
-      <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
+      {/* Product List Bottom Sheet */}
+      <ProductListBottomSheet
+        isOpen={isProductSheetOpen}
+        onClose={() => setIsProductSheetOpen(false)}
+        products={allProducts}
+        activeProductId={displayedProduct?.id ?? null}
+        onSelectProduct={handleProductSelectFromSheet}
+      />
 
       {/* Product Detail Modal */}
       {selectedProduct && (
@@ -530,6 +845,12 @@ export default function LiveStreamPage() {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      {/* Cart Sheet */}
+      <LiveCartSheet isOpen={isCartSheetOpen} onClose={() => setIsCartSheetOpen(false)} />
+
+      {/* Notice Modal */}
+      <NoticeModal isOpen={isNoticeOpen} onClose={() => setIsNoticeOpen(false)} />
     </div>
   );
 }

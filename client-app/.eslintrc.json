@@ -19,7 +19,18 @@
       "jsx": true
     }
   },
-  "ignorePatterns": ["e2e/**/*", "playwright-report/**/*", "test-results/**/*", "playwright.config.ts", "public/**/*"],
+  "ignorePatterns": [
+    "e2e/**/*",
+    "playwright-report/**/*",
+    "test-results/**/*",
+    "playwright.config.ts",
+    "public/**/*",
+    "src/**/__tests__/**/*",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx"
+  ],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx"],

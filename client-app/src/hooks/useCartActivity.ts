@@ -1,4 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { io } from 'socket.io-client';
+import { generateId } from '@/lib/utils/uuid';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 
 export interface CartActivityEvent {
   id: string;
@@ -14,25 +18,75 @@ export interface CartActivityEvent {
  * Hook to listen for real-time cart activity events via WebSocket
  * Used in live stream pages to show "OOO님이 [상품명]을 장바구니에 담았어요!" notifications
  *
- * TODO: Re-enable WebSocket connection once the backend cart activity events are
- * properly wired end-to-end. The backend websocket.gateway.ts (namespace "/") has
- * a `join:stream` handler and emits `cart:item-added` via @OnEvent('cart:added'),
- * but the full flow (cart service -> event emitter -> websocket broadcast) needs
- * to be verified with the correct namespace and room joining. The previous
- * implementation connected to the root namespace and listened for `cart:item-added`,
- * which should work once the event pipeline is confirmed functional.
+ * Backend event flow:
+ *   CartService → eventEmitter.emit('cart:added')
+ *     → CartEventsListener → socket.to('stream:{streamKey}').emit('cart:item-added', {...})
  *
- * Previous socket events used:
+ * Socket events:
  *   - emit: 'join:stream' { streamId: streamKey }
  *   - emit: 'leave:stream' { streamId: streamKey }
  *   - on: 'cart:item-added' { type: string, data: CartActivityEvent }
  */
-export function useCartActivity(_streamKey: string) {
-  const [activities] = useState<CartActivityEvent[]>([]);
+const MAX_ACTIVITIES = 50;
 
-  const clearActivities = useCallback(() => {
-    // No-op while socket is disabled
-  }, []);
+export function useCartActivity(streamKey: string) {
+  const [activities, setActivities] = useState<CartActivityEvent[]>([]);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+    const socket = io(baseUrl + '/', {
+      transports: ['websocket'],
+      withCredentials: true,
+      auth: token ? { token } : undefined,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('join:stream', { streamId: streamKey });
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[CartActivity] Connection error:', error);
+    });
+
+    socket.on('cart:item-added', (payload) => {
+      const data = payload.data ?? payload;
+      setActivities((prev) => {
+        const next = [
+          ...prev,
+          {
+            id: generateId(),
+            userId: data.userId,
+            userName: data.userName,
+            userColor: data.userColor,
+            productName: data.productName,
+            quantity: data.quantity,
+            timestamp: data.timestamp,
+          },
+        ];
+        return next.length > MAX_ACTIVITIES ? next.slice(-MAX_ACTIVITIES) : next;
+      });
+
+      // Immediately invalidate cart query so /cart page reflects the new item
+      // without waiting for the next refetch interval
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+    });
+
+    return () => {
+      socket.emit('leave:stream', { streamId: streamKey });
+      socket.disconnect();
+    };
+  }, [streamKey, queryClient]);
+
+  const clearActivities = useCallback(() => setActivities([]), []);
 
   return {
     activities,

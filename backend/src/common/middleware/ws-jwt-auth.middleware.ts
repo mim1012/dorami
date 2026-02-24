@@ -22,6 +22,7 @@ export type AuthenticatedSocket = Socket & {
   user: {
     userId: string;
     email: string;
+    name: string;
     role: string;
   };
 };
@@ -30,7 +31,7 @@ function parseCookieToken(cookieHeader: string | undefined): string | null {
   if (!cookieHeader) {
     return null;
   }
-  const match = cookieHeader.match(/(?:^|;\s*)access_token=([^;]*)/);
+  const match = cookieHeader.match(/(?:^|;\s*)accessToken=([^;]*)/);
   return match ? match[1] : null;
 }
 
@@ -73,9 +74,26 @@ export async function authenticateSocket(
       }
     }
 
+    // Check if user is suspended via Redis blacklist
+    // When admin suspends a user, their userId is added to blacklist
+    try {
+      const redis = getRedisClient();
+      const uid = payload.userId || payload.sub;
+      const isSuspended = await redis.exists(`suspended:${uid}`);
+      if (isSuspended === 1) {
+        throw new WsException('Account is suspended');
+      }
+    } catch (err) {
+      if (err instanceof WsException) {
+        throw err;
+      }
+      // Graceful degradation if Redis unavailable
+    }
+
     (socket as AuthenticatedSocket).user = {
       userId: payload.userId,
       email: payload.email,
+      name: payload.name,
       role: payload.role,
     };
 

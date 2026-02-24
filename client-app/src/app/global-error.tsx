@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function GlobalError({
   error,
   reset,
@@ -7,9 +9,26 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isChunkError = error.name === 'ChunkLoadError';
+
+  useEffect(() => {
+    if (isChunkError) {
+      const RELOAD_KEY = 'chunk_error_reloaded';
+      if (!sessionStorage.getItem(RELOAD_KEY)) {
+        sessionStorage.setItem(RELOAD_KEY, '1');
+        window.location.reload();
+      }
+    }
+  }, [error, isChunkError]);
+
   return (
     <html lang="ko">
-      <body style={{ margin: 0, fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+      <body
+        style={{
+          margin: 0,
+          fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+        }}
+      >
         <div
           style={{
             minHeight: '100vh',
@@ -68,7 +87,8 @@ export default function GlobalError({
                 lineHeight: 1.6,
               }}
             >
-              예기치 않은 오류가 발생했습니다.<br />
+              예기치 않은 오류가 발생했습니다.
+              <br />
               잠시 후 다시 시도해 주세요.
             </p>
 
@@ -81,7 +101,14 @@ export default function GlobalError({
               }}
             >
               <button
-                onClick={reset}
+                onClick={() => {
+                  if (isChunkError) {
+                    sessionStorage.removeItem('chunk_error_reloaded');
+                    window.location.reload();
+                  } else {
+                    reset();
+                  }
+                }}
                 style={{
                   padding: '12px 24px',
                   backgroundColor: '#111827',
