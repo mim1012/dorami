@@ -174,7 +174,7 @@ export default function StorePage() {
                   name={product.name}
                   price={product.price}
                   originalPrice={product.originalPrice}
-                  imageUrl={product.imageUrl || '/images/placeholder-product.jpg'}
+                  imageUrl={product.imageUrl || '/images/placeholder-product.svg'}
                   discount={product.discountRate || 0}
                   onClick={() => handleProductClick(product)}
                 />
