@@ -39,7 +39,7 @@ export function useActiveStreams() {
   return useQuery({
     queryKey: streamKeys.active(),
     queryFn: async () => {
-      const response = await apiClient.get<LiveStream[]>('/v1/streaming/active');
+      const response = await apiClient.get<LiveStream[]>('/streaming/active');
       return response.data;
     },
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -51,7 +51,7 @@ export function useUpcomingStreams(limit = 3) {
   return useQuery({
     queryKey: streamKeys.upcoming(limit),
     queryFn: async () => {
-      const response = await apiClient.get<LiveStream[]>('/v1/streaming/upcoming', {
+      const response = await apiClient.get<LiveStream[]>('/streaming/upcoming', {
         params: { limit },
       });
       return response.data;
@@ -65,7 +65,7 @@ export function useStream(streamKey: string) {
   return useQuery({
     queryKey: streamKeys.detail(streamKey),
     queryFn: async () => {
-      const response = await apiClient.get<LiveStream>(`/v1/streaming/${streamKey}`);
+      const response = await apiClient.get<LiveStream>(`/streaming/${streamKey}`);
       return response.data;
     },
     enabled: !!streamKey,

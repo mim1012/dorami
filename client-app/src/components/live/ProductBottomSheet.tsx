@@ -36,6 +36,7 @@ export default function ProductBottomSheet({
                   fill
                   className="object-cover"
                   sizes="48px"
+                  unoptimized={products[0].imageUrl.startsWith('/uploads/')}
                 />
               </div>
             )}
@@ -116,6 +117,7 @@ export default function ProductBottomSheet({
                         fill
                         className="object-cover"
                         sizes="64px"
+                        unoptimized={product.imageUrl.startsWith('/uploads/')}
                       />
                     </div>
                   )}

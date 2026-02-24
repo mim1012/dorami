@@ -20,7 +20,7 @@ const MOCK_PRODUCT: Product = {
   name: '샘플 상품',
   price: 29900,
   stock: 10,
-  imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80',
+  imageUrl: undefined,
   status: ProductStatus.AVAILABLE,
   colorOptions: [],
   sizeOptions: [],
@@ -115,9 +115,6 @@ export default function ProductDetailPage() {
 
   if (!product) return null;
 
-  const imageUrl =
-    product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80';
-
   return (
     <>
       <div className="min-h-screen bg-primary-black pb-24">
@@ -131,14 +128,21 @@ export default function ProductDetailPage() {
 
         {/* Product Image */}
         <div className="relative w-full aspect-[4/3] bg-content-bg">
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-          />
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              unoptimized={product.imageUrl.startsWith('/uploads/')}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-secondary-text">No Image</span>
+            </div>
+          )}
           {product.status === 'SOLD_OUT' && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
               <Display className="text-white">품절</Display>

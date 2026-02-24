@@ -318,13 +318,13 @@ test.describe('Checkout Page Display', () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
       const csrf = match ? match[1] : '';
       // 현재 장바구니 아이템 조회
-      const getRes = await fetch('/api/v1/cart', { credentials: 'include' });
+      const getRes = await fetch('/api/cart', { credentials: 'include' });
       if (!getRes.ok) return { ok: false, count: 0 };
       const data = await getRes.json();
       const items: { id: string }[] = data.data?.items || [];
       // 각 아이템 개별 삭제
       for (const item of items) {
-        await fetch(`/api/v1/cart/${item.id}`, {
+        await fetch(`/api/cart/${item.id}`, {
           method: 'DELETE',
           headers: { 'X-CSRF-Token': csrf },
           credentials: 'include',

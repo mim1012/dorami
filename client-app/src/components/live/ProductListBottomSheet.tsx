@@ -99,6 +99,7 @@ export default function ProductListBottomSheet({
                         alt={product.name}
                         fill
                         className="object-cover"
+                        unoptimized={product.imageUrl.startsWith('/uploads/')}
                       />
                     </div>
                   )}

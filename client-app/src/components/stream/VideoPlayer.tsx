@@ -330,10 +330,6 @@ export default function VideoPlayer({
         if (video && video.paused && isPlaying && !streamEnded) {
           video.play().catch(() => {});
         }
-        // Re-emit viewer join in case socket reconnected while hidden
-        if (socketRef.current?.connected) {
-          socketRef.current.emit('stream:viewer:join', { streamKey });
-        }
       }
     };
 
@@ -538,6 +534,9 @@ export default function VideoPlayer({
     socket.io.on('reconnect', () => {
       metricsRef.current.reconnectCount++;
       syncKpi();
+      if (!activeViewerKeys.has(streamKey)) {
+        activeViewerKeys.add(streamKey);
+      }
       socket.emit('stream:viewer:join', { streamKey });
       // Report reconnect metrics
       sendStreamMetrics(buildStreamMetrics(streamKey, metricsRef.current, 'RECONNECTING')).catch(

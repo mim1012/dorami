@@ -150,7 +150,13 @@ export default function ProductList({
             >
               <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white/10 mb-1.5">
                 {product.imageUrl ? (
-                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    unoptimized={product.imageUrl.startsWith('/uploads/')}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="text-white/30 text-xs">No Image</span>
@@ -233,6 +239,7 @@ export default function ProductList({
                       alt={product.name}
                       fill
                       className="object-cover"
+                      unoptimized={product.imageUrl.startsWith('/uploads/')}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

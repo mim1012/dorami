@@ -38,6 +38,7 @@ export function ProductCard({
           fill
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
           sizes="(max-width: 768px) 50vw, 33vw"
+          unoptimized={imageUrl.startsWith('/uploads/')}
         />
 
         {/* Gradient overlay — stronger on hover */}

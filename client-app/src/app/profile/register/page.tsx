@@ -322,7 +322,7 @@ export default function ProfileRegisterPage() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
+            disabled={isSubmitting || instagramAvailable === false}
           >
             {isSubmitting ? '등록 중...' : '프로필 등록 완료'}
           </Button>

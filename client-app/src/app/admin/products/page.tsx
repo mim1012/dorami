@@ -61,6 +61,9 @@ interface ProductFormData {
   timerDuration: string;
   imageUrl: string;
   images: string[];
+  discountRate: string;
+  originalPrice: string;
+  isNew: boolean;
 }
 
 // --- Sortable Row Component ---
@@ -264,6 +267,9 @@ export default function AdminProductsPage() {
     timerDuration: '10',
     imageUrl: '',
     images: [],
+    discountRate: '',
+    originalPrice: '',
+    isNew: false,
   });
 
   // DnD sensors (Feature 2)
@@ -402,6 +408,9 @@ export default function AdminProductsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (previewUrl && selectedFile) {
+        URL.revokeObjectURL(previewUrl);
+      }
       setSelectedFile(file);
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
@@ -432,6 +441,9 @@ export default function AdminProductsPage() {
   };
 
   const handleRemoveImage = () => {
+    if (previewUrl && selectedFile) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setSelectedFile(null);
     setPreviewUrl('');
     setFormData((prev) => ({ ...prev, imageUrl: '' }));
@@ -490,6 +502,9 @@ export default function AdminProductsPage() {
         timerDuration: product.timerDuration.toString(),
         imageUrl: product.imageUrl || '',
         images: product.images || [],
+        discountRate: product.discountRate?.toString() || '',
+        originalPrice: product.originalPrice?.toString() || '',
+        isNew: product.isNew || false,
       });
       setPreviewUrl(product.imageUrl || '');
     } else {
@@ -507,6 +522,9 @@ export default function AdminProductsPage() {
         timerDuration: '10',
         imageUrl: '',
         images: [],
+        discountRate: '',
+        originalPrice: '',
+        isNew: false,
       });
       setPreviewUrl('');
     }
@@ -521,6 +539,23 @@ export default function AdminProductsPage() {
     setIsSubmitting(true);
 
     try {
+      // Auto-upload main image if file selected but not yet uploaded
+      let finalImageUrl = formData.imageUrl;
+      if (selectedFile && !formData.imageUrl) {
+        setIsUploading(true);
+        try {
+          finalImageUrl = await uploadSingleImage(selectedFile);
+          setFormData((prev) => ({ ...prev, imageUrl: finalImageUrl }));
+        } catch {
+          showToast('이미지 업로드에 실패했습니다.', 'error');
+          setIsSubmitting(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       const basePayload = {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -537,8 +572,11 @@ export default function AdminProductsPage() {
         freeShippingMessage: formData.freeShippingMessage || undefined,
         timerEnabled: formData.timerEnabled,
         timerDuration: parseInt(formData.timerDuration),
-        imageUrl: formData.imageUrl || undefined,
+        imageUrl: finalImageUrl || undefined,
         images: formData.images,
+        discountRate: formData.discountRate ? parseFloat(formData.discountRate) : undefined,
+        originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+        isNew: formData.isNew,
       };
 
       if (editingProduct) {
@@ -906,6 +944,29 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
+              label="할인율 (%)"
+              name="discountRate"
+              type="number"
+              value={formData.discountRate}
+              onChange={(e) => setFormData({ ...formData, discountRate: e.target.value })}
+              placeholder="예: 15 (15% 할인)"
+              min="0"
+              max="100"
+              fullWidth
+            />
+            <Input
+              label="정가 (할인 전 가격 $)"
+              name="originalPrice"
+              type="number"
+              value={formData.originalPrice}
+              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+              placeholder="예: 35"
+              fullWidth
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
               label="색상 옵션 (쉼표로 구분)"
               name="colorOptions"
               value={formData.colorOptions}
@@ -955,6 +1016,15 @@ export default function AdminProductsPage() {
                 장바구니 예약 타이머 활성화
               </span>
             </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isNew}
+                onChange={(e) => setFormData({ ...formData, isNew: e.target.checked })}
+                className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+              />
+              <span className="text-sm font-medium text-primary-text">NEW 뱃지 표시</span>
+            </label>
             {formData.timerEnabled && (
               <Input
                 label="타이머 시간 (분)"
@@ -964,7 +1034,7 @@ export default function AdminProductsPage() {
                 onChange={(e) => setFormData({ ...formData, timerDuration: e.target.value })}
                 placeholder="10"
                 min="1"
-                max="60"
+                max="2880"
               />
             )}
           </div>
