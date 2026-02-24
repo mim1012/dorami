@@ -11,23 +11,30 @@ interface ProductListProps {
   streamKey: string;
   onProductClick?: (product: Product) => void;
   layout?: 'vertical' | 'horizontal';
+  products?: Product[];
 }
 
 export default function ProductList({
   streamKey,
   onProductClick,
   layout = 'vertical',
+  products: externalProducts,
 }: ProductListProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [internalProducts, setInternalProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(!externalProducts);
   const [newlyAddedIds, setNewlyAddedIds] = useState<Set<string>>(new Set());
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [streamKey]);
+  const products = externalProducts ?? internalProducts;
 
   useEffect(() => {
+    if (externalProducts) return;
+    fetchProducts();
+  }, [streamKey, externalProducts]);
+
+  useEffect(() => {
+    if (externalProducts) return;
+
     const ws = io(
       process.env.NEXT_PUBLIC_WS_URL ||
         (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
@@ -43,29 +50,35 @@ export default function ProductList({
 
     setSocket(ws);
 
+    const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+
     ws.on('connect', () => {
       ws.emit('join:stream', { streamId: streamKey });
     });
 
     ws.on('live:product:added', (data: { type: string; data: Product }) => {
-      setProducts((prev) => [data.data, ...prev]);
+      setInternalProducts((prev) => {
+        if (prev.some((p) => p.id === data.data.id)) return prev;
+        return [data.data, ...prev];
+      });
       const id = data.data.id;
       setNewlyAddedIds((prev) => new Set(prev).add(id));
-      setTimeout(() => {
+      const tid = setTimeout(() => {
         setNewlyAddedIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
           return next;
         });
       }, 5000);
+      timeoutIds.push(tid);
     });
 
     ws.on('live:product:updated', (data: { type: string; data: Product }) => {
-      setProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+      setInternalProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
     });
 
     ws.on('live:product:soldout', (data: { type: string; data: { productId: string } }) => {
-      setProducts((prev) =>
+      setInternalProducts((prev) =>
         prev.map((p) =>
           p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
         ),
@@ -83,12 +96,11 @@ export default function ProductList({
     );
 
     return () => {
-      if (ws) {
-        ws.emit('leave:stream', { streamId: streamKey });
-        ws.disconnect();
-      }
+      ws.emit('leave:stream', { streamId: streamKey });
+      ws.disconnect();
+      timeoutIds.forEach(clearTimeout);
     };
-  }, [streamKey]);
+  }, [streamKey, externalProducts]);
 
   const fetchProducts = async () => {
     try {
@@ -96,7 +108,7 @@ export default function ProductList({
       const response = await apiClient.get<Product[]>('/products', {
         params: { streamKey, status: 'AVAILABLE' },
       });
-      setProducts(response.data);
+      setInternalProducts(response.data);
     } catch (error) {
       console.error('[Products] Failed to fetch products:', error);
     } finally {

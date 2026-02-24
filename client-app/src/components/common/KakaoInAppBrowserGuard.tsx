@@ -27,10 +27,10 @@ export function KakaoInAppBrowserGuard() {
       const intentUrl =
         'intent://' +
         currentUrl.replace(/^https?:\/\//, '') +
-        '#Intent;scheme=https;package=com.android.chrome;end';
+        '#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
       window.location.href = intentUrl;
-      // Chrome 미설치 등으로 intent 실패 시 안내 모달 표시
-      setTimeout(() => setShowGuide(true), 1500);
+      // intent 처리 실패 시 안내 모달 표시
+      setTimeout(() => setShowGuide(true), 1000);
     } else {
       // iOS: 강제 redirect 불가 → 안내 모달
       setShowGuide(true);

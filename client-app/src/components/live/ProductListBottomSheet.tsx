@@ -36,7 +36,7 @@ export default function ProductListBottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label="상품 목록"
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-2">
@@ -70,12 +70,6 @@ export default function ProductListBottomSheet({
             products.map((product) => {
               const isActive = product.id === activeProductId;
               const isSoldOut = product.status === 'SOLD_OUT';
-              const discountedPrice =
-                product.discountRate && product.discountRate > 0
-                  ? Math.round(
-                      (product.originalPrice ?? product.price) * (1 - product.discountRate / 100),
-                    )
-                  : product.price;
 
               return (
                 <button
@@ -117,7 +111,7 @@ export default function ProductListBottomSheet({
                         </>
                       ) : null}
                       <span className="text-[#FF007A] font-black text-sm">
-                        {formatPrice(discountedPrice)}
+                        {formatPrice(product.price)}
                       </span>
                     </div>
                     {isSoldOut && <p className="text-white/30 text-xs mt-1">품절</p>}
