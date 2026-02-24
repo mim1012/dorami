@@ -232,7 +232,7 @@ export default function LiveStreamPage() {
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
-      const ratio = vv.height / window.screen.height;
+      const ratio = vv.height / window.innerHeight;
       dispatch(ratio < 0.75 ? { type: 'OPEN_KEYBOARD' } : { type: 'CLOSE_KEYBOARD' });
     };
     vv.addEventListener('resize', onResize);
@@ -276,7 +276,9 @@ export default function LiveStreamPage() {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
     });
     ws.on('live:product:added', (data: any) => {
-      setAllProducts((prev) => [data.data, ...prev]);
+      setAllProducts((prev) =>
+        prev.some((p) => p.id === data.data.id) ? prev : [data.data, ...prev],
+      );
     });
     ws.on('live:product:updated', (data: any) => {
       setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
@@ -476,7 +478,11 @@ export default function LiveStreamPage() {
             상품 목록
           </h2>
         </div>
-        <ProductList streamKey={streamKey} onProductClick={handleProductClick} />
+        <ProductList
+          streamKey={streamKey}
+          onProductClick={handleProductClick}
+          products={allProducts}
+        />
       </aside>
 
       {/* ── MOBILE: flex-col scroll layout ── */}
@@ -635,7 +641,9 @@ export default function LiveStreamPage() {
                 return (
                   <div
                     key={product.id}
-                    onClick={() => !isSoldOut && handleProductClick(product)}
+                    onClick={() =>
+                      !isSoldOut && snapshot !== 'ENDED' && handleProductClick(product)
+                    }
                     className={`snap-start shrink-0 w-[160px] flex items-center gap-2.5
                                p-3 rounded-2xl border transition-all
                                ${

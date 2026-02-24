@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Timer } from 'lucide-react';
+import { X, Timer, Package } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Product, ProductStatus } from '@/lib/types/product';
 import { formatPrice } from '@/lib/utils/price';
@@ -11,7 +11,7 @@ interface ProductDetailModalProps {
   product: Product;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (productId: string, selectedColor?: string, selectedSize?: string) => void;
+  onAddToCart: (productId: string, selectedColor?: string, selectedSize?: string) => Promise<void>;
 }
 
 export default function ProductDetailModal({
@@ -27,10 +27,17 @@ export default function ProductDetailModal({
     product.sizeOptions.length > 0 ? product.sizeOptions[0] : undefined,
   );
 
+  // 버그 1: product.id가 바뀔 때 color/size 초기화
+  useEffect(() => {
+    setSelectedColor(product.colorOptions?.[0] ?? undefined);
+    setSelectedSize(product.sizeOptions?.[0] ?? undefined);
+  }, [product.id]);
+
   if (!isOpen) return null;
 
-  const handleAddToCart = () => {
-    onAddToCart(product.id, selectedColor, selectedSize);
+  // 버그 2: onAddToCart가 async이므로 await 후 onClose 호출
+  const handleAddToCart = async () => {
+    await onAddToCart(product.id, selectedColor, selectedSize);
     onClose();
   };
 
@@ -64,7 +71,7 @@ export default function ProductDetailModal({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-secondary-text">No Image</span>
+              <Package className="w-12 h-12 opacity-20 text-secondary-text" />
             </div>
           )}
         </div>
@@ -77,9 +84,12 @@ export default function ProductDetailModal({
             <div className="flex flex-col gap-1">
               {product.discountRate && product.discountRate > 0 ? (
                 <>
-                  <span className="text-sm text-secondary-text line-through">
-                    {formatPrice(product.originalPrice ?? product.price)}
-                  </span>
+                  {/* 버그 3: originalPrice가 실제로 있을 때만 strikethrough 렌더링 */}
+                  {product.originalPrice !== undefined && product.originalPrice !== null && (
+                    <span className="text-sm text-secondary-text line-through">
+                      {formatPrice(product.originalPrice)}
+                    </span>
+                  )}
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-error">{product.discountRate}%</span>
                     <span className="text-[32px] font-bold text-hot-pink">

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { Package } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import type { Product } from '@/lib/types';
 
 type FeaturedProduct = Pick<
@@ -47,16 +48,13 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
   };
 
   const setupWebSocket = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) return;
-
-    const ws = io(
+    const WS_URL =
       process.env.NEXT_PUBLIC_WS_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
-      {
-        auth: { token },
-      },
-    );
+      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+
+    const ws = io(WS_URL, {
+      withCredentials: true,
+    });
 
     ws.on('connect', () => {
       ws.emit('join:stream', { streamId: streamKey });
@@ -80,7 +78,7 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
     >
       <div className="flex items-center gap-4 max-w-screen-xl mx-auto">
         <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-primary-black">
-          {product.imageUrl && (
+          {product.imageUrl ? (
             <Image
               src={product.imageUrl}
               alt={product.name}
@@ -88,6 +86,10 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
               className="object-cover"
               unoptimized={product.imageUrl.startsWith('/uploads/')}
             />
+          ) : (
+            <div className="w-16 h-16 flex-shrink-0 bg-content-bg rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 opacity-20 text-secondary-text" />
+            </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
