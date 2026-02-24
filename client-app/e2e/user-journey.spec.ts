@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
 test.describe('사용자 여정 - 모든 하단 탭 기능', () => {
   test.beforeEach(async ({ page }) => {
     // 백엔드 서버 헬스체크 (through Next.js proxy)
-    const response = await page.request.get('/api/v1/health/ready').catch(() => null);
+    const response = await page.request.get('/api/health/ready').catch(() => null);
     if (!response?.ok()) {
       console.log('⚠️ 헬스체크 실패 (프록시 경유) - 테스트 계속 진행');
     }

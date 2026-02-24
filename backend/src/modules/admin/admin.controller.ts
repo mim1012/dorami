@@ -307,7 +307,7 @@ export class AdminController {
       const parsedSrsUrl = new URL(srsHost);
       const allowedSrsHosts = new Set(['localhost', '127.0.0.1', 'srs', '::1']);
       if (allowedSrsHosts.has(parsedSrsUrl.hostname)) {
-        const safeUrl = `${parsedSrsUrl.origin}/api/v1/streams/`;
+        const safeUrl = `${parsedSrsUrl.origin}/api/streams/`;
         const srsRes = await fetch(safeUrl, { signal: AbortSignal.timeout(3000) });
         if (srsRes.ok) {
           const data = (await srsRes.json()) as { streams?: unknown[] };

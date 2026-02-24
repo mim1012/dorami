@@ -12,7 +12,7 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 export async function createTestStream(): Promise<string> {
   const apiContext = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
-    // Login as admin to get auth cookies (through Next.js proxy: /api/* → backend /api/v1/*)
+    // Login as admin to get auth cookies (through Next.js proxy: /api/* → backend /api/*)
     const loginRes = await apiContext.post('/api/auth/dev-login', {
       data: { email: 'e2e-admin@test.com', name: 'E2E ADMIN', role: 'ADMIN' },
     });
