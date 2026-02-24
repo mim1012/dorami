@@ -47,9 +47,10 @@ export default function OrderConfirmationPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -155,7 +156,9 @@ export default function OrderConfirmationPage() {
                   </div>
                   <p
                     className={`text-xs mt-2 text-center ${
-                      step.completed || step.current ? 'text-primary-text font-medium' : 'text-secondary-text'
+                      step.completed || step.current
+                        ? 'text-primary-text font-medium'
+                        : 'text-secondary-text'
                     }`}
                   >
                     {step.label}

@@ -13,6 +13,9 @@ test.describe('User Registration (Profile)', () => {
   test.setTimeout(60000);
 
   test.beforeEach(async ({ page }) => {
+    // about:blank에서는 localStorage 접근 불가(SecurityError)이므로
+    // devLogin의 page.evaluate 호출 전 실제 origin으로 이동
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     // 프로필 미완성 사용자로 로그인 (고유 이메일)
     await devLogin(page, 'USER');
   });

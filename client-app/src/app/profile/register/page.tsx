@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
@@ -54,6 +54,13 @@ export default function ProfileRegisterPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (submitError && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [submitError]);
 
   const { isChecking: checkingInstagram, isAvailable: instagramAvailable } = useInstagramCheck(
     formData.instagramId,
@@ -151,8 +158,7 @@ export default function ProfileRegisterPage() {
     } catch (error: any) {
       console.error('Profile completion error:', error);
       setSubmitError(
-        error.response?.data?.message ||
-          '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
+        error.message || '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
       );
     } finally {
       setIsSubmitting(false);
@@ -176,7 +182,7 @@ export default function ProfileRegisterPage() {
         </div>
 
         {submitError && (
-          <div className="bg-error/10 border border-error rounded-lg p-4 mb-6">
+          <div ref={errorRef} className="bg-error/10 border border-error rounded-lg p-4 mb-6">
             <Body className="text-error">{submitError}</Body>
           </div>
         )}

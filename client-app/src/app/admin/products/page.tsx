@@ -41,24 +41,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-interface Product {
-  id: string;
-  streamKey: string;
-  name: string;
-  price: number;
-  stock: number;
-  colorOptions: string[];
-  sizeOptions: string[];
-  shippingFee: number;
-  freeShippingMessage?: string;
-  timerEnabled: boolean;
-  timerDuration: number;
-  imageUrl?: string;
+import type { Product as BaseProduct } from '@/lib/types';
+
+interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface ProductFormData {
@@ -181,9 +168,7 @@ function SortableRow({
         )}
       </td>
       <td className="px-4 py-4 text-center">
-        <Body
-          className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}
-        >
+        <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
         </Body>
       </td>
@@ -251,6 +236,7 @@ export default function AdminProductsPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [activeLiveStreamKey, setActiveLiveStreamKey] = useState<string>('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -288,6 +274,23 @@ export default function AdminProductsPage() {
     fetchProducts();
   }, [filterStreamKey]);
 
+  // Fetch active live stream key to pre-populate product form
+  useEffect(() => {
+    const fetchActiveLiveKey = async () => {
+      try {
+        const response = await apiClient.get<{ isLive: boolean; streamKey: string | null }>(
+          '/streaming/live-status',
+        );
+        if (response.data.isLive && response.data.streamKey) {
+          setActiveLiveStreamKey(response.data.streamKey);
+        }
+      } catch {
+        // Non-critical — form still works without it
+      }
+    };
+    fetchActiveLiveKey();
+  }, []);
+
   // Client-side filtered products (Feature 5)
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -318,9 +321,10 @@ export default function AdminProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -395,14 +399,7 @@ export default function AdminProductsPage() {
   const uploadSingleImage = async (file: File): Promise<string> => {
     const formDataToUpload = new FormData();
     formDataToUpload.append('file', file);
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
-    const response = await fetch(`${apiBase}/upload/image`, {
-      method: 'POST',
-      body: formDataToUpload,
-      credentials: 'include',
-    });
-    if (!response.ok) throw new Error('Upload failed');
-    const result = await response.json();
+    const result = await apiClient.post<{ url: string }>('/upload/image', formDataToUpload);
     return result.data.url;
   };
 
@@ -486,7 +483,7 @@ export default function AdminProductsPage() {
     } else {
       setEditingProduct(null);
       setFormData({
-        streamKey: '',
+        streamKey: activeLiveStreamKey,
         name: '',
         price: '',
         stock: '',
@@ -535,7 +532,10 @@ export default function AdminProductsPage() {
       if (editingProduct) {
         await apiClient.patch(`/products/${editingProduct.id}`, basePayload);
       } else {
-        await apiClient.post('/products', { streamKey: formData.streamKey, ...basePayload });
+        await apiClient.post('/products', {
+          streamKey: formData.streamKey.trim() || undefined,
+          ...basePayload,
+        });
       }
 
       fetchProducts();
@@ -758,7 +758,9 @@ export default function AdminProductsPage() {
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-secondary-text mx-auto mb-4 opacity-30" />
             <Body className="text-secondary-text mb-4">
-              {products.length === 0 ? '등록된 상품이 없습니다' : '필터 조건에 맞는 상품이 없습니다'}
+              {products.length === 0
+                ? '등록된 상품이 없습니다'
+                : '필터 조건에 맞는 상품이 없습니다'}
             </Body>
             {products.length === 0 && (
               <Button variant="primary" onClick={() => handleOpenModal()}>
@@ -850,7 +852,11 @@ export default function AdminProductsPage() {
             onChange={(e) => setFormData({ ...formData, streamKey: e.target.value })}
             placeholder="예: abc123def456"
             fullWidth
-            helperText="라이브 방송에 연결하려면 Stream Key를 입력하세요 (선택사항)"
+            helperText={
+              activeLiveStreamKey && !editingProduct
+                ? '현재 라이브 방송의 Stream Key가 자동 입력되었습니다'
+                : '라이브 방송에 연결하려면 Stream Key를 입력하세요 (선택사항)'
+            }
           />
 
           <Input
@@ -865,7 +871,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격 (원)"
+              label="가격 ($)"
               name="price"
               type="number"
               value={formData.price}
@@ -907,7 +913,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="배송비 (원)"
+              label="배송비 ($)"
               name="shippingFee"
               type="number"
               value={formData.shippingFee}

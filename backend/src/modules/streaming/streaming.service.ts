@@ -5,6 +5,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import {
   StartStreamDto,
+  UpdateStreamDto,
   StreamingSessionResponseDto,
   GenerateKeyDto,
   StreamStatusDto,
@@ -35,14 +36,14 @@ export class StreamingService {
     try {
       const streams = await this.prisma.liveStream.findMany({
         where: {
-          status: 'PENDING',
-          expiresAt: {
-            gte: new Date(), // Only future streams
-          },
+          OR: [{ status: 'LIVE' }, { status: 'PENDING', expiresAt: { gte: new Date() } }],
         },
-        orderBy: {
-          expiresAt: 'asc',
-        },
+        orderBy: [
+          // LIVE 스트림 우선, 그 다음 scheduledAt 오름차순
+          { status: 'asc' }, // LIVE < OFFLINE < PENDING (alphabetical) — 별도 정렬로 보완
+          { scheduledAt: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'asc' },
+        ],
         take: limit,
         include: {
           user: {
@@ -54,12 +55,19 @@ export class StreamingService {
         },
       });
 
-      return streams.map((stream) => ({
+      // LIVE 스트림을 맨 앞으로 정렬
+      const sorted = [
+        ...streams.filter((s) => s.status === 'LIVE'),
+        ...streams.filter((s) => s.status !== 'LIVE'),
+      ];
+
+      return sorted.map((stream) => ({
         id: stream.id,
+        streamKey: stream.streamKey,
         title: stream.title,
-        scheduledTime: stream.expiresAt,
-        thumbnailUrl: null, // TODO: Add thumbnail support
-        isLive: false,
+        scheduledTime: stream.scheduledAt ?? null, // expiresAt fallback 제거
+        thumbnailUrl: stream.thumbnailUrl || null,
+        isLive: stream.status === 'LIVE',
         streamer: {
           id: stream.user.id,
           name: stream.user.name,
@@ -115,6 +123,75 @@ export class StreamingService {
     this.eventEmitter.emit('stream:created', { streamId: session.id });
 
     return this.mapToResponseDto(session);
+  }
+
+  async updateStream(
+    streamId: string,
+    userId: string,
+    dto: UpdateStreamDto,
+  ): Promise<StreamingSessionResponseDto> {
+    const session = await this.prisma.liveStream.findFirst({
+      where: { id: streamId, userId },
+    });
+
+    if (!session) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamId });
+    }
+
+    if (session.status !== 'PENDING') {
+      throw new BusinessException(
+        'INVALID_STREAM_STATE',
+        { currentStatus: session.status },
+        `Only PENDING streams can be updated (current: ${session.status})`,
+      );
+    }
+
+    const data: { title?: string; expiresAt?: Date; thumbnailUrl?: string | null } = {};
+    if (dto.title !== undefined) {
+      data.title = dto.title;
+    }
+    if (dto.expiresAt !== undefined) {
+      data.expiresAt = new Date(dto.expiresAt);
+    }
+    if (dto.thumbnailUrl !== undefined) {
+      data.thumbnailUrl = dto.thumbnailUrl || null;
+    }
+
+    const updated = await this.prisma.liveStream.update({
+      where: { id: streamId },
+      data,
+    });
+
+    return this.mapToResponseDto(updated);
+  }
+
+  async cancelStream(streamId: string, userId: string): Promise<void> {
+    const session = await this.prisma.liveStream.findFirst({
+      where: { id: streamId, userId },
+    });
+
+    if (!session) {
+      throw new BusinessException('STREAM_NOT_FOUND', { streamId });
+    }
+
+    if (session.status !== 'PENDING') {
+      throw new BusinessException(
+        'INVALID_STREAM_STATE',
+        { currentStatus: session.status },
+        `Only PENDING streams can be cancelled (current: ${session.status})`,
+      );
+    }
+
+    await this.prisma.liveStream.update({
+      where: { id: streamId },
+      data: { status: 'OFFLINE' },
+    });
+
+    // Clean up Redis if any metadata was cached
+    await this.redisService.del(`stream:${session.streamKey}:meta`);
+    await this.redisService.del(`stream:${session.streamKey}:viewers`);
+
+    this.logger.log(`Stream ${streamId} cancelled by user ${userId}`);
   }
 
   async goLive(streamId: string, userId: string): Promise<StreamingSessionResponseDto> {
@@ -184,8 +261,9 @@ export class StreamingService {
       },
     });
 
-    // Remove from Redis
-    await this.redisService.del(`stream:${streamId}`);
+    // Remove from Redis (use streamKey-based keys, consistent with goLive/handleStreamDone)
+    await this.redisService.del(`stream:${session.streamKey}:meta`);
+    await this.redisService.del(`stream:${session.streamKey}:viewers`);
 
     this.eventEmitter.emit('stream:ended', { streamId: session.id });
   }
@@ -244,11 +322,21 @@ export class StreamingService {
 
       // If PENDING, return the existing session so user can see their stream key
       this.logger.log(`Returning existing PENDING stream ${existingStream.id} for user ${userId}`);
-      // Update title if a new one was provided
+      // Update title/scheduledAt/thumbnailUrl if new values were provided
+      const pendingUpdates: Record<string, any> = {};
       if (dto.title && dto.title !== existingStream.title) {
+        pendingUpdates.title = dto.title;
+      }
+      if (dto.scheduledAt !== undefined) {
+        pendingUpdates.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+      }
+      if (dto.thumbnailUrl !== undefined) {
+        pendingUpdates.thumbnailUrl = dto.thumbnailUrl || null;
+      }
+      if (Object.keys(pendingUpdates).length > 0) {
         const updated = await this.prisma.liveStream.update({
           where: { id: existingStream.id },
-          data: { title: dto.title },
+          data: pendingUpdates,
         });
         return this.mapToResponseDto(updated);
       }
@@ -268,6 +356,8 @@ export class StreamingService {
         userId,
         streamKey,
         title: dto.title || 'Live Stream',
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+        thumbnailUrl: dto.thumbnailUrl || null,
         expiresAt,
         status: 'PENDING',
       },
@@ -310,6 +400,7 @@ export class StreamingService {
       const data = JSON.parse(cached);
       title = data.title;
       status = data.status;
+      startedAt = data.startedAt ? new Date(data.startedAt) : undefined;
     } else {
       // Fallback to database
       const session = await this.prisma.liveStream.findUnique({
@@ -461,6 +552,7 @@ export class StreamingService {
       return {
         isLive: false,
         streamId: null,
+        streamKey: null,
         title: null,
         duration: null,
         viewerCount: 0,
@@ -481,6 +573,7 @@ export class StreamingService {
     return {
       isLive: true,
       streamId: liveStream.id,
+      streamKey: liveStream.streamKey,
       title: liveStream.title,
       duration,
       viewerCount,
@@ -524,19 +617,28 @@ export class StreamingService {
       return false;
     }
 
-    // Check if stream key has expired
-    if (session.expiresAt && new Date() > session.expiresAt) {
+    // Check if stream key has expired.
+    // Skip expiry check for LIVE streams — an active broadcast must not be
+    // interrupted by key expiry on OBS reconnect.
+    if (session.status !== 'LIVE' && session.expiresAt && new Date() > session.expiresAt) {
       this.logger.warn(`RTMP auth failed: Stream key expired - ${streamKey}`);
       return false;
     }
 
-    // Authentication successful - update stream to LIVE
-    // Preserve original startedAt on RTMP reconnect
+    // Authentication successful - update stream to LIVE.
+    // Extend expiresAt to at least 48h from now so that OBS reconnects
+    // after a brief disconnect are never blocked by key expiry.
+    const minExpiresAt = new Date();
+    minExpiresAt.setHours(minExpiresAt.getHours() + 48);
+    const newExpiresAt =
+      session.expiresAt && session.expiresAt > minExpiresAt ? session.expiresAt : minExpiresAt;
+
     await this.prisma.liveStream.update({
       where: { id: session.id },
       data: {
         status: 'LIVE',
         startedAt: session.startedAt || new Date(),
+        expiresAt: newExpiresAt,
       },
     });
 
@@ -728,7 +830,9 @@ export class StreamingService {
   }
 
   private mapToResponseDto(session: any): StreamingSessionResponseDto {
-    const rtmpBase = this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost/live';
+    const rtmpBase = (
+      this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost:1935/live'
+    ).replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
     const hlsBase = this.configService.get('HLS_SERVER_URL') || 'http://localhost:8080/hls';
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
@@ -743,6 +847,8 @@ export class StreamingService {
       hlsUrl,
       startedAt: session.startedAt,
       endedAt: session.endedAt,
+      scheduledAt: session.scheduledAt ?? null,
+      thumbnailUrl: session.thumbnailUrl ?? null,
       expiresAt: session.expiresAt,
       createdAt: session.createdAt,
     };

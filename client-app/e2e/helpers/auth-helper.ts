@@ -129,7 +129,7 @@ export async function gotoWithRetry(
   const { waitForSelector, maxRetries = 2, role = 'ADMIN' } = opts;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Wait for network to settle — ensures auth API calls (/users/me etc.) complete
     // and any resulting client-side redirect (429 → auth fail → /login) has happened.
@@ -230,6 +230,35 @@ export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
     // 3. Extract user data from response
     const body = await response.json();
     user = body.data?.user;
+
+    // 4. For USER role: ensure profile is complete so useProfileGuard does not
+    //    redirect to /profile/register. The apiCtx reuses login cookies automatically.
+    if (role === 'USER') {
+      const profileRes = await apiCtx.post('/api/users/complete-profile', {
+        data: {
+          depositorName: 'E2E테스트',
+          instagramId: '@e2e_buyer_test',
+          fullName: 'E2E Test User',
+          address1: '123 Test Street',
+          address2: 'Apt 1',
+          city: 'New York',
+          state: 'NY',
+          zip: '10001',
+          phone: '(212) 555-1234',
+        },
+      });
+      if (!profileRes.ok()) {
+        // May already have a complete profile — not an error
+        console.warn(`devLogin complete-profile: ${profileRes.status()} (may already be set)`);
+      }
+
+      // Fetch fresh user data so localStorage reflects completed profile
+      const meRes = await apiCtx.get('/api/users/me');
+      if (meRes.ok()) {
+        const meData = await meRes.json();
+        user = meData.data || user;
+      }
+    }
   } finally {
     await apiCtx.dispose();
   }

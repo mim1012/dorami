@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RedisService } from '../../common/redis/redis.service';
 import {
   GetUsersQueryDto,
   UserListResponseDto,
@@ -66,6 +67,7 @@ export class AdminService {
     private eventEmitter: EventEmitter2,
     private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
+    private redisService: RedisService,
   ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
@@ -129,7 +131,17 @@ export class AdminService {
       },
     });
 
-    // Map users to DTOs with order stats (placeholder for now, will be implemented in Epic 8)
+    // Batch fetch order stats for all users in this page
+    const userIds = users.map((u) => u.id);
+    const orderStats = await this.prisma.order.groupBy({
+      by: ['userId'],
+      where: { userId: { in: userIds }, paymentStatus: 'CONFIRMED' },
+      _count: { id: true },
+      _sum: { total: true },
+    });
+    const statsMap = new Map(orderStats.map((s) => [s.userId, s]));
+
+    // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => ({
       id: user.id,
       email: user.email,
@@ -139,8 +151,8 @@ export class AdminService {
       lastLoginAt: user.lastLoginAt,
       status: user.status,
       role: user.role,
-      totalOrders: 0, // Epic 8 dependency - will aggregate from Orders table
-      totalPurchaseAmount: 0, // Epic 8 dependency - will sum order totals
+      totalOrders: statsMap.get(user.id)?._count.id ?? 0,
+      totalPurchaseAmount: Number(statsMap.get(user.id)?._sum.total ?? 0),
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -383,11 +395,14 @@ export class AdminService {
 
     // 1. Total Orders (last 7 days vs previous 7 days)
     const last7DaysOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: last7DaysStart } },
+      where: { createdAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
     });
 
     const previous7DaysOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: previous7DaysStart, lt: last7DaysStart } },
+      where: {
+        createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+        paymentStatus: 'CONFIRMED',
+      },
     });
 
     const ordersTrend = this.calculateTrend(last7DaysOrders, previous7DaysOrders);
@@ -426,7 +441,7 @@ export class AdminService {
     // 5. Top 5 Selling Products
     const topProducts = await this.prisma.orderItem.groupBy({
       by: ['productId', 'productName'],
-      where: { productId: { not: null } },
+      where: { productId: { not: null }, order: { paymentStatus: 'CONFIRMED' } },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: 'desc' } },
       take: 5,
@@ -590,6 +605,10 @@ export class AdminService {
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
+      alimtalkEnabled: config.alimtalkEnabled,
+      solapiApiKey: config.solapiApiKey,
+      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
+      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -616,6 +635,18 @@ export class AdminService {
     if (dto.emailNotificationsEnabled !== undefined) {
       updateData.emailNotificationsEnabled = dto.emailNotificationsEnabled;
     }
+    if (dto.alimtalkEnabled !== undefined) {
+      updateData.alimtalkEnabled = dto.alimtalkEnabled;
+    }
+    if (dto.solapiApiKey !== undefined) {
+      updateData.solapiApiKey = dto.solapiApiKey;
+    }
+    if (dto.solapiApiSecret !== undefined && dto.solapiApiSecret !== '••••••••') {
+      updateData.solapiApiSecret = dto.solapiApiSecret;
+    }
+    if (dto.kakaoChannelId !== undefined) {
+      updateData.kakaoChannelId = dto.kakaoChannelId;
+    }
 
     const config = await this.prisma.systemConfig.upsert({
       where: { id: 'system' },
@@ -633,6 +664,10 @@ export class AdminService {
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
+      alimtalkEnabled: config.alimtalkEnabled,
+      solapiApiKey: config.solapiApiKey,
+      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
+      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -1010,6 +1045,7 @@ export class AdminService {
         orderId: updated.id,
         status: updated.status,
         shippingStatus: updated.shippingStatus,
+        trackingNumber: updated.trackingNumber,
         shippedAt: updated.shippedAt,
         deliveredAt: updated.deliveredAt,
       },
@@ -1160,28 +1196,24 @@ export class AdminService {
       }
     }
 
-    // Calculate user statistics (Epic 8 dependency - placeholder for now)
+    const userOrders = await this.prisma.order.findMany({
+      where: { userId, paymentStatus: 'CONFIRMED' },
+      select: { total: true, createdAt: true },
+    });
+    const totalOrders = userOrders.length;
+    const totalPurchaseAmount = userOrders.reduce((sum, o) => sum + Number(o.total), 0);
+    const averageOrderValue = totalOrders > 0 ? totalPurchaseAmount / totalOrders : 0;
+    const monthsSinceRegistration = Math.max(
+      1,
+      Math.floor((Date.now() - user.createdAt.getTime()) / (30 * 24 * 60 * 60 * 1000)),
+    );
+    const orderFrequency = totalOrders / monthsSinceRegistration;
     const statistics: UserStatisticsDto = {
-      totalOrders: 0,
-      totalPurchaseAmount: 0,
-      averageOrderValue: 0,
-      orderFrequency: 0,
+      totalOrders,
+      totalPurchaseAmount,
+      averageOrderValue,
+      orderFrequency,
     };
-
-    // TODO: Epic 8 - Calculate real statistics from orders
-    // const orders = await this.prisma.order.findMany({
-    //   where: { userId },
-    //   select: { total: true, createdAt: true }
-    // });
-    // statistics.totalOrders = orders.length;
-    // statistics.totalPurchaseAmount = orders.reduce((sum, o) => sum + Number(o.total), 0);
-    // statistics.averageOrderValue = statistics.totalOrders > 0
-    //   ? statistics.totalPurchaseAmount / statistics.totalOrders
-    //   : 0;
-    // const monthsSinceRegistration = differenceInMonths(new Date(), user.createdAt);
-    // statistics.orderFrequency = monthsSinceRegistration > 0
-    //   ? statistics.totalOrders / monthsSinceRegistration
-    //   : 0;
 
     return {
       id: user.id,
@@ -1232,13 +1264,19 @@ export class AdminService {
       data: updateData,
     });
 
-    // TODO: Epic 12 - Emit audit log event
-    // this.eventEmitter.emit('admin:user:status-updated', {
-    //   userId,
-    //   oldStatus: user.status,
-    //   newStatus: dto.status,
-    //   adminId: currentAdminId,
-    // });
+    // Set/clear Redis suspended flag for WebSocket auth check
+    try {
+      if (dto.status === 'SUSPENDED') {
+        await this.redisService.set(`suspended:${userId}`, '1');
+        // Also blacklist all existing tokens for this user
+        await this.redisService.set(`blacklist:${userId}`, '1', 86400 * 30); // 30 days
+      } else {
+        await this.redisService.del(`suspended:${userId}`);
+        await this.redisService.del(`blacklist:${userId}`);
+      }
+    } catch {
+      // Redis unavailable — DB status check in JWT strategy still works
+    }
 
     return {
       success: true,
@@ -1264,7 +1302,7 @@ export class AdminService {
   /**
    * Update notification template
    */
-  async updateNotificationTemplate(id: string, template: string) {
+  async updateNotificationTemplate(id: string, template?: string, kakaoTemplateCode?: string) {
     const existingTemplate = await this.prisma.notificationTemplate.findUnique({
       where: { id },
     });
@@ -1273,9 +1311,17 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
+    const updateData: { template?: string; kakaoTemplateCode?: string } = {};
+    if (template !== undefined) {
+      updateData.template = template;
+    }
+    if (kakaoTemplateCode !== undefined) {
+      updateData.kakaoTemplateCode = kakaoTemplateCode;
+    }
+
     const updated = await this.prisma.notificationTemplate.update({
       where: { id },
-      data: { template },
+      data: updateData,
     });
 
     return {

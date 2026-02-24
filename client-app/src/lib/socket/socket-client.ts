@@ -1,6 +1,9 @@
 import { io, Socket } from 'socket.io-client';
+import { RECONNECT_CONFIG } from './reconnect-config';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
 export class SocketClient {
   private socket: Socket | null = null;
@@ -14,15 +17,16 @@ export class SocketClient {
 
     this.token = token;
 
+    const config = RECONNECT_CONFIG.default;
     this.socket = io(`${SOCKET_URL}/${namespace}`, {
       auth: {
         token: this.token,
       },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,      // 1 second
-      reconnectionDelayMax: 5000,   // 5 seconds (exponential backoff)
+      reconnectionAttempts: config.maxAttempts,
+      reconnectionDelay: config.delays[0],
+      reconnectionDelayMax: config.delays[config.delays.length - 1],
       timeout: 20000,
     });
 

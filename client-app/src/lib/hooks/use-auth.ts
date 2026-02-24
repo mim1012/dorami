@@ -1,11 +1,9 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../store/auth';
 import { apiClient } from '../api/client';
 
 export function useAuth() {
   const { user, isAuthenticated, isLoading, setUser, setLoading, logout } = useAuthStore();
-  const pathname = usePathname();
   const fetchedRef = useRef(false);
 
   const fetchProfile = useCallback(async () => {
@@ -36,20 +34,17 @@ export function useAuth() {
   }, [setLoading, setUser]);
 
   useEffect(() => {
-    // Skip fetching on login page — no session expected, avoids 401 loop
-    if (pathname === '/login') {
-      if (isLoading) {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // Always verify session on mount (handles stale localStorage user)
+    // Always verify session on mount (handles stale localStorage user).
+    // We intentionally do NOT skip the login page: if the user arrives at /login
+    // with stale isAuthenticated=true in localStorage (e.g. after a full-page
+    // redirect caused by a 401 on a non-auth endpoint), we must verify the
+    // session here so that LoginContent's useEffect sees the correct
+    // isAuthenticated=false and renders the form instead of redirecting away.
     if (isLoading && !fetchedRef.current) {
       fetchedRef.current = true;
       fetchProfile();
     }
-  }, [pathname, isLoading, fetchProfile, setLoading]);
+  }, [isLoading, fetchProfile]);
 
   const handleLogout = async () => {
     try {

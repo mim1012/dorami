@@ -1,12 +1,10 @@
 # Continuous Integration Workflow
-# Runs on all pull requests and pushes to main
+# Runs on all pull requests and pushes to main/develop
 # Tests, lints, and builds both backend and frontend
 
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
   workflow_call:
@@ -37,14 +35,19 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - 'packages/shared-types/**'
               - 'package.json'
+              - 'package-lock.json'
             frontend:
               - 'client-app/**'
+              - 'packages/shared-types/**'
               - 'package.json'
+              - 'package-lock.json'
             infra:
               - 'docker-compose*.yml'
+              - '**/Dockerfile'
               - 'infrastructure/**'
-              - 'Dockerfile*'
+              - 'nginx/**'
 
   # ===========================================
   # Backend CI
@@ -84,15 +87,14 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js with Cache
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install dependencies
         run: npm ci
@@ -105,11 +107,12 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type Check
-        run: npx tsc --noEmit
+      # 린트와 타입 체크를 병렬로 실행
+      - name: Lint & Type Check
+        run: |
+          npm run lint &
+          npx tsc --noEmit &
+          wait
 
       - name: Unit Tests
         run: npm test
@@ -148,22 +151,26 @@ jobs:
         working-directory: client-app
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # 캐시 설정 추가
+      - name: Setup Node.js with Cache
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
+      # client-app에는 package-lock.json이 없으므로 npm install 사용
       - name: Install dependencies
         run: npm install
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type Check
-        run: npx tsc --noEmit
+      # 린트와 타입 체크를 병렬로 실행
+      - name: Lint & Type Check
+        run: |
+          npm run lint &
+          npx tsc --noEmit &
+          wait
 
       - name: Build
         run: npm run build
@@ -173,40 +180,35 @@ jobs:
           NEXT_PUBLIC_CDN_URL: http://localhost:8080
 
   # ===========================================
-  # Docker Build Test
+  # Docker Build Test (Matrix로 병렬 실행)
   # ===========================================
   docker-build:
-    name: Docker Build Test
+    name: Docker Build (${{ matrix.service }})
     needs: [changes]
     if: needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            dockerfile: ./backend/Dockerfile
+          - service: frontend
+            dockerfile: ./client-app/Dockerfile
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Backend Image
-        uses: docker/build-push-action@v5
+      - name: Build ${{ matrix.service }} Image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./backend/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: false
-          tags: dorami-backend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./client-app/Dockerfile
-          push: false
-          tags: dorami-frontend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: dorami-${{ matrix.service }}:test
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
 
   # ===========================================
   # Security Scan
@@ -215,8 +217,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner (Backend)
         uses: aquasecurity/trivy-action@master
@@ -224,7 +225,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: './backend'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'  # Don't fail build, just report
+          exit-code: '0'
 
       - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master

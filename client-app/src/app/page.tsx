@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import { LiveCountdownBanner } from '@/components/home/LiveCountdownBanner';
 import { ProductCard } from '@/components/home/ProductCard';
 import { UpcomingLiveCard } from '@/components/home/UpcomingLiveCard';
@@ -13,6 +14,9 @@ import { getUpcomingStreams } from '@/lib/api/streaming';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { SocialProof } from '@/components/home/SocialProof';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { PushNotificationBanner } from '@/components/notifications/PushNotificationBanner';
+import { Footer } from '@/components/layout/Footer';
+import Image from 'next/image';
 
 // ── Fallback mock data ──
 const MOCK_PRODUCTS = [
@@ -73,7 +77,7 @@ function getMockUpcomingLives(now: number) {
       title: '신상 뷰티 제품 특집 라이브',
       scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
       thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
-      isLive: true,
+      isLive: false,
     },
     {
       id: '2',
@@ -100,6 +104,7 @@ export default function Home() {
       id: string;
       name: string;
       price: number;
+      originalPrice?: number;
       imageUrl: string;
       isNew?: boolean;
       discount?: number;
@@ -138,7 +143,8 @@ export default function Home() {
             products = apiProducts.map((p) => ({
               id: p.id,
               name: p.name,
-              price: p.originalPrice || p.price,
+              price: p.price,
+              originalPrice: p.originalPrice,
               imageUrl:
                 p.imageUrl ||
                 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
@@ -191,6 +197,68 @@ export default function Home() {
     }
 
     fetchData();
+
+    // WebSocket connection for real-time upcoming streams updates
+    const ws = io(
+      process.env.NEXT_PUBLIC_WS_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
+      {
+        withCredentials: true,
+      },
+    );
+
+    ws.on('upcoming:updated', (data: { streams: any[] }) => {
+      if (data.streams && data.streams.length > 0) {
+        const lives = data.streams.map((s) => ({
+          id: s.id,
+          streamKey: s.streamKey,
+          title: s.title,
+          scheduledTime: new Date(s.scheduledTime || s.scheduledStartTime || Date.now() + 3600000),
+          thumbnailUrl:
+            s.thumbnailUrl ||
+            'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+          isLive: s.isLive || false,
+        }));
+        setUpcomingLives(lives);
+        if (lives.length > 0) {
+          setNextLiveTime(new Date(lives[0].scheduledTime));
+          setIsNextLiveActive(lives[0].isLive);
+        }
+      }
+    });
+
+    // Keep HTTP polling as fallback (10s interval)
+    const interval = setInterval(async () => {
+      try {
+        const apiStreams = await getUpcomingStreams(3);
+        if (apiStreams && apiStreams.length > 0) {
+          const lives = apiStreams.map((s) => ({
+            id: s.id,
+            streamKey: s.streamKey,
+            title: s.title,
+            scheduledTime: new Date(
+              s.scheduledTime || s.scheduledStartTime || Date.now() + 3600000,
+            ),
+            thumbnailUrl:
+              s.thumbnailUrl ||
+              'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+            isLive: s.isLive || false,
+          }));
+          setUpcomingLives(lives);
+          if (lives.length > 0) {
+            setNextLiveTime(new Date(lives[0].scheduledTime));
+            setIsNextLiveActive(lives[0].isLive);
+          }
+        }
+      } catch {
+        // silent fail on polling
+      }
+    }, 10000);
+
+    return () => {
+      ws.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleSearch = (query: string) => {
@@ -210,8 +278,6 @@ export default function Home() {
   const handleLiveBannerClick = () => {
     if (isNextLiveActive && upcomingLives.length > 0 && upcomingLives[0].streamKey) {
       router.push(`/live/${upcomingLives[0].streamKey}`);
-    } else if (upcomingLives.length > 0) {
-      router.push('/live');
     }
   };
 
@@ -276,12 +342,18 @@ export default function Home() {
           {/* Brand header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
-                <span className="text-white font-black text-xl">D</span>
+              <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Doremi"
+                  width={48}
+                  height={48}
+                  className="object-contain w-full h-full"
+                />
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-hot-pink via-[#FF4500] to-[#7928CA] bg-clip-text text-transparent">
-                  DoRaMi
+                  Doremi
                 </h1>
                 <p className="text-[10px] text-secondary-text -mt-0.5 tracking-[0.2em] uppercase font-semibold">
                   Live Shopping Experience
@@ -369,12 +441,6 @@ export default function Home() {
               {upcomingLives.length}
             </span>
           </div>
-          <button
-            onClick={() => router.push('/live')}
-            className="text-sm text-secondary-text hover:text-hot-pink transition-colors font-semibold"
-          >
-            전체보기 &rarr;
-          </button>
         </div>
 
         <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 -mx-4 px-4 snap-x snap-mandatory">
@@ -417,7 +483,7 @@ export default function Home() {
               이번 주<br />
               인기 상품
             </h3>
-            <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도라미 에디터 추천!</p>
+            <p className="text-white/80 text-sm mb-5">매주 업데이트되는 도레미 에디터 추천!</p>
             <button
               onClick={() => router.push('/shop')}
               className="bg-white text-[#FF007A] px-7 py-3 rounded-full text-sm font-black hover:bg-white/90 transition-all active:scale-95 shadow-lg"
@@ -481,6 +547,7 @@ export default function Home() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
+                  originalPrice={product.originalPrice}
                   imageUrl={product.imageUrl}
                   isNew={product.isNew}
                   discount={product.discount}
@@ -492,6 +559,12 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* Push Notification Banner */}
+      <PushNotificationBanner />
+
+      {/* Footer */}
+      <Footer />
 
       {/* Floating Navigation */}
       <FloatingNav />

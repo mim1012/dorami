@@ -41,6 +41,11 @@ function OrderCompleteContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [bankInfo, setBankInfo] = useState({
+    bank: '국민은행',
+    accountNumber: '123-456-789012',
+    accountHolder: '라이브커머스(주)',
+  });
 
   const { isInitialized, shareOrder } = useKakaoShare();
 
@@ -54,6 +59,21 @@ function OrderCompleteContent() {
       try {
         const response = await apiClient.get<OrderDetail>(`/orders/${orderId}`);
         setOrder(response.data);
+
+        // Fetch bank info from system config
+        try {
+          const configRes = await apiClient.get<any>('/admin/system-settings').catch(() => null);
+          const config = configRes?.data;
+          if (config?.bankName || config?.bankAccountNumber) {
+            setBankInfo({
+              bank: config.bankName || '국민은행',
+              accountNumber: config.bankAccountNumber || '123-456-789012',
+              accountHolder: config.bankAccountHolder || '라이브커머스(주)',
+            });
+          }
+        } catch {
+          // use default bankInfo
+        }
       } catch (err: any) {
         console.error('Failed to fetch order:', err);
         setError('주문 정보를 불러오는데 실패했습니다.');
@@ -66,9 +86,10 @@ function OrderCompleteContent() {
   }, [orderId, router]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(price);
   };
 
@@ -76,13 +97,6 @@ function OrderCompleteContent() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Mock bank account info - in production, this should come from API
-  const bankInfo = {
-    bank: '국민은행',
-    accountNumber: '123-456-789012',
-    accountHolder: '라이브커머스(주)',
   };
 
   const handleKakaoShare = () => {
@@ -146,9 +160,7 @@ function OrderCompleteContent() {
             <CheckCircle className="w-12 h-12 text-hot-pink" />
           </div>
           <Display className="text-hot-pink mb-2">주문이 완료되었습니다!</Display>
-          <Body className="text-secondary-text">
-            입금 확인 후 배송이 시작됩니다.
-          </Body>
+          <Body className="text-secondary-text">입금 확인 후 배송이 시작됩니다.</Body>
         </div>
 
         {/* Order Number */}
@@ -181,9 +193,7 @@ function OrderCompleteContent() {
                   <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
                 </button>
               </div>
-              <Heading2 className="text-primary-text font-mono">
-                {bankInfo.accountNumber}
-              </Heading2>
+              <Heading2 className="text-primary-text font-mono">{bankInfo.accountNumber}</Heading2>
             </div>
 
             <div className="bg-content-bg rounded-xl p-4">
@@ -212,10 +222,13 @@ function OrderCompleteContent() {
 
           <div className="mt-4 p-4 bg-content-bg/80 rounded-xl border border-hot-pink/20">
             <Body className="text-secondary-text text-sm leading-relaxed">
-              💡 <strong className="text-primary-text">입금 시 유의사항</strong><br />
-              • 입금자명은 <strong className="text-hot-pink">{order.depositorName || '주문자명'}</strong>으로 해주세요<br />
-              • 입금 기한 내 미입금 시 주문이 자동 취소됩니다<br />
-              • 입금 확인은 영업일 기준 1~2시간 소요됩니다
+              💡 <strong className="text-primary-text">입금 시 유의사항</strong>
+              <br />• 입금자명은{' '}
+              <strong className="text-hot-pink">{order.depositorName || '주문자명'}</strong>으로
+              해주세요
+              <br />
+              • 입금 기한 내 미입금 시 주문이 자동 취소됩니다
+              <br />• 입금 확인은 영업일 기준 1~2시간 소요됩니다
             </Body>
           </div>
         </div>
@@ -243,20 +256,10 @@ function OrderCompleteContent() {
         {/* Action Buttons */}
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              fullWidth
-              onClick={() => router.push('/')}
-            >
+            <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/')}>
               홈으로 이동
             </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={() => router.push('/my-page')}
-            >
+            <Button variant="primary" size="lg" fullWidth onClick={() => router.push('/my-page')}>
               주문 내역 확인
             </Button>
           </div>

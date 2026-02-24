@@ -1,23 +1,7 @@
 import { apiClient } from './client';
+import type { Product } from '@/lib/types/product';
 
-export interface Product {
-  id: string;
-  name: string;
-  description?: string;
-  category?: string;
-  price: number;
-  originalPrice?: number;
-  stockQuantity?: number;
-  stock?: number;
-  imageUrl?: string;
-  isNew?: boolean;
-  discountRate?: number;
-  colorOptions?: string[];
-  sizeOptions?: string[];
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  createdAt: string;
-  updatedAt: string;
-}
+export type { Product };
 
 export async function getProducts(status?: string): Promise<Product[]> {
   const query = status ? `?status=${status}` : '';
@@ -32,5 +16,12 @@ export async function getProductById(id: string): Promise<Product> {
 
 export async function getFeaturedProducts(limit: number = 6): Promise<Product[]> {
   const response = await apiClient.get<Product[]>(`/products/featured?limit=${limit}`);
+  return response.data;
+}
+
+export async function getProductsByStreamKey(streamKey: string): Promise<Product[]> {
+  const response = await apiClient.get<Product[]>(
+    `/products?streamKey=${streamKey}&status=AVAILABLE`,
+  );
   return response.data;
 }

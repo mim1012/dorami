@@ -20,7 +20,7 @@ export function UpcomingLiveCard({
   thumbnailUrl,
   isLive = false,
   onClick,
-  size = 'normal'
+  size = 'normal',
 }: UpcomingLiveCardProps) {
   const [countdown, setCountdown] = useState('');
 
@@ -37,7 +37,9 @@ export function UpcomingLiveCard({
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setCountdown(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+      setCountdown(
+        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
+      );
     };
     update();
     const interval = setInterval(update, 1000);
@@ -65,7 +67,7 @@ export function UpcomingLiveCard({
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, 50vw"
         />
-        
+
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
@@ -81,28 +83,25 @@ export function UpcomingLiveCard({
                 LIVE<span className="sr-only"> 현재 생방송 중</span>
               </div>
             </div>
-            {/* Viewer count */}
-            <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
-              </svg>
-              {Math.floor(Math.random() * 300 + 50)}
-            </div>
           </>
         ) : (
           <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-mono font-bold tracking-wider">
-            <Timer className="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />{countdown}
+            <Timer className="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />
+            {countdown}
           </div>
         )}
 
         {/* Bottom info overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-3">
-          <h3 className="text-white font-bold text-sm line-clamp-1 drop-shadow-lg mb-1">
-            {title}
-          </h3>
+          <h3 className="text-white font-bold text-sm line-clamp-1 drop-shadow-lg mb-1">{title}</h3>
           <div className="flex items-center gap-1.5 text-white/80 text-xs">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span>{formatTime(scheduledTime)}</span>
           </div>

@@ -60,6 +60,9 @@
       "prettier --write"
     ]
   },
+  "overrides": {
+    "passport-oauth2": "^1.8.0"
+  },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"

@@ -47,11 +47,12 @@ export function formatInstagramId(value: string): string {
 }
 
 /**
- * Format price in KRW currency format
+ * Format price in USD currency format
  */
 export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('ko-KR', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'KRW',
+    currency: 'USD',
+    maximumFractionDigits: 0,
   }).format(price);
 }

@@ -21,6 +21,28 @@ export class GenerateKeyDto {
   @IsString()
   @IsOptional()
   title?: string = 'Live Stream';
+
+  @IsDateString()
+  @IsOptional()
+  scheduledAt?: string; // ISO 8601 — intended broadcast start time
+
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
+}
+
+export class UpdateStreamDto {
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsDateString()
+  @IsOptional()
+  expiresAt?: string; // ISO 8601 format
+
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
 }
 
 export class StreamStatusDto {
@@ -90,12 +112,14 @@ export class StreamingSessionResponseDto {
   startedAt?: Date;
   endedAt?: Date;
   totalDuration?: number;
+  scheduledAt?: Date | null;
+  thumbnailUrl?: string | null;
   expiresAt: Date;
   createdAt: Date;
 }
 
 // SRS on_publish / on_unpublish callback DTO
-// SRS sends JSON body with these fields
+// SRS v6 sends JSON body with these fields (all extra fields must be declared to pass forbidNonWhitelisted)
 export class SrsCallbackDto {
   @IsString()
   @IsNotEmpty()
@@ -110,7 +134,7 @@ export class SrsCallbackDto {
   ip?: string;
 
   @IsOptional()
-  client_id?: number;
+  client_id?: string | number; // SRS v6 sends string (e.g. "9308h583")
 
   @IsString()
   @IsOptional()
@@ -123,6 +147,39 @@ export class SrsCallbackDto {
   @IsString()
   @IsOptional()
   param?: string;
+
+  // SRS v6 additional fields
+  @IsString()
+  @IsOptional()
+  server_id?: string;
+
+  @IsString()
+  @IsOptional()
+  service_id?: string;
+
+  @IsString()
+  @IsOptional()
+  tcUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  stream_url?: string;
+
+  @IsString()
+  @IsOptional()
+  stream_id?: string;
+
+  // SRS v6 may also send these depending on version/config
+  @IsOptional()
+  port?: number | string;
+
+  @IsString()
+  @IsOptional()
+  type?: string; // e.g. "live"
+
+  @IsString()
+  @IsOptional()
+  pageUrl?: string;
 }
 
 // nginx-rtmp on_publish / on_publish_done callback DTO (legacy)

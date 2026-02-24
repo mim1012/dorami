@@ -21,10 +21,7 @@ export class PointsService {
   /**
    * Get or create a PointBalance record for a user (inside a transaction)
    */
-  async getOrCreateBalance(
-    tx: Prisma.TransactionClient,
-    userId: string,
-  ) {
+  async getOrCreateBalance(tx: Prisma.TransactionClient, userId: string) {
     let balance = await tx.pointBalance.findUnique({
       where: { userId },
     });
@@ -88,8 +85,12 @@ export class PointsService {
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) {where.createdAt.gte = new Date(startDate);}
-      if (endDate) {where.createdAt.lte = new Date(endDate);}
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.createdAt.lte = new Date(endDate);
+      }
     }
 
     const [total, transactions] = await Promise.all([
@@ -177,68 +178,75 @@ export class PointsService {
     reason?: string,
   ): Promise<{ newBalance: number }> {
     return await this.prisma.$transaction(async (tx) => {
-      const balance = await this.getOrCreateBalance(tx, userId);
-
-      if (balance.currentBalance < amount) {
-        throw new BusinessException(
-          'INSUFFICIENT_POINTS',
-          { available: balance.currentBalance, requested: amount },
-          `Insufficient points. Available: ${balance.currentBalance}, Requested: ${amount}`,
-        );
-      }
-
-      const newBalance = balance.currentBalance - amount;
-
-      await tx.pointBalance.update({
-        where: { id: balance.id },
-        data: {
-          currentBalance: newBalance,
-          lifetimeUsed:
-            type === PointTransactionType.USED_ORDER
-              ? balance.lifetimeUsed + amount
-              : balance.lifetimeUsed,
-          lifetimeExpired:
-            type === PointTransactionType.EXPIRED
-              ? balance.lifetimeExpired + amount
-              : balance.lifetimeExpired,
-        },
-      });
-
-      await tx.pointTransaction.create({
-        data: {
-          balanceId: balance.id,
-          transactionType: type,
-          amount: -amount,
-          balanceAfter: newBalance,
-          orderId,
-          reason,
-        },
-      });
-
-      this.logger.log(
-        `Deducted ${amount} points from user ${userId} (type: ${type}). New balance: ${newBalance}`,
-      );
-
-      return { newBalance };
+      return this.deductPointsTx(tx, userId, amount, type, orderId, reason);
     });
+  }
+
+  /**
+   * Deduct points within an existing transaction.
+   * Use this when point deduction must be atomic with other operations (e.g., order creation).
+   */
+  async deductPointsTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amount: number,
+    type: PointTransactionType,
+    orderId?: string,
+    reason?: string,
+  ): Promise<{ newBalance: number }> {
+    const balance = await this.getOrCreateBalance(tx, userId);
+
+    if (balance.currentBalance < amount) {
+      throw new BusinessException(
+        'INSUFFICIENT_POINTS',
+        { available: balance.currentBalance, requested: amount },
+        `Insufficient points. Available: ${balance.currentBalance}, Requested: ${amount}`,
+      );
+    }
+
+    const newBalance = balance.currentBalance - amount;
+
+    await tx.pointBalance.update({
+      where: { id: balance.id },
+      data: {
+        currentBalance: newBalance,
+        lifetimeUsed:
+          type === PointTransactionType.USED_ORDER
+            ? balance.lifetimeUsed + amount
+            : balance.lifetimeUsed,
+        lifetimeExpired:
+          type === PointTransactionType.EXPIRED
+            ? balance.lifetimeExpired + amount
+            : balance.lifetimeExpired,
+      },
+    });
+
+    await tx.pointTransaction.create({
+      data: {
+        balanceId: balance.id,
+        transactionType: type,
+        amount: -amount,
+        balanceAfter: newBalance,
+        orderId,
+        reason,
+      },
+    });
+
+    this.logger.log(
+      `Deducted ${amount} points from user ${userId} (type: ${type}). New balance: ${newBalance}`,
+    );
+
+    return { newBalance };
   }
 
   /**
    * Validate if user can redeem points against an order total
    */
-  async validateRedemption(
-    userId: string,
-    pointsToUse: number,
-    orderTotal: number,
-  ): Promise<void> {
+  async validateRedemption(userId: string, pointsToUse: number, orderTotal: number): Promise<void> {
     const config = await this.pointsConfigService.getPointsConfig();
 
     if (!config.pointsEnabled) {
-      throw new BusinessException(
-        'POINTS_DISABLED',
-        {},
-        'Points system is currently disabled',
-      );
+      throw new BusinessException('POINTS_DISABLED', {}, 'Points system is currently disabled');
     }
 
     if (pointsToUse < config.pointMinRedemption) {
@@ -249,9 +257,7 @@ export class PointsService {
       );
     }
 
-    const maxRedemptionAmount = Math.floor(
-      orderTotal * (config.pointMaxRedemptionPct / 100),
-    );
+    const maxRedemptionAmount = Math.floor(orderTotal * (config.pointMaxRedemptionPct / 100));
 
     if (pointsToUse > maxRedemptionAmount) {
       throw new BusinessException(

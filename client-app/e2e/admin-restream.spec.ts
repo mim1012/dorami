@@ -247,10 +247,11 @@ test.describe('Admin ReStream Management', () => {
       return;
     }
 
-    // 해당 타겟의 수정 버튼 클릭
+    // 해당 타겟의 수정 버튼 클릭 — 중복 항목이 있을 수 있으므로 .first() 사용
     const targetRow = page
       .locator('div.flex.items-center.gap-3')
-      .filter({ hasText: 'E2E Deactivate Test' });
+      .filter({ hasText: 'E2E Deactivate Test' })
+      .first();
     const editButton = targetRow.locator('button[title="수정"]');
     await expect(editButton).toBeVisible({ timeout: 5000 });
     await editButton.click();

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -20,7 +15,15 @@ import { Cart } from '@prisma/client';
 // Type for Prisma transaction client
 type PrismaTransactionClient = Omit<
   PrismaService,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends' | 'onModuleInit' | 'onModuleDestroy' | 'isHealthy'
+  | '$connect'
+  | '$disconnect'
+  | '$on'
+  | '$transaction'
+  | '$use'
+  | '$extends'
+  | 'onModuleInit'
+  | 'onModuleDestroy'
+  | 'isHealthy'
 >;
 
 // Type for Cart model from Prisma
@@ -103,9 +106,18 @@ export class CartService {
           );
         }
 
+        // Also sync timer settings from product in case they changed after item was first added
+        const newExpiresAt = product.timerEnabled
+          ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+          : null;
+
         return await tx.cart.update({
           where: { id: existingCartItem.id },
-          data: { quantity: newQuantity },
+          data: {
+            quantity: newQuantity,
+            timerEnabled: product.timerEnabled,
+            expiresAt: newExpiresAt,
+          },
         });
       });
 
@@ -114,28 +126,40 @@ export class CartService {
       return this.mapToResponseDto(updatedItem as CartModel);
     }
 
-    // 4. Create new cart item with timer
-    const expiresAt = product.timerEnabled
-      ? new Date(Date.now() + product.timerDuration * 60 * 1000)
-      : null;
+    // 4. Create new cart item with timer (wrapped in transaction to prevent race condition)
+    const cartItem = await this.prisma.$transaction(async (tx) => {
+      // Re-check available stock within transaction to prevent TOCTOU race condition
+      const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
+      const currentAvailableStock = product.quantity - currentReserved;
 
-    const cartItem = await this.prisma.cart.create({
-      data: {
-        userId,
-        productId,
-        productName: product.name,
-        price: product.price,
-        quantity,
-        color,
-        size,
-        shippingFee: product.shippingFee,
-        timerEnabled: product.timerEnabled,
-        expiresAt,
-        status: 'ACTIVE',
-      },
+      if (currentAvailableStock < quantity) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${currentAvailableStock}, Requested: ${quantity}`,
+        );
+      }
+
+      const expiresAt = product.timerEnabled
+        ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+        : null;
+
+      return await tx.cart.create({
+        data: {
+          userId,
+          productId,
+          productName: product.name,
+          price: product.price,
+          quantity,
+          color,
+          size,
+          shippingFee: product.shippingFee,
+          timerEnabled: product.timerEnabled,
+          expiresAt,
+          status: 'ACTIVE',
+        },
+      });
     });
 
-    this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${expiresAt}`);
+    this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${cartItem.expiresAt}`);
 
     // 5. Emit cart added event for WebSocket broadcast (with user info for real-time display)
     // Fetch user name for broadcast
@@ -143,9 +167,9 @@ export class CartService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { name: true },
+        select: { instagramId: true },
       });
-      userName = user?.name || '익명';
+      userName = user?.instagramId || '익명';
     } catch {
       // Fallback to anonymous
     }
@@ -398,14 +422,13 @@ export class CartService {
     const totalShippingFee = items.reduce((sum, item) => sum + item.shippingFee, 0);
 
     // Find earliest expiration
-    const expiringItems = items.filter(item => item.expiresAt);
-    const earliestExpiration = expiringItems.length > 0
-      ? expiringItems.reduce((earliest, item) => {
-          return new Date(item.expiresAt) < new Date(earliest)
-            ? item.expiresAt
-            : earliest;
-        }, expiringItems[0].expiresAt)
-      : undefined;
+    const expiringItems = items.filter((item) => item.expiresAt);
+    const earliestExpiration =
+      expiringItems.length > 0
+        ? expiringItems.reduce((earliest, item) => {
+            return new Date(item.expiresAt) < new Date(earliest) ? item.expiresAt : earliest;
+          }, expiringItems[0].expiresAt)
+        : undefined;
 
     return {
       items,
@@ -423,10 +446,22 @@ export class CartService {
    */
   private generateUserColor(userId: string): string {
     const COLORS = [
-      '#FF007A', '#FF6B35', '#7928CA', '#0070F3',
-      '#00C853', '#FF3D00', '#AA00FF', '#00BFA5',
-      '#FFD600', '#FF1744', '#651FFF', '#00B8D4',
-      '#F50057', '#D500F9', '#00E5FF', '#76FF03',
+      '#FF007A',
+      '#FF6B35',
+      '#7928CA',
+      '#0070F3',
+      '#00C853',
+      '#FF3D00',
+      '#AA00FF',
+      '#00BFA5',
+      '#FFD600',
+      '#FF1744',
+      '#651FFF',
+      '#00B8D4',
+      '#F50057',
+      '#D500F9',
+      '#00E5FF',
+      '#76FF03',
     ];
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {

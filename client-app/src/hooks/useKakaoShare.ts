@@ -79,8 +79,7 @@ export function useKakaoShare() {
         content: {
           title: '주문이 완료되었습니다',
           description,
-          imageUrl:
-            'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
+          imageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80',
           link: {
             mobileWebUrl: orderUrl,
             webUrl: orderUrl,
@@ -88,7 +87,7 @@ export function useKakaoShare() {
         },
         commerce: {
           regularPrice: orderData.totalAmount,
-          currencyUnit: '원',
+          currencyUnit: '$',
           currencyUnitPosition: 1,
         },
         buttons: [

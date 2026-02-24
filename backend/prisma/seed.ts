@@ -34,10 +34,10 @@ async function main() {
     data: {
       email: 'admin@doremi.shop',
       kakaoId: 'admin_kakao_001',
-      name: 'DoReMi Admin',
+      name: 'Doremi Admin',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
-      depositorName: 'DoReMi',
+      depositorName: 'Doremi',
       instagramId: 'doremi.shop',
       shippingAddress: {
         street: '123 Commerce St',
