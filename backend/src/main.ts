@@ -1,5 +1,5 @@
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -214,14 +214,6 @@ async function bootstrap() {
 
   // API Prefix
   app.setGlobalPrefix('api');
-
-  // API Versioning
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-    prefix: 'v',
-  });
-  logger.log('API versioning enabled (v1)');
 
   // Swagger/OpenAPI Documentation (non-production only)
   if (process.env.APP_ENV !== 'production') {
@@ -589,8 +581,10 @@ async function bootstrap() {
         await socket.join(roomName);
         socketStreams.set(socket.id, streamKey);
 
-        // Increment viewer count in Redis
-        const viewerCount = Number(await pubClient.incr(`stream:${streamKey}:viewers`));
+        // Add userId to viewer Set (idempotent — reconnects don't double-count)
+        const userId = authenticatedSocket.user.userId;
+        await pubClient.sadd(`stream:${streamKey}:viewer_ids`, userId);
+        const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
 
         logger.log(
           `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
@@ -627,11 +621,10 @@ async function bootstrap() {
         await socket.leave(roomName);
         socketStreams.delete(socket.id);
 
-        // Decrement viewer count in Redis
-        const viewerCount = Number(await pubClient.decr(`stream:${streamKey}:viewers`));
-        if (viewerCount < 0) {
-          await pubClient.set(`stream:${streamKey}:viewers`, '0');
-        }
+        // Remove userId from viewer Set
+        const userId = authenticatedSocket.user.userId;
+        await pubClient.srem(`stream:${streamKey}:viewer_ids`, userId);
+        const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
 
         logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
 
@@ -659,10 +652,9 @@ async function bootstrap() {
         const streamKey = socketStreams.get(socket.id);
         if (streamKey) {
           const roomName = `stream:${streamKey}`;
-          const viewerCount = Number(await pubClient.decr(`stream:${streamKey}:viewers`));
-          if (viewerCount < 0) {
-            await pubClient.set(`stream:${streamKey}:viewers`, '0');
-          }
+          const userId = authenticatedSocket.user.userId;
+          await pubClient.srem(`stream:${streamKey}:viewer_ids`, userId);
+          const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
 
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',

@@ -72,9 +72,9 @@ npm run build:shared         # Build shared-types package only
 
 - `cookieParser` → `helmet` → `compression` → `ValidationPipe` (whitelist + transform) → `BusinessExceptionFilter` → `TransformInterceptor` (wraps responses in `{data, success, timestamp}`) → `CsrfGuard` (Double Submit Cookie, disable with `CSRF_ENABLED=false`)
 
-**API prefix:** All routes under `/api` with URI versioning (`/api/v1/...`). Swagger at `/api/docs` when `APP_ENV !== 'production'`.
+**API prefix:** All routes under `/api` (no URI versioning — path policy: `/api/{resource}`). Swagger at `/api/docs` when `APP_ENV !== 'production'`.
 
-**Authentication:** Kakao OAuth → JWT. Access token 15min (HttpOnly cookie), refresh token 7 days. Dev login endpoint exists for E2E tests (`POST /api/v1/auth/dev-login`).
+**Authentication:** Kakao OAuth → JWT. Access token 15min (HttpOnly cookie), refresh token 7 days. Dev login endpoint exists for E2E tests (`POST /api/auth/dev-login`).
 
 **Key custom decorators:**
 
@@ -86,7 +86,7 @@ npm run build:shared         # Build shared-types package only
 
 **Key modules:** `auth`, `users`, `products`, `streaming`, `cart` (10-min expiration timer), `orders`, `reservation` (waiting list → promoted to cart), `chat` (WebSocket), `notifications` (Web Push VAPID), `points`, `settlement`, `restream` (FFmpeg multi-target), `admin` (audit logs), `notices`, `upload`, `health` (liveness/readiness probes)
 
-**Health endpoints:** `GET /api/v1/health/live` (liveness), `GET /api/v1/health/ready` (readiness — checks DB + Redis)
+**Health endpoints:** `GET /api/health/live` (liveness), `GET /api/health/ready` (readiness — checks DB + Redis)
 
 ### WebSocket Architecture (Non-standard)
 
@@ -114,7 +114,7 @@ All socket connections require JWT authentication via `authenticateSocket()` mid
 
 **Proxy** (`next.config.ts`):
 
-- `/api/:path*` → `${BACKEND_URL}/api/v1/:path*` (default `http://127.0.0.1:3001`)
+- `/api/:path*` → `${BACKEND_URL}/api/:path*` (default `http://127.0.0.1:3001`)
 - `/live/live/:path*` and `/hls/:path*` → `${MEDIA_SERVER_URL}` (default `http://127.0.0.1:8080`) via fallback rewrites (only when no Next.js page matches)
 
 **Hook locations:**

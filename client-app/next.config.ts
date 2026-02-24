@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
         // 모든 Next.js 파일을 확인 후 매칭 없을 때만 백엔드로 전달.
         {
           source: '/api/:path*',
-          destination: `${backendUrl}/api/v1/:path*`,
+          destination: `${backendUrl}/api/:path*`,
         },
         // 미디어 스트림 프록시: Next.js 페이지/동적 라우트에 매칭되지 않을 때만 적용
         // FLV 스트림 URL: /live/live/{streamKey}.flv

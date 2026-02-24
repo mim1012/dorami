@@ -68,7 +68,7 @@ describe('Orders (e2e)', () => {
   describe('Order Creation', () => {
     it('should require authentication', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/v1/orders')
+        .post('/api/orders')
         .send({ cartItemIds: [] });
 
       expect(response.status).toBe(401);
