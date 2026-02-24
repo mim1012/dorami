@@ -9,7 +9,7 @@ import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
-import { AlertCircle, CheckCircle, Coins } from 'lucide-react';
+import { AlertCircle, CheckCircle, Coins, DollarSign, MapPin } from 'lucide-react';
 
 interface PointsConfig {
   pointsEnabled: boolean;
@@ -34,6 +34,8 @@ export default function CheckoutPage() {
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [zelleEmail, setZelleEmail] = useState('');
+  const [zelleRecipientName, setZelleRecipientName] = useState('');
 
   useEffect(() => {
     // cartData 로딩 중엔 리다이렉트 방지, 로드 후 빈 경우만 /cart로 이동
@@ -53,6 +55,22 @@ export default function CheckoutPage() {
       }
     };
     loadConfig();
+  }, []);
+
+  // Load Zelle settings
+  useEffect(() => {
+    const loadZelleSettings = async () => {
+      try {
+        const response = await apiClient.get<{ zelleEmail: string; zelleRecipientName: string }>(
+          '/config/payment',
+        );
+        setZelleEmail(response.data.zelleEmail || '');
+        setZelleRecipientName(response.data.zelleRecipientName || '');
+      } catch {
+        // silently ignore
+      }
+    };
+    loadZelleSettings();
   }, []);
 
   const orderSubtotal = cartData?.subtotal ?? 0;
@@ -246,18 +264,64 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* Payment Method */}
+        {/* Shipping Address */}
+        {user?.shippingAddress && (
+          <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="w-5 h-5 text-hot-pink" />
+              <Heading2 className="text-hot-pink">배송지</Heading2>
+            </div>
+            <div className="space-y-1">
+              {(() => {
+                const addr = user.shippingAddress as Record<string, string>;
+                if (typeof addr !== 'object' || !addr.fullName) return null;
+                return (
+                  <>
+                    {addr.fullName && (
+                      <Body className="text-primary-text font-semibold">{addr.fullName}</Body>
+                    )}
+                    <Body className="text-secondary-text text-sm">
+                      {[addr.address1, addr.address2].filter(Boolean).join(', ')}
+                    </Body>
+                    <Body className="text-secondary-text text-sm">
+                      {[addr.city, addr.state, addr.zip].filter(Boolean).join(', ')}
+                    </Body>
+                    {addr.phone && (
+                      <Body className="text-secondary-text text-sm">{addr.phone}</Body>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Method - Zelle */}
         <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
-          <Heading2 className="text-hot-pink mb-4">결제 방법</Heading2>
-          <div className="bg-hot-pink/10 rounded-xl p-4 border border-hot-pink/30">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-6 h-6 rounded-full bg-hot-pink flex items-center justify-center">
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="w-5 h-5 text-hot-pink" />
+            <Heading2 className="text-hot-pink">결제 방법 — Zelle</Heading2>
+          </div>
+          <div className="bg-hot-pink/10 rounded-xl p-4 border border-hot-pink/30 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-hot-pink flex items-center justify-center flex-shrink-0">
                 <CheckCircle className="w-4 h-4 text-white" />
               </div>
-              <Heading2 className="text-primary-text">무통장 입금</Heading2>
+              <Heading2 className="text-primary-text">Zelle 송금</Heading2>
             </div>
-            <Body className="text-secondary-text text-sm leading-relaxed">
-              주문 완료 후 입금 정보가 제공됩니다. 입금 확인 후 배송이 시작됩니다.
+            {zelleEmail && (
+              <div className="space-y-1 pl-9">
+                <Body className="text-secondary-text text-sm">
+                  수신인:{' '}
+                  <span className="text-primary-text font-semibold">{zelleRecipientName}</span>
+                </Body>
+                <Body className="text-secondary-text text-sm">
+                  Zelle 이메일: <span className="text-hot-pink font-semibold">{zelleEmail}</span>
+                </Body>
+              </div>
+            )}
+            <Body className="text-secondary-text text-sm leading-relaxed pl-9">
+              주문 완료 후 위 Zelle 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로 전송해주세요.
             </Body>
           </div>
         </div>

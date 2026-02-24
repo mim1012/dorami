@@ -60,7 +60,9 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   colorOptions?: string[];
 
   @ApiPropertyOptional({
@@ -70,7 +72,9 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   sizeOptions?: string[];
 
   /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
@@ -109,12 +113,12 @@ export class CreateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 4800,
+    maximum: 2880,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(4800)
+  @Max(2880)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -218,7 +222,9 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   colorOptions?: string[];
 
   @ApiPropertyOptional({
@@ -228,7 +234,9 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   sizeOptions?: string[];
 
   /** @deprecated Shipping is now global (SystemConfig). This field is ignored. */
@@ -262,12 +270,12 @@ export class UpdateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 4800,
+    maximum: 2880,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(4800)
+  @Max(2880)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -297,6 +305,38 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description: 'Display NEW badge on product card',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isNew?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Discount rate percentage (0-100)',
+    example: 15,
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  discountRate?: number;
+
+  @ApiPropertyOptional({
+    description: 'Original price before discount',
+    example: 35000,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  originalPrice?: number;
 
   // Legacy field support (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })

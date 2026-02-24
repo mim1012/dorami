@@ -70,145 +70,142 @@ export class OrdersService {
    * Epic 13 Story 13.3: Support pointsToUse for point redemption
    */
   async createOrderFromCart(userId: string, pointsToUse?: number): Promise<OrderResponseDto> {
-    // Validate point redemption before transaction if needed
-    if (pointsToUse && pointsToUse > 0) {
-      // Pre-validate: we need to calculate totals first, so do a preliminary check
-      const cartItems = await this.prisma.cart.findMany({
-        where: { userId, status: 'ACTIVE' },
-      });
-      const cartProductIds = cartItems.map((item) => item.productId);
-      const totals = await this.calculateOrderTotals(
-        cartItems.map((item) => ({
-          price: item.price,
-          quantity: item.quantity,
-        })),
-        userId,
-        cartProductIds,
-      );
-      await this.pointsService.validateRedemption(userId, pointsToUse, totals.total);
-    }
-
-    const order = await this.prisma.$transaction(async (tx) => {
-      // Fetch user data
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user) {
-        throw new BusinessException('USER_NOT_FOUND', { userId });
-      }
-
-      // Get active cart items
-      const cartItems = await tx.cart.findMany({
-        where: {
-          userId,
-          status: 'ACTIVE',
-        },
-        include: {
-          product: true,
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      });
-
-      if (cartItems.length === 0) {
-        throw new BusinessException('CART_EMPTY', { userId });
-      }
-
-      // Validate cart items not expired
-      const now = new Date();
-      const expiredItems = cartItems.filter(
-        (item) => item.timerEnabled && item.expiresAt && item.expiresAt < now,
-      );
-
-      if (expiredItems.length > 0) {
-        throw new BusinessException('CART_ITEMS_EXPIRED', {
-          expiredCount: expiredItems.length,
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        // Fetch user data
+        const user = await tx.user.findUnique({
+          where: { id: userId },
         });
-      }
 
-      // Calculate totals using shared helper (DRY) - now with global shipping
-      const cartProductIds = cartItems.map((item) => item.productId);
-      const totals = await this.calculateOrderTotals(
-        cartItems.map((item) => ({
-          price: item.price,
-          quantity: item.quantity,
-        })),
-        userId,
-        cartProductIds,
-      );
+        if (!user) {
+          throw new BusinessException('USER_NOT_FOUND', { userId });
+        }
 
-      // Apply point discount
-      const effectivePointsUsed = pointsToUse && pointsToUse > 0 ? pointsToUse : 0;
-      const finalTotal = totals.total - effectivePointsUsed;
-
-      // Prepare order items (Product connect으로 relation 설정, productId 직접 지정 불가)
-      const orderItemsData = cartItems.map((item) => ({
-        productName: item.productName,
-        quantity: item.quantity,
-        price: item.price,
-        shippingFee: new Decimal(0),
-        color: item.color,
-        size: item.size,
-        Product: {
-          connect: { id: item.productId },
-        },
-      }));
-
-      // Generate unique order ID
-      const orderId = await this.generateOrderId();
-
-      // Create order
-      const createdOrder = await tx.order.create({
-        data: {
-          id: orderId,
-          userId,
-          userEmail: user.email,
-          depositorName: user.depositorName || user.name,
-          instagramId: user.instagramId || '',
-          shippingAddress: user.shippingAddress || {},
-          status: 'PENDING_PAYMENT',
-          paymentMethod: 'BANK_TRANSFER',
-          paymentStatus: 'PENDING',
-          shippingStatus: 'PENDING',
-          subtotal: new Decimal(totals.subtotal),
-          shippingFee: new Decimal(totals.totalShippingFee),
-          total: new Decimal(finalTotal),
-          pointsUsed: effectivePointsUsed,
-          orderItems: {
-            create: orderItemsData,
+        // Get active cart items
+        const cartItems = await tx.cart.findMany({
+          where: {
+            userId,
+            status: 'ACTIVE',
           },
-        },
-        include: {
-          orderItems: true,
-        },
-      });
+          include: {
+            product: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        });
 
-      // Mark cart items as COMPLETED
-      await tx.cart.updateMany({
-        where: {
-          userId,
-          status: 'ACTIVE',
-        },
-        data: {
-          status: 'COMPLETED',
-        },
-      });
+        if (cartItems.length === 0) {
+          throw new BusinessException('CART_EMPTY', { userId });
+        }
 
-      // Deduct points inside the same transaction for atomicity
-      if (pointsToUse && pointsToUse > 0) {
-        await this.pointsService.deductPointsTx(
-          tx,
-          userId,
-          pointsToUse,
-          PointTransactionType.USED_ORDER,
-          createdOrder.id,
+        // Validate cart items not expired
+        const now = new Date();
+        const expiredItems = cartItems.filter(
+          (item) => item.timerEnabled && item.expiresAt && item.expiresAt < now,
         );
-      }
 
-      return createdOrder;
-    });
+        if (expiredItems.length > 0) {
+          throw new BusinessException('CART_ITEMS_EXPIRED', {
+            expiredCount: expiredItems.length,
+          });
+        }
+
+        // Deduct stock atomically for cart items
+        await this.inventoryService.batchDecreaseStockTx(
+          tx,
+          cartItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        );
+
+        // Calculate totals using shared helper (DRY) - now with global shipping
+        const cartProductIds = cartItems.map((item) => item.productId);
+        const totals = await this.calculateOrderTotals(
+          cartItems.map((item) => ({
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          userId,
+          cartProductIds,
+        );
+
+        // Apply point discount
+        const effectivePointsUsed = pointsToUse && pointsToUse > 0 ? pointsToUse : 0;
+        const finalTotal = totals.total - effectivePointsUsed;
+
+        // Prepare order items (Product connect으로 relation 설정, productId 직접 지정 불가)
+        const orderItemsData = cartItems.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+          shippingFee: new Decimal(0),
+          color: item.color,
+          size: item.size,
+          Product: {
+            connect: { id: item.productId },
+          },
+        }));
+
+        // Generate unique order ID
+        const orderId = await this.generateOrderId();
+
+        // Create order
+        const createdOrder = await tx.order.create({
+          data: {
+            id: orderId,
+            userId,
+            userEmail: user.email,
+            depositorName: user.depositorName || user.name,
+            instagramId: user.instagramId || '',
+            shippingAddress: user.shippingAddress || {},
+            status: 'PENDING_PAYMENT',
+            paymentMethod: 'BANK_TRANSFER',
+            paymentStatus: 'PENDING',
+            shippingStatus: 'PENDING',
+            subtotal: new Decimal(totals.subtotal),
+            shippingFee: new Decimal(totals.totalShippingFee),
+            total: new Decimal(finalTotal),
+            pointsUsed: effectivePointsUsed,
+            orderItems: {
+              create: orderItemsData,
+            },
+          },
+          include: {
+            orderItems: true,
+          },
+        });
+
+        // Mark cart items as COMPLETED
+        await tx.cart.updateMany({
+          where: {
+            userId,
+            status: 'ACTIVE',
+          },
+          data: {
+            status: 'COMPLETED',
+          },
+        });
+
+        // Deduct points inside the same transaction for atomicity
+        if (pointsToUse && pointsToUse > 0) {
+          await this.pointsService.deductPointsTx(
+            tx,
+            userId,
+            pointsToUse,
+            PointTransactionType.USED_ORDER,
+            createdOrder.id,
+          );
+        }
+
+        return createdOrder;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 8000,
+      },
+    );
 
     // Emit domain event
     const event = new OrderCreatedEvent(
@@ -477,14 +474,9 @@ export class OrdersService {
       throw new OrderNotFoundException(orderId);
     }
 
-    // Restore stock
-    for (const item of order.orderItems) {
-      await this.inventoryService.restoreStock(item.productId, item.quantity);
-    }
-
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: 'CANCELLED' },
+    await this.prisma.$transaction(async (tx) => {
+      await this.inventoryService.batchRestoreStockTx(tx, order.orderItems);
+      await tx.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
     });
 
     // Remove timer
@@ -500,7 +492,7 @@ export class OrdersService {
     orderId: string,
     userId?: string,
   ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
-    const whereClause: any = { id: orderId };
+    const whereClause: Prisma.OrderWhereInput = { id: orderId };
     if (userId) {
       whereClause.userId = userId;
     }
@@ -579,15 +571,9 @@ export class OrdersService {
           continue; // Still active
         }
 
-        // Restore stock
-        for (const item of order.orderItems) {
-          await this.inventoryService.restoreStock(item.productId, item.quantity);
-        }
-
-        // Cancel order
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: { status: 'CANCELLED' },
+        await this.prisma.$transaction(async (tx) => {
+          await this.inventoryService.batchRestoreStockTx(tx, order.orderItems);
+          await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } });
         });
 
         this.logger.log(`Auto-cancelled expired order: ${order.id}`);

@@ -9,7 +9,6 @@ import {
   Save,
   Settings as SettingsIcon,
   DollarSign,
-  Clock,
   Bell,
   Loader2,
   Upload,
@@ -30,7 +29,6 @@ interface PendingStream {
 }
 
 interface SystemSettings {
-  defaultCartTimerMinutes: number;
   defaultShippingFee: number;
   caShippingFee: number;
   freeShippingEnabled: boolean;
@@ -46,7 +44,6 @@ interface SystemSettings {
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>({
-    defaultCartTimerMinutes: 10,
     defaultShippingFee: 10,
     caShippingFee: 8,
     freeShippingEnabled: false,
@@ -210,61 +207,31 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* Basic Settings Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cart Timer Settings */}
-          <div className="bg-content-bg rounded-button p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Clock className="w-6 h-6 text-hot-pink" />
-              <Heading2 className="text-primary-text">장바구니 예약 타이머</Heading2>
-            </div>
-            <div className="space-y-4">
-              <Input
-                label="기본 타이머 시간 (분)"
-                type="number"
-                min={1}
-                max={2880}
-                value={settings.defaultCartTimerMinutes}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    defaultCartTimerMinutes: parseInt(e.target.value) || 10,
-                  })
-                }
-                fullWidth
-              />
-              <Caption className="text-secondary-text">
-                상품을 장바구니에 담은 후 결제를 완료해야 하는 시간 (1~2880분 / 최대 48시간)
-              </Caption>
-            </div>
+        {/* Zelle Payment Settings */}
+        <div className="bg-content-bg rounded-button p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <DollarSign className="w-6 h-6 text-hot-pink" />
+            <Heading2 className="text-primary-text">입금 정보 (Zelle)</Heading2>
           </div>
-
-          {/* Zelle Payment Settings */}
-          <div className="bg-content-bg rounded-button p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <DollarSign className="w-6 h-6 text-hot-pink" />
-              <Heading2 className="text-primary-text">입금 정보 (Zelle)</Heading2>
-            </div>
-            <div className="space-y-4">
-              <Input
-                label="Zelle 이메일"
-                type="email"
-                value={settings.zelleEmail}
-                onChange={(e) => setSettings({ ...settings, zelleEmail: e.target.value })}
-                placeholder="zelle@example.com"
-                fullWidth
-              />
-              <Input
-                label="Name (수신인)"
-                value={settings.zelleRecipientName}
-                onChange={(e) => setSettings({ ...settings, zelleRecipientName: e.target.value })}
-                placeholder="수신인 이름"
-                fullWidth
-              />
-              <Caption className="text-warning">
-                입금 후 스크린샷 DM 또는 카톡 채널 전송 필수 (미확인 시 누락)
-              </Caption>
-            </div>
+          <div className="space-y-4">
+            <Input
+              label="Zelle 이메일"
+              type="email"
+              value={settings.zelleEmail}
+              onChange={(e) => setSettings({ ...settings, zelleEmail: e.target.value })}
+              placeholder="zelle@example.com"
+              fullWidth
+            />
+            <Input
+              label="Name (수신인)"
+              value={settings.zelleRecipientName}
+              onChange={(e) => setSettings({ ...settings, zelleRecipientName: e.target.value })}
+              placeholder="수신인 이름"
+              fullWidth
+            />
+            <Caption className="text-warning">
+              입금 후 스크린샷 DM 또는 카톡 채널 전송 필수 (미확인 시 누락)
+            </Caption>
           </div>
         </div>
 
