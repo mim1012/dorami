@@ -67,6 +67,8 @@ services:
       HLS_SERVER_URL: ${FRONTEND_URL:-http://localhost}/hls
     ports:
       - "127.0.0.1:3001:3001"
+    volumes:
+      - ./backend/uploads:/app/uploads
 
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-frontend:${IMAGE_TAG:-latest}
