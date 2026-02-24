@@ -55,8 +55,6 @@ interface ProductFormData {
   stock: string;
   colorOptions: string;
   sizeOptions: string;
-  shippingFee: string;
-  freeShippingMessage: string;
   timerEnabled: boolean;
   timerDuration: string;
   imageUrl: string;
@@ -252,7 +250,6 @@ export default function AdminProductsPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
-  const [defaultShippingFee, setDefaultShippingFee] = useState('');
 
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
@@ -261,8 +258,6 @@ export default function AdminProductsPage() {
     stock: '',
     colorOptions: '',
     sizeOptions: '',
-    shippingFee: '',
-    freeShippingMessage: '',
     timerEnabled: false,
     timerDuration: '10',
     imageUrl: '',
@@ -297,16 +292,6 @@ export default function AdminProductsPage() {
       }
     };
     fetchActiveLiveKey();
-  }, []);
-
-  // Load default shipping fee from settings
-  useEffect(() => {
-    apiClient
-      .get<{ defaultShippingFee: number }>('/admin/config/settings')
-      .then(({ data }) => {
-        setDefaultShippingFee(String(data.defaultShippingFee ?? ''));
-      })
-      .catch(() => {});
   }, []);
 
   // Client-side filtered products (Feature 5)
@@ -496,8 +481,6 @@ export default function AdminProductsPage() {
         stock: product.stock.toString(),
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
-        shippingFee: product.shippingFee.toString(),
-        freeShippingMessage: product.freeShippingMessage || '',
         timerEnabled: product.timerEnabled,
         timerDuration: product.timerDuration.toString(),
         imageUrl: product.imageUrl || '',
@@ -516,8 +499,6 @@ export default function AdminProductsPage() {
         stock: '',
         colorOptions: '',
         sizeOptions: '',
-        shippingFee: defaultShippingFee,
-        freeShippingMessage: '',
         timerEnabled: false,
         timerDuration: '10',
         imageUrl: '',
@@ -568,8 +549,6 @@ export default function AdminProductsPage() {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
-        shippingFee: parseFloat(formData.shippingFee),
-        freeShippingMessage: formData.freeShippingMessage || undefined,
         timerEnabled: formData.timerEnabled,
         timerDuration: parseInt(formData.timerDuration),
         imageUrl: finalImageUrl || undefined,
@@ -984,26 +963,6 @@ export default function AdminProductsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="배송비 ($)"
-              name="shippingFee"
-              type="number"
-              value={formData.shippingFee}
-              onChange={(e) => setFormData({ ...formData, shippingFee: e.target.value })}
-              placeholder="3000"
-              fullWidth
-            />
-            <Input
-              label="무료 배송 안내 문구"
-              name="freeShippingMessage"
-              value={formData.freeShippingMessage}
-              onChange={(e) => setFormData({ ...formData, freeShippingMessage: e.target.value })}
-              placeholder="예: 5만원 이상 무료배송"
-              fullWidth
-            />
-          </div>
-
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -1067,7 +1026,6 @@ export default function AdminProductsPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={handleFileSelect}
                   className="hidden"
                 />

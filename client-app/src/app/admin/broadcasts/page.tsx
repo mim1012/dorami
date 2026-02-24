@@ -90,6 +90,7 @@ export default function BroadcastsPage() {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [newStreamFreeShipping, setNewStreamFreeShipping] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -220,10 +221,11 @@ export default function BroadcastsPage() {
     setIsGenerating(true);
     setGenerateError(null);
     try {
-      const body: Record<string, string> = { title: newStreamTitle.trim() };
+      const body: Record<string, any> = { title: newStreamTitle.trim() };
       if (newStreamScheduledAt)
         body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
       if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
+      body.freeShippingEnabled = newStreamFreeShipping;
       const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
       setNewStreamTitle('');
@@ -295,6 +297,7 @@ export default function BroadcastsPage() {
     setNewStreamTitle('');
     setNewStreamScheduledAt('');
     setNewStreamThumbnailUrl('');
+    setNewStreamFreeShipping(false);
     setGenerateError(null);
   };
 
@@ -600,6 +603,18 @@ export default function BroadcastsPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>
+                  {/* 무료배송 설정 */}
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStreamFreeShipping}
+                      onChange={(e) => setNewStreamFreeShipping(e.target.checked)}
+                      className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                    />
+                    <span className="text-sm font-medium text-primary-text">
+                      이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
+                    </span>
+                  </label>
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
                       썸네일 <span className="text-secondary-text text-xs">(선택)</span>
