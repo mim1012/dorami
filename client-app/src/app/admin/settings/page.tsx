@@ -26,6 +26,7 @@ interface PendingStream {
   id: string;
   title: string;
   thumbnailUrl: string | null;
+  freeShippingEnabled: boolean;
 }
 
 interface SystemSettings {
@@ -69,6 +70,8 @@ export default function AdminSettingsPage() {
   const [isSavingThumbnail, setIsSavingThumbnail] = useState(false);
   const [thumbnailSuccess, setThumbnailSuccess] = useState<string | null>(null);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const [streamFreeShipping, setStreamFreeShipping] = useState(false);
+  const [isSavingFreeShipping, setIsSavingFreeShipping] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -96,7 +99,9 @@ export default function AdminSettingsPage() {
             id: pending.id,
             title: pending.title,
             thumbnailUrl: pending.thumbnailUrl,
+            freeShippingEnabled: pending.freeShippingEnabled ?? false,
           });
+          setStreamFreeShipping(pending.freeShippingEnabled ?? false);
         }
       } catch {
         // silent fail — 예정 방송 없으면 섹션 숨김
@@ -149,6 +154,21 @@ export default function AdminSettingsPage() {
       setThumbnailError(err.message || '썸네일 저장에 실패했습니다.');
     } finally {
       setIsSavingThumbnail(false);
+    }
+  };
+
+  const handleSaveFreeShipping = async (enabled: boolean) => {
+    if (!pendingStream) return;
+    setIsSavingFreeShipping(true);
+    setThumbnailError(null);
+    try {
+      await apiClient.patch(`/streaming/${pendingStream.id}`, { freeShippingEnabled: enabled });
+      setPendingStream({ ...pendingStream, freeShippingEnabled: enabled });
+      setStreamFreeShipping(enabled);
+    } catch (err: any) {
+      setThumbnailError(err.message || '무료배송 설정 저장에 실패했습니다.');
+    } finally {
+      setIsSavingFreeShipping(false);
     }
   };
 
@@ -397,6 +417,29 @@ export default function AdminSettingsPage() {
               </span>
               의 메인 화면 썸네일을 설정합니다.
             </Caption>
+
+            {/* 무료배송 설정 */}
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="streamFreeShipping"
+                checked={streamFreeShipping}
+                onChange={(e) => handleSaveFreeShipping(e.target.checked)}
+                disabled={isSavingFreeShipping}
+                className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
+              />
+              <label htmlFor="streamFreeShipping" className="cursor-pointer">
+                <Body className="text-primary-text">
+                  이 방송 무료배송 적용
+                  {isSavingFreeShipping && (
+                    <span className="ml-2 text-secondary-text text-xs">저장 중...</span>
+                  )}
+                </Body>
+                <Caption className="text-secondary-text block">
+                  시스템 설정의 기준금액 이상 주문 시 배송비 무료
+                </Caption>
+              </label>
+            </div>
 
             {thumbnailSuccess && (
               <div className="bg-success-bg border border-success/20 rounded-button p-3 mb-4 flex items-center gap-2">

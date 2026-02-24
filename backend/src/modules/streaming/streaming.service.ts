@@ -138,15 +138,7 @@ export class StreamingService {
       throw new BusinessException('STREAM_NOT_FOUND', { streamId });
     }
 
-    if (session.status !== 'PENDING') {
-      throw new BusinessException(
-        'INVALID_STREAM_STATE',
-        { currentStatus: session.status },
-        `Only PENDING streams can be updated (current: ${session.status})`,
-      );
-    }
-
-    const data: { title?: string; expiresAt?: Date; thumbnailUrl?: string | null } = {};
+    const data: { title?: string; expiresAt?: Date; thumbnailUrl?: string | null; freeShippingEnabled?: boolean } = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
     }
@@ -155,6 +147,9 @@ export class StreamingService {
     }
     if (dto.thumbnailUrl !== undefined) {
       data.thumbnailUrl = dto.thumbnailUrl || null;
+    }
+    if (dto.freeShippingEnabled !== undefined) {
+      data.freeShippingEnabled = dto.freeShippingEnabled;
     }
 
     const updated = await this.prisma.liveStream.update({
@@ -358,6 +353,7 @@ export class StreamingService {
         title: dto.title || 'Live Stream',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         thumbnailUrl: dto.thumbnailUrl || null,
+        freeShippingEnabled: dto.freeShippingEnabled ?? false,
         expiresAt,
         status: 'PENDING',
       },
