@@ -16,6 +16,8 @@ import {
   Copy,
   Check,
   Star,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
@@ -85,6 +87,8 @@ export default function BroadcastsPage() {
   const [newStreamTitle, setNewStreamTitle] = useState('');
   const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
   const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -217,7 +221,8 @@ export default function BroadcastsPage() {
     setGenerateError(null);
     try {
       const body: Record<string, string> = { title: newStreamTitle.trim() };
-      if (newStreamScheduledAt) body.scheduledAt = new Date(newStreamScheduledAt).toISOString();
+      if (newStreamScheduledAt)
+        body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
       if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
       const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
@@ -255,7 +260,36 @@ export default function BroadcastsPage() {
     }
   };
 
+  const handleThumbnailFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setThumbnailPreview(previewUrl);
+    setIsUploadingThumbnail(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      setNewStreamThumbnailUrl(response.data.url);
+    } catch (err: any) {
+      setThumbnailPreview(null);
+      URL.revokeObjectURL(previewUrl);
+      setGenerateError(err.message || '썸네일 업로드에 실패했습니다.');
+    } finally {
+      setIsUploadingThumbnail(false);
+    }
+  };
+
+  const handleRemoveThumbnail = () => {
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailPreview(null);
+    setNewStreamThumbnailUrl('');
+  };
+
   const handleCloseModal = () => {
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailPreview(null);
     setShowGenerateModal(false);
     setGeneratedStream(null);
     setNewStreamTitle('');
@@ -554,7 +588,10 @@ export default function BroadcastsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      예정 방송 시간 <span className="text-secondary-text text-xs">(선택)</span>
+                      예정 방송 시간{' '}
+                      <span className="text-secondary-text text-xs">
+                        (선택 · KST 한국 시간 기준)
+                      </span>
                     </label>
                     <input
                       type="datetime-local"
@@ -565,15 +602,54 @@ export default function BroadcastsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      썸네일 URL <span className="text-secondary-text text-xs">(선택)</span>
+                      썸네일 <span className="text-secondary-text text-xs">(선택)</span>
                     </label>
-                    <input
-                      type="url"
-                      value={newStreamThumbnailUrl}
-                      onChange={(e) => setNewStreamThumbnailUrl(e.target.value)}
-                      placeholder="https://example.com/thumbnail.jpg"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
-                    />
+                    {thumbnailPreview ? (
+                      <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
+                        <img
+                          src={thumbnailPreview}
+                          alt="썸네일 미리보기"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveThumbnail}
+                          className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        {isUploadingThumbnail && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">업로드 중...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink hover:bg-hot-pink/5 transition-colors">
+                        <div className="flex flex-col items-center justify-center py-6">
+                          {isUploadingThumbnail ? (
+                            <span className="text-secondary-text text-sm">업로드 중...</span>
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-secondary-text mb-2" />
+                              <span className="text-sm text-secondary-text">
+                                클릭하여 이미지 업로드
+                              </span>
+                              <span className="text-xs text-secondary-text mt-1">
+                                JPG, PNG, WEBP (최대 5MB)
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          onChange={handleThumbnailFileChange}
+                          className="hidden"
+                          disabled={isUploadingThumbnail}
+                        />
+                      </label>
+                    )}
                   </div>
                   {generateError && (
                     <div className="p-3 bg-error/10 border border-error rounded-lg">
@@ -582,7 +658,7 @@ export default function BroadcastsPage() {
                   )}
                   <button
                     onClick={handleGenerateStreamKey}
-                    disabled={!newStreamTitle.trim() || isGenerating}
+                    disabled={!newStreamTitle.trim() || isGenerating || isUploadingThumbnail}
                     className="w-full py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isGenerating ? '발급 중...' : '스트림 키 발급'}
