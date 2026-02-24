@@ -18,6 +18,7 @@ import {
   Star,
   Upload,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
@@ -34,6 +35,8 @@ interface LiveStream {
   peakViewers: number;
   expiresAt: string;
   createdAt: string;
+  thumbnailUrl: string | null;
+  freeShippingEnabled: boolean;
   user?: {
     name: string;
     email: string;
@@ -93,6 +96,16 @@ export default function BroadcastsPage() {
   const [newStreamFreeShipping, setNewStreamFreeShipping] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Edit stream modal state
+  const [selectedStreamForEdit, setSelectedStreamForEdit] = useState<LiveStream | null>(null);
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
+  const [editNewThumbnailUrl, setEditNewThumbnailUrl] = useState('');
+  const [isUploadingEditThumbnail, setIsUploadingEditThumbnail] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editFreeShipping, setEditFreeShipping] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   // Featured product modal state
   const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(
@@ -301,6 +314,85 @@ export default function BroadcastsPage() {
     setGenerateError(null);
   };
 
+  const handleOpenEditModal = (stream: LiveStream) => {
+    setSelectedStreamForEdit(stream);
+    setEditFreeShipping(stream.freeShippingEnabled ?? false);
+    setEditThumbnailPreview(null);
+    setEditNewThumbnailUrl('');
+    setEditError(null);
+    setEditSuccess(null);
+  };
+
+  const handleCloseEditModal = () => {
+    if (editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+    setSelectedStreamForEdit(null);
+    setEditThumbnailPreview(null);
+    setEditNewThumbnailUrl('');
+    setEditError(null);
+    setEditSuccess(null);
+  };
+
+  const handleEditThumbnailFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setEditThumbnailPreview(previewUrl);
+    setIsUploadingEditThumbnail(true);
+    setEditError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      setEditNewThumbnailUrl(response.data.url);
+    } catch (err: any) {
+      setEditThumbnailPreview(null);
+      URL.revokeObjectURL(previewUrl);
+      setEditError(err.message || '이미지 업로드에 실패했습니다.');
+    } finally {
+      setIsUploadingEditThumbnail(false);
+    }
+  };
+
+  const handleRemoveEditThumbnail = () => {
+    if (editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+    setEditThumbnailPreview(null);
+    setEditNewThumbnailUrl('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedStreamForEdit) return;
+    setIsSavingEdit(true);
+    setEditError(null);
+    setEditSuccess(null);
+    try {
+      const body: Record<string, any> = { freeShippingEnabled: editFreeShipping };
+      if (editNewThumbnailUrl) body.thumbnailUrl = editNewThumbnailUrl;
+      await apiClient.patch(`/streaming/${selectedStreamForEdit.id}`, body);
+      const updatedThumbnail = editNewThumbnailUrl || selectedStreamForEdit.thumbnailUrl;
+      setStreams((prev) =>
+        prev.map((s) =>
+          s.id === selectedStreamForEdit.id
+            ? { ...s, freeShippingEnabled: editFreeShipping, thumbnailUrl: updatedThumbnail }
+            : s,
+        ),
+      );
+      if (editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+      setEditThumbnailPreview(null);
+      setEditNewThumbnailUrl('');
+      setSelectedStreamForEdit((prev) =>
+        prev
+          ? { ...prev, freeShippingEnabled: editFreeShipping, thumbnailUrl: updatedThumbnail }
+          : null,
+      );
+      setEditSuccess('저장되었습니다');
+      setTimeout(() => setEditSuccess(null), 3000);
+    } catch (err: any) {
+      setEditError(err.message || '저장에 실패했습니다.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   if (authLoading || !user || user?.role !== 'ADMIN') {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -472,6 +564,9 @@ export default function BroadcastsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
                       최대 시청자
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                      작업
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -523,6 +618,17 @@ export default function BroadcastsPage() {
                           <Eye className="w-4 h-4" />
                           {stream.peakViewers}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {stream.status === 'PENDING' && (
+                          <button
+                            onClick={() => handleOpenEditModal(stream)}
+                            className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            편집
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -816,6 +922,146 @@ export default function BroadcastsPage() {
                 streamKey={selectedStreamForFeatured.streamKey}
                 streamTitle={selectedStreamForFeatured.title}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Pending Stream Modal */}
+      {selectedStreamForEdit && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-primary-text">방송 수정</h2>
+              <button
+                onClick={handleCloseEditModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-secondary-text" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-secondary-text">
+                <span className="font-medium text-primary-text">
+                  &quot;{selectedStreamForEdit.title}&quot;
+                </span>
+              </p>
+
+              {/* 무료배송 설정 */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editFreeShipping}
+                  onChange={(e) => setEditFreeShipping(e.target.checked)}
+                  className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                />
+                <span className="text-sm font-medium text-primary-text">
+                  이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
+                </span>
+              </label>
+
+              {/* 썸네일 */}
+              <div>
+                <p className="block text-sm font-medium text-primary-text mb-2">썸네일</p>
+                {editThumbnailPreview ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
+                    <img
+                      src={editThumbnailPreview}
+                      alt="썸네일 미리보기"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveEditThumbnail}
+                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    {isUploadingEditThumbnail && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">업로드 중...</span>
+                      </div>
+                    )}
+                  </div>
+                ) : selectedStreamForEdit.thumbnailUrl ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
+                    <img
+                      src={selectedStreamForEdit.thumbnailUrl}
+                      alt="현재 썸네일"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                      현재 썸네일
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink hover:bg-hot-pink/5 transition-colors">
+                    <div className="flex flex-col items-center justify-center py-6">
+                      {isUploadingEditThumbnail ? (
+                        <span className="text-secondary-text text-sm">업로드 중...</span>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-secondary-text mb-2" />
+                          <span className="text-sm text-secondary-text">
+                            클릭하여 이미지 업로드
+                          </span>
+                          <span className="text-xs text-secondary-text mt-1">
+                            JPG, PNG, WEBP (최대 5MB)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleEditThumbnailFileChange}
+                      className="hidden"
+                      disabled={isUploadingEditThumbnail}
+                    />
+                  </label>
+                )}
+                {selectedStreamForEdit.thumbnailUrl && (
+                  <label className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink/50 transition-colors text-sm text-secondary-text">
+                    <Upload className="w-4 h-4" />
+                    {editThumbnailPreview ? '다시 선택' : '변경'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleEditThumbnailFileChange}
+                      className="hidden"
+                      disabled={isUploadingEditThumbnail}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {editError && (
+                <div className="p-3 bg-error/10 border border-error rounded-lg">
+                  <p className="text-error text-sm">{editError}</p>
+                </div>
+              )}
+              {editSuccess && (
+                <div className="p-3 bg-success/10 border border-success rounded-lg">
+                  <p className="text-success text-sm">{editSuccess}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleCloseEditModal}
+                  className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || isUploadingEditThumbnail}
+                  className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSavingEdit ? '저장 중...' : '저장'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

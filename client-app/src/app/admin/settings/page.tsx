@@ -5,29 +5,13 @@ import { apiClient } from '@/lib/api/client';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import {
-  Save,
-  Settings as SettingsIcon,
-  DollarSign,
-  Bell,
-  Loader2,
-  Upload,
-  Trash2,
-  Image as ImageIcon,
-} from 'lucide-react';
+import { Save, Settings as SettingsIcon, DollarSign, Bell, Loader2 } from 'lucide-react';
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
 
 export const dynamic = 'force-dynamic';
-
-interface PendingStream {
-  id: string;
-  title: string;
-  thumbnailUrl: string | null;
-  freeShippingEnabled: boolean;
-}
 
 interface SystemSettings {
   defaultShippingFee: number;
@@ -62,17 +46,6 @@ export default function AdminSettingsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Broadcast thumbnail state
-  const [pendingStream, setPendingStream] = useState<PendingStream | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [newThumbnailUrl, setNewThumbnailUrl] = useState('');
-  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
-  const [isSavingThumbnail, setIsSavingThumbnail] = useState(false);
-  const [thumbnailSuccess, setThumbnailSuccess] = useState<string | null>(null);
-  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
-  const [streamFreeShipping, setStreamFreeShipping] = useState(false);
-  const [isSavingFreeShipping, setIsSavingFreeShipping] = useState(false);
-
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -88,89 +61,6 @@ export default function AdminSettingsPage() {
     };
     fetchSettings();
   }, []);
-
-  useEffect(() => {
-    const fetchPendingStream = async () => {
-      try {
-        const { data } = await apiClient.get<any[]>('/streaming/upcoming');
-        const pending = (data || []).find((s: any) => !s.isLive);
-        if (pending) {
-          setPendingStream({
-            id: pending.id,
-            title: pending.title,
-            thumbnailUrl: pending.thumbnailUrl,
-            freeShippingEnabled: pending.freeShippingEnabled ?? false,
-          });
-          setStreamFreeShipping(pending.freeShippingEnabled ?? false);
-        }
-      } catch {
-        // silent fail — 예정 방송 없으면 섹션 숨김
-      }
-    };
-    fetchPendingStream();
-  }, []);
-
-  const handleThumbnailFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    setThumbnailPreview(previewUrl);
-    setIsUploadingThumbnail(true);
-    setThumbnailError(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
-      setNewThumbnailUrl(response.data.url);
-    } catch (err: any) {
-      setThumbnailPreview(null);
-      URL.revokeObjectURL(previewUrl);
-      setThumbnailError(err.message || '이미지 업로드에 실패했습니다.');
-    } finally {
-      setIsUploadingThumbnail(false);
-    }
-  };
-
-  const handleRemoveThumbnail = () => {
-    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
-    setThumbnailPreview(null);
-    setNewThumbnailUrl('');
-  };
-
-  const handleSaveThumbnail = async () => {
-    if (!pendingStream || !newThumbnailUrl) return;
-    setIsSavingThumbnail(true);
-    setThumbnailError(null);
-    setThumbnailSuccess(null);
-    try {
-      await apiClient.patch(`/streaming/${pendingStream.id}`, { thumbnailUrl: newThumbnailUrl });
-      setPendingStream({ ...pendingStream, thumbnailUrl: newThumbnailUrl });
-      if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
-      setThumbnailPreview(null);
-      setNewThumbnailUrl('');
-      setThumbnailSuccess('썸네일이 저장되었습니다');
-      setTimeout(() => setThumbnailSuccess(null), 3000);
-    } catch (err: any) {
-      setThumbnailError(err.message || '썸네일 저장에 실패했습니다.');
-    } finally {
-      setIsSavingThumbnail(false);
-    }
-  };
-
-  const handleSaveFreeShipping = async (enabled: boolean) => {
-    if (!pendingStream) return;
-    setIsSavingFreeShipping(true);
-    setThumbnailError(null);
-    try {
-      await apiClient.patch(`/streaming/${pendingStream.id}`, { freeShippingEnabled: enabled });
-      setPendingStream({ ...pendingStream, freeShippingEnabled: enabled });
-      setStreamFreeShipping(enabled);
-    } catch (err: any) {
-      setThumbnailError(err.message || '무료배송 설정 저장에 실패했습니다.');
-    } finally {
-      setIsSavingFreeShipping(false);
-    }
-  };
 
   const handleSave = async () => {
     try {
@@ -402,134 +292,6 @@ export default function AdminSettingsPage() {
 
         {/* Notice List Management Section */}
         <NoticeListManagement />
-
-        {/* Broadcast Thumbnail Section */}
-        {pendingStream && (
-          <div className="bg-content-bg rounded-button p-6">
-            <div className="flex items-center gap-3 mb-1">
-              <ImageIcon className="w-6 h-6 text-hot-pink" />
-              <Heading2 className="text-primary-text">방송 예고 썸네일</Heading2>
-            </div>
-            <Caption className="text-secondary-text mb-4 block">
-              예정 방송{' '}
-              <span className="text-primary-text font-medium">
-                &quot;{pendingStream.title}&quot;
-              </span>
-              의 메인 화면 썸네일을 설정합니다.
-            </Caption>
-
-            {/* 무료배송 설정 */}
-            <div className="flex items-center gap-3 mb-4">
-              <input
-                type="checkbox"
-                id="streamFreeShipping"
-                checked={streamFreeShipping}
-                onChange={(e) => handleSaveFreeShipping(e.target.checked)}
-                disabled={isSavingFreeShipping}
-                className="w-5 h-5 text-hot-pink focus:ring-hot-pink border-gray-300 rounded"
-              />
-              <label htmlFor="streamFreeShipping" className="cursor-pointer">
-                <Body className="text-primary-text">
-                  이 방송 무료배송 적용
-                  {isSavingFreeShipping && (
-                    <span className="ml-2 text-secondary-text text-xs">저장 중...</span>
-                  )}
-                </Body>
-                <Caption className="text-secondary-text block">
-                  시스템 설정의 기준금액 이상 주문 시 배송비 무료
-                </Caption>
-              </label>
-            </div>
-
-            {thumbnailSuccess && (
-              <div className="bg-success-bg border border-success/20 rounded-button p-3 mb-4 flex items-center gap-2">
-                <Save className="w-4 h-4 text-success flex-shrink-0" />
-                <Caption className="text-success">{thumbnailSuccess}</Caption>
-              </div>
-            )}
-            {thumbnailError && (
-              <div className="bg-error/10 border border-error rounded-button p-3 mb-4">
-                <Caption className="text-error">{thumbnailError}</Caption>
-              </div>
-            )}
-
-            {/* Preview — 16:10 비율로 홈 카드와 동일 */}
-            <div className="relative w-full rounded-lg overflow-hidden border border-border-color aspect-[16/10] bg-gray-900 mb-4">
-              {thumbnailPreview ? (
-                <>
-                  <img
-                    src={thumbnailPreview}
-                    alt="썸네일 미리보기"
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveThumbnail}
-                    className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  {isUploadingThumbnail && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-sm font-medium">업로드 중...</span>
-                    </div>
-                  )}
-                </>
-              ) : pendingStream.thumbnailUrl ? (
-                <>
-                  <img
-                    src={pendingStream.thumbnailUrl}
-                    alt="현재 썸네일"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                    현재 썸네일
-                  </div>
-                </>
-              ) : (
-                <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors">
-                  <Upload className="w-8 h-8 text-secondary-text mb-2" />
-                  <span className="text-sm text-secondary-text">클릭하여 썸네일 업로드</span>
-                  <span className="text-xs text-secondary-text mt-1">
-                    JPG, PNG, WEBP (최대 5MB)
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    onChange={handleThumbnailFileChange}
-                    className="hidden"
-                    disabled={isUploadingThumbnail}
-                  />
-                </label>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {(pendingStream.thumbnailUrl || thumbnailPreview) && (
-                <label className="flex items-center gap-2 px-4 py-2 border border-border-color rounded-button cursor-pointer hover:border-hot-pink/50 transition-colors text-sm text-secondary-text">
-                  <Upload className="w-4 h-4" />
-                  {thumbnailPreview ? '다시 선택' : '변경'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    onChange={handleThumbnailFileChange}
-                    className="hidden"
-                    disabled={isUploadingThumbnail}
-                  />
-                </label>
-              )}
-              <Button
-                variant="primary"
-                size="md"
-                onClick={handleSaveThumbnail}
-                disabled={isSavingThumbnail || isUploadingThumbnail || !newThumbnailUrl}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {isSavingThumbnail ? '저장 중...' : '썸네일 저장'}
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Save Button */}
         <div className="flex justify-end gap-4">
