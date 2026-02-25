@@ -40,6 +40,10 @@ ENV NEXT_PUBLIC_APP_ENV=__NEXT_PUBLIC_APP_ENV__
 # 텔레메트리 비활성화
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# BACKEND_URL: Next.js rewrites()가 빌드 타임에 routes-manifest.json에 고정됨.
+# 프로덕션 Docker Compose에서 백엔드 서비스명은 'backend'이므로 여기서 설정.
+ENV BACKEND_URL=http://backend:3001
+
 # shared-types 빌드 후 Next.js 빌드
 RUN npm run build:shared && cd client-app && npm run build
 
