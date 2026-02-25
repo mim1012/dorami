@@ -66,15 +66,28 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa
-          fi
+          KEY_OK=false
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "SSH key loaded (raw PEM)"
+            KEY_OK=true
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            if printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa 2>/dev/null; then
+              chmod 600 ~/.ssh/id_rsa
+              if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+                echo "SSH key loaded (base64)"
+                KEY_OK=true
+              fi
+            fi
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            echo "ERROR: SSH key invalid. len=${#SSH_KEY} has_begin=$(printf '%s' "$SSH_KEY" | grep -c BEGIN || echo 0)"
+            exit 1
+          fi
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
       - name: Deploy via SSH
         env:
@@ -186,15 +199,28 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa
-          fi
+          KEY_OK=false
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "SSH key loaded (raw PEM)"
+            KEY_OK=true
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            if printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa 2>/dev/null; then
+              chmod 600 ~/.ssh/id_rsa
+              if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+                echo "SSH key loaded (base64)"
+                KEY_OK=true
+              fi
+            fi
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            echo "ERROR: SSH key invalid. len=${#SSH_KEY} has_begin=$(printf '%s' "$SSH_KEY" | grep -c BEGIN || echo 0)"
+            exit 1
+          fi
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
       - name: Health Check - Backend
         run: |
