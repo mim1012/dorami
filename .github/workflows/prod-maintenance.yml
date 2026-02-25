@@ -10,6 +10,8 @@ on:
         type: choice
         options:
           - status
+          - diagnose
+          - fix-ports
           - logs-backend
           - logs-frontend
           - logs-proxy
@@ -137,6 +139,49 @@ jobs:
           ls -lah /home/ubuntu/ 2>/dev/null || echo "(없음)"
           echo "=== live-commerce 관련 docker 볼륨 ==="
           docker volume ls | grep -i "live\|commerce\|postgres\|pg" || echo "관련 볼륨 없음"
+          EOF
+
+      - name: diagnose
+        if: inputs.command == 'diagnose'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== 포트 바인딩 (ss) ==="
+          ss -tlnp | grep -E ':80|:443|:3000|:3001|:8080' || echo "(없음)"
+          echo "=== Docker 포트 바인딩 상세 ==="
+          docker inspect dorami-frontend-prod --format '포트: {{json .HostConfig.PortBindings}}' 2>/dev/null
+          docker inspect dorami-backend-prod --format '포트: {{json .HostConfig.PortBindings}}' 2>/dev/null
+          echo "=== PM2 프로세스 ==="
+          pm2 list 2>/dev/null || echo "PM2 없음"
+          echo "=== Host Nginx 설정 ==="
+          cat /etc/nginx/sites-enabled/* 2>/dev/null || cat /etc/nginx/conf.d/*.conf 2>/dev/null || echo "설정 파일 없음"
+          echo "=== docker-compose.prod.yml ports 섹션 ==="
+          grep -A3 "ports:" /opt/dorami/docker-compose.prod.yml 2>/dev/null || echo "파일 없음"
+          EOF
+
+      - name: fix-ports
+        if: inputs.command == 'fix-ports'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+          echo "=== PM2 중지 ==="
+          pm2 stop all 2>/dev/null || true
+          pm2 delete all 2>/dev/null || true
+          echo "=== 포트 점유 프로세스 종료 ==="
+          fuser -k 3000/tcp 2>/dev/null || true
+          fuser -k 3001/tcp 2>/dev/null || true
+          sleep 2
+          echo "=== frontend/backend force-recreate ==="
+          cd /opt/dorami
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate backend frontend
+          echo "=== 결과 ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           EOF
 
       - name: restart-backend
