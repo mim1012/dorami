@@ -31,14 +31,16 @@ jobs:
 
     steps:
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
-
-      - name: Add Known Hosts
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || { echo "SSH key invalid"; exit 1; }
 
       - name: status
         if: inputs.command == 'status'
