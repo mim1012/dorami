@@ -237,6 +237,8 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
+          # Ensure destination directories exist
+          ssh $USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
           scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
           scp -r infrastructure/docker/nginx-proxy $USER@$HOST:/opt/dorami/infrastructure/docker/
           scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
