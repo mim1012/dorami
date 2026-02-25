@@ -42,7 +42,6 @@ test.describe('Admin Products CRUD', () => {
     await page.getByLabel('재고').fill('50');
     await page.getByLabel('색상 옵션 (쉼표로 구분)').fill('Red, Blue, Black');
     await page.getByLabel('사이즈 옵션 (쉼표로 구분)').fill('S, M, L, XL');
-    await page.getByLabel('배송비 ($)').fill('3000');
 
     // Submit the form — button text is "등록하기", becomes "저장 중..." while submitting
     await page.getByRole('button', { name: '등록하기', exact: true }).click();
