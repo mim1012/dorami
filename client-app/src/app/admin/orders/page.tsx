@@ -284,15 +284,15 @@ function AdminOrdersContent() {
       const a = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       a.href = url;
-      a.download = `orders_${date}.csv`;
+      a.download = `orders_${date}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      showToast('CSV 파일이 다운로드되었습니다.', 'success');
+      showToast('엑셀 파일이 다운로드되었습니다.', 'success');
     } catch (err: any) {
       console.error('Failed to export orders:', err);
-      showToast('CSV 내보내기에 실패했습니다.', 'error');
+      showToast('엑셀 내보내기에 실패했습니다.', 'error');
     }
   };
 
@@ -445,7 +445,7 @@ function AdminOrdersContent() {
         </div>
         <Button variant="outline" onClick={handleExportCsv} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
-          CSV 내보내기
+          엑셀 내보내기
         </Button>
       </div>
 
