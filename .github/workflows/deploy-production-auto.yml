@@ -54,14 +54,19 @@ jobs:
 
       - name: Setup SSH
         env:
-          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+          echo "=== Key diagnostics ==="
+          echo "Lines: $(wc -l < ~/.ssh/id_rsa)"
+          head -1 ~/.ssh/id_rsa | cat -v
+          tail -1 ~/.ssh/id_rsa | cat -v
+          echo "========================"
 
       - name: Sync compose & infra files to server
         env:
