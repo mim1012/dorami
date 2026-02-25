@@ -28,10 +28,14 @@ export class AppController {
   @Public()
   @Get('config/payment')
   async getPaymentConfig() {
-    const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: {},
+      create: { id: 'system' },
+    });
     return {
-      zelleEmail: config?.zelleEmail ?? '',
-      zelleRecipientName: config?.zelleRecipientName ?? '',
+      zelleEmail: config.zelleEmail,
+      zelleRecipientName: config.zelleRecipientName,
     };
   }
 }
