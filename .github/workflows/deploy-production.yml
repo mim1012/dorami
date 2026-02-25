@@ -256,6 +256,25 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Check Server State (Docker volumes & containers)
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            echo "=== Docker containers ==="
+            docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "(docker ps failed)"
+            echo ""
+            echo "=== Docker volumes ==="
+            docker volume ls 2>/dev/null || echo "(docker volume ls failed)"
+            echo ""
+            echo "=== /opt/dorami contents ==="
+            ls -la /opt/dorami/ 2>/dev/null || echo "(not found)"
+            echo ""
+            echo "=== Postgres data volume size ==="
+            docker run --rm -v dorami_postgres_data:/data alpine sh -c "du -sh /data 2>/dev/null" 2>/dev/null || echo "(dorami_postgres_data volume not found)"
+          ENDSSH
+
       - name: Copy compose files to server
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
