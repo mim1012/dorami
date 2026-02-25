@@ -16,13 +16,16 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles =
+    'rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-hot-pink text-white hover:bg-hot-pink/90 active:scale-95',
-    secondary: 'bg-content-bg text-primary-text hover:bg-content-bg/80 active:scale-95 border border-border-color',
-    outline: 'border-2 border-hot-pink text-hot-pink hover:bg-hot-pink hover:text-white active:scale-95',
-    ghost: 'text-hot-pink hover:bg-hot-pink/10 active:scale-95',
+    primary: 'bg-hot-pink text-white enabled:hover:bg-hot-pink/90 enabled:active:scale-95',
+    secondary:
+      'bg-content-bg text-primary-text enabled:hover:bg-content-bg/80 enabled:active:scale-95 border border-border-color',
+    outline:
+      'border-2 border-hot-pink text-hot-pink enabled:hover:bg-hot-pink enabled:hover:text-white enabled:active:scale-95',
+    ghost: 'text-hot-pink enabled:hover:bg-hot-pink/10 enabled:active:scale-95',
   };
 
   const sizeStyles = {

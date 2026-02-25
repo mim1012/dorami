@@ -61,6 +61,12 @@ async function ensureCsrfToken(): Promise<void> {
   }
 
   await csrfBootstrapPromise;
+
+  // H-1: 부트스트랩 후 쿠키가 실제로 설정됐는지 확인.
+  // 실패했다면 이후 POST가 조용히 403이 되므로 경고를 남긴다.
+  if (!getCsrfToken() && process.env.NODE_ENV !== 'production') {
+    console.warn('[CSRF] Bootstrap failed — subsequent mutations may return 403');
+  }
 }
 
 async function refreshAccessToken(): Promise<boolean> {
@@ -215,7 +221,7 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(endpoint: string, options?: { params?: Record<string, any> }) =>
+  get: <T>(endpoint: string, options?: { params?: Record<string, any>; signal?: AbortSignal }) =>
     request<T>(endpoint, { method: 'GET', ...options }),
 
   post: <T>(endpoint: string, body?: any) =>

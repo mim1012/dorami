@@ -194,7 +194,7 @@ function AdminOrdersContent() {
   const handleConfirmPayment = async (order: OrderListItem) => {
     const confirmed = await confirm({
       title: '입금 확인',
-      message: `주문번호: ${order.id}\n고객: @${order.instagramId}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n은행 계좌로 위 금액의 입금을 확인하셨습니까?`,
+      message: `주문번호: ${order.id}\n고객: @${order.instagramId?.replace(/^@/, '')}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n은행 계좌로 위 금액의 입금을 확인하셨습니까?`,
       confirmText: '확인',
       variant: 'info',
     });
@@ -235,7 +235,7 @@ function AdminOrdersContent() {
   const handleSendReminder = async (order: OrderListItem) => {
     const confirmed = await confirm({
       title: '알림 전송',
-      message: `주문번호: ${order.id}\n고객: @${order.instagramId}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`,
+      message: `주문번호: ${order.id}\n고객: @${order.instagramId?.replace(/^@/, '')}\n입금자명: ${order.depositorName}\n금액: ${formatCurrency(order.total)}\n\n고객에게 KakaoTalk 결제 알림을 전송하시겠습니까?`,
       confirmText: '전송',
       variant: 'warning',
     });
@@ -358,7 +358,9 @@ function AdminOrdersContent() {
       render: (order) => (
         <div className="flex flex-col">
           <span className="text-caption">{order.userEmail}</span>
-          <span className="text-caption text-secondary-text">@{order.instagramId}</span>
+          <span className="text-caption text-secondary-text">
+            @{order.instagramId?.replace(/^@/, '')}
+          </span>
         </div>
       ),
     },
@@ -513,8 +515,6 @@ function AdminOrdersContent() {
                 {[
                   { value: 'PENDING_PAYMENT', label: '입금 대기' },
                   { value: 'PAYMENT_CONFIRMED', label: '결제 완료' },
-                  { value: 'SHIPPED', label: '배송중' },
-                  { value: 'DELIVERED', label: '배송 완료' },
                   { value: 'CANCELLED', label: '취소됨' },
                 ].map(({ value, label }) => (
                   <button
