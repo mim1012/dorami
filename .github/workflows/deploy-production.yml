@@ -274,21 +274,35 @@ jobs:
           #!/bin/bash
           set -euo pipefail
 
-          # Load nvm so node/npm/pm2 are available in non-interactive SSH sessions
+          # Load node/npm/pm2 — covers nvm, volta, fnm, system installs, snap
           export NVM_DIR="${HOME}/.nvm"
-          if [ -s "${NVM_DIR}/nvm.sh" ]; then
-            \. "${NVM_DIR}/nvm.sh"
+          # nvm: source nvm.sh
+          [ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"
+          # nvm: add latest node bin directly (works without sourcing nvm.sh)
+          if [ -d "${NVM_DIR}/versions/node" ]; then
+            _nvm_latest=$(ls -t "${NVM_DIR}/versions/node" 2>/dev/null | head -1)
+            [ -n "${_nvm_latest}" ] && export PATH="${NVM_DIR}/versions/node/${_nvm_latest}/bin:${PATH}"
           fi
-          # Also add common global bin paths (system node, npm global installs)
-          for _p in /usr/local/bin /usr/bin "${HOME}/.npm-global/bin" "${HOME}/.local/bin"; do
+          # volta
+          [ -d "${HOME}/.volta/bin" ] && export PATH="${HOME}/.volta/bin:${PATH}"
+          # fnm
+          [ -d "${HOME}/.local/share/fnm" ] && eval "$(fnm env 2>/dev/null)" || true
+          # n (npm-based node version manager)
+          if [ -d "/usr/local/n/versions/node" ]; then
+            _n_latest=$(ls -t /usr/local/n/versions/node 2>/dev/null | head -1)
+            [ -n "${_n_latest}" ] && export PATH="/usr/local/n/versions/node/${_n_latest}/bin:${PATH}"
+          fi
+          # common system paths
+          for _p in /usr/local/bin /usr/bin "${HOME}/.npm-global/bin" "${HOME}/.local/bin" /snap/bin; do
             case ":${PATH}:" in *":${_p}:"*) ;; *) export PATH="${_p}:${PATH}" ;; esac
           done
-          # If pm2 still not found, locate it under nvm directory
+          # last resort: find pm2 binary anywhere in HOME or /usr
           if ! command -v pm2 &>/dev/null; then
-            _pm2=$(find "${NVM_DIR}" /usr/local /usr -name pm2 -type f 2>/dev/null | head -1 || true)
+            _pm2=$(find "${HOME}" /usr/local/bin /usr/bin /snap/bin -name pm2 2>/dev/null | head -1 || true)
             [ -n "${_pm2}" ] && export PATH="$(dirname "${_pm2}"):${PATH}"
           fi
-          echo "INFO: node=$(node --version 2>/dev/null || echo 'not found'), npm=$(npm --version 2>/dev/null || echo 'not found'), pm2=$(pm2 --version 2>/dev/null || echo 'not found')"
+          echo "INFO: HOME=${HOME} PATH=${PATH}"
+          echo "INFO: node=$(node --version 2>/dev/null || echo N/A), npm=$(npm --version 2>/dev/null || echo N/A), pm2=$(pm2 --version 2>/dev/null || echo N/A)"
 
           INFRA_DIR="/opt/dorami"
 
@@ -316,9 +330,14 @@ jobs:
 
           if [ -z "${APP_DIR}" ] || [ ! -d "${APP_DIR}" ]; then
             echo "ERROR: Cannot find application directory."
-            echo "PM2 status:"
-            pm2 list
-            echo "Searched: \${HOME}/dorami /home/ubuntu/dorami /home/ec2-user/dorami"
+            echo "=== DIAGNOSTICS ==="
+            echo "HOME=${HOME}, USER=$(whoami)"
+            echo "which node: $(which node 2>/dev/null || echo N/A)"
+            echo "which pm2:  $(which pm2 2>/dev/null || echo N/A)"
+            echo "ls HOME: $(ls -la ${HOME} 2>/dev/null | head -20)"
+            echo "ls /home: $(ls /home 2>/dev/null)"
+            echo "ls /opt:  $(ls /opt 2>/dev/null)"
+            pm2 list 2>/dev/null || echo "(pm2 not in PATH)"
             exit 1
           fi
           echo "INFO: Application directory: ${APP_DIR}"
@@ -470,7 +489,7 @@ jobs:
           done
 
           echo "--- PM2 Status ---"
-          pm2 list
+          pm2 list 2>/dev/null || true
 
           if ! ${backend_ok} || ! ${frontend_ok}; then
             echo "ERROR: Health checks failed!"
