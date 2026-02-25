@@ -210,7 +210,7 @@ jobs:
   # ===========================================
   deploy:
     name: Deploy to Production
-    needs: [validate, backup]
+    needs: [validate, build, backup]
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -231,6 +231,15 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy compose files to server
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
+          scp -r infrastructure/docker/nginx-proxy $USER@$HOST:/opt/dorami/infrastructure/docker/
+          scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
 
       - name: Deploy via SSH
         env:
@@ -253,16 +262,6 @@ jobs:
             echo "Image Tag: $IMAGE_TAG"
             echo "Rollback: $IS_ROLLBACK"
             echo "=========================================="
-
-            if [ "$IS_ROLLBACK" == "true" ]; then
-              echo "=== ROLLBACK MODE ==="
-              git fetch --tags
-              git checkout $VERSION
-            else
-              echo "=== Pulling latest code ==="
-              git fetch origin main --tags
-              git checkout $VERSION
-            fi
 
             echo "=== Logging into GHCR ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
