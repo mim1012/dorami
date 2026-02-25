@@ -61,10 +61,10 @@ export class UploadController {
             false,
           );
         }
-        // Extension check
+        // Extension check (empty extension allowed when MIME type already validated above)
         const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
         const ext = extname(file.originalname).toLowerCase();
-        if (!allowedExtensions.includes(ext)) {
+        if (ext !== '' && !allowedExtensions.includes(ext)) {
           return callback(new BadRequestException('Invalid file extension'), false);
         }
         callback(null, true);
