@@ -583,8 +583,8 @@ async function bootstrap() {
 
         // Add userId to viewer Set (idempotent — reconnects don't double-count)
         const userId = authenticatedSocket.user.userId;
-        await pubClient.sadd(`stream:${streamKey}:viewer_ids`, userId);
-        const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
+        await pubClient.sAdd(`stream:${streamKey}:viewer_ids`, userId);
+        const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
         logger.log(
           `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
@@ -623,8 +623,8 @@ async function bootstrap() {
 
         // Remove userId from viewer Set
         const userId = authenticatedSocket.user.userId;
-        await pubClient.srem(`stream:${streamKey}:viewer_ids`, userId);
-        const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
+        await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
+        const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
         logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
 
@@ -653,8 +653,8 @@ async function bootstrap() {
         if (streamKey) {
           const roomName = `stream:${streamKey}`;
           const userId = authenticatedSocket.user.userId;
-          await pubClient.srem(`stream:${streamKey}:viewer_ids`, userId);
-          const viewerCount = Number(await pubClient.scard(`stream:${streamKey}:viewer_ids`));
+          await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
+          const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',

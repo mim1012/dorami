@@ -173,6 +173,7 @@ export class ReStreamService implements OnModuleDestroy {
     liveStreamId: string,
     streamKey: string,
     target: { id: string; rtmpUrl: string; streamKey: string; name: string },
+    restartCount = 0,
   ) {
     const rtmpInternalUrl =
       this.configService.get<string>('RTMP_INTERNAL_URL') || 'rtmp://srs:1935/live';
@@ -214,7 +215,7 @@ export class ReStreamService implements OnModuleDestroy {
       process: ffmpegProcess,
       targetId: target.id,
       logId: log.id,
-      restartCount: 0,
+      restartCount,
     };
 
     // Store process
@@ -311,13 +312,16 @@ export class ReStreamService implements OnModuleDestroy {
       this.emitStatus(liveStreamId, target.id, 'FAILED', proc.logId);
 
       proc.restartTimer = setTimeout(() => {
-        // Check if the stream is still live before restarting
-        void this.prisma.liveStream
-          .findUnique({ where: { id: liveStreamId } })
-          .catch(() => null)
-          .then((liveStream) => {
-            if (liveStream?.status === 'LIVE') {
-              return this.spawnFFmpegForTarget(liveStreamId, streamKey, target);
+        // Check if the stream is still live and target is still enabled before restarting
+        void Promise.all([
+          this.prisma.liveStream.findUnique({ where: { id: liveStreamId } }).catch(() => null),
+          this.prisma.reStreamTarget
+            .findUnique({ where: { id: target.id }, select: { enabled: true } })
+            .catch(() => null),
+        ])
+          .then(([liveStream, freshTarget]) => {
+            if (liveStream?.status === 'LIVE' && freshTarget?.enabled) {
+              return this.spawnFFmpegForTarget(liveStreamId, streamKey, target, proc.restartCount);
             }
           })
           .catch(() => {});
