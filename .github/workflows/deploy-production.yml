@@ -79,7 +79,7 @@ jobs:
   test:
     name: Pre-deployment Tests
     needs: [validate]
-    if: inputs.skip_tests != 'true' && inputs.rollback != 'true'
+    if: inputs.skip_tests != true && inputs.skip_tests != 'true' && inputs.rollback != 'true'
     uses: ./.github/workflows/ci.yml
 
   # ===========================================
