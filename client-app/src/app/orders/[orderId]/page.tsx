@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getOrderById } from '@/lib/api/orders';
 import { Order, OrderStatus } from '@/lib/types/order';
-import { CheckCircle, Clock, Package, Truck, Home, Copy, Check } from 'lucide-react';
+import { apiClient } from '@/lib/api/client';
+import { CheckCircle, Clock, Package, Truck, Home } from 'lucide-react';
 
 export default function OrderConfirmationPage() {
   const params = useParams();
@@ -14,13 +15,24 @@ export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [zelleEmail, setZelleEmail] = useState('');
+  const [zelleRecipientName, setZelleRecipientName] = useState('');
 
   useEffect(() => {
     if (orderId) {
       fetchOrder();
     }
   }, [orderId]);
+
+  useEffect(() => {
+    apiClient
+      .get<{ zelleEmail: string; zelleRecipientName: string }>('/config/payment')
+      .then((res) => {
+        setZelleEmail(res.data.zelleEmail || '');
+        setZelleRecipientName(res.data.zelleRecipientName || '');
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchOrder = async () => {
     try {
@@ -32,18 +44,6 @@ export default function OrderConfirmationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const copyAccountNumber = async () => {
-    if (order?.bankTransferInfo) {
-      await navigator.clipboard.writeText(order.bankTransferInfo.accountNumber);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const formatAccountNumber = (accountNumber: string) => {
-    return accountNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
   };
 
   const formatPrice = (price: number) => {
@@ -169,65 +169,30 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
 
-        {/* Bank Transfer Instructions */}
-        {order.bankTransferInfo && (
+        {/* Zelle Payment Instructions */}
+        {order.status === OrderStatus.PENDING_PAYMENT && zelleEmail && (
           <div className="bg-hot-pink/10 rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30">
-            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 무통장 입금 안내</h2>
+            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 결제 방법 — Zelle</h2>
             <div className="bg-content-bg rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-secondary-text">은행명</span>
-                <span className="font-semibold text-primary-text">
-                  {order.bankTransferInfo.bankName}
-                </span>
+                <span className="text-secondary-text">수신자</span>
+                <span className="font-semibold text-primary-text">{zelleRecipientName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-secondary-text">계좌번호</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-primary-text">
-                    {formatAccountNumber(order.bankTransferInfo.accountNumber)}
-                  </span>
-                  <button
-                    onClick={copyAccountNumber}
-                    className="p-1.5 rounded-md bg-content-bg hover:bg-border-color transition-colors"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 text-success" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-secondary-text" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-secondary-text">예금주</span>
-                <span className="font-semibold text-primary-text">
-                  {order.bankTransferInfo.accountHolder}
-                </span>
+                <span className="text-secondary-text">Zelle 이메일</span>
+                <span className="font-semibold text-hot-pink">{zelleEmail}</span>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-border-color">
-                <span className="text-primary-text font-semibold">입금 금액</span>
-                <span className="text-2xl font-bold text-hot-pink">
-                  {formatPrice(order.bankTransferInfo.amount)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-secondary-text">입금자명</span>
-                <span className="font-semibold text-primary-text">
-                  {order.bankTransferInfo.depositorName}
-                </span>
+                <span className="text-primary-text font-semibold">송금 금액</span>
+                <span className="text-2xl font-bold text-hot-pink">{formatPrice(order.total)}</span>
               </div>
             </div>
             <div className="mt-4 bg-warning-bg border border-warning/20 rounded-lg p-3">
               <p className="text-sm text-primary-text">
-                ⚠️ <strong>주의:</strong> 입금 시 등록된 입금자명(
-                {order.bankTransferInfo.depositorName})으로 입금해 주세요.
+                ⚠️ 주문 완료 후 위 Zelle 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로
+                전송해주세요.
               </p>
             </div>
-            {copied && (
-              <div className="mt-3 text-center text-sm text-success font-medium">
-                ✓ 계좌번호가 복사되었습니다!
-              </div>
-            )}
           </div>
         )}
 
