@@ -20,7 +20,10 @@ import { SYSTEM_USERNAME } from '@/components/chat/types';
 import type { Product } from '@/lib/types/product';
 import { ProductStatus } from '@live-commerce/shared-types';
 import { formatPrice } from '@/lib/utils/price';
-import { Eye } from 'lucide-react';
+import { apiClient } from '@/lib/api/client';
+import { Eye, Bell, MessageCircle, Share2, ShoppingCart, Package, X } from 'lucide-react';
+import { NoticeModal } from '@/components/notices/NoticeModal';
+import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 
 // ── Mock Data ──
 const MOCK_MESSAGES: ChatMessage[] = [
@@ -131,6 +134,8 @@ const USER_NAMES = ['민지', '수현', '하은', '지우', '서연', '예린', 
 let nextProductId = 3;
 
 const STREAM_TITLE = '도레미 라이브 커머스 미리보기';
+const PREVIEW_STREAM_KEY =
+  process.env.NEXT_PUBLIC_PREVIEW_STREAM_KEY || '9fadba4785ad48d73f559dd3d9cf108f';
 
 export default function LivePreviewPage() {
   const router = useRouter();
@@ -158,6 +163,23 @@ export default function LivePreviewPage() {
   const [showViewerPulse, setShowViewerPulse] = useState(false);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [activeProduct, setActiveProduct] = useState<Product | null>(MOCK_PRODUCTS[0] ?? null);
+
+  // 실제 DB 상품 fetch (없으면 mock 유지)
+  useEffect(() => {
+    if (!isAllowed) return;
+    apiClient
+      .get<Product[]>('/products', { params: { streamKey: PREVIEW_STREAM_KEY } })
+      .then((res) => {
+        const fetched = res.data ?? [];
+        if (fetched.length > 0) {
+          setProducts(fetched);
+          setActiveProduct(fetched[0]);
+        }
+      })
+      .catch(() => {
+        /* mock 유지 */
+      });
+  }, [isAllowed]);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [chatSpeed, setChatSpeed] = useState(3500);
   const [cartCount, setCartCount] = useState(0);
@@ -167,6 +189,10 @@ export default function LivePreviewPage() {
   // Product detail modal state
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [isNoticeOpen, setIsNoticeOpen] = useState(false);
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [mobileInputMessage, setMobileInputMessage] = useState('');
 
   // allMessages: cart activities merged as system messages (same as real page)
   const allMessages = useMemo(() => {
@@ -494,77 +520,18 @@ export default function LivePreviewPage() {
         </div>
       </aside>
 
-      {/* ── Mobile: flex-col scroll layout ── */}
-      <div className="flex lg:hidden flex-col w-full bg-[#0d0d18] h-screen overflow-hidden">
-        {/* 1. Top status bar — sticky */}
-        <div
-          className="sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3"
-          style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
-        >
-          <div className="flex items-center justify-between pb-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center shadow-lg flex-shrink-0">
-                <span className="text-white text-xs font-black">D</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-white font-bold text-sm leading-tight line-clamp-1">
-                  {STREAM_TITLE}
-                </p>
-                <p className="text-white/60 text-[10px] font-mono">{elapsedTime}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <div className="flex items-center gap-1 bg-[#FF3B30] px-2 py-1 rounded-full">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping [animation-duration:2s] absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                </span>
-                <span className="text-white text-[10px] font-black tracking-wider">LIVE</span>
-              </div>
-              <div
-                className={`flex items-center gap-1 bg-black/50 px-2 py-1 rounded-full border border-white/10 transition-transform ${showViewerPulse ? 'scale-110' : ''}`}
-              >
-                <Eye className="w-3 h-3 text-white/70" />
-                <span className="text-white text-[10px] font-bold">
-                  {viewerCount.toLocaleString()}
-                </span>
-              </div>
-              <button
-                onClick={() => router.push('/')}
-                className="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"
-                aria-label="닫기"
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      {/* ── MOBILE: fullscreen overlay layout ── */}
+      <div className="relative flex lg:hidden w-full h-screen overflow-hidden bg-black">
+        {/* 0. Mock video — fullscreen background */}
+        <div className="absolute inset-0 z-0 bg-[#12121e]">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#FF007A]/10 rounded-full blur-3xl animate-pulse" />
+            <div
+              className="absolute -bottom-32 -right-20 w-96 h-96 bg-[#7928CA]/10 rounded-full blur-3xl animate-pulse"
+              style={{ animationDelay: '1s' }}
+            />
           </div>
-        </div>
-
-        {/* 2. Video (16:9) with overlays inside */}
-        <div className="relative w-full aspect-video bg-black">
-          {/* Top gradient scrim */}
-          <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
-          {/* Bottom gradient scrim */}
-          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none" />
-          {/* Mock video background */}
-          <div className="w-full h-full bg-[#12121e] flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#FF007A]/10 rounded-full blur-3xl animate-pulse" />
-              <div
-                className="absolute -bottom-32 -right-20 w-96 h-96 bg-[#7928CA]/10 rounded-full blur-3xl animate-pulse"
-                style={{ animationDelay: '1s' }}
-              />
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center z-10">
               <div className="w-14 h-14 mx-auto mb-2 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                 <svg className="w-7 h-7 text-white/30" fill="currentColor" viewBox="0 0 24 24">
@@ -576,113 +543,166 @@ export default function LivePreviewPage() {
           </div>
         </div>
 
-        {/* 3a. Active product card + trigger */}
-        <div className="px-4 pt-3 pb-2 space-y-2">
-          {activeProduct && (
-            <div
-              className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm active:bg-white/10 transition-all cursor-pointer"
-              onClick={() => handleProductClick(activeProduct.id)}
-            >
-              {activeProduct.imageUrl && (
-                <div className="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
-                  {/* eslint-disable-next-line */}
-                  <img
-                    src={activeProduct.imageUrl}
-                    alt={activeProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+        {/* 1. Top bar */}
+        <div className="absolute top-0 left-0 right-0 z-30">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent h-32 pointer-events-none" />
+          <div className="relative px-4 pt-12 pb-4 flex items-center justify-between">
+            {/* Left: profile + name + LIVE + viewers */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7928CA] to-[#FF007A] flex items-center justify-center flex-shrink-0 border-2 border-white/30">
+                <span className="text-white text-sm font-black">D</span>
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{activeProduct.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {activeProduct.discountRate && activeProduct.discountRate > 0 ? (
-                    <>
-                      <span className="text-white/35 text-xs line-through">
-                        {formatPrice(activeProduct.originalPrice ?? activeProduct.price)}
-                      </span>
-                      <span className="text-red-400 text-xs font-bold">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white text-sm font-medium line-clamp-1">
+                    {STREAM_TITLE}
+                  </span>
+                  <div className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded flex-shrink-0">
+                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                    <span className="text-white text-[10px] uppercase tracking-wider">LIVE</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-white/80">
+                  <Eye className="w-3 h-3" />
+                  <span className="text-xs">{viewerCount.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: 공지, 문의, 닫기 pink circles */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {(
+                [
+                  { icon: Bell, label: '공지', onClick: () => setIsNoticeOpen(true) },
+                  { icon: MessageCircle, label: '문의', onClick: () => setIsInquiryOpen(true) },
+                  { icon: X, label: '닫기', onClick: () => router.push('/') },
+                ] as const
+              ).map(({ icon: Icon, label, onClick }) => (
+                <button
+                  key={label}
+                  onClick={onClick}
+                  className="flex flex-col items-center gap-0.5"
+                  aria-label={label}
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                    <Icon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-white text-[9px] drop-shadow-lg">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Right FABs */}
+        <div className="absolute right-4 bottom-32 z-30 flex flex-col gap-4">
+          <button
+            onClick={handleShare}
+            className="flex flex-col items-center gap-1"
+            aria-label="공유하기"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+              <Share2 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-white text-xs drop-shadow-lg">공유</span>
+          </button>
+
+          <button
+            onClick={() => setIsProductSheetOpen(true)}
+            className="flex flex-col items-center gap-1"
+            aria-label="지난 상품 목록"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+              <Package className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-white text-xs font-medium drop-shadow-lg">
+              {products.length}개
+            </span>
+            <span className="text-white/70 text-[9px] drop-shadow-lg">지난상품</span>
+          </button>
+        </div>
+
+        {/* 4. Chat messages — absolute overlay */}
+        <div className="absolute left-4 bottom-[160px] z-10 w-[70%] space-y-1.5">
+          <ChatMessageList messages={allMessages} compact maxMessages={4} />
+        </div>
+
+        {/* 5. Featured product card — glassmorphism */}
+        {activeProduct && (
+          <div className="absolute left-4 bottom-[90px] z-20 w-[65%]">
+            <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 p-1.5 shadow-2xl">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-md bg-white overflow-hidden flex-shrink-0 shadow-lg">
+                  {activeProduct.imageUrl ? (
+                    // eslint-disable-next-line
+                    <img
+                      src={activeProduct.imageUrl}
+                      alt={activeProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <Package className="w-5 h-5 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white text-[10px] font-medium mb-0.5 line-clamp-1">
+                    {activeProduct.name}
+                  </h3>
+                  <div className="flex items-baseline gap-0.5">
+                    {activeProduct.discountRate != null && activeProduct.discountRate > 0 && (
+                      <span className="text-rose-400 text-[9px]">
                         {activeProduct.discountRate}%
                       </span>
-                    </>
-                  ) : null}
-                  <span className="text-[#FF007A] font-black text-sm">
-                    {formatPrice(
-                      activeProduct.discountRate && activeProduct.discountRate > 0
-                        ? Math.round(
-                            (activeProduct.originalPrice ?? activeProduct.price) *
-                              (1 - activeProduct.discountRate / 100),
-                          )
-                        : activeProduct.price,
                     )}
-                  </span>
+                    <span className="text-white text-[11px] font-medium">
+                      {activeProduct.price.toLocaleString()}원
+                    </span>
+                  </div>
                 </div>
+                <button
+                  onClick={() => handleAddToCart(activeProduct.id)}
+                  className="bg-white text-black px-3 py-1.5 rounded-md text-[10px] hover:opacity-90 transition-all active:scale-95 whitespace-nowrap shadow-lg flex-shrink-0"
+                >
+                  구매하기
+                </button>
               </div>
-              <button
-                className="h-10 min-w-[88px] flex-shrink-0 px-4 py-2 bg-[#FF007A] text-white text-sm font-bold rounded-xl active:scale-95 transition-all"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddToCart(activeProduct.id);
-                }}
-              >
-                구매하기
-              </button>
             </div>
-          )}
-          {products.length > 0 && (
+          </div>
+        )}
+
+        {/* 6. Bottom bar: chat input + CTA */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-10 px-4 pt-3"
+          style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-black/30 backdrop-blur-md rounded-full px-4 py-3 border border-white/10">
+              <input
+                type="text"
+                value={mobileInputMessage}
+                onChange={(e) => setMobileInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && mobileInputMessage.trim()) {
+                    handleSendMessage(mobileInputMessage);
+                    setMobileInputMessage('');
+                  }
+                }}
+                placeholder="메시지를 입력하세요..."
+                className="w-full bg-transparent text-white text-sm placeholder:text-white/50 focus:outline-none"
+              />
+            </div>
             <button
-              onClick={() => products.length > 1 && setIsProductSheetOpen(true)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/5 border border-white/10 active:bg-white/10 transition-all ${products.length <= 1 ? 'opacity-0 pointer-events-none' : ''}`}
+              onClick={() => activeProduct && handleAddToCart(activeProduct.id)}
+              disabled={!activeProduct}
+              className="flex-shrink-0 bg-gradient-to-r from-[#FF007A] to-[#FF4E50] px-5 py-3 rounded-full flex items-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="구매하기"
             >
-              <div className="flex items-center gap-2.5">
-                <span className="w-1 h-4 rounded-full bg-gradient-to-b from-[#FF007A] to-[#7928CA]" />
-                <span className="text-white text-sm font-bold">전체 상품 보기</span>
-                <span className="text-white/40 text-xs">{products.length}개</span>
-              </div>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                className={`opacity-40 transition-transform duration-300 ${isProductSheetOpen ? 'rotate-90' : ''}`}
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
+              <ShoppingCart className="w-5 h-5 text-white" />
+              <span className="text-white text-sm font-medium whitespace-nowrap">구매하기</span>
             </button>
-          )}
-        </div>
-
-        {/* 4. Chat feed — fills remaining space */}
-        <div className="flex-1 min-h-[120px] overflow-y-auto">
-          <ChatMessageList messages={allMessages} compact maxMessages={50} />
-        </div>
-
-        {/* 5. Chat input — in-flow */}
-        <div
-          className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
-          style={{ height: 'var(--live-bottom-bar-h)' }}
-        >
-          <ChatInput
-            compact
-            disabled={false}
-            onSendMessage={handleSendMessage}
-            ref={mobileInputRef}
-          />
-        </div>
-
-        {/* 6. Quick action bar — in-flow at bottom */}
-        <div
-          className="flex-shrink-0"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          <LiveQuickActionBar
-            streamTitle={STREAM_TITLE}
-            onCartOpen={() => setIsCartSheetOpen(true)}
-            cartCount={cartCount}
-          />
+          </div>
         </div>
       </div>
 
@@ -907,6 +927,12 @@ export default function LivePreviewPage() {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      {/* Notice Modal */}
+      <NoticeModal isOpen={isNoticeOpen} onClose={() => setIsNoticeOpen(false)} />
+
+      {/* Inquiry Bottom Sheet */}
+      <InquiryBottomSheet isOpen={isInquiryOpen} onClose={() => setIsInquiryOpen(false)} />
 
       {/* QA Test Control Panel */}
       <TestControlPanel
