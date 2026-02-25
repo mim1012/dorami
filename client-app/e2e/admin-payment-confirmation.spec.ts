@@ -152,7 +152,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-admin@test.com', name: 'E2E ADMIN', role: 'ADMIN' }),
+        body: JSON.stringify({ email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' }),
       });
     });
 

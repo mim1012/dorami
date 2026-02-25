@@ -41,7 +41,7 @@ test.describe('Reservation System (예비번호)', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: 'e2e-admin@test.com', name: 'E2E ADMIN', role: 'ADMIN' }),
+          body: JSON.stringify({ email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' }),
         });
         if (!loginRes.ok) return null;
 

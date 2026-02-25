@@ -254,11 +254,15 @@ export class AuthController {
     const roleToAssign = adminEmailSet.has(email) ? 'ADMIN' : 'USER';
 
     const { randomUUID } = await import('crypto');
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    // Preserve existing ADMIN role — never downgrade on re-login
+    const finalRole = existingUser?.role === 'ADMIN' ? 'ADMIN' : roleToAssign;
+
     const user = await this.prisma.user.upsert({
       where: { email },
       update: {
         lastLoginAt: new Date(),
-        role: roleToAssign,
+        role: finalRole,
       },
       create: {
         kakaoId: `dev_${randomUUID()}`,
