@@ -3,7 +3,8 @@
 # Flow: CI tests → Build images → Deploy to production server
 #
 # Required GitHub Secrets (Settings → Secrets → Actions):
-#   PRODUCTION_SSH_KEY  - SSH private key (contents of dorami-prod-key.pem)
+#   PRODUCTION_SSH_KEY  - SSH private key base64 encoded:
+#                         Git Bash: base64 -w 0 dorami-prod-key.pem
 #   PRODUCTION_HOST     - Server IP (e.g. 15.165.66.23)
 #   PRODUCTION_USER     - SSH user (e.g. ubuntu)
 
@@ -53,29 +54,16 @@ jobs:
 
       - name: Setup SSH
         env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          # base64-encoded key avoids all line ending issues
+          # Generate with: base64 -w 0 dorami-prod-key.pem  (Git Bash)
+          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-
-          # Strip CRLF (Windows line endings corrupt PEM parsing in OpenSSL 3.x)
-          printf '%s' "$SSH_KEY" | tr -d '\r' > /tmp/deploy_key_raw
-          chmod 600 /tmp/deploy_key_raw
-
-          # Re-export via openssl to normalize format
-          if openssl rsa -in /tmp/deploy_key_raw -out ~/.ssh/id_rsa 2>/dev/null; then
-            echo "Key normalized via openssl"
-          else
-            cp /tmp/deploy_key_raw ~/.ssh/id_rsa
-            echo "Key copied as-is"
-          fi
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          rm -f /tmp/deploy_key_raw
-
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-
-          # Verify key loads correctly
           ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || echo "WARNING: key invalid"
 
       - name: Sync compose & infra files to server
