@@ -366,22 +366,57 @@ export class AdminService {
 
     const Papa = await import('papaparse');
 
+    const ORDER_STATUS_KO: Record<string, string> = {
+      PENDING_PAYMENT: '결제대기',
+      PAYMENT_CONFIRMED: '결제완료',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+      CANCELLED: '취소',
+    };
+    const PAYMENT_STATUS_KO: Record<string, string> = {
+      PENDING: '대기',
+      CONFIRMED: '완료',
+      FAILED: '실패',
+      REFUNDED: '환불',
+    };
+    const SHIPPING_STATUS_KO: Record<string, string> = {
+      PENDING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+    };
+
+    const toKST = (date: Date) =>
+      date
+        .toLocaleString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        })
+        .replace(/\. /g, '-')
+        .replace('.', '')
+        .replace(',', '');
+
     const csvData = orders.map((order) => ({
       주문번호: order.id,
       고객이메일: order.userEmail,
       입금자명: order.depositorName,
       인스타그램ID: order.instagramId,
-      주문상태: order.status,
-      결제상태: order.paymentStatus,
-      배송상태: order.shippingStatus,
+      주문상태: ORDER_STATUS_KO[order.status] ?? order.status,
+      결제상태: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
+      배송상태: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
       소계: Number(order.subtotal),
       배송비: Number(order.shippingFee),
       합계: Number(order.total),
-      주문일: order.createdAt.toISOString(),
-      결제일: order.paidAt ? order.paidAt.toISOString() : '',
+      주문일: toKST(order.createdAt),
+      결제일: order.paidAt ? toKST(order.paidAt) : '',
     }));
 
-    return Papa.unparse(csvData);
+    return Papa.unparse(csvData, { newline: '\r\n' });
   }
 
   async getDashboardStats(): Promise<DashboardStatsDto> {

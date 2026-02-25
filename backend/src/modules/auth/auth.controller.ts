@@ -224,18 +224,18 @@ export class AuthController {
   }
 
   /**
-   * Dev-only login endpoint for staging/testing.
+   * Dev-only login endpoint for local development.
    * Creates or finds a user by email and issues JWT tokens without Kakao OAuth.
-   * Only available when ENABLE_DEV_AUTH=true.
+   * Only available when NODE_ENV=development.
    */
   @Public()
   @SkipCsrf()
   @SkipThrottle()
   @Post('dev-login')
   async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
-    const devAuthEnabled = this.configService.get<string>('ENABLE_DEV_AUTH');
-    if (devAuthEnabled !== 'true') {
-      throw new ForbiddenException('Dev login is disabled');
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'production');
+    if (nodeEnv !== 'development') {
+      throw new ForbiddenException('Dev login is only available in development environment');
     }
 
     const { email, name } = body;

@@ -41,10 +41,10 @@ function OrderCompleteContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [bankInfo, setBankInfo] = useState({
-    bank: '국민은행',
-    accountNumber: '123-456-789012',
-    accountHolder: '라이브커머스(주)',
+  const [bankInfo] = useState({
+    bank: 'Zelle',
+    accountNumber: '422sss@live.com',
+    accountHolder: 'MIN KIM',
   });
 
   const { isInitialized, shareOrder } = useKakaoShare();
@@ -59,21 +59,6 @@ function OrderCompleteContent() {
       try {
         const response = await apiClient.get<OrderDetail>(`/orders/${orderId}`);
         setOrder(response.data);
-
-        // Fetch bank info from system config
-        try {
-          const configRes = await apiClient.get<any>('/admin/system-settings').catch(() => null);
-          const config = configRes?.data;
-          if (config?.bankName || config?.bankAccountNumber) {
-            setBankInfo({
-              bank: config.bankName || '국민은행',
-              accountNumber: config.bankAccountNumber || '123-456-789012',
-              accountHolder: config.bankAccountHolder || '라이브커머스(주)',
-            });
-          }
-        } catch {
-          // use default bankInfo
-        }
       } catch (err: any) {
         console.error('Failed to fetch order:', err);
         setError('주문 정보를 불러오는데 실패했습니다.');
@@ -169,36 +154,31 @@ function OrderCompleteContent() {
           <Heading2 className="text-primary-text font-mono">{order.id}</Heading2>
         </div>
 
-        {/* Bank Transfer Info */}
+        {/* Payment Info */}
         <div className="bg-content-bg border border-border-color rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Package className="w-5 h-5 text-hot-pink" />
-            <Heading2 className="text-hot-pink">입금 정보</Heading2>
+            <Heading2 className="text-hot-pink">결제 안내</Heading2>
           </div>
 
           <div className="space-y-4">
             <div className="bg-content-bg rounded-xl p-4">
-              <Body className="text-secondary-text text-sm mb-1">은행</Body>
-              <Heading2 className="text-primary-text">{bankInfo.bank}</Heading2>
-            </div>
-
-            <div className="bg-content-bg rounded-xl p-4">
               <div className="flex items-center justify-between mb-1">
-                <Body className="text-secondary-text text-sm">계좌번호</Body>
+                <Body className="text-secondary-text text-sm">Zelle</Body>
                 <button
-                  onClick={() => copyToClipboard(bankInfo.accountNumber)}
+                  onClick={() => copyToClipboard('422sss@live.com')}
                   className="flex items-center gap-1 text-hot-pink hover:text-hot-pink/80 transition-colors"
                 >
                   <Copy className="w-4 h-4" />
                   <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
                 </button>
               </div>
-              <Heading2 className="text-primary-text font-mono">{bankInfo.accountNumber}</Heading2>
+              <Heading2 className="text-primary-text font-mono">422sss@live.com</Heading2>
             </div>
 
             <div className="bg-content-bg rounded-xl p-4">
-              <Body className="text-secondary-text text-sm mb-1">예금주</Body>
-              <Heading2 className="text-primary-text">{bankInfo.accountHolder}</Heading2>
+              <Body className="text-secondary-text text-sm mb-1">Name</Body>
+              <Heading2 className="text-primary-text">MIN KIM</Heading2>
             </div>
 
             <div className="bg-content-bg rounded-xl p-4">
@@ -207,28 +187,17 @@ function OrderCompleteContent() {
             </div>
 
             <div className="bg-content-bg rounded-xl p-4">
-              <Body className="text-secondary-text text-sm mb-1">입금 기한</Body>
-              <Heading2 className="text-warning">
-                {new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Heading2>
+              <Body className="text-secondary-text text-sm mb-1">입금자명</Body>
+              <Heading2 className="text-primary-text">{order.depositorName || '주문자명'}</Heading2>
             </div>
           </div>
 
-          <div className="mt-4 p-4 bg-content-bg/80 rounded-xl border border-hot-pink/20">
-            <Body className="text-secondary-text text-sm leading-relaxed">
-              💡 <strong className="text-primary-text">입금 시 유의사항</strong>
-              <br />• 입금자명은{' '}
-              <strong className="text-hot-pink">{order.depositorName || '주문자명'}</strong>으로
-              해주세요
-              <br />
-              • 입금 기한 내 미입금 시 주문이 자동 취소됩니다
-              <br />• 입금 확인은 영업일 기준 1~2시간 소요됩니다
+          <div className="mt-4 p-4 bg-warning-bg/60 rounded-xl border border-warning/20 space-y-1">
+            <Body className="text-primary-text text-sm">▶ Zelle: 422sss@live.com</Body>
+            <Body className="text-primary-text text-sm">▶ Name: MIN KIM</Body>
+            <Body className="text-primary-text text-sm font-medium">
+              ▶ 입금 후 스크린샷 DM 또는 카톡 채널 전송 필수{' '}
+              <span className="text-warning">(미확인 시 누락)</span>
             </Body>
           </div>
         </div>
