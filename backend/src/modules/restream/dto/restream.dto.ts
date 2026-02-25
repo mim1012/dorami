@@ -29,6 +29,10 @@ export class CreateReStreamTargetDto {
   @IsBoolean()
   @IsOptional()
   enabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  muteAudio?: boolean;
 }
 
 export class UpdateReStreamTargetDto {
@@ -54,4 +58,8 @@ export class UpdateReStreamTargetDto {
   @IsBoolean()
   @IsOptional()
   enabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  muteAudio?: boolean;
 }
