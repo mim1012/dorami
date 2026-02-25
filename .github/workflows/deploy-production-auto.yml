@@ -57,8 +57,15 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          # Write key and convert from legacy RSA PEM → OpenSSH format
+          # (Ubuntu 24.04 OpenSSH 9.x rejects legacy RSA PEM via libcrypto)
+          echo "$SSH_KEY" > /tmp/deploy_key_raw
+          chmod 600 /tmp/deploy_key_raw
+          ssh-keygen -p -f /tmp/deploy_key_raw -m OpenSSH -P "" -N "" 2>/dev/null \
+            || true  # if already OpenSSH format, no-op
+          cp /tmp/deploy_key_raw ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          rm -f /tmp/deploy_key_raw
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
