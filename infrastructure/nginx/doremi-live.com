@@ -19,19 +19,38 @@ server {
     ssl_certificate /etc/letsencrypt/live/doremi-live.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/doremi-live.com/privkey.pem;
 
-    # SRS HTTP-FLV (라이브 스트림)
-    # /live/live/ prefix: FLV URL 패턴(/live/live/{streamKey}.flv)에만 매칭되고
-    # Next.js /live/[streamKey] 페이지 라우트와 충돌하지 않음
+    # SRS HTTP-FLV: /live/live/{key}.flv -> SRS (http_remux mount /live/[app]/[stream].flv)
     location /live/live/ {
-        proxy_pass http://127.0.0.1:8080/live/;
-        proxy_set_header Host $host;
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host 127.0.0.1;
         proxy_buffering off;
+        proxy_request_buffering off;
+        add_header Access-Control-Allow-Origin "*" always;
     }
 
-    # SRS HLS (Safari/iOS fallback)
+    # SRS HLS
     location /hls/ {
-        proxy_pass http://127.0.0.1:8080/hls/;
+        proxy_pass http://127.0.0.1:8080/live/;
+        proxy_set_header Host 127.0.0.1;
+        proxy_buffering off;
+        add_header Cache-Control "no-cache" always;
+        add_header Access-Control-Allow-Origin "*" always;
+    }
+
+    # SRS HLS - CDN URL 중복 경로
+    location /hls/hls/ {
+        proxy_pass http://127.0.0.1:8080/live/;
+        proxy_set_header Host 127.0.0.1;
+        proxy_buffering off;
+        add_header Cache-Control "no-cache" always;
+        add_header Access-Control-Allow-Origin "*" always;
+    }
+
+    # 업로드 파일
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3001;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
     }
 
     # Socket.IO WebSocket
@@ -39,13 +58,24 @@ server {
         proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection upgrade;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_read_timeout 86400;
     }
 
-    # 나머지 모든 요청 → Next.js
+    # API
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Cookie $http_cookie;
+    }
+
+    # Next.js
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
