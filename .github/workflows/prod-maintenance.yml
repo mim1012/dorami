@@ -44,8 +44,7 @@ jobs:
           ssh $USER@$HOST bash << 'EOF'
           echo "=== 컨테이너 상태 ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          echo ""
-          echo "=== 디스크 사용량 ==="
+          echo "=== 디스크 ==="
           df -h / && docker system df
           EOF
 
@@ -71,17 +70,15 @@ jobs:
         run: |
           ssh $USER@$HOST bash << 'EOF'
           echo "=== 백업 파일 ==="
-          ls -lah /opt/dorami/backups/ 2>/dev/null || echo "(백업 없음)"
-
-          echo ""
-          echo "=== 데이터 개수 (lowercase 테이블명) ==="
-          docker exec dorami-postgres-prod bash -c \
-            'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-              SELECT
-                (SELECT COUNT(*) FROM users) as users,
-                (SELECT COUNT(*) FROM products) as products,
-                (SELECT COUNT(*) FROM live_streams) as live_streams,
-                (SELECT COUNT(*) FROM orders) as orders;" 2>&1'
+          ls -lah /opt/dorami/backups/ 2>/dev/null || echo "(없음)"
+          echo "=== users ==="
+          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -t -c "SELECT COUNT(*) FROM users;"' 2>&1 || echo "fail"
+          echo "=== products ==="
+          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -t -c "SELECT COUNT(*) FROM products;"' 2>&1 || echo "fail"
+          echo "=== live_streams ==="
+          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -t -c "SELECT COUNT(*) FROM live_streams;"' 2>&1 || echo "fail"
+          echo "=== orders ==="
+          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d $POSTGRES_DB -t -c "SELECT COUNT(*) FROM orders;"' 2>&1 || echo "fail"
           EOF
 
       - name: db-restore
@@ -92,24 +89,20 @@ jobs:
         run: |
           ssh $USER@$HOST bash << 'EOF'
           set -euo pipefail
-
           LATEST=$(ls -t /opt/dorami/backups/db_backup_*.sql.gz 2>/dev/null | head -1)
           if [ -z "$LATEST" ]; then
-            echo "ERROR: 백업 파일 없음"
+            echo "ERROR: 백업 없음"
             exit 1
           fi
-
-          echo "복구할 백업: $LATEST"
+          echo "복구: $LATEST"
           PGUSER=$(docker exec dorami-postgres-prod env | grep POSTGRES_USER | cut -d= -f2)
           PGPASS=$(docker exec dorami-postgres-prod env | grep POSTGRES_PASSWORD | cut -d= -f2)
           PGDB=$(docker exec dorami-postgres-prod env | grep POSTGRES_DB | cut -d= -f2)
-
           zcat "$LATEST" | docker exec -i dorami-postgres-prod bash -c "PGPASSWORD=$PGPASS psql -U $PGUSER -d $PGDB"
-
           docker restart dorami-backend-prod
           sleep 15
           docker inspect --format='Health: {{.State.Health.Status}}' dorami-backend-prod 2>/dev/null
-          echo "복구 완료!"
+          echo "완료!"
           EOF
 
       - name: restart-backend
@@ -117,14 +110,14 @@ jobs:
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
-        run: ssh $USER@$HOST 'docker restart dorami-backend-prod && echo "백엔드 재시작 완료"'
+        run: ssh $USER@$HOST 'docker restart dorami-backend-prod && echo "완료"'
 
       - name: restart-frontend
         if: inputs.command == 'restart-frontend'
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
-        run: ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "프론트엔드 재시작 완료"'
+        run: ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "완료"'
 
       - name: restart-all
         if: inputs.command == 'restart-all'
@@ -134,6 +127,5 @@ jobs:
         run: |
           ssh $USER@$HOST bash << 'EOF'
           docker restart dorami-backend-prod dorami-frontend-prod
-          echo "재시작 완료"
           docker ps --format "table {{.Names}}\t{{.Status}}"
           EOF
