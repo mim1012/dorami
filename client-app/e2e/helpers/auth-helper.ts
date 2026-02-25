@@ -14,7 +14,7 @@ export async function createTestStream(): Promise<string> {
   try {
     // Login as admin to get auth cookies (through Next.js proxy: /api/* → backend /api/*)
     const loginRes = await apiContext.post('/api/auth/dev-login', {
-      data: { email: 'e2e-admin@test.com', name: 'E2E ADMIN', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' },
     });
     if (!loginRes.ok()) {
       throw new Error(`createTestStream login failed: ${loginRes.status()}`);
@@ -186,7 +186,7 @@ export async function gotoWithRetry(
  * addCookies(secure=false) and cause alternating pass/fail patterns.
  */
 export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
-  const email = role === 'ADMIN' ? 'admin@doremi.shop' : 'buyer@test.com';
+  const email = role === 'ADMIN' ? 'admin@dorami.shop' : 'buyer@test.com';
   const domain = new URL(BASE_URL).hostname;
 
   // 1. Use isolated request context — avoids polluting browser cookie jar

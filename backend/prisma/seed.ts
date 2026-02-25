@@ -32,9 +32,9 @@ async function main() {
   console.log('Creating admin user...');
   const adminUser = await prisma.user.create({
     data: {
-      email: 'admin@doremi.shop',
+      email: 'admin@dorami.shop',
       kakaoId: 'admin_kakao_001',
-      name: 'Doremi Admin',
+      name: 'Dorami Admin',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
       depositorName: 'Doremi',

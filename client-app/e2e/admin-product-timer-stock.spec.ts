@@ -36,7 +36,7 @@ async function createProductViaApi(opts: {
   try {
     // Admin login
     const loginRes = await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@doremi.shop', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
     });
     if (!loginRes.ok()) return null;
 
@@ -95,7 +95,7 @@ async function deleteProductViaApi(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@doremi.shop', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
     });
     let csrfToken = '';
     try {
