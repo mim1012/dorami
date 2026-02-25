@@ -485,12 +485,49 @@ export default function LiveStreamPage() {
         />
       </aside>
 
-      {/* ── MOBILE: flex-col scroll layout ── */}
-      <div className="flex lg:hidden flex-col w-full bg-[#0d0d18] h-screen overflow-hidden">
-        {/* 1. LIVE status bar — sticky top z-30 */}
+      {/* ── MOBILE: fullscreen overlay layout ── */}
+      <div className="relative flex lg:hidden w-full h-screen overflow-hidden bg-black">
+        {/* 0. Video — fullscreen background */}
+        <div className="absolute inset-0 z-0">
+          <VideoPlayer
+            streamKey={streamKey}
+            title={streamStatus.title}
+            onViewerCountChange={handleViewerCountChange}
+            onStreamError={setVideoError}
+            hideErrorOverlay
+            onStreamStateChange={(e) => {
+              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
+              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
+              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
+              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
+            }}
+          />
+          {/* Top gradient scrim */}
+          <div className="absolute top-0 inset-x-0 h-36 bg-gradient-to-b from-black/70 to-transparent z-10 pointer-events-none" />
+          {/* Bottom gradient scrim */}
+          <div className="absolute bottom-0 inset-x-0 h-[60%] bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10 pointer-events-none" />
+          {/* Center overlay for stream state */}
+          {layout.centerOverlay.visible && (
+            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
+              <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
+                {layout.centerOverlay.message}
+              </p>
+              {snapshot === 'ENDED' && (
+                <button
+                  onClick={() => router.push('/')}
+                  className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
+                >
+                  홈으로
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 1. Top bar — absolute overlay */}
         {layout.topBar.visible && (
           <div
-            className={`sticky top-0 z-30 bg-black/60 backdrop-blur-sm px-3 transition-opacity ${
+            className={`absolute top-0 left-0 right-0 z-30 px-3 transition-opacity ${
               layout.topBar.dim ? 'opacity-40' : 'opacity-100'
             }`}
             style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
@@ -559,9 +596,12 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* 2. Notice banner — sticky z-20 (only when text exists) */}
+        {/* 2. Notice banner — absolute overlay below top bar */}
         {notice?.text && (
-          <div className="sticky z-20 bg-[rgba(255,100,100,0.92)] px-3 py-1.5 overflow-hidden">
+          <div
+            className="absolute left-0 right-0 z-20 bg-[rgba(255,100,100,0.85)] px-3 py-1.5 overflow-hidden"
+            style={{ top: 'calc(max(12px, env(safe-area-inset-top)) + 44px)' }}
+          >
             <div className="flex items-center gap-2">
               <Zap className="w-3 h-3 text-white flex-shrink-0" />
               <div className="overflow-hidden flex-1">
@@ -574,126 +614,89 @@ export default function LiveStreamPage() {
           </div>
         )}
 
-        {/* 3. Video player (50vh) with chat overlay inside */}
-        <div className="relative w-full h-[50vh] bg-black flex-shrink-0 overflow-hidden">
-          {/* Top gradient scrim */}
-          <div className="absolute top-0 inset-x-0 h-20 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none" />
-          {/* Bottom gradient scrim */}
-          <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none" />
-          <VideoPlayer
-            streamKey={streamKey}
-            title={streamStatus.title}
-            onViewerCountChange={handleViewerCountChange}
-            onStreamError={setVideoError}
-            hideErrorOverlay
-            onStreamStateChange={(e) => {
-              if (e.type === 'STREAM_ENDED') dispatch({ type: 'STREAM_ENDED' });
-              else if (e.type === 'STALL') dispatch({ type: 'STALL' });
-              else if (e.type === 'PLAY_OK') dispatch({ type: 'PLAY_OK' });
-              else if (e.type === 'MEDIA_ERROR') dispatch({ type: 'MEDIA_ERROR' });
-            }}
-          />
-
-          {/* Center overlay */}
-          {layout.centerOverlay.visible && (
-            <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-4">
-              <p className="text-white text-base font-medium bg-black/50 px-6 py-3 rounded-full">
-                {layout.centerOverlay.message}
-              </p>
-              {snapshot === 'ENDED' && (
-                <button
-                  onClick={() => router.push('/')}
-                  className="px-10 py-3 text-white rounded-full font-bold gradient-hot-pink"
-                >
-                  홈으로
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 4. Chat feed — fills remaining space */}
-        <div className="flex-1 min-h-[160px] overflow-y-auto">
-          <ChatMessageList messages={allMessages} compact maxMessages={50} />
-        </div>
-
-        {/* 5. Chat input — in-flow above product card */}
-        {layout.bottomInput.visible && (
-          <div
-            className="flex-shrink-0 flex items-center px-3 bg-[rgba(0,0,0,0.7)]"
-            style={{ height: 'var(--live-bottom-bar-h)' }}
-          >
-            <ChatInput
-              compact
-              disabled={layout.bottomInput.disabled || !isConnected}
-              onSendMessage={handleMobileSendMessage}
-              ref={mobileInputRef}
-            />
-          </div>
-        )}
-
-        {/* 6. Horizontal scroll product cards */}
-        {allProducts.length > 0 && (
-          <div className="flex-shrink-0 px-3 pb-3 pt-2">
-            <div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
-              {allProducts.map((product) => {
-                const isSoldOut = product.status === ProductStatus.SOLD_OUT;
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() =>
-                      !isSoldOut && snapshot !== 'ENDED' && handleProductClick(product)
-                    }
-                    className={`snap-start shrink-0 w-[160px] flex items-center gap-2.5
-                               p-3 rounded-2xl border transition-all
-                               ${
-                                 isSoldOut
-                                   ? 'opacity-50 cursor-not-allowed bg-white/3 border-white/5'
-                                   : 'cursor-pointer bg-white/5 border-white/10 active:bg-white/10'
-                               }`}
-                  >
-                    {/* 썸네일 */}
-                    <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white/5">
-                      {product.imageUrl && (
-                        <Image
-                          src={product.imageUrl}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    {/* 이름 + 가격 */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white text-xs font-semibold truncate">{product.name}</p>
-                      {isSoldOut ? (
-                        <p className="text-white/40 text-xs mt-0.5">품절</p>
-                      ) : (
-                        <p className="text-[#FF007A] text-xs font-black mt-0.5">
-                          {product.price.toLocaleString()}원
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 7. Quick action bar — in-flow at bottom */}
+        {/* 3. Bottom overlay stack */}
         <div
-          className="flex-shrink-0"
+          className="absolute bottom-0 left-0 right-0 z-20 flex flex-col"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <LiveQuickActionBar
-            streamTitle={streamStatus.title}
-            onNotice={() => setIsNoticeOpen(true)}
-            onCartOpen={() => setIsCartSheetOpen(true)}
-            cartCount={cartData?.itemCount ?? 0}
-            hasExpiringItem={hasExpiringItem}
-            onInquiry={handleInquiry}
-          />
+          {/* 3a. Chat messages — transparent overlay, scrollable */}
+          <div className="h-[38vh] overflow-hidden">
+            <ChatMessageList messages={allMessages} compact maxMessages={50} />
+          </div>
+
+          {/* 3b. Horizontal scroll product cards */}
+          {allProducts.length > 0 && (
+            <div className="flex-shrink-0 px-3 pb-2 pt-1">
+              <div className="flex gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+                {allProducts.map((product) => {
+                  const isSoldOut = product.status === ProductStatus.SOLD_OUT;
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() =>
+                        !isSoldOut && snapshot !== 'ENDED' && handleProductClick(product)
+                      }
+                      className={`snap-start shrink-0 w-[160px] flex items-center gap-2.5
+                                 p-3 rounded-2xl border transition-all
+                                 ${
+                                   isSoldOut
+                                     ? 'opacity-50 cursor-not-allowed bg-black/40 border-white/10'
+                                     : 'cursor-pointer bg-black/50 border-white/20 active:bg-black/70'
+                                 }`}
+                    >
+                      <div className="relative w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-white/10">
+                        {product.imageUrl && (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-white text-xs font-semibold truncate">{product.name}</p>
+                        {isSoldOut ? (
+                          <p className="text-white/40 text-xs mt-0.5">품절</p>
+                        ) : (
+                          <p className="text-[#FF007A] text-xs font-black mt-0.5">
+                            {product.price.toLocaleString()}원
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 3c. Chat input */}
+          {layout.bottomInput.visible && (
+            <div
+              className="flex-shrink-0 flex items-center px-3"
+              style={{ height: 'var(--live-bottom-bar-h)' }}
+            >
+              <ChatInput
+                compact
+                disabled={layout.bottomInput.disabled || !isConnected}
+                onSendMessage={handleMobileSendMessage}
+                ref={mobileInputRef}
+              />
+            </div>
+          )}
+
+          {/* 3d. Quick action bar */}
+          <div className="flex-shrink-0">
+            <LiveQuickActionBar
+              streamTitle={streamStatus.title}
+              onNotice={() => setIsNoticeOpen(true)}
+              onCartOpen={() => setIsCartSheetOpen(true)}
+              cartCount={cartData?.itemCount ?? 0}
+              hasExpiringItem={hasExpiringItem}
+              onInquiry={handleInquiry}
+            />
+          </div>
         </div>
       </div>
 
