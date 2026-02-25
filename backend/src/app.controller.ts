@@ -28,7 +28,7 @@ export class AppController {
   @Public()
   @Get('config/payment')
   async getPaymentConfig() {
-    const config = await this.prisma.systemConfig.findFirst();
+    const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
     return {
       zelleEmail: config?.zelleEmail ?? '',
       zelleRecipientName: config?.zelleRecipientName ?? '',
