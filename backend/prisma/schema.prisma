@@ -506,6 +506,7 @@ model ReStreamTarget {
   rtmpUrl   String           @map("rtmp_url")
   streamKey String           @map("stream_key")
   enabled   Boolean          @default(true)
+  muteAudio Boolean          @default(false) @map("mute_audio")
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
 

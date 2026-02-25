@@ -102,10 +102,9 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:-latest}
     container_name: dorami-backend-prod
     restart: always
-    # Production: Only internal network access
-    # External access via nginx-proxy
-    expose:
-      - '3001'
+    # Production: nginx on host proxies to these ports
+    ports:
+      - '127.0.0.1:3001:3001'
     environment:
       NODE_ENV: production
       APP_ENV: production
@@ -189,8 +188,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-frontend:${IMAGE_TAG:-latest}
     container_name: dorami-frontend-prod
     restart: always
-    expose:
-      - '3000'
+    ports:
+      - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
       BACKEND_URL: http://backend:3001

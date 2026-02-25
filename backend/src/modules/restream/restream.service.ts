@@ -41,6 +41,7 @@ export class ReStreamService implements OnModuleDestroy {
         rtmpUrl: dto.rtmpUrl,
         streamKey: dto.streamKey,
         enabled: dto.enabled ?? true,
+        muteAudio: dto.muteAudio ?? false,
       },
     });
     return target;
@@ -172,7 +173,7 @@ export class ReStreamService implements OnModuleDestroy {
   private async spawnFFmpegForTarget(
     liveStreamId: string,
     streamKey: string,
-    target: { id: string; rtmpUrl: string; streamKey: string; name: string },
+    target: { id: string; rtmpUrl: string; streamKey: string; name: string; muteAudio: boolean },
     restartCount = 0,
   ) {
     const rtmpInternalUrl =
@@ -193,13 +194,14 @@ export class ReStreamService implements OnModuleDestroy {
 
     this.emitStatus(liveStreamId, target.id, 'CONNECTING', log.id);
 
+    // muteAudio: drop audio track (-an), copy video only
+    // normal: copy both streams (-c copy)
     const args = [
       '-rw_timeout',
       '10000000', // 10s network timeout
       '-i',
       inputUrl,
-      '-c',
-      'copy',
+      ...(target.muteAudio ? ['-an', '-c:v', 'copy'] : ['-c', 'copy']),
       '-f',
       'flv',
       outputUrl,
@@ -262,7 +264,7 @@ export class ReStreamService implements OnModuleDestroy {
     code: number | null,
     liveStreamId: string,
     streamKey: string,
-    target: { id: string; rtmpUrl: string; streamKey: string; name: string },
+    target: { id: string; rtmpUrl: string; streamKey: string; name: string; muteAudio: boolean },
     proc: FFmpegProcess,
   ) {
     const isNormalExit = code === 0 || code === 255;
