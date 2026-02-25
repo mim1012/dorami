@@ -66,9 +66,28 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           mkdir -p ~/.ssh
+          KEY_OK=false
           printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "SSH key loaded (raw PEM)"
+            KEY_OK=true
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            if printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa 2>/dev/null; then
+              chmod 600 ~/.ssh/id_rsa
+              if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+                echo "SSH key loaded (base64)"
+                KEY_OK=true
+              fi
+            fi
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            echo "ERROR: SSH key invalid. len=${#SSH_KEY} has_begin=$(printf '%s' "$SSH_KEY" | grep -c BEGIN || echo 0)"
+            exit 1
+          fi
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Deploy via SSH
         env:
@@ -77,6 +96,9 @@ jobs:
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
         run: |
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -100,6 +122,9 @@ jobs:
             export IMAGE_TAG=${IMAGE_TAG}
             export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             export STAGING_HOST=${HOST}
+            export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+            export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+            export ADMIN_EMAILS=${ADMIN_EMAILS}
             docker compose -f docker-compose.staging.yml pull
 
             echo "=== Ensuring uploads directory is writable ==="
@@ -180,9 +205,28 @@ jobs:
           SSH_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           mkdir -p ~/.ssh
+          KEY_OK=false
           printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "SSH key loaded (raw PEM)"
+            KEY_OK=true
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            if printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa 2>/dev/null; then
+              chmod 600 ~/.ssh/id_rsa
+              if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+                echo "SSH key loaded (base64)"
+                KEY_OK=true
+              fi
+            fi
+          fi
+          if [ "$KEY_OK" = "false" ]; then
+            echo "ERROR: SSH key invalid. len=${#SSH_KEY} has_begin=$(printf '%s' "$SSH_KEY" | grep -c BEGIN || echo 0)"
+            exit 1
+          fi
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Health Check - Backend
         run: |

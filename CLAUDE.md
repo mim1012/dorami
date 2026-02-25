@@ -11,8 +11,8 @@ Dorami is a **live commerce MVP platform** — a one-seller livestreaming e-comm
 **Monorepo structure** using npm workspaces:
 
 - `backend/` — NestJS 11 API server (port 3001)
-- `client-app/` — Next.js 16 frontend (port 3000, App Router)
-- `packages/shared-types/` — Shared TypeScript enums/interfaces (`@live-commerce/shared-types`)
+- `client-app/` — Next.js 16 frontend (port 3000, App Router, React 19, Tailwind CSS 4.0)
+- `packages/shared-types/` — Shared TypeScript enums/interfaces + helper functions (`@live-commerce/shared-types`)
 
 ## Common Commands
 
@@ -133,17 +133,30 @@ All socket connections require JWT authentication via `authenticateSocket()` mid
 
 **Live page** (`app/live/[streamKey]/page.tsx`): Layout is driven by `useLiveLayoutMachine`. `VideoPlayer` tries HTTP-FLV (mpegts.js) first for low latency, then falls back to HLS (hls.js) on error. Props: `onStreamError` (legacy toggle), `onStreamStateChange` (fires typed `VideoStreamEvent` — `PLAY_OK` | `STALL` | `MEDIA_ERROR` | `STREAM_ENDED`; feeds the layout FSM), `hideErrorOverlay` (suppresses the built-in `ErrorOverlay` when the parent handles error display). Dev mode shows a KPI overlay (first-frame ms, rebuffer count, stall duration, reconnect count).
 
+**UI Theme:** Dark mode with Hot Pink accent (`#FF1493` / `pink-500` range). Tailwind CSS 4.0 with component-level dark mode classes. All UI work should respect this theme.
+
 **Playwright E2E:** Two projects — `user` (ignores `admin-*.spec.ts`) and `admin` (matches `admin-*.spec.ts`). Global setup pre-authenticates via dev login. Auth state stored in `e2e/.auth/`.
 
 ### Shared Types (`packages/shared-types`)
 
-TypeScript-only package exporting enums and event interfaces. Built with `tsc`, consumed by both backend and frontend.
+TypeScript-only package exporting enums, event interfaces, and utility functions. Built with `tsc`, consumed by both backend and frontend.
 
 Key enum values to be aware of:
 
 - `ProductStatus`: `AVAILABLE` | `SOLD_OUT` (not `ON_SALE`)
 - `StreamStatus`: `PENDING` | `LIVE` | `OFFLINE`
 - `OrderStatus`: `PENDING_PAYMENT` | `PAYMENT_CONFIRMED` | `SHIPPED` | `DELIVERED` | `CANCELLED`
+- `PaymentStatus`: `PENDING` | `CONFIRMED` | `FAILED` | `REFUNDED`
+- `ShippingStatus`: `PENDING` | `SHIPPED` | `DELIVERED`
+- `CartStatus`: `ACTIVE` | `EXPIRED` | `CONVERTED`
+- `ReservationStatus`: `WAITING` | `PROMOTED` | `CANCELLED`
+
+Exported helper functions (avoid reimplementing):
+
+- `generateOrderId(sequence)` → `"ORD-YYYYMMDD-XXXXX"`
+- `calculateCartTotal(items)` → `{ subtotal, totalShippingFee, total }` (all strings, Decimal-safe)
+- `isCartExpired(cart)`, `isReservationExpired(reservation)` — boolean TTL checks
+- `formatDecimal(value, decimals?)`, `parseDecimal(value)` — Decimal-safe number formatting
 
 ### Database (Prisma + PostgreSQL)
 
@@ -191,6 +204,23 @@ SRS fires webhook callbacks to the backend to update `LiveStream.status` in the 
 - `NEXT_PUBLIC_WS_URL` — Socket.IO server URL (default `http://localhost:3001`)
 - `BACKEND_URL` — backend base for Next.js proxy (default `http://127.0.0.1:3001`)
 - `MEDIA_SERVER_URL` — SRS media server for Next.js proxy (default `http://127.0.0.1:8080`)
+
+### Production Infrastructure (AWS)
+
+AWS CDK code lives in `infrastructure/aws-cdk/`. Production streaming uses ECS Fargate (Nginx RTMP + FFmpeg) behind a Network Load Balancer for RTMP ingest and CloudFront CDN for HLS delivery.
+
+```
+OBS → NLB (1935 RTMP) → ECS Fargate → ALB (8080 HTTP) → CloudFront → HLS.js
+```
+
+Deploy with:
+
+```bash
+cd infrastructure/aws-cdk
+npm run deploy:dev   # or deploy:prod
+```
+
+CDK outputs provide `RTMP_SERVER_URL` and `HLS_SERVER_URL` for backend `.env`.
 
 ## Commit Convention
 

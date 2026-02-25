@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -366,22 +367,202 @@ export class AdminService {
 
     const Papa = await import('papaparse');
 
+    const ORDER_STATUS_KO: Record<string, string> = {
+      PENDING_PAYMENT: '결제대기',
+      PAYMENT_CONFIRMED: '결제완료',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+      CANCELLED: '취소',
+    };
+    const PAYMENT_STATUS_KO: Record<string, string> = {
+      PENDING: '대기',
+      CONFIRMED: '완료',
+      FAILED: '실패',
+      REFUNDED: '환불',
+    };
+    const SHIPPING_STATUS_KO: Record<string, string> = {
+      PENDING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+    };
+
+    const toKST = (date: Date) =>
+      date
+        .toLocaleString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        })
+        .replace(/\. /g, '-')
+        .replace('.', '')
+        .replace(',', '');
+
     const csvData = orders.map((order) => ({
       주문번호: order.id,
       고객이메일: order.userEmail,
       입금자명: order.depositorName,
       인스타그램ID: order.instagramId,
-      주문상태: order.status,
-      결제상태: order.paymentStatus,
-      배송상태: order.shippingStatus,
+      주문상태: ORDER_STATUS_KO[order.status] ?? order.status,
+      결제상태: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
+      배송상태: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
       소계: Number(order.subtotal),
       배송비: Number(order.shippingFee),
       합계: Number(order.total),
-      주문일: order.createdAt.toISOString(),
-      결제일: order.paidAt ? order.paidAt.toISOString() : '',
+      주문일: toKST(order.createdAt),
+      결제일: order.paidAt ? toKST(order.paidAt) : '',
     }));
 
-    return Papa.unparse(csvData);
+    return Papa.unparse(csvData, { newline: '\r\n' });
+  }
+
+  async exportOrdersExcel(query: GetOrdersQueryDto): Promise<Buffer> {
+    const {
+      sortBy,
+      sortOrder,
+      search,
+      dateFrom,
+      dateTo,
+      orderStatus,
+      paymentStatus,
+      shippingStatus,
+      minAmount,
+      maxAmount,
+    } = query;
+
+    const where: OrderWhereClause = {};
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { userEmail: { contains: search, mode: 'insensitive' } },
+        { depositorName: { contains: search, mode: 'insensitive' } },
+        { instagramId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) {
+        where.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = endDate;
+      }
+    }
+    if (orderStatus && orderStatus.length > 0) {
+      where.status = { in: orderStatus as OrderStatus[] };
+    }
+    if (paymentStatus && paymentStatus.length > 0) {
+      where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
+    }
+    if (shippingStatus && shippingStatus.length > 0) {
+      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
+    }
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.total = {};
+      if (minAmount !== undefined) {
+        where.total.gte = minAmount;
+      }
+      if (maxAmount !== undefined) {
+        where.total.lte = maxAmount;
+      }
+    }
+
+    const MAX_EXPORT_ROWS = 10000;
+    const orders = await this.prisma.order.findMany({
+      where,
+      orderBy: { [sortBy]: sortOrder },
+      take: MAX_EXPORT_ROWS,
+    });
+
+    const ORDER_STATUS_KO: Record<string, string> = {
+      PENDING_PAYMENT: '입금대기',
+      PAYMENT_CONFIRMED: '결제완료',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+      CANCELLED: '취소',
+    };
+    const PAYMENT_STATUS_KO: Record<string, string> = {
+      PENDING: '대기',
+      CONFIRMED: '완료',
+      FAILED: '실패',
+      REFUNDED: '환불',
+    };
+    const SHIPPING_STATUS_KO: Record<string, string> = {
+      PENDING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송완료',
+    };
+
+    const toKST = (date: Date) =>
+      date.toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('주문 목록');
+
+    sheet.columns = [
+      { header: '주문번호', key: 'id', width: 28 },
+      { header: '고객이메일', key: 'userEmail', width: 28 },
+      { header: '입금자명', key: 'depositorName', width: 14 },
+      { header: '인스타그램ID', key: 'instagramId', width: 18 },
+      { header: '주문상태', key: 'status', width: 12 },
+      { header: '결제상태', key: 'paymentStatus', width: 10 },
+      { header: '배송상태', key: 'shippingStatus', width: 10 },
+      { header: '소계', key: 'subtotal', width: 12 },
+      { header: '배송비', key: 'shippingFee', width: 10 },
+      { header: '합계', key: 'total', width: 12 },
+      { header: '주문일', key: 'createdAt', width: 22 },
+      { header: '결제일', key: 'paidAt', width: 22 },
+    ];
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFF1493' },
+    };
+    headerRow.alignment = { horizontal: 'center' };
+
+    orders.forEach((order) => {
+      sheet.addRow({
+        id: order.id,
+        userEmail: order.userEmail,
+        depositorName: order.depositorName,
+        instagramId: order.instagramId?.replace(/^@/, ''),
+        status: ORDER_STATUS_KO[order.status] ?? order.status,
+        paymentStatus: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
+        shippingStatus: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
+        subtotal: Number(order.subtotal),
+        shippingFee: Number(order.shippingFee),
+        total: Number(order.total),
+        createdAt: toKST(order.createdAt),
+        paidAt: order.paidAt ? toKST(order.paidAt) : '',
+      });
+    });
+
+    const moneyFmt = '#,##0';
+    sheet.getColumn('subtotal').numFmt = moneyFmt;
+    sheet.getColumn('shippingFee').numFmt = moneyFmt;
+    sheet.getColumn('total').numFmt = moneyFmt;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 
   async getDashboardStats(): Promise<DashboardStatsDto> {

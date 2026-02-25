@@ -94,14 +94,16 @@ export class AdminController {
   @Get('orders/export')
   async exportOrders(@Query() query: GetOrdersQueryDto, @Res() res: Response) {
     try {
-      const csv = await this.adminService.exportOrdersCsv(query);
+      const buffer = await this.adminService.exportOrdersExcel(query);
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=orders_${date}.csv`);
-      // Add BOM for Excel UTF-8 compatibility
-      res.send('\uFEFF' + csv);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', `attachment; filename=orders_${date}.xlsx`);
+      res.send(buffer);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'CSV export failed';
+      const message = err instanceof Error ? err.message : 'Excel export failed';
       res.status(500).json({ success: false, message });
     }
   }

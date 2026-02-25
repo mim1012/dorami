@@ -96,6 +96,7 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
   const [formRtmpUrl, setFormRtmpUrl] = useState('');
   const [formStreamKey, setFormStreamKey] = useState('');
   const [formEnabled, setFormEnabled] = useState(true);
+  const [formMuteAudio, setFormMuteAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showStreamKeys, setShowStreamKeys] = useState<Set<string>>(new Set());
 
@@ -156,6 +157,7 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
     setFormRtmpUrl(PLATFORM_OPTIONS[0].defaultUrl);
     setFormStreamKey('');
     setFormEnabled(true);
+    setFormMuteAudio(false);
     setShowModal(true);
   };
 
@@ -166,6 +168,7 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
     setFormRtmpUrl(target.rtmpUrl);
     setFormStreamKey(target.streamKey);
     setFormEnabled(target.enabled);
+    setFormMuteAudio(target.muteAudio ?? false);
     setShowModal(true);
   };
 
@@ -175,6 +178,8 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
     if (option && !editingTarget) {
       setFormRtmpUrl(option.defaultUrl);
     }
+    // Instagram은 기본적으로 음소거 권장
+    if (platform === 'INSTAGRAM') setFormMuteAudio(true);
   };
 
   const handleSave = async () => {
@@ -190,6 +195,7 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
           rtmpUrl: formRtmpUrl.trim(),
           streamKey: formStreamKey.trim(),
           enabled: formEnabled,
+          muteAudio: formMuteAudio,
         });
       } else {
         await createReStreamTarget({
@@ -198,6 +204,7 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
           rtmpUrl: formRtmpUrl.trim(),
           streamKey: formStreamKey.trim(),
           enabled: formEnabled,
+          muteAudio: formMuteAudio,
         });
       }
       setShowModal(false);
@@ -330,6 +337,11 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
                     {!target.enabled && (
                       <span className="text-xs text-secondary-text bg-gray-100 px-1.5 py-0.5 rounded">
                         비활성
+                      </span>
+                    )}
+                    {target.muteAudio && (
+                      <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">
+                        음소거
                       </span>
                     )}
                   </div>
@@ -513,6 +525,29 @@ export default function ReStreamManager({ liveStreamId, isLive }: ReStreamManage
                 <span className="text-sm text-primary-text">
                   {formEnabled ? '활성화' : '비활성화'}
                 </span>
+              </div>
+
+              {/* Mute Audio toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormMuteAudio(!formMuteAudio)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formMuteAudio ? 'bg-orange-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formMuteAudio ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div>
+                  <span className="text-sm text-primary-text">오디오 음소거</span>
+                  <p className="text-xs text-secondary-text">
+                    Instagram 동시송출 시 권장 (저작권 보호)
+                  </p>
+                </div>
               </div>
 
               {/* Submit */}

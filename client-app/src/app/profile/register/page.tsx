@@ -63,9 +63,11 @@ export default function ProfileRegisterPage() {
     }
   }, [submitError]);
 
-  const { isChecking: checkingInstagram, isAvailable: instagramAvailable } = useInstagramCheck(
-    formData.instagramId,
-  );
+  const {
+    isChecking: checkingInstagram,
+    isAvailable: instagramAvailable,
+    error: instagramCheckError,
+  } = useInstagramCheck(formData.instagramId);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -170,7 +172,9 @@ export default function ProfileRegisterPage() {
       }
       router.push('/');
     } catch (error: any) {
-      console.error('Profile completion error:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Profile completion error:', error);
+      }
       setSubmitError(
         error.message || '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
       );
@@ -234,10 +238,15 @@ export default function ProfileRegisterPage() {
               {!checkingInstagram &&
                 instagramAvailable === true &&
                 formData.instagramId.length > 1 && (
-                  <Body className="text-success text-xs mt-1">사용 가능</Body>
+                  <Body className="text-success text-xs mt-1">사용 가능한 ID입니다</Body>
                 )}
               {!checkingInstagram && instagramAvailable === false && (
-                <Body className="text-error text-xs mt-1">이미 사용 중인 ID입니다</Body>
+                <Body className="text-error text-xs mt-1">
+                  이미 사용 중인 ID입니다. 다른 ID를 입력해주세요.
+                </Body>
+              )}
+              {!checkingInstagram && instagramCheckError && instagramAvailable === null && (
+                <Body className="text-warning text-xs mt-1">{instagramCheckError}</Body>
               )}
             </div>
           </div>
@@ -336,9 +345,15 @@ export default function ProfileRegisterPage() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={isSubmitting || instagramAvailable === false}
+            disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >
-            {isSubmitting ? '등록 중...' : '프로필 등록 완료'}
+            {isSubmitting
+              ? '등록 중...'
+              : checkingInstagram
+                ? 'ID 확인 중...'
+                : instagramAvailable === false
+                  ? '사용 불가 ID'
+                  : '프로필 등록 완료'}
           </Button>
         </form>
       </div>
