@@ -171,6 +171,9 @@ jobs:
   backup:
     name: Pre-deployment Backup
     needs: [approval]
+    # Explicit always() prevents transitive skip propagation: when test is skipped,
+    # GitHub's success() evaluates the full upstream graph and returns false.
+    if: always() && needs.approval.result == 'success'
     runs-on: ubuntu-latest
     continue-on-error: true  # GitHub Actions runner IP may be blocked by security group; backup manually if needed
 
@@ -229,6 +232,9 @@ jobs:
   deploy:
     name: Deploy to Production
     needs: [validate, build, backup]
+    # always() avoids transitive skip propagation. Handles both normal deploy and rollback.
+    # backup has continue-on-error so its result is always 'success' when it runs.
+    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && needs.backup.result != 'cancelled'
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -504,6 +510,7 @@ jobs:
   verify:
     name: Post-deployment Verification
     needs: [validate, deploy]
+    if: always() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: production
 
