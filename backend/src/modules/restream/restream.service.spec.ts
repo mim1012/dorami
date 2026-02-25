@@ -167,6 +167,7 @@ describe('ReStreamService', () => {
           rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/',
           streamKey: 'yt-stream-key-123',
           enabled: true,
+          muteAudio: false,
         },
       });
     });
