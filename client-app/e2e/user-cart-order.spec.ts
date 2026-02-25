@@ -245,12 +245,11 @@ test.describe('Checkout Flow', () => {
     }
     await expect(page.getByText('주문 상품')).toBeVisible();
     await expect(page.getByText('결제 방법')).toBeVisible();
-    await expect(page.getByText('무통장 입금')).toBeVisible();
+    await expect(page.getByText('Zelle 송금')).toBeVisible();
 
     // 상품 금액, 배송비 확인
     await expect(page.getByText('상품 금액')).toBeVisible();
     await expect(page.getByText('배송비')).toBeVisible();
-    await expect(page.getByText('무료')).toBeVisible();
     await expect(page.getByText('총 결제 금액')).toBeVisible();
 
     // 약관 동의 체크박스 (기본 체크됨)

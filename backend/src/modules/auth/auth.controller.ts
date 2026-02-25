@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -226,11 +226,7 @@ export class AuthController {
    */
   @Public()
   @SkipCsrf()
-  @Throttle({
-    short: { limit: 3, ttl: 10000 },
-    medium: { limit: 5, ttl: 60000 },
-    long: { limit: 10, ttl: 300000 },
-  })
+  @SkipThrottle()
   @Post('dev-login')
   async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
     const devAuthEnabled = this.configService.get<string>('ENABLE_DEV_AUTH');
