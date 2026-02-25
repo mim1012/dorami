@@ -377,6 +377,18 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   kakaoChannelId?: string;
+
+  @IsOptional()
+  @IsString()
+  zelleEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  zelleRecipientName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  freeShippingEnabled?: boolean;
 }
 
 // Shipping Messages DTO
