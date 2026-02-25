@@ -347,6 +347,13 @@ model SystemConfig {
   bankAccountNumber  String  @default("") @map("bank_account_number")
   bankAccountHolder  String  @default("") @map("bank_account_holder")
 
+  // Zelle Payment Settings
+  zelleEmail         String  @default("") @map("zelle_email")
+  zelleRecipientName String  @default("") @map("zelle_recipient_name")
+
+  // Free Shipping Toggle
+  freeShippingEnabled Boolean @default(false) @map("free_shipping_enabled")
+
   // Notification Settings
   emailNotificationsEnabled Boolean @default(true) @map("email_notifications_enabled")
 
