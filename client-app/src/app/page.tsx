@@ -18,84 +18,6 @@ import { PushNotificationBanner } from '@/components/notifications/PushNotificat
 import { Footer } from '@/components/layout/Footer';
 import Image from 'next/image';
 
-// ── Fallback mock data ──
-const MOCK_PRODUCTS = [
-  {
-    id: '1',
-    name: 'Chic Evening Bag',
-    price: 129000,
-    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
-    isNew: true,
-    discount: 0,
-  },
-  {
-    id: '2',
-    name: 'Pro Audio Pods',
-    price: 89000,
-    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-    isNew: false,
-    discount: 30,
-  },
-  {
-    id: '3',
-    name: 'Handmade Tableware',
-    price: 45000,
-    imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
-    isNew: false,
-    discount: 0,
-  },
-  {
-    id: '4',
-    name: 'Smart Fitness Watch',
-    price: 199000,
-    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-    isNew: false,
-    discount: 0,
-  },
-  {
-    id: '5',
-    name: 'Premium Leather Wallet',
-    price: 79000,
-    imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
-    isNew: true,
-    discount: 15,
-  },
-  {
-    id: '6',
-    name: 'Wireless Keyboard',
-    price: 149000,
-    imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
-    isNew: false,
-    discount: 20,
-  },
-];
-
-function getMockUpcomingLives(now: number) {
-  return [
-    {
-      id: '1',
-      title: '신상 뷰티 제품 특집 라이브',
-      scheduledTime: new Date(now + 2 * 60 * 60 * 1000),
-      thumbnailUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800&q=80',
-      isLive: false,
-    },
-    {
-      id: '2',
-      title: '겨울 패션 아이템 특가 방송',
-      scheduledTime: new Date(now + 5 * 60 * 60 * 1000),
-      thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
-      isLive: false,
-    },
-    {
-      id: '3',
-      title: '프리미엄 전자기기 특별 할인',
-      scheduledTime: new Date(now + 24 * 60 * 60 * 1000),
-      thumbnailUrl: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=800&q=80',
-      isLive: false,
-    },
-  ];
-}
-
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -136,36 +58,34 @@ export default function Home() {
         const now = Date.now();
 
         // Fetch products from API
-        let products: typeof MOCK_PRODUCTS;
         try {
           const apiProducts = await getFeaturedProducts(6);
           if (apiProducts && apiProducts.length > 0) {
-            products = apiProducts.map((p) => ({
-              id: p.id,
-              name: p.name,
-              price: p.price,
-              originalPrice: p.originalPrice,
-              imageUrl:
-                p.imageUrl ||
-                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-              isNew: p.isNew || false,
-              discount: p.discountRate || 0,
-            }));
-          } else {
-            products = MOCK_PRODUCTS;
+            setFeaturedProducts(
+              apiProducts.map((p) => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                originalPrice: p.originalPrice,
+                imageUrl:
+                  p.imageUrl ||
+                  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+                isNew: p.isNew || false,
+                discount: p.discountRate || 0,
+              })),
+            );
           }
+          // DB에 상품이 없으면 빈 배열 유지 → "등록된 상품이 없습니다" UI 표시
         } catch {
-          console.warn('API /products/featured failed, using mock data');
-          products = MOCK_PRODUCTS;
+          console.warn('API /products/featured failed');
+          // 빈 배열 유지
         }
-        setFeaturedProducts(products);
 
         // Fetch upcoming lives from API
-        let lives: typeof upcomingLives;
         try {
           const apiStreams = await getUpcomingStreams(3);
           if (apiStreams && apiStreams.length > 0) {
-            lives = apiStreams.map((s) => ({
+            const lives = apiStreams.map((s) => ({
               id: s.id,
               streamKey: s.streamKey,
               title: s.title,
@@ -175,18 +95,14 @@ export default function Home() {
                 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
               isLive: s.isLive || false,
             }));
-          } else {
-            lives = getMockUpcomingLives(now);
+            setUpcomingLives(lives);
+            setNextLiveTime(new Date(lives[0].scheduledTime));
+            setIsNextLiveActive(lives[0].isLive);
           }
+          // DB에 예정된 라이브가 없으면 빈 배열 유지
         } catch {
-          console.warn('API /streaming/upcoming failed, using mock data');
-          lives = getMockUpcomingLives(now);
-        }
-        setUpcomingLives(lives);
-
-        if (lives.length > 0) {
-          setNextLiveTime(new Date(lives[0].scheduledTime));
-          setIsNextLiveActive(lives[0].isLive);
+          console.warn('API /streaming/upcoming failed');
+          // 빈 배열 유지
         }
       } catch (err) {
         console.error('Failed to fetch homepage data:', err);
