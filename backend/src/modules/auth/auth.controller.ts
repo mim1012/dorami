@@ -133,13 +133,17 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
-      // Check if user needs to complete profile per Story 2.1 AC1
-      const needsProfileCompletion = !user.instagramId || !user.depositorName;
+      // Admin users go directly to /admin (no profile completion required)
+      // Regular users: redirect to profile registration if incomplete
+      const needsProfileCompletion =
+        user.role !== 'ADMIN' && (!user.instagramId || !user.depositorName);
 
-      // Redirect based on profile completion status
-      const redirectUrl = needsProfileCompletion
-        ? `${this.frontendUrl}/profile/register`
-        : `${this.frontendUrl}/`;
+      const redirectUrl =
+        user.role === 'ADMIN'
+          ? `${this.frontendUrl}/admin`
+          : needsProfileCompletion
+            ? `${this.frontendUrl}/profile/register`
+            : `${this.frontendUrl}/`;
 
       res.redirect(redirectUrl);
       return;
