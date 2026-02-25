@@ -14,6 +14,7 @@ on:
           - logs-frontend
           - db-check
           - db-restore
+          - find-data
           - restart-backend
           - restart-frontend
           - restart-all
@@ -103,6 +104,31 @@ jobs:
           sleep 15
           docker inspect --format='Health: {{.State.Health.Status}}' dorami-backend-prod 2>/dev/null
           echo "완료!"
+          EOF
+
+      - name: find-data
+        if: inputs.command == 'find-data'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== Docker 볼륨 전체 목록 ==="
+          docker volume ls
+          echo "=== 삭제된 컨테이너 포함 전체 ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}" 2>&1 | head -30
+          echo "=== PG_VERSION 파일 검색 ==="
+          find / -name "PG_VERSION" 2>/dev/null | head -10
+          echo "=== /opt 디렉토리 구조 ==="
+          ls -lah /opt/ 2>/dev/null
+          ls -lah /opt/live-commerce/ 2>/dev/null || echo "/opt/live-commerce 없음"
+          ls -lah /opt/dorami/ 2>/dev/null || echo "/opt/dorami 없음"
+          echo "=== /var/lib/docker/volumes 목록 ==="
+          ls -lah /var/lib/docker/volumes/ 2>/dev/null || sudo ls -lah /var/lib/docker/volumes/ 2>/dev/null || echo "접근 불가"
+          echo "=== /home/ubuntu 구조 ==="
+          ls -lah /home/ubuntu/ 2>/dev/null || echo "(없음)"
+          echo "=== live-commerce 관련 docker 볼륨 ==="
+          docker volume ls | grep -i "live\|commerce\|postgres\|pg" || echo "관련 볼륨 없음"
           EOF
 
       - name: restart-backend
