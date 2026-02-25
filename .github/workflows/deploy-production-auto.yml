@@ -108,6 +108,9 @@ jobs:
           # Login to GHCR
           echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
 
+          # Export env vars so docker compose can resolve required variables
+          set -a; source .env.production; set +a
+
           # Pull new images
           echo "=== Pulling images ==="
           docker compose -f docker-compose.prod.yml --env-file .env.production pull backend frontend
