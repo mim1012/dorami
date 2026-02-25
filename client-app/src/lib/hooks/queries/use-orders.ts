@@ -41,26 +41,6 @@ export function useOrder(orderId: string) {
   });
 }
 
-// Create order mutation
-export function useCreateOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      cartItemIds: string[];
-      depositorName: string;
-      instagramId: string;
-    }) => {
-      const response = await apiClient.post<Order>('/orders', data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
-    },
-  });
-}
-
 // Cancel order mutation
 export function useCancelOrder() {
   const queryClient = useQueryClient();

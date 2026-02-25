@@ -59,16 +59,3 @@ export function useUpcomingStreams(limit = 3) {
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 }
-
-// Fetch single stream by stream key
-export function useStream(streamKey: string) {
-  return useQuery({
-    queryKey: streamKeys.detail(streamKey),
-    queryFn: async () => {
-      const response = await apiClient.get<LiveStream>(`/streaming/${streamKey}`);
-      return response.data;
-    },
-    enabled: !!streamKey,
-    refetchInterval: 10000, // Refetch every 10 seconds during live
-  });
-}

@@ -13,7 +13,7 @@ export async function createReservation(data: CreateReservationDto): Promise<Res
  * Get current user's reservations
  */
 export async function getUserReservations(): Promise<ReservationList> {
-  const response = await apiClient.get<ReservationList>('/reservations');
+  const response = await apiClient.get<ReservationList>('/reservations/my');
   return response.data;
 }
 
