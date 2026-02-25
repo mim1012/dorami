@@ -12,6 +12,7 @@ on:
           - status
           - logs-backend
           - logs-frontend
+          - logs-proxy
           - db-check
           - db-restore
           - find-data
@@ -62,6 +63,13 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: ssh $USER@$HOST 'docker logs dorami-frontend-prod --tail=200 2>&1'
+
+      - name: logs-proxy
+        if: inputs.command == 'logs-proxy'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker logs dorami-proxy-prod --tail=200 2>&1'
 
       - name: db-check
         if: inputs.command == 'db-check'
