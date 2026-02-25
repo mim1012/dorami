@@ -70,26 +70,33 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
           ssh $USER@$HOST bash << 'EOF'
-          echo "=== Postgres 컨테이너 목록 ==="
+          echo "=== 모든 Postgres 컨테이너 (stopped 포함) ==="
           docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i postgres || echo "(없음)"
 
           echo ""
-          echo "=== 백엔드 DB 연결 정보 ==="
-          docker exec dorami-backend-prod env 2>/dev/null | grep -E 'DATABASE_URL|POSTGRES' || echo "(백엔드 없음)"
+          echo "=== Docker 볼륨 (postgres/dorami/live 관련) ==="
+          docker volume ls | grep -iE "postgres|dorami|live" || echo "(관련 볼륨 없음)"
 
           echo ""
-          echo "=== dorami-postgres-prod (live_commerce) ==="
+          echo "=== 백엔드 DATABASE_URL ==="
+          docker exec dorami-backend-prod env 2>/dev/null | grep DATABASE_URL || echo "(백엔드 없음)"
+
+          echo ""
+          echo "=== dorami-postgres-prod 내 DB 목록 ==="
+          docker exec dorami-postgres-prod psql -U postgres -l 2>/dev/null || echo "(접속 실패)"
+
+          echo ""
+          echo "=== dorami_production DB 데이터 개수 ==="
+          docker exec dorami-postgres-prod psql -U postgres -d dorami_production \
+            -c 'SELECT COUNT(*) as users FROM "User";' \
+            -c 'SELECT COUNT(*) as products FROM "Product";' \
+            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(dorami_production DB 없음)"
+
+          echo ""
+          echo "=== live_commerce DB 데이터 개수 ==="
           docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
             -c 'SELECT COUNT(*) as users FROM "User";' \
-            -c 'SELECT COUNT(*) as products FROM "Product";' \
-            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(dorami-postgres-prod 없음)"
-
-          echo ""
-          echo "=== live-commerce-postgres (live_commerce_production) ==="
-          docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
-            -c 'SELECT COUNT(*) as users FROM "User";' \
-            -c 'SELECT COUNT(*) as products FROM "Product";' \
-            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(live-commerce-postgres 없음)"
+            -c 'SELECT COUNT(*) as products FROM "Product";' 2>/dev/null || echo "(live_commerce DB 없음)"
           EOF
 
       - name: db-restore
@@ -116,18 +123,18 @@ jobs:
 
           echo "=== 현재 DB 백업 ==="
           mkdir -p /opt/dorami/backups
-          docker exec dorami-postgres-prod pg_dump -U postgres live_commerce \
+          docker exec dorami-postgres-prod pg_dump -U postgres dorami_production \
             | gzip > /opt/dorami/backups/pre-restore-$(date +%Y%m%d_%H%M%S).sql.gz \
             && echo "백업 완료" || echo "백업 실패 (계속 진행)"
 
-          echo "=== 데이터 이전: live_commerce_production -> live_commerce ==="
+          echo "=== 데이터 이전: live_commerce_production -> dorami_production ==="
           docker exec live-commerce-postgres pg_dump \
             -U postgres --no-owner --no-acl --clean --if-exists \
             live_commerce_production \
-            | docker exec -i dorami-postgres-prod psql -U postgres -d live_commerce
+            | docker exec -i dorami-postgres-prod psql -U postgres -d dorami_production
 
           echo "=== 복구 후 데이터 개수 ==="
-          docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
+          docker exec dorami-postgres-prod psql -U postgres -d dorami_production \
             -c 'SELECT COUNT(*) as users FROM "User";' \
             -c 'SELECT COUNT(*) as products FROM "Product";' \
             -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null
