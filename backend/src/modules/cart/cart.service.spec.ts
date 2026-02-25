@@ -48,6 +48,7 @@ describe('CartService', () => {
           useValue: {
             product: {
               findUnique: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
             },
             cart: {
               aggregate: jest.fn(),
@@ -60,9 +61,20 @@ describe('CartService', () => {
               updateMany: jest.fn(),
             },
             user: {
-              findUnique: jest.fn(),
+              findUnique: jest.fn().mockResolvedValue(null),
+            },
+            liveStream: {
+              findMany: jest.fn().mockResolvedValue([]),
             },
             $transaction: jest.fn(),
+            systemConfig: {
+              findFirst: jest.fn().mockResolvedValue({
+                defaultShippingFee: 10,
+                caShippingFee: 8,
+                freeShippingEnabled: false,
+                freeShippingThreshold: 150,
+              }),
+            },
           },
         },
         {
@@ -237,8 +249,8 @@ describe('CartService', () => {
       expect(result.itemCount).toBe(1);
       expect(result.items).toHaveLength(1);
       expect(result.subtotal).toBe(29000);
-      expect(result.totalShippingFee).toBe(3000);
-      expect(result.grandTotal).toBe(32000);
+      expect(result.totalShippingFee).toBe(10);
+      expect(result.grandTotal).toBe(29010);
     });
 
     it('should return empty cart when no active items', async () => {
@@ -268,8 +280,8 @@ describe('CartService', () => {
 
       expect(result.itemCount).toBe(2);
       expect(result.subtotal).toBe(29000 + 100000); // 29000*1 + 50000*2
-      expect(result.totalShippingFee).toBe(3000 + 5000);
-      expect(result.grandTotal).toBe(137000);
+      expect(result.totalShippingFee).toBe(10);
+      expect(result.grandTotal).toBe(129010);
     });
   });
 
