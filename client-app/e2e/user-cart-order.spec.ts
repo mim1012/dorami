@@ -252,9 +252,11 @@ test.describe('Checkout Flow', () => {
     await expect(page.getByText('배송비')).toBeVisible();
     await expect(page.getByText('총 결제 금액')).toBeVisible();
 
-    // 약관 동의 체크박스 (기본 체크됨)
+    // 약관 동의 체크박스 — 초기 상태는 미체크이므로 직접 클릭
     await expect(page.getByText('주문 내용을 확인했으며, 결제에 동의합니다.')).toBeVisible();
     await expect(page.getByText('개인정보 수집 및 이용에 동의합니다.')).toBeVisible();
+    await page.getByText('주문 내용을 확인했으며, 결제에 동의합니다.').click();
+    await page.getByText('개인정보 수집 및 이용에 동의합니다.').click();
 
     // 이전으로 버튼 확인
     await expect(page.getByRole('button', { name: '이전으로' })).toBeVisible();
