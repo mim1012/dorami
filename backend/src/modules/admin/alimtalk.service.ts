@@ -77,6 +77,50 @@ export class AlimtalkService {
     }
   }
 
+  async sendOrderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
+    const template = await this.prisma.notificationTemplate.findFirst({
+      where: { type: 'ORDER_CONFIRMATION' },
+    });
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION alimtalk template code not configured, skipping');
+      return;
+    }
+
+    await this.sendAlimtalk([
+      {
+        to: phone,
+        templateCode: template.kakaoTemplateCode,
+        variables: {
+          '#{orderId}': orderId,
+          '#{total}': total.toLocaleString(),
+        },
+      },
+    ]);
+  }
+
+  async sendPaymentReminderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
+    const template = await this.prisma.notificationTemplate.findFirst({
+      where: { type: 'PAYMENT_REMINDER' },
+    });
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('PAYMENT_REMINDER alimtalk template code not configured, skipping');
+      return;
+    }
+
+    await this.sendAlimtalk([
+      {
+        to: phone,
+        templateCode: template.kakaoTemplateCode,
+        variables: {
+          '#{orderId}': orderId,
+          '#{total}': total.toLocaleString(),
+        },
+      },
+    ]);
+  }
+
   async sendLiveStartAlimtalk(
     phoneNumbers: string[],
     streamTitle: string,

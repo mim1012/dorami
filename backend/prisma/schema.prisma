@@ -20,6 +20,7 @@ model User {
   role                Role       @default(USER)
   status              UserStatus @default(ACTIVE)
   depositorName       String? // for bank transfer identification
+  phone               String? // Korean mobile phone number e.g. "01012345678"
   instagramId         String?    @unique
   shippingAddress     Json? // encrypted US-format address
   profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed

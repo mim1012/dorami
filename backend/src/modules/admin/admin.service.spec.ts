@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
 
 describe('AdminService', () => {
@@ -79,6 +80,14 @@ describe('AdminService', () => {
           useValue: {
             sendPaymentConfirmation: jest.fn(),
             sendOrderStatusUpdate: jest.fn(),
+          },
+        },
+        {
+          provide: AlimtalkService,
+          useValue: {
+            sendOrderAlimtalk: jest.fn(),
+            sendPaymentReminderAlimtalk: jest.fn(),
+            sendLiveStartAlimtalk: jest.fn(),
           },
         },
         {
