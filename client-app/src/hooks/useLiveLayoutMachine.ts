@@ -15,6 +15,7 @@ export type ConnectionState =
 export type StreamState =
   | 'unknown'
   | 'waiting_manifest'
+  | 'buffering'
   | 'playing'
   | 'stalled'
   | 'error'
@@ -79,7 +80,7 @@ export function deriveSnapshot(
   // so a chat socket retry should not mask the "waiting for stream" state.
   if (
     (connection === 'offline' || connection === 'retrying') &&
-    (stream === 'playing' || stream === 'stalled' || stream === 'error')
+    (stream === 'buffering' || stream === 'playing' || stream === 'stalled' || stream === 'error')
   )
     return 'RETRYING';
   if (stream === 'no_stream') return 'NO_STREAM';
@@ -161,7 +162,7 @@ function connectionReducer(state: ConnectionState, event: LiveEvent): Connection
 function streamReducer(state: StreamState, event: LiveEvent): StreamState {
   switch (event.type) {
     case 'MANIFEST_OK':
-      return 'waiting_manifest';
+      return 'buffering';
     case 'MANIFEST_TIMEOUT':
       return 'no_stream';
     case 'PLAY_OK':
