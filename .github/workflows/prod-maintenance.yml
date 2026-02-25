@@ -11,6 +11,7 @@ on:
         options:
           - status
           - diagnose
+          - fix-ssl
           - fix-ports
           - logs-backend
           - logs-frontend
@@ -182,6 +183,45 @@ jobs:
             up -d --no-deps --force-recreate backend frontend
           echo "=== 결과 ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          EOF
+
+      - name: fix-ssl
+        if: inputs.command == 'fix-ssl'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== 호스트 인증서 확인 ==="
+          ls /etc/letsencrypt/live/ 2>/dev/null || echo "호스트에 letsencrypt 없음"
+          echo "=== certbot_conf 볼륨 내용 ==="
+          docker run --rm -v dorami_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null || echo "볼륨 비어있음"
+          echo "=== 호스트 → Docker 볼륨 인증서 복사 ==="
+          if [ -d /etc/letsencrypt/live/doremi-live.com ]; then
+            docker run --rm \
+              -v /etc/letsencrypt:/host-letsencrypt:ro \
+              -v dorami_certbot_conf:/etc/letsencrypt \
+              alpine sh -c "cp -r /host-letsencrypt/live /host-letsencrypt/archive /host-letsencrypt/renewal /etc/letsencrypt/ 2>/dev/null; ls /etc/letsencrypt/live/"
+            echo "복사 완료"
+          else
+            echo "호스트에 doremi-live.com 인증서 없음 — certbot 직접 발급 시도"
+            docker stop dorami-proxy-prod 2>/dev/null || true
+            docker run --rm \
+              -v dorami_certbot_conf:/etc/letsencrypt \
+              -v dorami_certbot_www:/var/www/certbot \
+              -p 80:80 \
+              certbot/certbot certonly --standalone \
+              -d doremi-live.com -d www.doremi-live.com \
+              --email admin@dorami.shop \
+              --agree-tos --no-eff-email --non-interactive 2>&1
+          fi
+          echo "=== nginx-proxy 재시작 ==="
+          cd /opt/dorami
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate nginx-proxy
+          sleep 5
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "proxy|NAME"
+          docker logs dorami-proxy-prod --tail=10 2>&1
           EOF
 
       - name: restart-backend
