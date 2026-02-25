@@ -211,13 +211,25 @@ jobs:
               POSTGRES_DB="live_commerce_production"
             fi
 
+            # Try new container name first, fall back to legacy name
             if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
-              docker exec dorami-postgres-prod \
+              BACKUP_CONTAINER="dorami-postgres-prod"
+            elif docker ps --format '{{.Names}}' | grep -q live-commerce-postgres; then
+              BACKUP_CONTAINER="live-commerce-postgres"
+              POSTGRES_USER="postgres"
+              POSTGRES_DB="live_commerce_production"
+              echo "INFO: Backing up from legacy container (live-commerce-postgres)"
+            else
+              BACKUP_CONTAINER=""
+            fi
+
+            if [ -n "${BACKUP_CONTAINER}" ]; then
+              docker exec "${BACKUP_CONTAINER}" \
                 pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
                 | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-              echo "=== Backup created: db_backup_${TIMESTAMP}.sql.gz ==="
+              echo "=== Backup created: db_backup_${TIMESTAMP}.sql.gz from ${BACKUP_CONTAINER} ==="
             else
-              echo "WARNING: postgres container not running, skipping backup"
+              echo "WARNING: No postgres container running, skipping backup"
             fi
 
             # Keep only last 5 backups
@@ -389,13 +401,50 @@ jobs:
             || echo "GITHUB_REPOSITORY_OWNER=${DEPLOY_REPO_OWNER}" >> "${INFRA_DIR}/.env.production"
           echo "INFO: .env.production OK (IMAGE_TAG=${DEPLOY_IMAGE_TAG})"
 
+          # Read new DB credentials from .env.production
+          NEW_POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+          NEW_POSTGRES_DB=$(grep '^POSTGRES_DB='   "${INFRA_DIR}/.env.production" | cut -d= -f2)
+
           # 2. GHCR login
           echo "=== Logging into GHCR ==="
           echo "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io \
             -u "${DEPLOY_REPO_OWNER}" --password-stdin
 
-          # 3. Remove legacy dev containers (data volumes persist)
-          echo "=== Removing legacy dev containers ==="
+          # 3. Migrate data from legacy postgres container (live-commerce-postgres → dorami-postgres-prod)
+          #    Dump before stopping so data is preserved.
+          LEGACY_DUMP="${INFRA_DIR}/backups/pre-migration-$(date +%Y%m%d_%H%M%S).sql"
+          mkdir -p "${INFRA_DIR}/backups"
+
+          if docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
+            echo "=== Dumping legacy DB (live-commerce-postgres) ==="
+            docker exec live-commerce-postgres \
+              pg_dump -U postgres --no-owner --no-privileges live_commerce_production > "${LEGACY_DUMP}"
+            echo "INFO: Legacy dump saved to ${LEGACY_DUMP} ($(du -sh ${LEGACY_DUMP} | cut -f1))"
+          else
+            echo "INFO: No legacy container found — fresh deployment, no data migration needed"
+            LEGACY_DUMP=""
+          fi
+
+          # Stop PM2 processes (backend/frontend running outside Docker)
+          echo "=== Stopping PM2 processes (if any) ==="
+          if command -v pm2 &>/dev/null; then
+            pm2 stop all 2>/dev/null || true
+            pm2 delete all 2>/dev/null || true
+            echo "INFO: PM2 processes stopped"
+          else
+            # Try common PM2 locations
+            for PM2_BIN in "${HOME}/.nvm/versions/node/$(ls ${HOME}/.nvm/versions/node 2>/dev/null | head -1)/bin/pm2" /usr/local/bin/pm2 /usr/bin/pm2; do
+              if [ -x "${PM2_BIN}" ]; then
+                "${PM2_BIN}" stop all 2>/dev/null || true
+                "${PM2_BIN}" delete all 2>/dev/null || true
+                echo "INFO: PM2 stopped via ${PM2_BIN}"
+                break
+              fi
+            done
+          fi
+
+          # Stop legacy containers (data already dumped above)
+          echo "=== Removing legacy containers ==="
           docker stop live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
           docker rm  live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
 
@@ -413,15 +462,34 @@ jobs:
 
           # 6. Wait for PostgreSQL
           echo "=== Waiting for PostgreSQL ==="
+          db_ready=false
           for i in $(seq 1 20); do
-            if docker exec dorami-postgres-prod pg_isready -U postgres 2>/dev/null; then
+            if docker exec dorami-postgres-prod pg_isready -U "${NEW_POSTGRES_USER}" 2>/dev/null; then
               echo "Database ready!"
+              db_ready=true
               break
             fi
-            [ "${i}" -eq 20 ] && { echo "ERROR: Database not ready"; exit 1; }
             echo "Waiting for database... (${i}/20)"
             sleep 3
           done
+          ${db_ready} || { echo "ERROR: Database not ready"; exit 1; }
+
+          # 6b. Restore legacy data if dump exists
+          if [ -n "${LEGACY_DUMP}" ] && [ -s "${LEGACY_DUMP}" ]; then
+            echo "=== Restoring legacy data into new postgres ==="
+            # Create target DB if different from default
+            docker exec dorami-postgres-prod \
+              psql -U "${NEW_POSTGRES_USER}" -c \
+              "SELECT 1 FROM pg_database WHERE datname='${NEW_POSTGRES_DB}'" \
+              | grep -q 1 \
+              || docker exec dorami-postgres-prod \
+                 createdb -U "${NEW_POSTGRES_USER}" "${NEW_POSTGRES_DB}" 2>/dev/null || true
+            # Restore (ignore errors on already-existing objects)
+            docker exec -i dorami-postgres-prod \
+              psql -U "${NEW_POSTGRES_USER}" "${NEW_POSTGRES_DB}" < "${LEGACY_DUMP}" 2>&1 \
+              | grep -v "^NOTICE\|already exists\|^$" | tail -20 || true
+            echo "INFO: Legacy data restored"
+          fi
 
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
