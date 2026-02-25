@@ -57,36 +57,45 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          # Write key and convert from legacy RSA PEM → OpenSSH format
-          # (Ubuntu 24.04 OpenSSH 9.x rejects legacy RSA PEM via libcrypto)
-          echo "$SSH_KEY" > /tmp/deploy_key_raw
+
+          # Strip CRLF (Windows line endings corrupt PEM parsing in OpenSSL 3.x)
+          printf '%s' "$SSH_KEY" | tr -d '\r' > /tmp/deploy_key_raw
           chmod 600 /tmp/deploy_key_raw
-          ssh-keygen -p -f /tmp/deploy_key_raw -m OpenSSH -P "" -N "" 2>/dev/null \
-            || true  # if already OpenSSH format, no-op
-          cp /tmp/deploy_key_raw ~/.ssh/id_rsa
+
+          # Re-export via openssl to normalize format
+          if openssl rsa -in /tmp/deploy_key_raw -out ~/.ssh/id_rsa 2>/dev/null; then
+            echo "Key normalized via openssl"
+          else
+            cp /tmp/deploy_key_raw ~/.ssh/id_rsa
+            echo "Key copied as-is"
+          fi
           chmod 600 ~/.ssh/id_rsa
           rm -f /tmp/deploy_key_raw
+
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+          # Verify key loads correctly
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || echo "WARNING: key invalid"
 
       - name: Sync compose & infra files to server
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
-          USER: ${{ secrets.PRODUCTION_USER }}
+          SSH_USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
-          scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
-          scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
+          ssh $SSH_USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
+          scp docker-compose.prod.yml $SSH_USER@$HOST:/opt/dorami/docker-compose.prod.yml
+          scp -r infrastructure/docker/srs $SSH_USER@$HOST:/opt/dorami/infrastructure/docker/
 
       - name: Pull images and restart services
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
-          USER: ${{ secrets.PRODUCTION_USER }}
+          SSH_USER: ${{ secrets.PRODUCTION_USER }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           REPO_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ssh $USER@$HOST bash << ENDSSH
+          ssh $SSH_USER@$HOST bash << ENDSSH
           set -euo pipefail
           cd /opt/dorami
 
@@ -144,9 +153,9 @@ jobs:
       - name: Verify - Backend API health
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
-          USER: ${{ secrets.PRODUCTION_USER }}
+          SSH_USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST \
+          ssh $SSH_USER@$HOST \
             'curl -sf http://127.0.0.1:3001/api/health/live && echo "Backend API OK" || (echo "Backend API failed"; exit 1)'
 
       - name: Verify - Public site
