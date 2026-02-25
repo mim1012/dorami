@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
 import {
   GetUsersQueryDto,
@@ -67,6 +68,7 @@ export class AdminService {
     private eventEmitter: EventEmitter2,
     private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
+    private alimtalkService: AlimtalkService,
     private redisService: RedisService,
   ) {}
 
@@ -1097,12 +1099,26 @@ export class AdminService {
       throw new BadRequestException('Payment reminder can only be sent for pending payments');
     }
 
-    await this.notificationsService.sendPaymentReminderNotification(
-      order.userId,
-      order.id,
-      Number(order.total),
-      order.depositorName,
-    );
+    // Send alimtalk if user has phone number, otherwise fall back to web push
+    const user = await this.prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { phone: true },
+    });
+
+    if (user?.phone) {
+      await this.alimtalkService.sendPaymentReminderAlimtalk(
+        user.phone,
+        order.id,
+        Number(order.total),
+      );
+    } else {
+      await this.notificationsService.sendPaymentReminderNotification(
+        order.userId,
+        order.id,
+        Number(order.total),
+        order.depositorName,
+      );
+    }
 
     return {
       success: true,

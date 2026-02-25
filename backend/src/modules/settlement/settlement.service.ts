@@ -6,6 +6,7 @@ import {
   SettlementReportDto,
   SettlementSummaryDto,
   SettlementOrderItemDto,
+  DailyRevenueDto,
 } from './dto/settlement.dto';
 import * as ExcelJS from 'exceljs';
 
@@ -85,9 +86,23 @@ export class SettlementService {
       paidAt: order.paidAt.toISOString(),
     }));
 
+    // Aggregate daily revenue from already-fetched orders (group by paidAt date)
+    const dailyMap = new Map<string, { revenue: number; orderCount: number }>();
+    for (const order of orders) {
+      const date = this.formatDate(order.paidAt);
+      const existing = dailyMap.get(date) ?? { revenue: 0, orderCount: 0 };
+      existing.revenue += Number(order.total);
+      existing.orderCount += 1;
+      dailyMap.set(date, existing);
+    }
+    const dailyRevenue: DailyRevenueDto[] = Array.from(dailyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, { revenue, orderCount }]) => ({ date, revenue, orderCount }));
+
     return {
       summary,
       orders: orderDtos,
+      dailyRevenue,
       dateRange: {
         from: query.from,
         to: query.to,

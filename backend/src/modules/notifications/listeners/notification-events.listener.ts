@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationsService } from '../notifications.service';
+import { AlimtalkService } from '../../admin/alimtalk.service';
 import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 
@@ -10,6 +11,7 @@ export class NotificationEventsListener {
 
   constructor(
     private notificationsService: NotificationsService,
+    private alimtalkService: AlimtalkService,
     private prisma: PrismaService,
   ) {
     this.logger = new LoggerService();
@@ -27,15 +29,24 @@ export class NotificationEventsListener {
       });
 
       if (order && order.pointsUsed > 0) {
-        this.logger.log(
-          `Order ${payload.orderId} used ${order.pointsUsed} points`,
+        this.logger.log(`Order ${payload.orderId} used ${order.pointsUsed} points`);
+      }
+
+      // Send alimtalk if user has phone number
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { phone: true },
+      });
+
+      if (user?.phone && order) {
+        await this.alimtalkService.sendOrderAlimtalk(
+          user.phone,
+          payload.orderId,
+          Number(order.total),
         );
       }
 
-      await this.notificationsService.sendOrderCreatedNotification(
-        payload.userId,
-        payload.orderId,
-      );
+      await this.notificationsService.sendOrderCreatedNotification(payload.userId, payload.orderId);
     } catch (error) {
       this.logger.error('Failed to send order created notification', error.message);
     }
@@ -95,7 +106,9 @@ export class NotificationEventsListener {
 
   @OnEvent('cart:expired')
   async handleCartExpired(payload: { userId?: string }) {
-    if (!payload.userId) {return;}
+    if (!payload.userId) {
+      return;
+    }
 
     this.logger.log(`Sending cart expired notification to user ${payload.userId}`);
 

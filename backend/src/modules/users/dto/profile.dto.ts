@@ -53,6 +53,7 @@ export class ProfileResponseDto {
   role: string;
   depositorName?: string;
   instagramId?: string;
+  phone?: string;
   shippingAddress?: {
     fullName: string;
     address1: string;
