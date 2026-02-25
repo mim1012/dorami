@@ -54,17 +54,16 @@ jobs:
 
       - name: Setup SSH
         env:
-          # base64-encoded key avoids all line ending issues
-          # Generate with: base64 -w 0 dorami-prod-key.pem  (Git Bash)
-          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
+          # Store raw PEM content in secret (GitHub Secrets preserves newlines)
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || echo "WARNING: key invalid"
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "✅ SSH key OK" || { echo "❌ SSH key invalid"; exit 1; }
 
       - name: Sync compose & infra files to server
         env:
