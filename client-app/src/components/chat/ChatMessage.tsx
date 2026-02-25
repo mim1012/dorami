@@ -26,19 +26,26 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
   // Check if message is deleted
   const isDeleted = message.isDeleted || false;
 
+  if (compact) {
+    return (
+      <div className={`animate-fade-in mb-1 mx-1 ${isDeleted ? 'opacity-50' : ''}`}>
+        <p className="text-[13px] leading-snug break-words">
+          <span className="text-hot-pink font-semibold">@{message.username}</span>
+          <span className="text-white/90 ml-1">
+            {isDeleted ? '관리자에 의해 삭제된 메시지입니다.' : message.message}
+          </span>
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`animate-fade-in ${compact ? 'mb-1.5 px-2.5 py-1.5 rounded-xl mx-1' : 'mb-3'} ${isDeleted ? 'opacity-50' : ''}`}
-    >
+    <div className={`animate-fade-in mb-3 ${isDeleted ? 'opacity-50' : ''}`}>
       {/* Username + Timestamp */}
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className={`text-hot-pink font-semibold ${compact ? 'text-[13px]' : 'text-caption'}`}>
-          @{message.username}
-        </span>
+        <span className="text-hot-pink font-semibold text-caption">@{message.username}</span>
         <div className="flex items-center gap-2">
-          <span className={`text-white/50 ${compact ? 'text-[11px]' : 'text-small'}`}>
-            {formatTime(message.timestamp)}
-          </span>
+          <span className="text-white/50 text-small">{formatTime(message.timestamp)}</span>
           {isAdmin && !isDeleted && onDelete && (
             <button
               onClick={handleDelete}
@@ -53,9 +60,7 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
 
       {/* Message Text */}
       <p
-        className={`text-white whitespace-pre-wrap break-words ${
-          compact ? 'text-[14px] leading-tight' : 'text-body'
-        } ${isDeleted ? 'italic' : ''}`}
+        className={`text-white whitespace-pre-wrap break-words text-body ${isDeleted ? 'italic' : ''}`}
       >
         {isDeleted ? '관리자에 의해 삭제된 메시지입니다.' : message.message}
       </p>

@@ -11,6 +11,7 @@ export interface ReStreamTarget {
   rtmpUrl: string;
   streamKey: string;
   enabled: boolean;
+  muteAudio: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,6 +35,7 @@ export interface CreateReStreamTargetPayload {
   rtmpUrl: string;
   streamKey: string;
   enabled?: boolean;
+  muteAudio?: boolean;
 }
 
 export interface UpdateReStreamTargetPayload {
@@ -42,6 +44,7 @@ export interface UpdateReStreamTargetPayload {
   rtmpUrl?: string;
   streamKey?: string;
   enabled?: boolean;
+  muteAudio?: boolean;
 }
 
 export async function getReStreamTargets() {

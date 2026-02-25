@@ -227,13 +227,13 @@ export default function VideoPlayer({
         {
           enableWorker: true,
           enableStashBuffer: true,
-          stashInitialSize: 256,
-          liveBufferLatencyChasing: false,
-          liveBufferLatencyMaxLatency: 3.0,
-          liveBufferLatencyMinRemain: 1.0,
+          stashInitialSize: 512,
+          liveBufferLatencyChasing: true,
+          liveBufferLatencyMaxLatency: 5.0,
+          liveBufferLatencyMinRemain: 2.0,
           autoCleanupSourceBuffer: true,
-          autoCleanupMaxBackwardDuration: 30,
-          autoCleanupMinBackwardDuration: 10,
+          autoCleanupMaxBackwardDuration: 20,
+          autoCleanupMinBackwardDuration: 7,
         },
       );
 
@@ -344,12 +344,12 @@ export default function VideoPlayer({
 
     // KPI + buffering state via video element events
     const onWaiting = () => {
-      // Delay spinner by 800ms — transient micro-stalls won't flash the spinner
+      // Delay spinner by 2000ms — transient micro-stalls won't flash the spinner
       if (bufferingTimerRef.current) clearTimeout(bufferingTimerRef.current);
       bufferingTimerRef.current = setTimeout(() => {
         setIsBuffering(true);
         bufferingTimerRef.current = null;
-      }, 800);
+      }, 2000);
       const m = metricsRef.current;
       // Only count as rebuffer after first frame has been rendered
       if (m.firstFrameTime > 0) {
