@@ -268,7 +268,6 @@ jobs:
           #!/bin/bash
           set -euo pipefail
 
-          APP_DIR="/home/ubuntu/dorami"
           INFRA_DIR="/opt/dorami"
 
           echo "==================================================="
@@ -276,13 +275,31 @@ jobs:
           echo "Version: ${DEPLOY_VERSION}"
           echo "==================================================="
 
-          # 1. Verify prerequisites
-          echo "=== Checking prerequisites ==="
+          # 1. Discover application directory dynamically
+          echo "=== Discovering application directory ==="
+          APP_DIR=""
 
-          if [ ! -d "${APP_DIR}" ]; then
-            echo "ERROR: Application directory ${APP_DIR} not found!"
+          # Try PM2 jlist to find where dorami processes run from (single-line python)
+          APP_DIR=$(pm2 jlist 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((p['pm2_env']['pm_cwd'].rstrip('/') for p in d if 'dorami' in p.get('name','').lower()),''))" 2>/dev/null || true)
+
+          # Fallback: scan common locations
+          if [ -z "${APP_DIR}" ] || [ ! -d "${APP_DIR}" ]; then
+            for dir in "${HOME}/dorami" "/home/ubuntu/dorami" "/home/ec2-user/dorami" "/opt/dorami-app"; do
+              if [ -d "${dir}" ] && [ -f "${dir}/package.json" ]; then
+                APP_DIR="${dir}"
+                break
+              fi
+            done
+          fi
+
+          if [ -z "${APP_DIR}" ] || [ ! -d "${APP_DIR}" ]; then
+            echo "ERROR: Cannot find application directory."
+            echo "PM2 status:"
+            pm2 list
+            echo "Searched: \${HOME}/dorami /home/ubuntu/dorami /home/ec2-user/dorami"
             exit 1
           fi
+          echo "INFO: Application directory: ${APP_DIR}"
 
           # Auto-create .env.production from PM2 backend env if missing
           if [ ! -f "${INFRA_DIR}/.env.production" ]; then
