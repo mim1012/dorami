@@ -29,12 +29,13 @@ jobs:
     steps:
       - name: Setup SSH
         env:
-          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          SSH_KEY_B64: ${{ secrets.STAGING_SSH_KEY }}
           SSH_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "$SSH_KEY_B64" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          ssh-keygen -l -f ~/.ssh/id_rsa
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Execute Whitelisted Command
