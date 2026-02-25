@@ -304,19 +304,19 @@ jobs:
             PG_DB=$(echo "$DB_URL" | sed 's|.*/||' | cut -d? -f1)
 
             mkdir -p "${INFRA_DIR}"
-            cat > "${INFRA_DIR}/.env.production" << ENVEOF
-DOMAIN=doremi-live.com
-POSTGRES_USER=${PG_USER:-postgres}
-POSTGRES_PASSWORD=${PG_PASS:-postgres}
-POSTGRES_DB=${PG_DB:-live_commerce}
-REDIS_PASSWORD=${REDIS_PASS}
-IMAGE_TAG=${DEPLOY_IMAGE_TAG:-production-latest}
-GITHUB_REPOSITORY_OWNER=${DEPLOY_REPO_OWNER}
-FRONTEND_URL=https://www.doremi-live.com
-CORS_ORIGINS=https://doremi-live.com,https://www.doremi-live.com
-NEXT_PUBLIC_API_URL=https://www.doremi-live.com
-NEXT_PUBLIC_WS_URL=https://www.doremi-live.com
-ENVEOF
+            {
+              echo "DOMAIN=doremi-live.com"
+              echo "POSTGRES_USER=${PG_USER:-postgres}"
+              echo "POSTGRES_PASSWORD=${PG_PASS:-postgres}"
+              echo "POSTGRES_DB=${PG_DB:-live_commerce}"
+              echo "REDIS_PASSWORD=${REDIS_PASS}"
+              echo "IMAGE_TAG=${DEPLOY_IMAGE_TAG:-production-latest}"
+              echo "GITHUB_REPOSITORY_OWNER=${DEPLOY_REPO_OWNER}"
+              echo "FRONTEND_URL=https://www.doremi-live.com"
+              echo "CORS_ORIGINS=https://doremi-live.com,https://www.doremi-live.com"
+              echo "NEXT_PUBLIC_API_URL=https://www.doremi-live.com"
+              echo "NEXT_PUBLIC_WS_URL=https://www.doremi-live.com"
+            } > "${INFRA_DIR}/.env.production"
             echo "INFO: .env.production created from PM2 backend configuration"
           else
             echo "INFO: Using existing ${INFRA_DIR}/.env.production"
