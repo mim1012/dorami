@@ -4,9 +4,7 @@ import { EncryptionService, ShippingAddress } from '../../common/services/encryp
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto, ProfileResponseDto } from './dto/profile.dto';
-import {
-  UserNotFoundException,
-} from '../../common/exceptions/business.exception';
+import { UserNotFoundException } from '../../common/exceptions/business.exception';
 
 @Injectable()
 export class UsersService {
@@ -35,10 +33,7 @@ export class UsersService {
     return user ? this.mapToResponseDto(user) : null;
   }
 
-  async updateProfile(
-    userId: string,
-    updateDto: UpdateUserDto,
-  ): Promise<UserResponseDto> {
+  async updateProfile(userId: string, updateDto: UpdateUserDto): Promise<UserResponseDto> {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: updateDto,
@@ -67,8 +62,12 @@ export class UsersService {
       select: { id: true },
     });
 
-    if (!existing) {return true;}
-    if (excludeUserId && existing.id === excludeUserId) {return true;}
+    if (!existing) {
+      return true;
+    }
+    if (excludeUserId && existing.id === excludeUserId) {
+      return true;
+    }
     return false;
   }
 
@@ -156,6 +155,7 @@ export class UsersService {
       role: user.role,
       depositorName: user.depositorName,
       instagramId: user.instagramId,
+      phone: user.phone ?? undefined,
       shippingAddress,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -200,6 +200,7 @@ export class UsersService {
       role: user.role,
       depositorName: user.depositorName,
       instagramId: user.instagramId,
+      phone: user.phone ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
