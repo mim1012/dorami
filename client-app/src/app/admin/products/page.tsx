@@ -55,8 +55,6 @@ interface ProductFormData {
   stock: string;
   colorOptions: string;
   sizeOptions: string;
-  shippingFee: string;
-  freeShippingMessage: string;
   timerEnabled: boolean;
   timerDuration: string;
   imageUrl: string;
@@ -252,8 +250,6 @@ export default function AdminProductsPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
-  const [defaultShippingFee, setDefaultShippingFee] = useState('');
-
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
     name: '',
@@ -261,8 +257,6 @@ export default function AdminProductsPage() {
     stock: '',
     colorOptions: '',
     sizeOptions: '',
-    shippingFee: '',
-    freeShippingMessage: '',
     timerEnabled: false,
     timerDuration: '10',
     imageUrl: '',
@@ -297,16 +291,6 @@ export default function AdminProductsPage() {
       }
     };
     fetchActiveLiveKey();
-  }, []);
-
-  // Load default shipping fee from settings
-  useEffect(() => {
-    apiClient
-      .get<{ defaultShippingFee: number }>('/admin/config/settings')
-      .then(({ data }) => {
-        setDefaultShippingFee(String(data.defaultShippingFee ?? ''));
-      })
-      .catch(() => {});
   }, []);
 
   // Client-side filtered products (Feature 5)
@@ -363,9 +347,27 @@ export default function AdminProductsPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = products.findIndex((p) => p.id === active.id);
-    const newIndex = products.findIndex((p) => p.id === over.id);
-    const reordered = arrayMove(products, oldIndex, newIndex);
+    const isFiltered = !!(searchQuery || filterStatus || priceMin || priceMax);
+
+    let reordered: Product[];
+    if (isFiltered) {
+      const oldIndex = filteredProducts.findIndex((p) => p.id === active.id);
+      const newIndex = filteredProducts.findIndex((p) => p.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reorderedFiltered = arrayMove(filteredProducts, oldIndex, newIndex);
+      const filteredIds = reorderedFiltered.map((p) => p.id);
+      reordered = [...products];
+      let fi = 0;
+      for (let i = 0; i < reordered.length; i++) {
+        if (filteredIds.includes(reordered[i].id)) {
+          reordered[i] = reorderedFiltered[fi++];
+        }
+      }
+    } else {
+      const oldIndex = products.findIndex((p) => p.id === active.id);
+      const newIndex = products.findIndex((p) => p.id === over.id);
+      reordered = arrayMove(products, oldIndex, newIndex);
+    }
 
     setProducts(reordered);
 
@@ -408,9 +410,7 @@ export default function AdminProductsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (previewUrl && selectedFile) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
       setSelectedFile(file);
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
@@ -441,9 +441,7 @@ export default function AdminProductsPage() {
   };
 
   const handleRemoveImage = () => {
-    if (previewUrl && selectedFile) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     setSelectedFile(null);
     setPreviewUrl('');
     setFormData((prev) => ({ ...prev, imageUrl: '' }));
@@ -485,6 +483,16 @@ export default function AdminProductsPage() {
     }));
   };
 
+  // --- Modal Close ---
+  const handleCloseModal = () => {
+    if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl('');
+    setSelectedFile(null);
+    setGalleryFiles([]);
+    setEditingProduct(null);
+    setIsModalOpen(false);
+  };
+
   // --- Modal Open ---
   const handleOpenModal = (product?: Product) => {
     if (product) {
@@ -496,8 +504,6 @@ export default function AdminProductsPage() {
         stock: product.stock.toString(),
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
-        shippingFee: product.shippingFee.toString(),
-        freeShippingMessage: product.freeShippingMessage || '',
         timerEnabled: product.timerEnabled,
         timerDuration: product.timerDuration.toString(),
         imageUrl: product.imageUrl || '',
@@ -516,8 +522,6 @@ export default function AdminProductsPage() {
         stock: '',
         colorOptions: '',
         sizeOptions: '',
-        shippingFee: defaultShippingFee,
-        freeShippingMessage: '',
         timerEnabled: false,
         timerDuration: '10',
         imageUrl: '',
@@ -568,8 +572,6 @@ export default function AdminProductsPage() {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
-        shippingFee: parseFloat(formData.shippingFee),
-        freeShippingMessage: formData.freeShippingMessage || undefined,
         timerEnabled: formData.timerEnabled,
         timerDuration: parseInt(formData.timerDuration),
         imageUrl: finalImageUrl || undefined,
@@ -589,7 +591,7 @@ export default function AdminProductsPage() {
       }
 
       fetchProducts();
-      setIsModalOpen(false);
+      handleCloseModal();
       showToast(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!', 'success');
     } catch (err: any) {
       console.error('Failed to save product:', err);
@@ -890,7 +892,7 @@ export default function AdminProductsPage() {
       {/* Product Form Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         title={editingProduct ? '상품 수정' : '상품 등록'}
         maxWidth="xl"
       >
@@ -984,26 +986,6 @@ export default function AdminProductsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="배송비 ($)"
-              name="shippingFee"
-              type="number"
-              value={formData.shippingFee}
-              onChange={(e) => setFormData({ ...formData, shippingFee: e.target.value })}
-              placeholder="3000"
-              fullWidth
-            />
-            <Input
-              label="무료 배송 안내 문구"
-              name="freeShippingMessage"
-              value={formData.freeShippingMessage}
-              onChange={(e) => setFormData({ ...formData, freeShippingMessage: e.target.value })}
-              placeholder="예: 5만원 이상 무료배송"
-              fullWidth
-            />
-          </div>
-
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -1067,7 +1049,6 @@ export default function AdminProductsPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -1102,7 +1083,7 @@ export default function AdminProductsPage() {
             {formData.images.length > 0 && (
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {formData.images.map((url, idx) => (
-                  <div key={idx} className="relative group">
+                  <div key={url} className="relative group">
                     <img
                       src={url}
                       alt={`Gallery ${idx + 1}`}
@@ -1162,12 +1143,17 @@ export default function AdminProductsPage() {
               type="button"
               variant="outline"
               fullWidth
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleCloseModal}
               disabled={isSubmitting}
             >
               취소
             </Button>
-            <Button type="submit" variant="primary" fullWidth disabled={isSubmitting}>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              disabled={isSubmitting || isUploadingGallery}
+            >
               {isSubmitting ? '저장 중...' : editingProduct ? '수정하기' : '등록하기'}
             </Button>
           </div>

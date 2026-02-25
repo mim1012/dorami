@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { Package } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/price';
 
 interface ProductCardProps {
@@ -32,14 +33,20 @@ export function ProductCard({
     >
       {/* Image container */}
       <div className="relative aspect-[4/3] bg-content-bg overflow-hidden">
-        <Image
-          src={imageUrl}
-          alt={name}
-          fill
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-          sizes="(max-width: 768px) 50vw, 33vw"
-          unoptimized={imageUrl.startsWith('/uploads/')}
-        />
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+            sizes="(max-width: 768px) 50vw, 33vw"
+            unoptimized={imageUrl.startsWith('/uploads/')}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-content-bg">
+            <Package className="w-8 h-8 opacity-20 text-secondary-text" />
+          </div>
+        )}
 
         {/* Gradient overlay — stronger on hover */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

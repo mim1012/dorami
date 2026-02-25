@@ -243,19 +243,28 @@ export class AuthController {
       return res.status(400).json({ message: 'email is required' });
     }
 
-    // Upsert user to avoid race conditions with parallel test workers
-    // role is always forced to 'USER' — ADMIN cannot be granted via this endpoint
+    // Assign role based on ADMIN_EMAILS whitelist (same logic as Kakao OAuth)
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
+    const adminEmailSet = new Set(
+      adminEmails
+        .split(',')
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0),
+    );
+    const roleToAssign = adminEmailSet.has(email) ? 'ADMIN' : 'USER';
+
     const { randomUUID } = await import('crypto');
     const user = await this.prisma.user.upsert({
       where: { email },
       update: {
         lastLoginAt: new Date(),
+        role: roleToAssign,
       },
       create: {
         kakaoId: `dev_${randomUUID()}`,
         email,
         name: name || email.split('@')[0],
-        role: 'USER',
+        role: roleToAssign,
         status: 'ACTIVE',
         lastLoginAt: new Date(),
       },

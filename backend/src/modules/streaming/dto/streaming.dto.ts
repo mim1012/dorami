@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsDateString, IsInt, Min, IsBoolean } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export enum StreamingStatus {
@@ -29,6 +29,10 @@ export class GenerateKeyDto {
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  freeShippingEnabled?: boolean;
 }
 
 export class UpdateStreamDto {
@@ -43,6 +47,10 @@ export class UpdateStreamDto {
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  freeShippingEnabled?: boolean;
 }
 
 export class StreamStatusDto {

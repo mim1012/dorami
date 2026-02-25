@@ -80,7 +80,8 @@ async function authenticate(
   role: 'USER' | 'ADMIN',
   outputPath: string,
 ) {
-  const email = role === 'ADMIN' ? 'e2e-admin@test.com' : 'e2e-user@test.com';
+  // Use same emails as devLogin helper for consistency (ADMIN_EMAILS only needs one entry)
+  const email = role === 'ADMIN' ? 'admin@doremi.shop' : 'buyer@test.com';
 
   // 1. Call dev-login API at Node.js level (bypasses CORS)
   const apiContext = await request.newContext({ baseURL: BACKEND_URL });
