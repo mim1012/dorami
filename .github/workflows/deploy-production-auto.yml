@@ -54,15 +54,24 @@ jobs:
 
       - name: Setup SSH
         env:
-          # Store raw PEM content in secret (GitHub Secrets preserves newlines)
           SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
+          # Auto-detect: raw PEM contains "BEGIN", base64 does not
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+          echo "--- Key diagnostics (no secret exposed) ---"
+          echo "Lines: $(wc -l < ~/.ssh/id_rsa)"
+          echo "First line: $(head -1 ~/.ssh/id_rsa)"
+          echo "Last line: $(tail -1 ~/.ssh/id_rsa)"
+          echo "---"
           ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "✅ SSH key OK" || { echo "❌ SSH key invalid"; exit 1; }
 
       - name: Sync compose & infra files to server
