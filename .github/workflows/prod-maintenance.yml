@@ -70,28 +70,24 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
           ssh $USER@$HOST bash << 'EOF'
-          echo "=== 모든 컨테이너 (stopped 포함) ==="
-          docker ps -a --format "table {{.Names}}\t{{.Status}}"
+          echo "=== dorami_production DB 데이터 개수 ==="
+          docker exec dorami-postgres-prod bash -c \
+            'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -d dorami_production \
+             -c "SELECT COUNT(*) as users FROM \"User\";" \
+             -c "SELECT COUNT(*) as products FROM \"Product\";" \
+             -c "SELECT COUNT(*) as orders FROM \"Order\";" 2>&1'
 
           echo ""
-          echo "=== 전체 Docker 볼륨 ==="
-          docker volume ls
+          echo "=== 익명 볼륨 a10ab7ef 내용 탐색 (구 live-commerce-postgres 데이터 여부) ==="
+          docker run --rm \
+            -v a10ab7ef152ddceeed1a2ae5904eddc0358e835fcdaa18398073f3db25d5cc47:/pgdata:ro \
+            alpine sh -c 'ls /pgdata/ 2>/dev/null && du -sh /pgdata 2>/dev/null || echo "(볼륨 마운트 실패)"'
 
           echo ""
-          echo "=== dorami-postgres-prod 환경변수 ==="
-          docker exec dorami-postgres-prod env 2>/dev/null | grep -E 'POSTGRES_|PG' || echo "(컨테이너 없음)"
-
-          echo ""
-          echo "=== dorami-postgres-prod DB 목록 (컨테이너 내부 env 사용) ==="
-          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -l 2>&1' || echo "(psql 실패)"
-
-          echo ""
-          echo "=== dorami_postgres_data 볼륨 크기 ==="
-          docker run --rm -v dorami_postgres_data:/data alpine du -sh /data 2>/dev/null || echo "(볼륨 없음)"
-
-          echo ""
-          echo "=== .env.production 내 DB 설정 ==="
-          grep -E 'POSTGRES_|DATABASE' /opt/dorami/.env.production 2>/dev/null || echo "(파일 없음)"
+          echo "=== 익명 볼륨이 postgres 데이터인지 확인 ==="
+          docker run --rm \
+            -v a10ab7ef152ddceeed1a2ae5904eddc0358e835fcdaa18398073f3db25d5cc47:/pgdata:ro \
+            alpine sh -c 'ls /pgdata/global/ 2>/dev/null && echo "YES: postgres 데이터 디렉토리" || echo "NO: postgres 데이터 아님"'
           EOF
 
       - name: db-restore
