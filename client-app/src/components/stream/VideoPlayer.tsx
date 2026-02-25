@@ -53,6 +53,8 @@ export default function VideoPlayer({
   const stallTicksRef = useRef<number>(0);
   const watchdogStartedRef = useRef<boolean>(false);
   const streamEndedRef = useRef(false);
+  const playerModeRef = useRef<'flv' | 'hls' | null>(null);
+  const reconnectResetTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,6 +65,10 @@ export default function VideoPlayer({
   const [isMuted, setIsMuted] = useState(true);
   const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
+  const setPlayerModeWithRef = useCallback((mode: 'flv' | 'hls' | null) => {
+    playerModeRef.current = mode;
+    setPlayerMode(mode);
+  }, []);
   // Debounce ref: spinner only appears if buffering lasts > 800ms
   const bufferingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -138,15 +144,19 @@ export default function VideoPlayer({
     }
 
     metricsRef.current.playStartTime = performance.now();
-    setPlayerMode('hls');
+    setPlayerModeWithRef('hls');
 
     // Check if browser supports native HLS (Safari)
     if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
       videoRef.current.src = hlsUrl;
-      videoRef.current.addEventListener('loadedmetadata', () => {
-        videoRef.current?.play();
-        setIsPlaying(true);
-      });
+      videoRef.current.addEventListener(
+        'loadedmetadata',
+        () => {
+          videoRef.current?.play();
+          setIsPlaying(true);
+        },
+        { once: true },
+      );
     } else if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
@@ -155,7 +165,7 @@ export default function VideoPlayer({
         maxBufferLength: 20,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 6,
-        maxLiveSyncPlaybackRate: 1,
+        maxLiveSyncPlaybackRate: 1.1,
       });
 
       hls.loadSource(hlsUrl);
@@ -218,7 +228,7 @@ export default function VideoPlayer({
         return;
       }
 
-      setPlayerMode('flv');
+      setPlayerModeWithRef('flv');
 
       const player = mpegts.default.createPlayer(
         {
@@ -242,10 +252,14 @@ export default function VideoPlayer({
       player.attachMediaElement(videoRef.current);
       player.load();
 
-      videoRef.current.addEventListener('loadedmetadata', () => {
-        videoRef.current?.play();
-        setIsPlaying(true);
-      });
+      videoRef.current.addEventListener(
+        'loadedmetadata',
+        () => {
+          videoRef.current?.play();
+          setIsPlaying(true);
+        },
+        { once: true },
+      );
 
       player.on(mpegts.default.Events.ERROR, (errorType: string, errorDetail: string) => {
         const isRetryable =
@@ -291,18 +305,6 @@ export default function VideoPlayer({
       });
 
       mpegtsPlayerRef.current = player;
-
-      // FLV seek-based latency chasing (mirrors HLS interval; chasing disabled above)
-      latencyIntervalRef.current = setInterval(() => {
-        const video = videoRef.current;
-        if (video && video.buffered.length > 0) {
-          const liveEdge = video.buffered.end(video.buffered.length - 1);
-          const drift = liveEdge - video.currentTime;
-          if (drift > 5) {
-            video.currentTime = liveEdge - 1.5;
-          }
-        }
-      }, 1000);
     } catch {
       // mpegts.js import failed — fall back to HLS
       initializeHlsPlayer();
@@ -368,8 +370,10 @@ export default function VideoPlayer({
       }
       setIsBuffering(false);
       setError(null);
-      // 배속 강제 고정 — 라이브 커머스는 실시간 동기화 필수
-      video.playbackRate = 1.0;
+      // HLS 모드에서는 내장 catchup(1.0~1.1)을 허용; FLV/기타는 1.0 고정
+      if (playerModeRef.current !== 'hls') {
+        video.playbackRate = 1.0;
+      }
       const m = metricsRef.current;
       // Record first frame time
       if (m.firstFrameTime === 0 && m.playStartTime > 0) {
@@ -395,6 +399,14 @@ export default function VideoPlayer({
           flvRetryCountRef.current = 0;
           flvRetryResetTimerRef.current = null;
         }, 10000);
+      }
+      // reconnectCount 안정화 후 리셋 (장기 방송 지원 — 30초 안정 재생 시 초기화)
+      if (metricsRef.current.reconnectCount > 0) {
+        if (reconnectResetTimerRef.current) clearTimeout(reconnectResetTimerRef.current);
+        reconnectResetTimerRef.current = setTimeout(() => {
+          metricsRef.current.reconnectCount = 0;
+          reconnectResetTimerRef.current = null;
+        }, 30000);
       }
       syncKpi();
       onStreamStateChangeRef.current?.({ type: 'PLAY_OK' });
@@ -439,6 +451,7 @@ export default function VideoPlayer({
               } else if (hlsRef.current) {
                 hlsRef.current.startLoad();
               }
+              lastCurrentTimeRef.current = -1; // 재연결 후 비교 기준점 초기화
             }
           } else {
             stallTicksRef.current = 0;
@@ -454,10 +467,17 @@ export default function VideoPlayer({
       }
       onStreamStateChangeRef.current?.({ type: 'STALL' });
     };
-    // playbackRate 변경 감지 — 사용자가 배속 조절 시 다시 1.0으로 리셋
+    // playbackRate 변경 감지 — HLS 내장 catchup(1.0~1.1) 허용; 그 외 1.0 고정
     const onRateChange = () => {
-      if (video.playbackRate !== 1.0) {
-        video.playbackRate = 1.0;
+      if (playerModeRef.current === 'hls') {
+        // HLS catchup: 1.0~1.1 범위는 허용, 벗어나면 리셋
+        if (video.playbackRate < 1.0 || video.playbackRate > 1.1) {
+          video.playbackRate = 1.0;
+        }
+      } else {
+        if (video.playbackRate !== 1.0) {
+          video.playbackRate = 1.0;
+        }
       }
     };
 
@@ -493,12 +513,18 @@ export default function VideoPlayer({
       clearTimeout(flvRetryResetTimerRef.current);
       flvRetryResetTimerRef.current = null;
     }
+    if (reconnectResetTimerRef.current) {
+      clearTimeout(reconnectResetTimerRef.current);
+      reconnectResetTimerRef.current = null;
+    }
     if (stallWatchdogRef.current) {
       clearInterval(stallWatchdogRef.current);
       stallWatchdogRef.current = null;
     }
     watchdogStartedRef.current = false;
     stallTicksRef.current = 0;
+    flvRetryCountRef.current = 0;
+    flvRetryInProgressRef.current = false;
     if (mpegtsPlayerRef.current) {
       mpegtsPlayerRef.current.destroy();
       mpegtsPlayerRef.current = null;
@@ -507,7 +533,7 @@ export default function VideoPlayer({
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
-    setPlayerMode(null);
+    setPlayerModeWithRef(null);
   };
 
   const connectWebSocket = () => {
