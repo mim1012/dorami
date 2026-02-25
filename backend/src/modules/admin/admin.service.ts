@@ -614,6 +614,9 @@ export class AdminService {
       bankName: config.bankName,
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
+      zelleEmail: config.zelleEmail,
+      zelleRecipientName: config.zelleRecipientName,
+      freeShippingEnabled: config.freeShippingEnabled,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
@@ -663,6 +666,15 @@ export class AdminService {
     if (dto.kakaoChannelId !== undefined) {
       updateData.kakaoChannelId = dto.kakaoChannelId;
     }
+    if (dto.zelleEmail !== undefined) {
+      updateData.zelleEmail = dto.zelleEmail;
+    }
+    if (dto.zelleRecipientName !== undefined) {
+      updateData.zelleRecipientName = dto.zelleRecipientName;
+    }
+    if (dto.freeShippingEnabled !== undefined) {
+      updateData.freeShippingEnabled = dto.freeShippingEnabled;
+    }
 
     const config = await this.prisma.systemConfig.upsert({
       where: { id: 'system' },
@@ -687,6 +699,9 @@ export class AdminService {
       bankName: config.bankName,
       bankAccountNumber: config.bankAccountNumber,
       bankAccountHolder: config.bankAccountHolder,
+      zelleEmail: config.zelleEmail,
+      zelleRecipientName: config.zelleRecipientName,
+      freeShippingEnabled: config.freeShippingEnabled,
       emailNotificationsEnabled: config.emailNotificationsEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
