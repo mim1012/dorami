@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional } from 'class-validator';
+import { IsString, IsEmail, IsOptional, Matches } from 'class-validator';
 
 export enum UserRole {
   BUYER = 'BUYER',
@@ -18,6 +18,13 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   profileImage?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^01[0-9]{8,9}$/, {
+    message: '전화번호는 01012345678 형식이어야 합니다',
+  })
+  phone?: string;
 }
 
 export class UserResponseDto {
@@ -29,6 +36,7 @@ export class UserResponseDto {
   role: string;
   depositorName?: string;
   instagramId?: string;
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
 }

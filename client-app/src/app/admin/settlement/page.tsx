@@ -109,6 +109,8 @@ export default function SettlementPage() {
     }
   };
 
+  const [isExcelLoading, setIsExcelLoading] = useState(false);
+
   const handleExportCsv = () => {
     if (!report) return;
     const headers = ['주문ID', '주문일시', '고객ID', '결제금액', '결제확인일시'];
@@ -130,6 +132,39 @@ export default function SettlementPage() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = async () => {
+    setIsExcelLoading(true);
+    try {
+      const params = new URLSearchParams({ from: fromDate, to: toDate });
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+      const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '';
+      const response = await fetch(`${apiBase}/admin/settlement/download?${params.toString()}`, {
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+      });
+
+      if (!response.ok) throw new Error('Excel export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      a.href = url;
+      a.download = `settlement_${dateStr}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export settlement excel:', err);
+      setError('엑셀 다운로드에 실패했습니다');
+    } finally {
+      setIsExcelLoading(false);
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -255,6 +290,16 @@ export default function SettlementPage() {
             <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!report}>
               <Download className="w-4 h-4 mr-2" />
               CSV 내보내기
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={!fromDate || !toDate || isExcelLoading}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {isExcelLoading ? '다운로드 중...' : '엑셀 다운로드'}
             </Button>
           </div>
 

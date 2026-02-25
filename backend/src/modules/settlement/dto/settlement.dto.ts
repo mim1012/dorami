@@ -23,9 +23,16 @@ export class SettlementOrderItemDto {
   paidAt: string; // ISO 8601 format
 }
 
+export class DailyRevenueDto {
+  date: string; // YYYY-MM-DD
+  revenue: number;
+  orderCount: number;
+}
+
 export class SettlementReportDto {
   summary: SettlementSummaryDto;
   orders: SettlementOrderItemDto[];
+  dailyRevenue: DailyRevenueDto[];
   dateRange: {
     from: string;
     to: string;

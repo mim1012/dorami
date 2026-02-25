@@ -36,6 +36,7 @@ interface ProfileData {
   role: string;
   depositorName?: string;
   instagramId?: string;
+  phone?: string;
   shippingAddress?: ShippingAddress;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +50,9 @@ export default function MyPagePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPhoneEditOpen, setIsPhoneEditOpen] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
@@ -101,6 +105,28 @@ export default function MyPagePage() {
     setProfile(response.data);
     setSuccessMessage('배송지가 저장되었습니다');
     setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handlePhoneEdit = () => {
+    setPhoneInput(profile?.phone || '');
+    setPhoneError(null);
+    setIsPhoneEditOpen(true);
+  };
+
+  const handlePhoneSubmit = async () => {
+    if (!/^01[0-9]{8,9}$/.test(phoneInput)) {
+      setPhoneError('01012345678 형식으로 입력해주세요');
+      return;
+    }
+    try {
+      const response = await apiClient.patch<ProfileData>('/users/me', { phone: phoneInput });
+      setProfile(response.data);
+      setIsPhoneEditOpen(false);
+      setSuccessMessage('전화번호가 저장되었습니다');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch {
+      setPhoneError('저장에 실패했습니다. 다시 시도해주세요');
+    }
   };
 
   // Loading state (auth + profile guard + profile data)
@@ -158,6 +184,8 @@ export default function MyPagePage() {
             depositorName={profile.depositorName}
             email={profile.email}
             nickname={profile.nickname}
+            phone={profile.phone}
+            onPhoneEdit={handlePhoneEdit}
           />
 
           <PointsBalanceCard />
@@ -188,6 +216,42 @@ export default function MyPagePage() {
           initialData={addressFormData}
           onSubmit={handleAddressSubmit}
         />
+
+        {isPhoneEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+              <Body className="text-primary-text font-semibold mb-4">전화번호 등록</Body>
+              <input
+                type="tel"
+                value={phoneInput}
+                onChange={(e) => {
+                  setPhoneInput(e.target.value);
+                  setPhoneError(null);
+                }}
+                placeholder="01012345678"
+                className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
+              />
+              {phoneError && <Body className="text-error text-caption mb-2">{phoneError}</Body>}
+              <Body className="text-secondary-text text-caption mb-4">
+                하이픈(-) 없이 숫자만 입력해주세요
+              </Body>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsPhoneEditOpen(false)}
+                  className="flex-1 py-3 border border-border-color rounded-button text-secondary-text text-sm hover:bg-primary-black transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handlePhoneSubmit}
+                  className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <BottomTabBar />
