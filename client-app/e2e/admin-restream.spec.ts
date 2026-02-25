@@ -278,7 +278,10 @@ test.describe('Admin ReStream Management', () => {
   test('A-RS-10: should delete restream target', async ({ page }) => {
     await waitForPageLoad(page);
 
-    // 먼저 타겟 생성
+    // 이전 실행에서 남은 잔여 항목 정리
+    await deleteTargetByName(page, 'E2E Delete Test');
+
+    // 타겟 생성
     await page.getByRole('button', { name: '추가' }).click();
     await expect(page.getByText('동시 송출 대상 추가')).toBeVisible({ timeout: 5000 });
     await page.getByPlaceholder('예: YouTube 채널').fill('E2E Delete Test');
@@ -298,13 +301,17 @@ test.describe('Admin ReStream Management', () => {
     // 브라우저 confirm 대화상자 자동 수락
     page.once('dialog', (dialog) => dialog.accept());
 
-    // 해당 타겟의 삭제 버튼 클릭
+    // 해당 타겟의 삭제 버튼 클릭 (.first()로 중복 항목 방지)
     const targetRow = page
       .locator('div.flex.items-center.gap-3')
-      .filter({ hasText: 'E2E Delete Test' });
+      .filter({ hasText: 'E2E Delete Test' })
+      .first();
     const deleteButton = targetRow.locator('button[title="삭제"]');
     await expect(deleteButton).toBeVisible({ timeout: 5000 });
     await deleteButton.click();
+
+    // API 완료 + UI 갱신 대기
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 
     // 삭제 후 타겟이 제거되었는지 확인
     await expect(page.getByText('E2E Delete Test')).not.toBeVisible({ timeout: 10000 });
