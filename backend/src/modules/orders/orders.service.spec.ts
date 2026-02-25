@@ -145,6 +145,21 @@ describe('OrdersService - createOrderFromCart', () => {
               findFirst: jest.fn(),
               update: jest.fn(),
             },
+            product: {
+              findUnique: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
+            },
+            liveStream: {
+              findMany: jest.fn().mockResolvedValue([]),
+            },
+            systemConfig: {
+              findFirst: jest.fn().mockResolvedValue({
+                defaultShippingFee: 10,
+                caShippingFee: 8,
+                freeShippingEnabled: false,
+                freeShippingThreshold: 150,
+              }),
+            },
           },
         },
         {
@@ -160,6 +175,7 @@ describe('OrdersService - createOrderFromCart', () => {
           provide: InventoryService,
           useValue: {
             batchDecreaseStock: jest.fn(),
+            batchDecreaseStockTx: jest.fn().mockResolvedValue(undefined),
             restoreStock: jest.fn(),
           },
         },
@@ -487,7 +503,7 @@ describe('OrdersService - createOrderFromCart', () => {
 
       // Assert
       expect(mockTransaction).toHaveBeenCalledTimes(1);
-      expect(mockTransaction).toHaveBeenCalledWith(expect.any(Function));
+      expect(mockTransaction).toHaveBeenCalledWith(expect.any(Function), expect.any(Object));
     });
   });
 });
