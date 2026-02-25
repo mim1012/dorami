@@ -96,6 +96,8 @@ jobs:
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
         run: |
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -119,6 +121,8 @@ jobs:
             export IMAGE_TAG=${IMAGE_TAG}
             export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             export STAGING_HOST=${HOST}
+            export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+            export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
             docker compose -f docker-compose.staging.yml pull
 
             echo "=== Ensuring uploads directory is writable ==="
