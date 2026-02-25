@@ -30,27 +30,12 @@ export interface Order {
   subtotal: number;
   shippingFee: number;
   total: number;
+  pointsEarned: number;
+  pointsUsed: number;
   paymentStatus: PaymentStatus;
   shippingStatus: ShippingStatus;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
   bankTransferInfo?: BankTransferInfo;
-}
-
-export interface CreateOrderFromCartResponse {
-  id: string;
-  userId: string;
-  userEmail: string;
-  depositorName: string;
-  instagramId: string;
-  status: OrderStatus;
-  subtotal: number;
-  shippingFee: number;
-  total: number;
-  paymentStatus: PaymentStatus;
-  shippingStatus: ShippingStatus;
-  createdAt: string;
-  updatedAt: string;
-  items: OrderItem[];
 }

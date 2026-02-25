@@ -16,6 +16,7 @@ export class NoticesController {
   }
 
   @Get()
+  @Public()
   findAllActive() {
     return this.noticesService.findAllActive();
   }

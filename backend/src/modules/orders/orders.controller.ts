@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Param,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { ReservationService } from './reservation.service';
 import { CreateOrderDto, CreateOrderFromCartDto } from './dto/order.dto';
@@ -34,49 +26,43 @@ export class OrdersController {
   }
 
   @Post()
-  async createOrder(
-    @CurrentUser('userId') userId: string,
-    @Body() createOrderDto: CreateOrderDto,
-  ) {
+  async createOrder(@CurrentUser('userId') userId: string, @Body() createOrderDto: CreateOrderDto) {
     return this.ordersService.createOrder(userId, createOrderDto);
   }
 
   @Patch(':id/confirm')
-  async confirmOrder(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async confirmOrder(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
     return this.ordersService.confirmOrder(orderId, userId);
   }
 
   @Patch(':id/cancel')
-  async cancelOrder(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async cancelOrder(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
     await this.ordersService.cancelOrder(orderId, userId);
     return { message: 'Order cancelled successfully' };
   }
 
   @Get()
-  async getMyOrders(@CurrentUser('userId') userId: string) {
-    return this.ordersService.findByUserId(userId);
+  async getMyOrders(
+    @CurrentUser('userId') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.ordersService.findByUserId(userId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      status: status as any,
+    });
   }
 
   @Get(':id')
-  async getOrderById(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async getOrderById(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
     return this.ordersService.findById(orderId, userId);
   }
 
   // Reservation endpoints
   @Post('reservations/:productId')
-  async joinQueue(
-    @Param('productId') productId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async joinQueue(@Param('productId') productId: string, @CurrentUser('userId') userId: string) {
     return this.reservationService.addToQueue(userId, productId);
   }
 

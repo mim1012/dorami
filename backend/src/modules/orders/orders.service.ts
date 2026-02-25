@@ -525,14 +525,27 @@ export class OrdersService {
     return responseDto;
   }
 
-  async findByUserId(userId: string): Promise<OrderResponseDto[]> {
-    const orders = await this.prisma.order.findMany({
-      where: { userId },
-      include: { orderItems: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findByUserId(
+    userId: string,
+    options: { page?: number; limit?: number; status?: string } = {},
+  ): Promise<{ items: OrderResponseDto[]; total: number }> {
+    const { page = 1, limit = 20, status } = options;
+    const skip = (page - 1) * limit;
 
-    return orders.map((o) => this.mapToResponseDto(o));
+    const where = { userId, ...(status ? { status: status as any } : {}) };
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        include: { orderItems: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return { items: orders.map((o) => this.mapToResponseDto(o)), total };
   }
 
   /**
