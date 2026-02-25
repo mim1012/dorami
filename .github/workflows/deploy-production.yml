@@ -268,20 +268,31 @@ jobs:
             echo "=== Logging into GHCR ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
+            echo "=== Checking .env.production ==="
+            if [ ! -f .env.production ]; then
+              echo "ERROR: .env.production not found at /opt/dorami/.env.production"
+              echo "Please create it from .env.production.example before deploying."
+              exit 1
+            fi
+
+            echo "=== Stopping legacy dev containers (volumes persist) ==="
+            docker stop live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
+            docker rm live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
+
             echo "=== Pulling images ==="
             export IMAGE_TAG=${IMAGE_TAG}
             export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
-            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml --env-file .env.production pull
 
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+            docker compose -f docker-compose.prod.yml --env-file .env.production run --rm backend npx prisma migrate deploy
 
             echo "=== Blue-Green Deployment ==="
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans --scale backend=2
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans --scale backend=2
 
             sleep 60
 
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
 
             echo "=== Cleaning up old images ==="
             docker image prune -f
