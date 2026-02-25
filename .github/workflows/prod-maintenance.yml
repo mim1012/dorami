@@ -35,133 +35,132 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Execute Command
+      - name: status
+        if: inputs.command == 'status'
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
-          COMMAND: ${{ inputs.command }}
         run: |
-          case "$COMMAND" in
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== 컨테이너 상태 ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo ""
+          echo "=== 디스크 사용량 ==="
+          df -h / && docker system df
+          EOF
 
-            status)
-              ssh $USER@$HOST 'bash -s' << 'ENDSSH'
-                echo "=== 컨테이너 상태 ==="
-                docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                echo ""
-                echo "=== 디스크 사용량 ==="
-                df -h / && docker system df
-              ENDSSH
-              ;;
+      - name: logs-backend
+        if: inputs.command == 'logs-backend'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker logs dorami-backend-prod --tail=200 2>&1'
 
-            logs-backend)
-              ssh $USER@$HOST 'docker logs dorami-backend-prod --tail=200 2>&1'
-              ;;
+      - name: logs-frontend
+        if: inputs.command == 'logs-frontend'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker logs dorami-frontend-prod --tail=200 2>&1'
 
-            logs-frontend)
-              ssh $USER@$HOST 'docker logs dorami-frontend-prod --tail=200 2>&1'
-              ;;
+      - name: db-check
+        if: inputs.command == 'db-check'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== Postgres 컨테이너 목록 ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i postgres || echo "(없음)"
 
-            db-check)
-              # DB 상태 진단: 어떤 컨테이너가 뜨는지, 어디에 데이터가 있는지 확인
-              ssh $USER@$HOST 'bash -s' << 'ENDSSH'
-                echo "=== Postgres 컨테이너 목록 ==="
-                docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i postgres
+          echo ""
+          echo "=== 백엔드 DB 연결 정보 ==="
+          docker exec dorami-backend-prod env 2>/dev/null | grep -E 'DATABASE_URL|POSTGRES' || echo "(백엔드 없음)"
 
-                echo ""
-                echo "=== 백엔드 DB 연결 정보 ==="
-                docker exec dorami-backend-prod env 2>/dev/null | grep -E 'DATABASE_URL|POSTGRES' || echo "(백엔드 컨테이너 없음)"
+          echo ""
+          echo "=== dorami-postgres-prod (live_commerce) ==="
+          docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
+            -c 'SELECT COUNT(*) as users FROM "User";' \
+            -c 'SELECT COUNT(*) as products FROM "Product";' \
+            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(dorami-postgres-prod 없음)"
 
-                echo ""
-                echo "=== dorami-postgres-prod 데이터 (live_commerce) ==="
-                docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
-                  -c 'SELECT COUNT(*) as users FROM "User";' \
-                  -c 'SELECT COUNT(*) as products FROM "Product";' \
-                  -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null \
-                  || echo "(dorami-postgres-prod 없음)"
+          echo ""
+          echo "=== live-commerce-postgres (live_commerce_production) ==="
+          docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
+            -c 'SELECT COUNT(*) as users FROM "User";' \
+            -c 'SELECT COUNT(*) as products FROM "Product";' \
+            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(live-commerce-postgres 없음)"
+          EOF
 
-                echo ""
-                echo "=== live-commerce-postgres 데이터 (live_commerce_production) ==="
-                docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
-                  -c 'SELECT COUNT(*) as users FROM "User";' \
-                  -c 'SELECT COUNT(*) as products FROM "Product";' \
-                  -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null \
-                  || echo "(live-commerce-postgres 없음)"
-              ENDSSH
-              ;;
+      - name: db-restore
+        if: inputs.command == 'db-restore'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
 
-            db-restore)
-              # live-commerce-postgres(원본) → dorami-postgres-prod(현재) 데이터 복구
-              ssh $USER@$HOST 'bash -s' << 'ENDSSH'
-                set -euo pipefail
+          echo "=== DB 복구 시작 ==="
 
-                echo "=== DB 복구 시작 ==="
+          if ! docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
+            echo "ERROR: live-commerce-postgres 가 실행 중이지 않습니다"
+            docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep postgres || true
+            exit 1
+          fi
 
-                # 원본 컨테이너 확인
-                if ! docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
-                  echo "ERROR: live-commerce-postgres 컨테이너가 실행 중이지 않습니다"
-                  echo "중지된 컨테이너도 확인:"
-                  docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep postgres
-                  exit 1
-                fi
+          echo "=== 원본 데이터 개수 ==="
+          docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
+            -c 'SELECT COUNT(*) as users FROM "User";' \
+            -c 'SELECT COUNT(*) as products FROM "Product";' 2>/dev/null
 
-                # 원본 데이터 개수 확인
-                echo "=== 원본 데이터 개수 확인 ==="
-                docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
-                  -c 'SELECT COUNT(*) as users FROM "User";' \
-                  -c 'SELECT COUNT(*) as products FROM "Product";' 2>/dev/null
+          echo "=== 현재 DB 백업 ==="
+          mkdir -p /opt/dorami/backups
+          docker exec dorami-postgres-prod pg_dump -U postgres live_commerce \
+            | gzip > /opt/dorami/backups/pre-restore-$(date +%Y%m%d_%H%M%S).sql.gz \
+            && echo "백업 완료" || echo "백업 실패 (계속 진행)"
 
-                # 백업 먼저
-                echo "=== 현재 dorami-postgres-prod 백업 ==="
-                BACKUP_FILE="/opt/dorami/backups/pre-restore-$(date +%Y%m%d_%H%M%S).sql.gz"
-                mkdir -p /opt/dorami/backups
-                docker exec dorami-postgres-prod pg_dump -U postgres live_commerce \
-                  | gzip > "$BACKUP_FILE" 2>/dev/null && echo "백업 완료: $BACKUP_FILE" || echo "백업 실패 (무시)"
+          echo "=== 데이터 이전: live_commerce_production -> live_commerce ==="
+          docker exec live-commerce-postgres pg_dump \
+            -U postgres --no-owner --no-acl --clean --if-exists \
+            live_commerce_production \
+            | docker exec -i dorami-postgres-prod psql -U postgres -d live_commerce
 
-                # 복구 실행: live_commerce_production → live_commerce
-                echo "=== 데이터 이전 시작 ==="
-                docker exec live-commerce-postgres pg_dump \
-                  -U postgres \
-                  --no-owner \
-                  --no-acl \
-                  --clean \
-                  --if-exists \
-                  live_commerce_production \
-                  | docker exec -i dorami-postgres-prod psql -U postgres -d live_commerce
+          echo "=== 복구 후 데이터 개수 ==="
+          docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
+            -c 'SELECT COUNT(*) as users FROM "User";' \
+            -c 'SELECT COUNT(*) as products FROM "Product";' \
+            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null
 
-                echo "=== 복구 완료 — 데이터 개수 확인 ==="
-                docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
-                  -c 'SELECT COUNT(*) as users FROM "User";' \
-                  -c 'SELECT COUNT(*) as products FROM "Product";' \
-                  -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null
+          echo "=== 백엔드 재시작 ==="
+          docker restart dorami-backend-prod
+          sleep 15
+          docker inspect --format='Health: {{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || true
+          echo "DB 복구 완료!"
+          EOF
 
-                echo "=== 백엔드 재시작 ==="
-                docker restart dorami-backend-prod
-                sleep 10
+      - name: restart-backend
+        if: inputs.command == 'restart-backend'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker restart dorami-backend-prod && echo "백엔드 재시작 완료"'
 
-                echo "=== 백엔드 상태 확인 ==="
-                docker inspect --format='Health: {{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || true
-                echo "DB 복구 완료!"
-              ENDSSH
-              ;;
+      - name: restart-frontend
+        if: inputs.command == 'restart-frontend'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "프론트엔드 재시작 완료"'
 
-            restart-backend)
-              ssh $USER@$HOST 'docker restart dorami-backend-prod && echo "백엔드 재시작 완료"'
-              ;;
-
-            restart-frontend)
-              ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "프론트엔드 재시작 완료"'
-              ;;
-
-            restart-all)
-              ssh $USER@$HOST 'bash -s' << 'ENDSSH'
-                docker restart dorami-backend-prod dorami-frontend-prod
-                echo "재시작 완료"
-                docker ps --format "table {{.Names}}\t{{.Status}}"
-              ENDSSH
-              ;;
-
-            *)
-              echo "Unknown command: $COMMAND"
-              exit 1
-              ;;
-          esac
+      - name: restart-all
+        if: inputs.command == 'restart-all'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          docker restart dorami-backend-prod dorami-frontend-prod
+          echo "재시작 완료"
+          docker ps --format "table {{.Names}}\t{{.Status}}"
+          EOF
