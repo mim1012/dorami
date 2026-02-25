@@ -29,7 +29,7 @@ async function createTestProduct(opts: {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@doremi.shop', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
     });
 
     let csrfToken = '';
@@ -85,7 +85,7 @@ async function getAnyStreamKey(): Promise<string | null> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@doremi.shop', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
     });
     // 예정 스트림
     const upcomingRes = await apiCtx.get('/api/streaming/upcoming?limit=1');
@@ -140,7 +140,7 @@ async function deleteProduct(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@doremi.shop', role: 'ADMIN' },
+      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
     });
     let csrfToken = '';
     try {
