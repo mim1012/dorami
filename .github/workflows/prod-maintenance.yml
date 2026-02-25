@@ -70,33 +70,28 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
           ssh $USER@$HOST bash << 'EOF'
-          echo "=== 모든 Postgres 컨테이너 (stopped 포함) ==="
-          docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i postgres || echo "(없음)"
+          echo "=== 모든 컨테이너 (stopped 포함) ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}"
 
           echo ""
-          echo "=== Docker 볼륨 (postgres/dorami/live 관련) ==="
-          docker volume ls | grep -iE "postgres|dorami|live" || echo "(관련 볼륨 없음)"
+          echo "=== 전체 Docker 볼륨 ==="
+          docker volume ls
 
           echo ""
-          echo "=== 백엔드 DATABASE_URL ==="
-          docker exec dorami-backend-prod env 2>/dev/null | grep DATABASE_URL || echo "(백엔드 없음)"
+          echo "=== dorami-postgres-prod 환경변수 ==="
+          docker exec dorami-postgres-prod env 2>/dev/null | grep -E 'POSTGRES_|PG' || echo "(컨테이너 없음)"
 
           echo ""
-          echo "=== dorami-postgres-prod 내 DB 목록 ==="
-          docker exec dorami-postgres-prod psql -U postgres -l 2>/dev/null || echo "(접속 실패)"
+          echo "=== dorami-postgres-prod DB 목록 (컨테이너 내부 env 사용) ==="
+          docker exec dorami-postgres-prod bash -c 'PGPASSWORD=$POSTGRES_PASSWORD psql -U $POSTGRES_USER -l 2>&1' || echo "(psql 실패)"
 
           echo ""
-          echo "=== dorami_production DB 데이터 개수 ==="
-          docker exec dorami-postgres-prod psql -U postgres -d dorami_production \
-            -c 'SELECT COUNT(*) as users FROM "User";' \
-            -c 'SELECT COUNT(*) as products FROM "Product";' \
-            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null || echo "(dorami_production DB 없음)"
+          echo "=== dorami_postgres_data 볼륨 크기 ==="
+          docker run --rm -v dorami_postgres_data:/data alpine du -sh /data 2>/dev/null || echo "(볼륨 없음)"
 
           echo ""
-          echo "=== live_commerce DB 데이터 개수 ==="
-          docker exec dorami-postgres-prod psql -U postgres -d live_commerce \
-            -c 'SELECT COUNT(*) as users FROM "User";' \
-            -c 'SELECT COUNT(*) as products FROM "Product";' 2>/dev/null || echo "(live_commerce DB 없음)"
+          echo "=== .env.production 내 DB 설정 ==="
+          grep -E 'POSTGRES_|DATABASE' /opt/dorami/.env.production 2>/dev/null || echo "(파일 없음)"
           EOF
 
       - name: db-restore
@@ -116,6 +111,10 @@ jobs:
             exit 1
           fi
 
+          PGUSER=$(docker exec dorami-postgres-prod env | grep POSTGRES_USER | cut -d= -f2)
+          PGPASS=$(docker exec dorami-postgres-prod env | grep POSTGRES_PASSWORD | cut -d= -f2)
+          PGDB=$(docker exec dorami-postgres-prod env | grep POSTGRES_DB | cut -d= -f2)
+
           echo "=== 원본 데이터 개수 ==="
           docker exec live-commerce-postgres psql -U postgres -d live_commerce_production \
             -c 'SELECT COUNT(*) as users FROM "User";' \
@@ -123,21 +122,23 @@ jobs:
 
           echo "=== 현재 DB 백업 ==="
           mkdir -p /opt/dorami/backups
-          docker exec dorami-postgres-prod pg_dump -U postgres dorami_production \
+          docker exec dorami-postgres-prod bash -c \
+            "PGPASSWORD=$PGPASS pg_dump -U $PGUSER $PGDB" \
             | gzip > /opt/dorami/backups/pre-restore-$(date +%Y%m%d_%H%M%S).sql.gz \
             && echo "백업 완료" || echo "백업 실패 (계속 진행)"
 
-          echo "=== 데이터 이전: live_commerce_production -> dorami_production ==="
+          echo "=== 데이터 이전: live_commerce_production -> $PGDB ==="
           docker exec live-commerce-postgres pg_dump \
             -U postgres --no-owner --no-acl --clean --if-exists \
             live_commerce_production \
-            | docker exec -i dorami-postgres-prod psql -U postgres -d dorami_production
+            | docker exec -i dorami-postgres-prod bash -c "PGPASSWORD=$PGPASS psql -U $PGUSER -d $PGDB"
 
           echo "=== 복구 후 데이터 개수 ==="
-          docker exec dorami-postgres-prod psql -U postgres -d dorami_production \
-            -c 'SELECT COUNT(*) as users FROM "User";' \
-            -c 'SELECT COUNT(*) as products FROM "Product";' \
-            -c 'SELECT COUNT(*) as orders FROM "Order";' 2>/dev/null
+          docker exec dorami-postgres-prod bash -c \
+            "PGPASSWORD=$PGPASS psql -U $PGUSER -d $PGDB \
+             -c 'SELECT COUNT(*) as users FROM \"User\";' \
+             -c 'SELECT COUNT(*) as products FROM \"Product\";' \
+             -c 'SELECT COUNT(*) as orders FROM \"Order\";'" 2>/dev/null
 
           echo "=== 백엔드 재시작 ==="
           docker restart dorami-backend-prod
