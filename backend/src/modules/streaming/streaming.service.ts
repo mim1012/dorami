@@ -20,6 +20,7 @@ import { randomBytes } from 'crypto';
 @Injectable()
 export class StreamingService {
   private readonly logger = new Logger(StreamingService.name);
+  private readonly pendingStreamDoneTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private prisma: PrismaService,
@@ -27,6 +28,25 @@ export class StreamingService {
     private configService: ConfigService,
     private eventEmitter: EventEmitter2,
   ) {}
+
+  private getStreamDoneGraceMs(): number {
+    const raw = this.configService.get<string>('STREAM_DONE_GRACE_MS');
+    const parsed = raw ? Number(raw) : NaN;
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+    return 45_000;
+  }
+
+  private clearPendingStreamDone(streamKey: string, reason: string): void {
+    const pending = this.pendingStreamDoneTimers.get(streamKey);
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending);
+    this.pendingStreamDoneTimers.delete(streamKey);
+    this.logger.log(`Cancelled pending stream-offline timer for ${streamKey} (${reason})`);
+  }
 
   /**
    * Get upcoming live streams for homepage
@@ -595,6 +615,10 @@ export class StreamingService {
   async authenticateStream(streamKey: string, clientIp?: string): Promise<boolean> {
     this.logger.log(`RTMP auth request for stream key: ${streamKey} from IP: ${clientIp}`);
 
+    // OBS reconnect may arrive after a brief network flap.
+    // Cancel delayed offline transition if it was already scheduled.
+    this.clearPendingStreamDone(streamKey, 'stream re-published');
+
     // Find stream session by key
     const session = await this.prisma.liveStream.findUnique({
       where: { streamKey },
@@ -664,38 +688,64 @@ export class StreamingService {
   async handleStreamDone(streamKey: string): Promise<void> {
     this.logger.log(`RTMP stream done: ${streamKey}`);
 
-    // Find stream session by key
-    const session = await this.prisma.liveStream.findUnique({
-      where: { streamKey },
-    });
+    // Cancel an existing timer and reschedule from the latest unpublish event.
+    this.clearPendingStreamDone(streamKey, 'rescheduled by new on_unpublish');
+    const graceMs = this.getStreamDoneGraceMs();
 
-    if (!session) {
-      this.logger.warn(`RTMP done: Stream key not found - ${streamKey}`);
-      return;
-    }
+    const timer = setTimeout(async () => {
+      try {
+        this.pendingStreamDoneTimers.delete(streamKey);
 
-    // Calculate total duration if stream was live
-    let totalDuration: number | null = null;
-    if (session.startedAt) {
-      totalDuration = Math.floor((new Date().getTime() - session.startedAt.getTime()) / 1000);
-    }
+        // Find stream session by key
+        const session = await this.prisma.liveStream.findUnique({
+          where: { streamKey },
+        });
 
-    // Update stream status to OFFLINE
-    await this.prisma.liveStream.update({
-      where: { id: session.id },
-      data: {
-        status: 'OFFLINE',
-        endedAt: new Date(),
-        totalDuration,
-      },
-    });
+        if (!session) {
+          this.logger.warn(`RTMP done: Stream key not found - ${streamKey}`);
+          return;
+        }
 
-    // Remove from Redis cache
-    await this.redisService.del(`stream:${streamKey}:meta`);
-    await this.redisService.del(`stream:${streamKey}:viewers`);
+        // Stream was already transitioned by another flow.
+        if (session.status !== 'LIVE') {
+          this.logger.log(
+            `Skipping delayed stream-offline for ${streamKey}; current status is ${session.status}`,
+          );
+          return;
+        }
 
-    this.logger.log(`Stream ${streamKey} ended. Duration: ${totalDuration}s`);
-    this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
+        // Calculate total duration if stream was live
+        let totalDuration: number | null = null;
+        if (session.startedAt) {
+          totalDuration = Math.floor((new Date().getTime() - session.startedAt.getTime()) / 1000);
+        }
+
+        // Update stream status to OFFLINE
+        await this.prisma.liveStream.update({
+          where: { id: session.id },
+          data: {
+            status: 'OFFLINE',
+            endedAt: new Date(),
+            totalDuration,
+          },
+        });
+
+        // Remove from Redis cache
+        await this.redisService.del(`stream:${streamKey}:meta`);
+        await this.redisService.del(`stream:${streamKey}:viewers`);
+
+        this.logger.log(
+          `Stream ${streamKey} ended after ${graceMs}ms grace. Duration: ${totalDuration}s`,
+        );
+        this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed delayed stream-offline for ${streamKey}: ${message}`);
+      }
+    }, graceMs);
+
+    this.pendingStreamDoneTimers.set(streamKey, timer);
+    this.logger.log(`Scheduled delayed stream-offline in ${graceMs}ms for ${streamKey}`);
   }
 
   /**

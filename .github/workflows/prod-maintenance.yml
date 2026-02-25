@@ -16,11 +16,13 @@ on:
           - logs-backend
           - logs-frontend
           - logs-proxy
+          - logs-srs
           - db-check
           - db-restore
           - find-data
           - restart-backend
           - restart-frontend
+          - restart-srs
           - restart-all
 
 jobs:
@@ -79,6 +81,13 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: ssh $USER@$HOST 'docker logs dorami-proxy-prod --tail=200 2>&1'
+
+      - name: logs-srs
+        if: inputs.command == 'logs-srs'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker logs dorami-srs-prod --tail=200 2>&1'
 
       - name: db-check
         if: inputs.command == 'db-check'
@@ -244,6 +253,13 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "완료"'
 
+      - name: restart-srs
+        if: inputs.command == 'restart-srs'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker restart dorami-srs-prod && echo "완료"'
+
       - name: restart-all
         if: inputs.command == 'restart-all'
         env:
@@ -251,6 +267,6 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
           ssh $USER@$HOST bash << 'EOF'
-          docker restart dorami-backend-prod dorami-frontend-prod
+          docker restart dorami-backend-prod dorami-frontend-prod dorami-srs-prod
           docker ps --format "table {{.Names}}\t{{.Status}}"
           EOF
