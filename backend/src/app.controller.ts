@@ -1,13 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Public } from './modules/auth/decorators/public.decorator';
-import { PrismaService } from './common/prisma/prisma.service';
+import { AdminService } from './modules/admin/admin.service';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly prisma: PrismaService,
+    private readonly adminService: AdminService,
   ) {}
 
   @Public()
@@ -28,14 +28,10 @@ export class AppController {
   @Public()
   @Get('config/payment')
   async getPaymentConfig() {
-    const config = await this.prisma.systemConfig.upsert({
-      where: { id: 'system' },
-      update: {},
-      create: { id: 'system' },
-    });
+    const settings = await this.adminService.getSystemSettings();
     return {
-      zelleEmail: config.zelleEmail,
-      zelleRecipientName: config.zelleRecipientName,
+      zelleEmail: settings.zelleEmail,
+      zelleRecipientName: settings.zelleRecipientName,
     };
   }
 }
