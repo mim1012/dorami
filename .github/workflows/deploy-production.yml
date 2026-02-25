@@ -181,15 +181,15 @@ jobs:
     steps:
       - name: Setup SSH
         env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
+          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || { echo "SSH key invalid"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
       - name: Create Database Backup
         env:
@@ -263,15 +263,15 @@ jobs:
 
       - name: Setup SSH
         env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
+          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || { echo "SSH key invalid"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
       - name: Check Server State (Docker volumes & containers)
         env:
@@ -608,15 +608,15 @@ jobs:
     steps:
       - name: Setup SSH
         env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
+          SSH_KEY_B64: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "SSH key OK" || { echo "SSH key invalid"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
       - name: Health Check - Backend API
         # Backend uses expose: not ports:, so curl localhost:3001 won't work from host.
