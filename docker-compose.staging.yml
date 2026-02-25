@@ -46,6 +46,8 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://dorami:${DB_PASSWORD}@postgres:5432/live_commerce
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      REDIS_ADAPTER_ENABLED: "true"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
@@ -69,6 +71,11 @@ services:
       - "127.0.0.1:3001:3001"
     volumes:
       - ./backend/uploads:/app/uploads
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-frontend:${IMAGE_TAG:-latest}
@@ -90,6 +97,11 @@ services:
       NEXT_PUBLIC_APP_ENV: staging
     ports:
       - "127.0.0.1:3000:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   nginx:
     image: nginx:alpine
@@ -108,10 +120,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # SRS Media Server (RTMP ingest → HTTP-FLV + HLS)
   srs:
-    image: ossrs/srs:6
+    build:
+      context: ./infrastructure/docker/srs
+      dockerfile: Dockerfile
     restart: always
     depends_on:
       - backend
@@ -121,8 +140,11 @@ services:
       - "1935:1935"
       - "8443:1935"
       - "127.0.0.1:8080:8080"
-    volumes:
-      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
 volumes:
   postgres_data:
