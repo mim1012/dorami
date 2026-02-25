@@ -513,12 +513,15 @@ describe('StreamingService', () => {
       );
     });
 
-    it('should throw INVALID_STREAM_STATE when stream is LIVE', async () => {
+    it('should allow updating a LIVE stream (no LIVE state guard)', async () => {
+      const updated = { ...mockLiveStream, title: '제목' };
       jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockLiveStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
 
-      await expect(service.updateStream('stream-2', 'user-1', { title: '제목' })).rejects.toThrow(
-        BusinessException,
-      );
+      const result = await service.updateStream('stream-2', 'user-1', { title: '제목' });
+
+      expect(result.title).toBe('제목');
+      expect(result.status).toBe('LIVE');
     });
 
     it('should only update provided fields', async () => {
