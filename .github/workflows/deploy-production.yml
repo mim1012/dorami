@@ -102,6 +102,7 @@ jobs:
         with:
           ref: ${{ needs.validate.outputs.version }}
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve image tag from git SHA
         id: resolve
