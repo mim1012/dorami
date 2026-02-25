@@ -28,7 +28,7 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
 
   return (
     <div
-      className={`animate-fade-in ${compact ? 'mb-1.5 px-2.5 py-1.5 bg-black/50 backdrop-blur-sm rounded-xl mx-1' : 'mb-3'} ${isDeleted ? 'opacity-50' : ''}`}
+      className={`animate-fade-in ${compact ? 'mb-1.5 px-2.5 py-1.5 rounded-xl mx-1' : 'mb-3'} ${isDeleted ? 'opacity-50' : ''}`}
     >
       {/* Username + Timestamp */}
       <div className="flex items-baseline justify-between gap-2 mb-1">

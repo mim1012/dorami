@@ -1,9 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Megaphone, AlertCircle, Sparkles, Inbox } from 'lucide-react';
-import { Modal } from '@/components/common/Modal';
+import { AlertCircle, X, Inbox } from 'lucide-react';
 import { getActiveNotices, type Notice } from '@/lib/api/notices';
 
 interface NoticeModalProps {
@@ -25,11 +23,7 @@ function formatRelativeDate(dateStr: string): string {
   return `${diffDays}일 전`;
 }
 
-type Tab = 'important' | 'new';
-
 export function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('important');
-
   const { data: notices = [], isLoading } = useQuery<Notice[]>({
     queryKey: ['notices', 'active'],
     queryFn: getActiveNotices,
@@ -37,97 +31,91 @@ export function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
     enabled: isOpen,
   });
 
-  const importantNotices = notices.filter((n) => n.category === 'IMPORTANT');
-  const newNotices = notices.filter(isNew);
-
-  const displayedNotices = activeTab === 'important' ? importantNotices : newNotices;
+  if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="공지사항" maxWidth="md">
-      <div className="space-y-4">
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('important')}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'important'
-                ? 'border-hot-pink text-hot-pink'
-                : 'border-transparent text-secondary-text hover:text-primary-text'
-            }`}
-          >
-            <AlertCircle className="w-4 h-4" />
-            중요
-            {importantNotices.length > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-hot-pink text-white text-[10px] font-bold">
-                {importantNotices.length}
-              </span>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in-backdrop"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Bottom Sheet */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="공지사항"
+        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-9 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+          <h2 className="text-white font-bold text-base flex items-center gap-2">
+            공지사항
+            {notices.length > 0 && (
+              <span className="text-white/40 text-sm font-normal">{notices.length}개</span>
             )}
-          </button>
+          </h2>
           <button
-            onClick={() => setActiveTab('new')}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'new'
-                ? 'border-hot-pink text-hot-pink'
-                : 'border-transparent text-secondary-text hover:text-primary-text'
-            }`}
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20 transition-colors"
+            aria-label="닫기"
           >
-            <Sparkles className="w-4 h-4" />
-            NEW
-            {newNotices.length > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-hot-pink text-white text-[10px] font-bold">
-                {newNotices.length}
-              </span>
-            )}
+            <X className="w-4 h-4 text-white" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="min-h-[240px]">
+        <div className="overflow-y-auto flex-1 p-4 space-y-2.5">
           {isLoading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-6 h-6 border-2 border-hot-pink border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center py-10">
+              <div className="w-6 h-6 border-2 border-[#FF007A] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : displayedNotices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-center">
-              <Inbox className="w-10 h-10 text-secondary-text/40 mb-2" aria-hidden="true" />
-              <p className="text-secondary-text text-sm">
-                {activeTab === 'important'
-                  ? '중요 공지가 없습니다'
-                  : '최근 7일 이내 공지가 없습니다'}
-              </p>
+          ) : notices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Inbox className="w-10 h-10 text-white/20 mb-2" aria-hidden="true" />
+              <p className="text-white/40 text-sm">공지사항이 없습니다</p>
             </div>
           ) : (
-            <ul className="space-y-3">
-              {displayedNotices.map((notice) => (
-                <li
-                  key={notice.id}
-                  className="bg-content-bg border border-border-color rounded-button p-4"
-                >
-                  <div className="flex items-start gap-2">
-                    {notice.category === 'IMPORTANT' && (
-                      <AlertCircle
-                        className="w-4 h-4 text-hot-pink flex-shrink-0 mt-0.5"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-primary-text text-sm leading-snug">
+            notices.map((notice) => (
+              <div key={notice.id} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="flex items-start gap-2">
+                  {notice.category === 'IMPORTANT' && (
+                    <AlertCircle
+                      className="w-4 h-4 text-[#FF007A] flex-shrink-0 mt-0.5"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-white text-sm leading-snug">
                         {notice.title}
                       </p>
-                      <p className="text-secondary-text text-sm mt-1 whitespace-pre-wrap leading-relaxed">
-                        {notice.content}
-                      </p>
-                      <p className="text-secondary-text/60 text-xs mt-2 text-right">
-                        {formatRelativeDate(notice.createdAt)}
-                      </p>
+                      {isNew(notice) && (
+                        <span className="text-[9px] font-bold text-[#FF007A] bg-[#FF007A]/15 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          NEW
+                        </span>
+                      )}
                     </div>
+                    <p className="text-white/60 text-sm whitespace-pre-wrap leading-relaxed">
+                      {notice.content}
+                    </p>
+                    <p className="text-white/30 text-xs mt-2 text-right">
+                      {formatRelativeDate(notice.createdAt)}
+                    </p>
                   </div>
-                </li>
-              ))}
-            </ul>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
-    </Modal>
+    </>
   );
 }
