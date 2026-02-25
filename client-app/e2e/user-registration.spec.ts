@@ -16,8 +16,11 @@ test.describe('User Registration (Profile)', () => {
     // about:blank에서는 localStorage 접근 불가(SecurityError)이므로
     // devLogin의 page.evaluate 호출 전 실제 origin으로 이동
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    // 프로필 미완성 사용자로 로그인 (고유 이메일)
-    await devLogin(page, 'USER');
+    // 프로필 미완성 사용자로 로그인 (고유 이메일, 프로필 완성 건너뜀)
+    await devLogin(page, 'USER', {
+      skipProfileCompletion: true,
+      email: `e2e_reg_${Date.now()}@test.com`,
+    });
   });
 
   test('should display registration form with all required fields', async ({ page }) => {
