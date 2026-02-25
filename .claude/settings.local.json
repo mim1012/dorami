@@ -125,7 +125,19 @@
       "mcp__plugin_oh-my-claudecode_t__notepad_read",
       "mcp__plugin_oh-my-claudecode_t__project_memory_read",
       "mcp__plugin_oh-my-claudecode_t__state_read",
-      "mcp__plugin_oh-my-claudecode_t__state_clear"
+      "mcp__plugin_oh-my-claudecode_t__state_clear",
+      "Bash(npm view oh-my-claudecode version 2>/dev/null || echo \"Latest: \\(unavailable\\)\")",
+      "mcp__plugin_oh-my-claudecode_t__state_write",
+      "Bash(pkill -f \"nest start\" 2>/dev/null; pkill -f \"next dev\" 2>/dev/null; pkill -f \"concurrently\" 2>/dev/null; sleep 2; echo \"Processes cleaned\")",
+      "Bash(lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null; lsof -ti:3001 2>/dev/null | xargs kill -9 2>/dev/null; echo \"Ports cleared\")",
+      "Bash(fuser -k 3000/tcp 2>/dev/null; fuser -k 3001/tcp 2>/dev/null; sleep 1; echo \"Ports freed\"; fuser 3000/tcp 2>/dev/null && echo \"3000 still in use\" || echo \"3000 free\"; fuser 3001/tcp 2>/dev/null && echo \"3001 still in use\" || echo \"3001 free\")",
+      "Bash(sleep 10 && fuser 3000/tcp 2>/dev/null && echo \"3000 in use\" || echo \"3000 free\"; fuser 3001/tcp 2>/dev/null && echo \"3001 in use\" || echo \"3001 free\")",
+      "Bash(fuser 3000/tcp 3001/tcp 2>/dev/null; ps aux | grep -E \"nest|next\" | grep -v grep | head -5)",
+      "Bash(pkill -f \"nest start\" 2>/dev/null; pkill -f \"next dev\" 2>/dev/null; pkill -f \"next-router-worker\" 2>/dev/null; sleep 2 && ps aux | grep -E \"\\(nest|next\\)\" | grep -v grep | head -5)",
+      "Bash(pkill -f \"nest\" 2>/dev/null; sleep 1; pkill -f \"next\" 2>/dev/null; sleep 1; echo \"done\")",
+      "Bash(ls -la /mnt/d/Project/dorami/client-app/.env* 2>/dev/null)",
+      "Bash(npx nest build 2>&1)",
+      "Bash(npx nest build 2>&1 && echo \"BUILD_SUCCESS\")"
     ]
   },
   "teammateMode": "tmux"

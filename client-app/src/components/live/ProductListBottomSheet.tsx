@@ -11,6 +11,7 @@ interface Props {
   products: Product[];
   activeProductId?: string | null;
   onSelectProduct: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
 }
 
 export default function ProductListBottomSheet({
@@ -19,6 +20,7 @@ export default function ProductListBottomSheet({
   products,
   activeProductId,
   onSelectProduct,
+  onAddToCart,
 }: Props) {
   if (!isOpen) return null;
 
@@ -72,17 +74,16 @@ export default function ProductListBottomSheet({
               const isSoldOut = product.status === 'SOLD_OUT';
 
               return (
-                <button
+                <div
                   key={product.id}
                   onClick={() => {
                     if (!isSoldOut) onSelectProduct(product);
                   }}
-                  disabled={isSoldOut}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border cursor-pointer ${
                     isActive
                       ? 'bg-[#FF007A]/15 border-[#FF007A]/50'
                       : isSoldOut
-                        ? 'bg-white/3 border-white/5 opacity-50 cursor-not-allowed'
+                        ? 'bg-white/3 border-white/5 opacity-50'
                         : 'bg-white/5 border-white/10 active:bg-white/10'
                   }`}
                 >
@@ -116,20 +117,23 @@ export default function ProductListBottomSheet({
                     </div>
                     {isSoldOut && <p className="text-white/30 text-xs mt-1">품절</p>}
                   </div>
-                  {isActive && (
-                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#FF007A] flex items-center justify-center">
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none" aria-hidden="true">
-                        <path
-                          d="M1 3.5L3.5 6 8 1"
-                          stroke="white"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </button>
+                  <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isSoldOut) onAddToCart?.(product);
+                      }}
+                      disabled={isSoldOut}
+                      className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      aria-label="장바구니 담기"
+                    >
+                      장바구니 담기
+                    </button>
+                    {isActive && (
+                      <span className="text-[#FF007A] text-[10px] font-medium">대표 상품</span>
+                    )}
+                  </div>
+                </div>
               );
             })
           )}

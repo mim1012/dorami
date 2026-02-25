@@ -764,7 +764,7 @@ export default function BroadcastsPage() {
                         </div>
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          accept="image/*"
                           onChange={handleThumbnailFileChange}
                           className="hidden"
                           disabled={isUploadingThumbnail}
@@ -1014,7 +1014,7 @@ export default function BroadcastsPage() {
                     </div>
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      accept="image/*"
                       onChange={handleEditThumbnailFileChange}
                       className="hidden"
                       disabled={isUploadingEditThumbnail}
@@ -1027,7 +1027,7 @@ export default function BroadcastsPage() {
                     {editThumbnailPreview ? '다시 선택' : '변경'}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      accept="image/*"
                       onChange={handleEditThumbnailFileChange}
                       className="hidden"
                       disabled={isUploadingEditThumbnail}

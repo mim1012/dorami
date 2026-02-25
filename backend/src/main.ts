@@ -735,6 +735,52 @@ async function bootstrap() {
     })();
   });
 
+  // Listen for order:paid events from OrdersService and broadcast purchase notification
+  eventEmitter.on('order:paid', (payload: { orderId: string; userId: string; paidAt: Date }) => {
+    void (async () => {
+      try {
+        const [user, order] = await Promise.all([
+          prismaService.user.findUnique({
+            where: { id: payload.userId },
+            select: { instagramId: true, name: true },
+          }),
+          prismaService.order.findUnique({
+            where: { id: payload.orderId },
+            include: {
+              orderItems: {
+                include: {
+                  Product: {
+                    select: { streamKey: true },
+                  },
+                },
+              },
+            },
+          }),
+        ]);
+
+        const displayName = user?.instagramId || user?.name || '익명';
+        const streamKey = order?.orderItems?.[0]?.Product?.streamKey;
+
+        if (!streamKey) {
+          logger.warn(`order:paid — no streamKey found for order ${payload.orderId}`);
+          return;
+        }
+
+        rootNamespace.to(`stream:${streamKey}`).emit('order:purchase:notification', {
+          streamKey,
+          displayName,
+          message: `${displayName}님이 결제했습니다`,
+        });
+
+        logger.log(
+          `Broadcasted order:purchase:notification to stream:${streamKey} for user ${displayName}`,
+        );
+      } catch (error) {
+        logger.warn(`Failed to broadcast order:purchase:notification: ${error}`);
+      }
+    })();
+  });
+
   // Create root namespace (/) with WebsocketGateway logic
   const rootNamespace = io.of('/');
   logger.log('✅ Configured root (/) namespace manually');
