@@ -95,7 +95,6 @@ test.describe('Admin Live Product Realtime', () => {
     await page.getByLabel('상품명').fill(testProductName);
     await page.getByLabel('가격 ($)').fill('39000');
     await page.getByLabel('재고').fill('10');
-    await page.getByLabel('배송비 ($)').fill('3000');
 
     // 등록 제출
     await page.getByRole('button', { name: '등록하기', exact: true }).click();
