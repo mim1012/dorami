@@ -38,6 +38,7 @@ export type LiveEvent =
   | { type: 'CONNECT_FAIL' }
   | { type: 'RETRY_TICK' }
   | { type: 'STREAM_ENDED' }
+  | { type: 'STREAM_RECOVERED' }
   // Stream
   | { type: 'MANIFEST_OK' }
   | { type: 'MANIFEST_TIMEOUT' }
@@ -154,6 +155,8 @@ function connectionReducer(state: ConnectionState, event: LiveEvent): Connection
       return state;
     case 'STREAM_ENDED':
       return 'ended';
+    case 'STREAM_RECOVERED':
+      return 'connected';
     default:
       return state;
   }
@@ -178,6 +181,8 @@ function streamReducer(state: StreamState, event: LiveEvent): StreamState {
       return 'error';
     case 'STREAM_ENDED':
       return 'no_stream';
+    case 'STREAM_RECOVERED':
+      return 'waiting_manifest';
     default:
       return state;
   }
@@ -241,8 +246,9 @@ export function useLiveLayoutMachine() {
           dispatchConnection(event);
           break;
 
-        // STREAM_ENDED affects both connection and stream FSMs
+        // Stream lifecycle events affect both connection and stream FSMs
         case 'STREAM_ENDED':
+        case 'STREAM_RECOVERED':
           dispatchConnection(event);
           dispatchStream(event);
           break;
