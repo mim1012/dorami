@@ -36,7 +36,7 @@ jobs:
           if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
             printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+            printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa
           fi
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
