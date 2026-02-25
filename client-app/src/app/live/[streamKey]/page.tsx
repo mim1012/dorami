@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
@@ -101,6 +101,8 @@ export default function LiveStreamPage() {
   const [mobileMessage, setMobileMessage] = useState('');
   const [purchaseNotif, setPurchaseNotif] = useState<string | null>(null);
   const purchaseNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousStreamStatusRef = useRef<StreamStatus['status'] | null>(null);
+  const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
 
   // ── FSM ────────────────────────────────────────────────────────────────────
@@ -175,10 +177,6 @@ export default function LiveStreamPage() {
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
   }, [chatMessages, cartActivities]);
-
-  useEffect(() => {
-    fetchStreamStatus();
-  }, [streamKey]);
 
   // Real viewer count from VideoPlayer WebSocket
   const handleViewerCountChange = (count: number) => {
@@ -342,21 +340,54 @@ export default function LiveStreamPage() {
     };
   }, [streamKey]);
 
-  const fetchStreamStatus = async () => {
+  const fetchStreamStatus = useCallback(async () => {
     try {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
+      const nextStatus = response.data.status;
+      const previousStatus = previousStreamStatusRef.current;
       setStreamStatus(response.data);
 
-      if (response.data.status === 'OFFLINE') {
-        setError('현재 방송 중이 아닙니다');
+      if (nextStatus === 'LIVE') {
+        setError(null);
+        if (previousStatus !== 'LIVE') {
+          dispatch({ type: 'STREAM_RECOVERED' });
+          // OFFLINE/PENDING -> LIVE transition should recreate player to clear stale ended state.
+          if (previousStatus !== null) {
+            setPlayerSessionSeed((prev) => prev + 1);
+          }
+        }
+      } else if (nextStatus === 'OFFLINE') {
+        if (previousStatus === 'LIVE') {
+          dispatch({ type: 'STREAM_ENDED' });
+        }
+        // Show OFFLINE message only on initial fetch. During runtime we keep current UI state.
+        if (previousStatus === null) {
+          setError('현재 방송 중이 아닙니다');
+        }
       }
+
+      previousStreamStatusRef.current = nextStatus;
     } catch (err: any) {
       console.error('Failed to fetch stream status:', err);
-      setError('방송을 찾을 수 없습니다');
+      if (previousStreamStatusRef.current === null) {
+        setError('방송을 찾을 수 없습니다');
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dispatch, streamKey]);
+
+  // Poll stream status so UI can recover without manual refresh after transient disconnects.
+  useEffect(() => {
+    void fetchStreamStatus();
+
+    const intervalMs = snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
+    const interval = setInterval(() => {
+      void fetchStreamStatus();
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [fetchStreamStatus, snapshot, stream]);
 
   const handleMobileSendMessage = (message: string) => {
     if (message.trim()) {
@@ -531,6 +562,7 @@ export default function LiveStreamPage() {
           {/* 0. Video — fullscreen background */}
           <div className="absolute inset-0 z-0">
             <VideoPlayer
+              key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
               onViewerCountChange={handleViewerCountChange}
@@ -800,6 +832,7 @@ export default function LiveStreamPage() {
                 {/* Desktop bottom gradient scrim */}
                 <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-black/70 to-transparent z-10 pointer-events-none" />
                 <VideoPlayer
+                  key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
                   onViewerCountChange={handleViewerCountChange}

@@ -185,8 +185,8 @@ async function bootstrap() {
       credentials: true,
     },
     transports: ['websocket', 'polling'],
-    pingInterval: 10000,
-    pingTimeout: 5000,
+    pingInterval: 25000,
+    pingTimeout: 60000,
   });
 
   // Attach Redis adapter to Socket.IO
