@@ -1,6 +1,11 @@
 # Production Deployment Workflow
 # REQUIRES manual approval before deployment
 # Only triggered manually or via release tags
+#
+# Production architecture:
+#   - App: PM2 manages backend + frontend from /home/ubuntu/dorami/
+#   - Infra: Docker manages postgres, redis, srs
+#   - Proxy: Host nginx handles SSL termination (NOT Docker nginx-proxy)
 
 name: Deploy to Production
 
@@ -185,7 +190,7 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST << 'ENDSSH'
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
             set -e
 
             BACKUP_DIR="/opt/dorami/backups"
@@ -194,13 +199,26 @@ jobs:
             mkdir -p $BACKUP_DIR
 
             echo "=== Creating database backup ==="
-            docker compose -f /opt/dorami/docker-compose.prod.yml exec -T postgres \
-              pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > $BACKUP_DIR/db_backup_$TIMESTAMP.sql.gz
+            # Read DB credentials from .env.production
+            if [ -f /opt/dorami/.env.production ]; then
+              POSTGRES_USER=$(grep '^POSTGRES_USER=' /opt/dorami/.env.production | cut -d= -f2)
+              POSTGRES_DB=$(grep '^POSTGRES_DB=' /opt/dorami/.env.production | cut -d= -f2)
+            else
+              POSTGRES_USER="postgres"
+              POSTGRES_DB="live_commerce_production"
+            fi
 
-            echo "=== Backup created: db_backup_$TIMESTAMP.sql.gz ==="
+            if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
+              docker exec dorami-postgres-prod \
+                pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
+                | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+              echo "=== Backup created: db_backup_${TIMESTAMP}.sql.gz ==="
+            else
+              echo "WARNING: postgres container not running, skipping backup"
+            fi
 
             # Keep only last 5 backups
-            ls -t $BACKUP_DIR/db_backup_*.sql.gz | tail -n +6 | xargs -r rm
+            ls -t ${BACKUP_DIR}/db_backup_*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm
 
             echo "=== Backup complete ==="
           ENDSSH
@@ -237,89 +255,185 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          # Ensure destination directories exist
           ssh $USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
           scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
           scp -r infrastructure/docker/nginx-proxy $USER@$HOST:/opt/dorami/infrastructure/docker/
           scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
 
-      - name: Deploy via SSH
+      - name: Create deployment script
+        # NOTE: Uses quoted heredoc (<<'DEPLOY_SCRIPT') so variables are NOT expanded here.
+        # Variables are passed to the server via DEPLOY_* env vars in the Execute step.
+        run: |
+          cat > /tmp/deploy-prod.sh << 'DEPLOY_SCRIPT'
+          #!/bin/bash
+          set -euo pipefail
+
+          APP_DIR="/home/ubuntu/dorami"
+          INFRA_DIR="/opt/dorami"
+
+          echo "==================================================="
+          echo "PRODUCTION DEPLOYMENT"
+          echo "Version: ${DEPLOY_VERSION}"
+          echo "==================================================="
+
+          # 1. Verify prerequisites
+          echo "=== Checking prerequisites ==="
+          if [ ! -f "${INFRA_DIR}/.env.production" ]; then
+            echo "ERROR: ${INFRA_DIR}/.env.production not found!"
+            echo "Please create it from .env.production.example before deploying."
+            exit 1
+          fi
+
+          if [ ! -d "${APP_DIR}" ]; then
+            echo "ERROR: Application directory ${APP_DIR} not found!"
+            exit 1
+          fi
+
+          # 2. GHCR login (for any future Docker image operations)
+          echo "=== Logging into GHCR ==="
+          echo "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io \
+            -u "${DEPLOY_REPO_OWNER}" --password-stdin
+
+          # 3. Remove legacy dev containers (data volumes persist)
+          echo "=== Removing legacy containers ==="
+          docker stop live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
+          docker rm live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
+
+          # 4. Start infra containers: postgres + redis
+          echo "=== Starting infrastructure (postgres + redis) ==="
+          cd "${INFRA_DIR}"
+          docker compose -f docker-compose.prod.yml \
+            --env-file .env.production \
+            up -d --no-deps postgres redis
+
+          # 5. Wait for PostgreSQL to be healthy
+          echo "=== Waiting for PostgreSQL ==="
+          for i in $(seq 1 20); do
+            if docker exec dorami-postgres-prod pg_isready -U postgres 2>/dev/null; then
+              echo "Database is ready!"
+              break
+            fi
+            if [ "${i}" -eq 20 ]; then
+              echo "ERROR: Database did not become ready in time"
+              exit 1
+            fi
+            echo "Waiting for database... (${i}/20)"
+            sleep 3
+          done
+
+          # 6. Start SRS media server
+          echo "=== Starting SRS ==="
+          docker rm -f dorami-srs-prod 2>/dev/null || true
+          docker compose -f docker-compose.prod.yml \
+            --env-file .env.production \
+            up -d --no-deps srs 2>/dev/null \
+            && echo "SRS started successfully" \
+            || echo "WARNING: SRS failed to start (non-fatal, streaming will be unavailable)"
+
+          # 7. Update application code
+          echo "=== Pulling latest code (version: ${DEPLOY_VERSION}) ==="
+          cd "${APP_DIR}"
+          git fetch --all --tags --force
+          git checkout -f "${DEPLOY_VERSION}"
+          echo "Now on: $(git log --oneline -1)"
+
+          # 8. Install all dependencies (including devDependencies for build)
+          echo "=== Installing dependencies ==="
+          npm ci || npm install
+
+          # 9. Run database migrations
+          echo "=== Running database migrations ==="
+          cd "${APP_DIR}/backend"
+          npx prisma generate
+          npx prisma migrate deploy
+          echo "Migrations complete."
+
+          # 10. Build backend
+          echo "=== Building backend ==="
+          npm run build
+
+          # 11. Build frontend
+          echo "=== Building frontend ==="
+          cd "${APP_DIR}/client-app"
+          npm run build
+
+          # 12. Reload PM2 processes with new code
+          echo "=== Reloading PM2 ==="
+          cd "${APP_DIR}"
+          pm2 reload dorami-backend --update-env 2>/dev/null \
+            || pm2 restart dorami-backend 2>/dev/null \
+            || echo "WARNING: could not reload dorami-backend"
+          pm2 reload dorami-frontend --update-env 2>/dev/null \
+            || pm2 restart dorami-frontend 2>/dev/null \
+            || echo "WARNING: could not reload dorami-frontend"
+
+          pm2 save
+
+          # 13. Wait for processes to stabilize
+          echo "=== Waiting for processes to stabilize ==="
+          sleep 15
+
+          # 14. Health checks
+          echo "=== Running health checks ==="
+          backend_ok=false
+          for i in $(seq 1 8); do
+            if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "Backend is healthy!"
+              backend_ok=true
+              break
+            fi
+            echo "Waiting for backend... (${i}/8)"
+            sleep 10
+          done
+
+          frontend_ok=false
+          for i in $(seq 1 8); do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "Frontend is healthy!"
+              frontend_ok=true
+              break
+            fi
+            echo "Waiting for frontend... (${i}/8)"
+            sleep 10
+          done
+
+          echo "--- PM2 Status ---"
+          pm2 list
+
+          if ! ${backend_ok} || ! ${frontend_ok}; then
+            echo "ERROR: Health checks failed!"
+            echo "--- Backend Logs ---"
+            pm2 logs dorami-backend --lines 50 --nostream 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "==================================================="
+          echo "DEPLOYMENT COMPLETE!"
+          echo "Version ${DEPLOY_VERSION} is live."
+          echo "==================================================="
+          DEPLOY_SCRIPT
+          chmod +x /tmp/deploy-prod.sh
+
+      - name: Copy deployment script to server
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          scp /tmp/deploy-prod.sh $USER@$HOST:/tmp/deploy-prod.sh
+
+      - name: Execute deployment
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
           VERSION: ${{ needs.validate.outputs.version }}
-          IS_ROLLBACK: ${{ needs.validate.outputs.is_rollback }}
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          ssh $USER@$HOST << ENDSSH
-            set -e
-
-            cd /opt/dorami
-
-            echo "=========================================="
-            echo "PRODUCTION DEPLOYMENT"
-            echo "Version: $VERSION"
-            echo "Image Tag: $IMAGE_TAG"
-            echo "Rollback: $IS_ROLLBACK"
-            echo "=========================================="
-
-            echo "=== Logging into GHCR ==="
-            echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
-
-            echo "=== Checking .env.production ==="
-            if [ ! -f .env.production ]; then
-              echo "ERROR: .env.production not found at /opt/dorami/.env.production"
-              echo "Please create it from .env.production.example before deploying."
-              exit 1
-            fi
-
-            echo "=== Stopping legacy dev containers (volumes persist) ==="
-            docker stop live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
-            docker rm live-commerce-postgres live-commerce-redis live-commerce-srs 2>/dev/null || true
-
-            echo "=== Pulling images ==="
-            export IMAGE_TAG=${IMAGE_TAG}
-            export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
-            docker compose -f docker-compose.prod.yml --env-file .env.production pull
-
-            echo "=== Running database migrations ==="
-            docker compose -f docker-compose.prod.yml --env-file .env.production run --rm backend npx prisma migrate deploy
-
-            echo "=== Blue-Green Deployment ==="
-            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans --scale backend=2
-
-            sleep 60
-
-            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
-
-            echo "=== Cleaning up old images ==="
-            docker image prune -f
-
-            echo "=== Health Checks ==="
-            for i in {1..5}; do
-              if curl -sf http://localhost:3001/api/health > /dev/null; then
-                echo "Backend healthy!"
-                break
-              fi
-              echo "Waiting for backend... (attempt \$i/5)"
-              sleep 10
-            done
-
-            for i in {1..5}; do
-              if curl -sf http://localhost:3000 > /dev/null; then
-                echo "Frontend healthy!"
-                break
-              fi
-              echo "Waiting for frontend... (attempt \$i/5)"
-              sleep 10
-            done
-
-            echo "=========================================="
-            echo "DEPLOYMENT COMPLETE"
-            echo "=========================================="
-          ENDSSH
+          ssh $USER@$HOST \
+            "DEPLOY_VERSION='${VERSION}' \
+             DEPLOY_GHCR_TOKEN='${GHCR_TOKEN}' \
+             DEPLOY_REPO_OWNER='${REPO_OWNER}' \
+             bash /tmp/deploy-prod.sh"
 
       - name: Create Sentry Release
         if: success() && inputs.rollback != 'true'
@@ -353,44 +467,52 @@ jobs:
           ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
 
       - name: Health Check - Backend API
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} '
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
             for i in 1 2 3 4 5; do
-              if curl -sf -o /dev/null -w "%{http_code}" http://localhost:3001/api/v1/health; then
+              if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
                 echo "Backend API healthy!"
                 exit 0
               fi
-              echo "Waiting for backend... (attempt $i/5)"
+              echo "Waiting for backend... (attempt ${i}/5)"
               sleep 10
             done
             echo "Backend health check failed!"
             exit 1
-          '
+          ENDSSH
 
       - name: Health Check - Frontend
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} '
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
             for i in 1 2 3 4 5; do
-              if curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000; then
+              if curl -sf http://localhost:3000 > /dev/null 2>&1; then
                 echo "Frontend healthy!"
                 exit 0
               fi
-              echo "Waiting for frontend... (attempt $i/5)"
+              echo "Waiting for frontend... (attempt ${i}/5)"
               sleep 10
             done
             echo "Frontend health check failed!"
             exit 1
-          '
+          ENDSSH
 
       - name: Verify Version
         env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
           EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          version=$(ssh ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} \
-            'curl -s http://localhost:3001/api/v1/health | jq -r ".version // empty"')
-          echo "Deployed version: $version"
-          echo "Expected version: $EXPECTED_VERSION"
-          if [ "$version" == "$EXPECTED_VERSION" ]; then
+          deployed=$(ssh $USER@$HOST \
+            'curl -s http://localhost:3001/api/health | jq -r ".version // empty" 2>/dev/null || echo "unknown"')
+          echo "Deployed version: ${deployed}"
+          echo "Expected version: ${EXPECTED_VERSION}"
+          if [ "${deployed}" = "${EXPECTED_VERSION}" ]; then
             echo "Version verified!"
           else
             echo "Version mismatch (may be expected if health endpoint doesn't expose version)"

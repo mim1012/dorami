@@ -185,8 +185,12 @@ export async function gotoWithRetry(
  * Secure cookies in the browser jar, which would conflict with our
  * addCookies(secure=false) and cause alternating pass/fail patterns.
  */
-export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
-  const email = role === 'ADMIN' ? 'admin@dorami.shop' : 'buyer@test.com';
+export async function devLogin(
+  page: Page,
+  role: 'USER' | 'ADMIN' = 'USER',
+  options?: { skipProfileCompletion?: boolean; email?: string },
+) {
+  const email = options?.email ?? (role === 'ADMIN' ? 'admin@dorami.shop' : 'buyer@test.com');
   const domain = new URL(BASE_URL).hostname;
 
   // 1. Use isolated request context — avoids polluting browser cookie jar
@@ -194,9 +198,12 @@ export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
   let user: any = null;
 
   try {
-    const response = await apiCtx.post('/api/auth/dev-login', {
-      data: { email, role },
-    });
+    // Retry on 429 (rate limit) — parallel workers can hit the throttle limit
+    let response = await apiCtx.post('/api/auth/dev-login', { data: { email, role } });
+    for (let retry = 0; retry < 3 && response.status() === 429; retry++) {
+      await new Promise((r) => setTimeout(r, 4000 + retry * 3000));
+      response = await apiCtx.post('/api/auth/dev-login', { data: { email, role } });
+    }
 
     if (!response.ok()) {
       throw new Error(`devLogin failed: ${response.status()} ${await response.text()}`);
@@ -233,7 +240,7 @@ export async function devLogin(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
 
     // 4. For USER role: ensure profile is complete so useProfileGuard does not
     //    redirect to /profile/register. The apiCtx reuses login cookies automatically.
-    if (role === 'USER') {
+    if (role === 'USER' && !options?.skipProfileCompletion) {
       const profileRes = await apiCtx.post('/api/users/complete-profile', {
         data: {
           depositorName: 'E2E테스트',
