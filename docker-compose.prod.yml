@@ -238,17 +238,17 @@ services:
     container_name: dorami-srs-prod
     restart: always
     ports:
-      - '1935:1935'   # RTMP (OBS) - Must be exposed for streamers
+      - '1935:1935'          # RTMP - OBS/encoder ingest
+      - '127.0.0.1:8080:8080'  # HTTP-FLV + HLS - host nginx proxy target
     expose:
-      - '8080'        # HTTP-FLV + HLS - Internal only, served via proxy
-      - '1985'        # SRS HTTP API
+      - '1985'        # SRS HTTP API - internal only
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - dorami-internal
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:1985/api/v1/versions']
+      test: ['CMD-SHELL', 'echo > /dev/tcp/localhost/8080 2>/dev/null || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
