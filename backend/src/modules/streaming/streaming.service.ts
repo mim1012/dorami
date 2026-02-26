@@ -54,9 +54,13 @@ export class StreamingService {
    */
   async getUpcomingStreams(limit = 3): Promise<any[]> {
     try {
+      const now = new Date();
       const streams = await this.prisma.liveStream.findMany({
         where: {
-          OR: [{ status: 'LIVE' }, { status: 'PENDING', expiresAt: { gte: new Date() } }],
+          OR: [
+            { status: 'LIVE' },
+            { status: 'PENDING', scheduledAt: { gte: now }, expiresAt: { gte: now } },
+          ],
         },
         orderBy: [
           // LIVE 스트림 우선, 그 다음 scheduledAt 오름차순
