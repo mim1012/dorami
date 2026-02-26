@@ -287,8 +287,10 @@ describe('ReStreamService', () => {
         expect.arrayContaining([
           '-i',
           'rtmp://nginx-rtmp:1935/live/live-stream-key',
-          '-c',
+          '-c:v',
           'copy',
+          '-c:a',
+          'aac',
           '-f',
           'flv',
           'rtmp://a.rtmp.youtube.com/live2/yt-stream-key-123',
