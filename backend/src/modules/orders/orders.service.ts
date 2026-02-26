@@ -526,18 +526,48 @@ export class OrdersService {
 
   /**
    * Epic 8 Story 8.2: Get order with bank transfer info
+   * Note: userId is required to prevent unauthorized access. Use findByIdAdmin for admin-only access.
    */
   async findById(
     orderId: string,
-    userId?: string,
+    userId: string,
   ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
-    const whereClause: Prisma.OrderWhereInput = { id: orderId };
-    if (userId) {
-      whereClause.userId = userId;
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { orderItems: true },
+    });
+
+    if (!order) {
+      throw new OrderNotFoundException(orderId);
     }
 
-    const order = await this.prisma.order.findFirst({
-      where: whereClause,
+    const responseDto = this.mapToResponseDto(order);
+
+    // Include bank transfer info if payment is pending
+    if (order.paymentStatus === 'PENDING') {
+      return {
+        ...responseDto,
+        bankTransferInfo: {
+          bankName: this.configService.get<string>('BANK_NAME') || '',
+          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') || '',
+          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') || '',
+          amount: responseDto.total,
+          depositorName: order.depositorName,
+        },
+      };
+    }
+
+    return responseDto;
+  }
+
+  /**
+   * Admin-only method to get order without userId restriction
+   */
+  async findByIdAdmin(
+    orderId: string,
+  ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
       include: { orderItems: true },
     });
 
