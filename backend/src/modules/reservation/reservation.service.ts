@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -77,9 +72,7 @@ export class ReservationService {
     });
 
     if (existingReservation) {
-      throw new BadRequestException(
-        'You already have an active reservation for this product',
-      );
+      throw new BadRequestException('You already have an active reservation for this product');
     }
 
     // 4. Create reservation with atomic reservation number assignment
@@ -144,18 +137,16 @@ export class ReservationService {
     const queuePositionsMap = await this.batchCalculateQueuePositions(productIds);
 
     const mapped = reservations.map((r) => {
-      const queuePosition = r.status === 'PROMOTED'
-        ? 0
-        : queuePositionsMap.get(`${r.productId}:${r.reservationNumber}`) || 0;
+      const queuePosition =
+        r.status === 'PROMOTED'
+          ? 0
+          : queuePositionsMap.get(`${r.productId}:${r.reservationNumber}`) || 0;
 
       let remainingSeconds: number | undefined;
       if (r.status === 'PROMOTED' && r.expiresAt) {
         const now = new Date();
         const expiresAt = new Date(r.expiresAt);
-        remainingSeconds = Math.max(
-          0,
-          Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
-        );
+        remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
       }
 
       return {
@@ -253,13 +244,14 @@ export class ReservationService {
       `Reservation promoted: ${nextReservation.id} (#${nextReservation.reservationNumber}), expires at: ${expiresAt}`,
     );
 
-    // Emit event for KakaoTalk notification
+    // Emit event for KakaoTalk notification and auto-cart add
     this.eventEmitter.emit('reservation:promoted', {
       reservationId: nextReservation.id,
       userId: nextReservation.userId,
       productId: nextReservation.productId,
       productName: nextReservation.productName,
       reservationNumber: nextReservation.reservationNumber,
+      quantity: nextReservation.quantity,
       expiresAt,
     });
   }
@@ -296,6 +288,22 @@ export class ReservationService {
         });
 
         this.logger.log(`Reservation expired: ${reservation.id}`);
+
+        // Synchronize: Expire any linked ACTIVE cart items (timer sync)
+        await this.prisma.cart.updateMany({
+          where: {
+            userId: reservation.userId,
+            productId: reservation.productId,
+            status: 'ACTIVE',
+          },
+          data: { status: 'EXPIRED' },
+        });
+
+        // Emit cart product released event to trigger next promotion
+        this.eventEmitter.emit('cart:product:released', {
+          productId: reservation.productId,
+          timestamp: new Date(),
+        });
 
         // Promote next in queue
         await this.promoteNextInQueue(reservation.productId);
@@ -342,9 +350,7 @@ export class ReservationService {
   /**
    * Batch calculate queue positions for multiple products (prevents N+1 query)
    */
-  private async batchCalculateQueuePositions(
-    productIds: string[],
-  ): Promise<Map<string, number>> {
+  private async batchCalculateQueuePositions(productIds: string[]): Promise<Map<string, number>> {
     if (productIds.length === 0) {
       return new Map();
     }
@@ -355,10 +361,7 @@ export class ReservationService {
         productId: { in: productIds },
         status: 'WAITING',
       },
-      orderBy: [
-        { productId: 'asc' },
-        { reservationNumber: 'asc' },
-      ],
+      orderBy: [{ productId: 'asc' }, { reservationNumber: 'asc' }],
       select: {
         productId: true,
         reservationNumber: true,
@@ -384,10 +387,7 @@ export class ReservationService {
   /**
    * Calculate queue position for waiting reservation (single)
    */
-  private async getQueuePosition(
-    productId: string,
-    reservationNumber: number,
-  ): Promise<number> {
+  private async getQueuePosition(productId: string, reservationNumber: number): Promise<number> {
     const waitingAhead = await this.prisma.reservation.count({
       where: {
         productId,
@@ -414,10 +414,7 @@ export class ReservationService {
     if (reservation.status === 'PROMOTED' && reservation.expiresAt) {
       const now = new Date();
       const expiresAt = new Date(reservation.expiresAt);
-      remainingSeconds = Math.max(
-        0,
-        Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
-      );
+      remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
       queuePosition = 0; // Promoted = position 0
     } else if (reservation.status === 'WAITING') {
       queuePosition = await this.getQueuePosition(productId, reservation.reservationNumber);

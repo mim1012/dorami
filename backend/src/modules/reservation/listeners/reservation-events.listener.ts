@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LoggerService } from '../../../common/logger/logger.service';
 import { ReservationService } from '../reservation.service';
+import { CartService } from '../../cart/cart.service';
 
 @Injectable()
 export class ReservationEventsListener {
   private readonly logger: LoggerService;
 
-  constructor(private readonly reservationService: ReservationService) {
+  constructor(
+    private readonly reservationService: ReservationService,
+    private readonly cartService: CartService,
+  ) {
     this.logger = new LoggerService();
     this.logger.setContext('ReservationEventsListener');
   }
@@ -33,19 +37,39 @@ export class ReservationEventsListener {
    * Epic 7: Handle reservation:promoted event
    * KakaoTalk/Web Push notification is handled by NotificationEventsListener
    * (notifications/listeners/notification-events.listener.ts)
+   *
+   * Also attempts to automatically add the item to the cart.
+   * If auto-add fails, the PROMOTED status is retained so user can manually add it.
    */
   @OnEvent('reservation:promoted')
-  handleReservationPromoted(payload: {
+  async handleReservationPromoted(payload: {
     reservationId: string;
     userId: string;
     productId: string;
     productName: string;
     reservationNumber: number;
+    quantity: number;
     expiresAt: Date;
   }) {
     this.logger.log(
       `Reservation promoted: ${payload.reservationId} (#${payload.reservationNumber}) for ${payload.productName}, expires at: ${payload.expiresAt}`,
     );
+
+    // Attempt to automatically add to cart
+    try {
+      await this.cartService.addToCart(payload.userId, {
+        productId: payload.productId,
+        quantity: payload.quantity,
+        color: undefined,
+        size: undefined,
+      });
+      this.logger.log(`Auto cart added for user ${payload.userId}, product ${payload.productId}`);
+    } catch (err) {
+      // Fail silently - PROMOTED status remains so user can manually add it
+      this.logger.warn(
+        `Auto cart add failed for reservation ${payload.reservationId}: ${err.message}`,
+      );
+    }
   }
 
   /**

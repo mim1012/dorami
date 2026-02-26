@@ -56,6 +56,7 @@ describe('ReservationService', () => {
             },
             cart: {
               aggregate: jest.fn(),
+              updateMany: jest.fn(),
             },
           },
         },
@@ -69,7 +70,9 @@ describe('ReservationService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string, defaultValue?: any) => {
-              if (key === 'RESERVATION_PROMOTION_TIMER_MINUTES') {return 10;}
+              if (key === 'RESERVATION_PROMOTION_TIMER_MINUTES') {
+                return 10;
+              }
               return defaultValue;
             }),
           },
@@ -92,7 +95,9 @@ describe('ReservationService', () => {
 
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest.spyOn(prisma.cart, 'aggregate').mockResolvedValue({ _sum: { quantity: 5 } } as any);
-      jest.spyOn(prisma.reservation, 'aggregate').mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest
+        .spyOn(prisma.reservation, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
       jest.spyOn(prisma.reservation, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.reservation, 'count').mockResolvedValue(0);
 
@@ -119,9 +124,13 @@ describe('ReservationService', () => {
 
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest.spyOn(prisma.cart, 'aggregate').mockResolvedValue({ _sum: { quantity: 2 } } as any);
-      jest.spyOn(prisma.reservation, 'aggregate').mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest
+        .spyOn(prisma.reservation, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
 
-      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when already reserved', async () => {
@@ -129,10 +138,14 @@ describe('ReservationService', () => {
 
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest.spyOn(prisma.cart, 'aggregate').mockResolvedValue({ _sum: { quantity: 5 } } as any);
-      jest.spyOn(prisma.reservation, 'aggregate').mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest
+        .spyOn(prisma.reservation, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
       jest.spyOn(prisma.reservation, 'findFirst').mockResolvedValue(mockReservation as any);
 
-      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when product not found', async () => {
@@ -140,7 +153,9 @@ describe('ReservationService', () => {
 
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.createReservation('user-1', createDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
