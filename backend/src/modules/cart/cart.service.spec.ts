@@ -61,6 +61,9 @@ describe('CartService', () => {
               deleteMany: jest.fn(),
               updateMany: jest.fn(),
             },
+            reservation: {
+              updateMany: jest.fn(),
+            },
             user: {
               findUnique: jest.fn().mockResolvedValue(null),
             },
