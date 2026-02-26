@@ -1,21 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { PointsService } from './points.service';
 import { PointsConfigService } from './points-config.service';
-import {
-  GetPointHistoryQueryDto,
-  AdjustPointsDto,
-  UpdatePointsConfigDto,
-} from './dto/points.dto';
+import { GetPointHistoryQueryDto, AdjustPointsDto, UpdatePointsConfigDto } from './dto/points.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PointTransactionType } from '@prisma/client';
 
@@ -60,10 +48,7 @@ export class PointsController {
    * Get specific user's point transaction history (admin or self)
    */
   @Get('users/:userId/points/history')
-  async getUserHistory(
-    @Param('userId') userId: string,
-    @Query() query: GetPointHistoryQueryDto,
-  ) {
+  async getUserHistory(@Param('userId') userId: string, @Query() query: GetPointHistoryQueryDto) {
     return this.pointsService.getTransactionHistory(userId, query);
   }
 
@@ -73,6 +58,7 @@ export class PointsController {
    * Get points configuration (Admin)
    */
   @Get('admin/config/points')
+  @AdminOnly()
   async getPointsConfig() {
     return this.pointsConfigService.getPointsConfig();
   }
@@ -81,6 +67,7 @@ export class PointsController {
    * Update points configuration (Admin)
    */
   @Put('admin/config/points')
+  @AdminOnly()
   async updatePointsConfig(@Body() dto: UpdatePointsConfigDto) {
     return this.pointsConfigService.updatePointsConfig(dto);
   }
@@ -89,10 +76,8 @@ export class PointsController {
    * Manual point adjustment (Admin)
    */
   @Post('admin/users/:userId/points/adjust')
-  async adjustPoints(
-    @Param('userId') userId: string,
-    @Body() dto: AdjustPointsDto,
-  ) {
+  @AdminOnly()
+  async adjustPoints(@Param('userId') userId: string, @Body() dto: AdjustPointsDto) {
     if (dto.type === 'add') {
       return this.pointsService.addPoints(
         userId,
