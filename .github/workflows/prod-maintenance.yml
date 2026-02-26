@@ -12,6 +12,7 @@ on:
           - status
           - show-db-env
           - test-db-auth-tcp
+          - test-db-url-parse
           - sync-db-env
           - diagnose
           - fix-ssl
@@ -121,6 +122,42 @@ jobs:
           docker exec dorami-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-local.out 2>/tmp/db-auth-local.err \
             && echo "LOCAL_AUTH=PASS" \
             || (echo "LOCAL_AUTH=FAIL"; cat /tmp/db-auth-local.err; exit 1)
+          EOF
+
+      - name: test-db-url-parse
+        if: inputs.command == 'test-db-url-parse'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          set -a
+          source .env.production
+          set +a
+
+          URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=30"
+
+          python3 - << 'PY'
+          import os
+          import urllib.parse
+
+          url = os.environ["URL"]
+          raw_pw = os.environ["POSTGRES_PASSWORD"]
+          parsed = urllib.parse.urlparse(url)
+          parsed_pw = urllib.parse.unquote(parsed.password or "")
+
+          print("URL_PARSE_SCHEME=", parsed.scheme)
+          print("URL_PARSE_HOST=", parsed.hostname)
+          print("URL_PARSE_DB=", parsed.path.lstrip("/"))
+          print("URL_PARSE_USER_MATCH=", str((parsed.username or "") == os.environ["POSTGRES_USER"]))
+          print("URL_PARSE_PASSWORD_LEN=", len(parsed_pw))
+          print("ENV_PASSWORD_LEN=", len(raw_pw))
+          print("URL_PARSE_PASSWORD_MATCH=", str(parsed_pw == raw_pw))
+          print("URL_AT_COUNT=", url.count("@"))
+          PY
           EOF
 
       - name: sync-db-env
