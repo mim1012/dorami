@@ -251,6 +251,11 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   maxAmount?: number;
+
+  // StreamKey filter
+  @IsOptional()
+  @IsString()
+  streamKey?: string;
 }
 
 export class OrderListItemDto {
@@ -270,6 +275,7 @@ export class OrderListItemDto {
   paidAt: Date | null;
   shippedAt: Date | null;
   deliveredAt: Date | null;
+  streamKey: string | null;
 }
 
 export class OrderListResponseDto {
