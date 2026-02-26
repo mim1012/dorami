@@ -56,12 +56,23 @@ interface ProductFormData {
   colorOptions: string;
   sizeOptions: string;
   timerEnabled: boolean;
-  timerDuration: string;
+  timerDurationHours: string;
   imageUrl: string;
   images: string[];
   discountRate: string;
   originalPrice: string;
   isNew: boolean;
+}
+
+const MIN_TIMER_HOURS = 1;
+const MAX_TIMER_HOURS = 120; // 5 days
+const MINUTES_PER_HOUR = 60;
+
+function minutesToHours(minutes: number): number {
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    return MIN_TIMER_HOURS;
+  }
+  return Math.max(MIN_TIMER_HOURS, Math.ceil(minutes / MINUTES_PER_HOUR));
 }
 
 // --- Sortable Row Component ---
@@ -150,7 +161,7 @@ function SortableRow({
               {product.timerEnabled && (
                 <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
                   <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" />{' '}
-                  {product.timerDuration}분
+                  {minutesToHours(product.timerDuration)}시간
                 </span>
               )}
             </div>
@@ -258,7 +269,7 @@ export default function AdminProductsPage() {
     colorOptions: '',
     sizeOptions: '',
     timerEnabled: false,
-    timerDuration: '10',
+    timerDurationHours: '1',
     imageUrl: '',
     images: [],
     discountRate: '',
@@ -505,7 +516,7 @@ export default function AdminProductsPage() {
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
         timerEnabled: product.timerEnabled,
-        timerDuration: product.timerDuration.toString(),
+        timerDurationHours: minutesToHours(product.timerDuration).toString(),
         imageUrl: product.imageUrl || '',
         images: product.images || [],
         discountRate: product.discountRate?.toString() || '',
@@ -523,7 +534,7 @@ export default function AdminProductsPage() {
         colorOptions: '',
         sizeOptions: '',
         timerEnabled: false,
-        timerDuration: '10',
+        timerDurationHours: '1',
         imageUrl: '',
         images: [],
         discountRate: '',
@@ -573,7 +584,14 @@ export default function AdminProductsPage() {
           .map((s) => s.trim())
           .filter(Boolean),
         timerEnabled: formData.timerEnabled,
-        timerDuration: parseInt(formData.timerDuration),
+        timerDuration:
+          Math.min(
+            MAX_TIMER_HOURS,
+            Math.max(
+              MIN_TIMER_HOURS,
+              parseInt(formData.timerDurationHours || `${MIN_TIMER_HOURS}`, 10) || MIN_TIMER_HOURS,
+            ),
+          ) * MINUTES_PER_HOUR,
         imageUrl: finalImageUrl || undefined,
         images: formData.images,
         discountRate: formData.discountRate ? parseFloat(formData.discountRate) : undefined,
@@ -1009,14 +1027,14 @@ export default function AdminProductsPage() {
             </label>
             {formData.timerEnabled && (
               <Input
-                label="타이머 시간 (분)"
-                name="timerDuration"
+                label="타이머 시간 (시간)"
+                name="timerDurationHours"
                 type="number"
-                value={formData.timerDuration}
-                onChange={(e) => setFormData({ ...formData, timerDuration: e.target.value })}
-                placeholder="10"
-                min="1"
-                max="2880"
+                value={formData.timerDurationHours}
+                onChange={(e) => setFormData({ ...formData, timerDurationHours: e.target.value })}
+                placeholder="1"
+                min={`${MIN_TIMER_HOURS}`}
+                max={`${MAX_TIMER_HOURS}`}
               />
             )}
           </div>
