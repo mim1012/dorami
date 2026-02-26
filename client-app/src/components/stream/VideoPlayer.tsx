@@ -30,6 +30,8 @@ interface VideoPlayerProps {
   onStreamStateChange?: (event: VideoStreamEvent) => void;
   /** When true, suppresses the built-in ErrorOverlay (parent handles error display via FSM). */
   hideErrorOverlay?: boolean;
+  /** Controls whether the video element is muted. Default: false (sound on). */
+  muted?: boolean;
 }
 
 export default function VideoPlayer({
@@ -39,6 +41,7 @@ export default function VideoPlayer({
   onStreamError,
   onStreamStateChange,
   hideErrorOverlay = false,
+  muted = false,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -61,8 +64,6 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamEnded, setStreamEnded] = useState(false);
-  // 브라우저 자동재생 정책 우회: 처음엔 음소거로 시작 후 언뮤트 버튼 제공
-  const [isMuted, setIsMuted] = useState(true);
   const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
   const setPlayerModeWithRef = useCallback((mode: 'flv' | 'hls' | null) => {
@@ -611,50 +612,17 @@ export default function VideoPlayer({
     }
   };
 
-  const handleUnmute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = false;
-      setIsMuted(false);
-    }
-  };
-
   return (
     <div className="absolute inset-0 bg-black">
       <video
         ref={videoRef}
         className="block w-full h-full object-cover"
         playsInline
-        muted={isMuted}
+        muted={muted}
         aria-label="Live stream video player"
       />
 
       {!error && !streamEnded && <LiveBadge />}
-
-      {/* 언뮤트 버튼 — 자동재생 정책으로 음소거 상태일 때 표시 */}
-      {isMuted && isPlaying && !streamEnded && !error && (
-        <button
-          onClick={handleUnmute}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-sm border border-white/20 rounded-full text-white text-sm font-medium hover:bg-black/80 transition-all active:scale-95 z-20"
-          aria-label="소리 켜기"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <line x1="1" y1="1" x2="23" y2="23" />
-            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-            <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-          소리 켜기
-        </button>
-      )}
 
       {isBuffering && <BufferingSpinner />}
       {error && !hideErrorOverlay && <ErrorOverlay message={error} />}

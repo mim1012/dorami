@@ -32,6 +32,8 @@ import {
   Eye,
   Zap,
   Bell,
+  Volume2,
+  VolumeX,
   MessageCircle,
   X,
   Share2,
@@ -98,6 +100,7 @@ export default function LiveStreamPage() {
   const [activeProductOverride, setActiveProductOverride] = useState<FeaturedProduct | null>(null);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [isMobileMuted, setIsMobileMuted] = useState(false);
   const [mobileMessage, setMobileMessage] = useState('');
   const [purchaseNotif, setPurchaseNotif] = useState<string | null>(null);
   const purchaseNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -565,6 +568,7 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
+              muted={isMobileMuted}
               onViewerCountChange={handleViewerCountChange}
               onStreamError={setVideoError}
               hideErrorOverlay
@@ -635,20 +639,45 @@ export default function LiveStreamPage() {
                   </div>
                 </div>
 
-                {/* Right: 공지, 문의, 닫기 pink circles */}
+                {/* Right: 공지, 소리, 문의, 닫기 pink circles */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {(
                     [
-                      { icon: Bell, label: '공지', onClick: () => setIsNoticeOpen(true) },
-                      { icon: MessageCircle, label: '문의', onClick: () => setIsInquiryOpen(true) },
-                      { icon: X, label: '닫기', onClick: () => router.push('/') },
+                      {
+                        key: 'notice',
+                        icon: Bell,
+                        label: '공지',
+                        ariaLabel: '공지',
+                        onClick: () => setIsNoticeOpen(true),
+                      },
+                      {
+                        key: 'sound',
+                        icon: isMobileMuted ? VolumeX : Volume2,
+                        label: '소리',
+                        ariaLabel: isMobileMuted ? '소리 켜기' : '소리 끄기',
+                        onClick: () => setIsMobileMuted((prev) => !prev),
+                      },
+                      {
+                        key: 'inquiry',
+                        icon: MessageCircle,
+                        label: '문의',
+                        ariaLabel: '문의',
+                        onClick: () => setIsInquiryOpen(true),
+                      },
+                      {
+                        key: 'close',
+                        icon: X,
+                        label: '닫기',
+                        ariaLabel: '닫기',
+                        onClick: () => router.push('/'),
+                      },
                     ] as const
-                  ).map(({ icon: Icon, label, onClick }) => (
+                  ).map(({ key, icon: Icon, label, ariaLabel, onClick }) => (
                     <button
-                      key={label}
+                      key={key}
                       onClick={onClick}
                       className="flex flex-col items-center gap-0.5"
-                      aria-label={label}
+                      aria-label={ariaLabel}
                     >
                       <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                         <Icon className="w-4 h-4 text-white" />
