@@ -12,6 +12,7 @@ on:
           - status
           - show-db-env
           - test-db-auth-tcp
+          - test-db-auth-network
           - test-db-url-parse
           - inspect-backend-db-url
           - sync-db-env
@@ -123,6 +124,36 @@ jobs:
           docker exec dorami-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-local.out 2>/tmp/db-auth-local.err \
             && echo "LOCAL_AUTH=PASS" \
             || (echo "LOCAL_AUTH=FAIL"; cat /tmp/db-auth-local.err; exit 1)
+          EOF
+
+      - name: test-db-auth-network
+        if: inputs.command == 'test-db-auth-network'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          set -a
+          source .env.production
+          set +a
+
+          NETWORK=$(docker inspect dorami-postgres-prod --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s\n" $k}}{{end}}' | head -1)
+          if [ -z "${NETWORK}" ]; then
+            echo "ERROR: postgres network not found"
+            exit 1
+          fi
+
+          echo "=== Network auth test from sidecar container ==="
+          docker run --rm \
+            --network "${NETWORK}" \
+            -e PGPASSWORD="${POSTGRES_PASSWORD}" \
+            postgres:16-alpine \
+            psql -h postgres -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-net.out 2>/tmp/db-auth-net.err \
+            && echo "NETWORK_AUTH=PASS" \
+            || (echo "NETWORK_AUTH=FAIL"; cat /tmp/db-auth-net.err; exit 1)
           EOF
 
       - name: test-db-url-parse
