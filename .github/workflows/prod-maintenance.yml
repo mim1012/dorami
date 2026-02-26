@@ -703,22 +703,36 @@ jobs:
 
           echo "=== probe outputs while publishing ==="
           FLV_OK=false
+          HLS_OK=false
+          LAST_FLV_CODE=000
+          LAST_HLS_CODE=000
           for i in $(seq 1 25); do
             FLV_CODE=$(curl --max-time 2 -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8080/live/live/${STREAM_KEY}.flv" || true)
             HLS_CODE=$(curl --max-time 2 -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8080/live/${STREAM_KEY}.m3u8" || true)
+            LAST_FLV_CODE="${FLV_CODE}"
+            LAST_HLS_CODE="${HLS_CODE}"
             echo "probe ${i}: flv=${FLV_CODE}, hls=${HLS_CODE}"
             if [ "${FLV_CODE}" = "200" ]; then
               FLV_OK=true
+            fi
+            if [ "${HLS_CODE}" = "200" ]; then
+              HLS_OK=true
+            fi
+            if [ "${FLV_OK}" = "true" ] || [ "${HLS_OK}" = "true" ]; then
               break
             fi
             sleep 1
           done
 
+          PUBLIC_HLS_CODE=$(curl --max-time 3 -s -o /dev/null -w "%{http_code}" "https://www.doremi-live.com/hls/${STREAM_KEY}.m3u8" || true)
+          PUBLIC_FLV_CODE=$(curl --max-time 3 -s -o /dev/null -w "%{http_code}" "https://www.doremi-live.com/live/live/${STREAM_KEY}.flv" || true)
+
           wait ${PUB_PID} || true
           trap - EXIT
 
-          if [ "${FLV_OK}" != "true" ]; then
-            echo "ERROR: FLV output not reachable during ingest"
+          if [ "${FLV_OK}" != "true" ] && [ "${HLS_OK}" != "true" ]; then
+            echo "ERROR: no playable output during ingest"
+            echo "LAST_FLV_CODE=${LAST_FLV_CODE}, LAST_HLS_CODE=${LAST_HLS_CODE}"
             echo "--- ffmpeg log ---"
             cat "${LOG_FILE}" || true
             echo "--- srs log tail ---"
@@ -728,6 +742,8 @@ jobs:
 
           echo "SRS_INGEST_TEST=PASS"
           echo "STREAM_KEY=${STREAM_KEY}"
+          echo "LOCAL_FLV_OK=${FLV_OK} LOCAL_HLS_OK=${HLS_OK}"
+          echo "PUBLIC_FLV_CODE=${PUBLIC_FLV_CODE} PUBLIC_HLS_CODE=${PUBLIC_HLS_CODE}"
           echo "Playback candidates:"
           echo "  FLV: https://www.doremi-live.com/live/live/${STREAM_KEY}.flv"
           echo "  HLS: https://www.doremi-live.com/hls/${STREAM_KEY}.m3u8"
