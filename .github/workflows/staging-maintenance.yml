@@ -13,12 +13,30 @@ on:
           - logs-backend
           - logs-frontend
           - logs-srs
+          - logs-nginx
+          - load-test-live
+          - nginx-health
           - restart
           - restart-backend
           - restart-frontend
           - db-migrate
           - disk-usage
           - docker-cleanup
+      stream_key:
+        description: 'Optional stream key for load-test-live (blank=auto active stream)'
+        required: false
+        default: ''
+        type: string
+      concurrency:
+        description: 'Concurrency for load-test-live'
+        required: false
+        default: '30'
+        type: string
+      duration_seconds:
+        description: 'Duration seconds for load-test-live'
+        required: false
+        default: '60'
+        type: string
 
 jobs:
   run:
@@ -61,6 +79,9 @@ jobs:
           HOST: ${{ secrets.STAGING_HOST }}
           USER: ${{ secrets.STAGING_USER }}
           COMMAND: ${{ inputs.command }}
+          STREAM_KEY_INPUT: ${{ inputs.stream_key }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          DURATION_SECONDS: ${{ inputs.duration_seconds }}
         run: |
           case "$COMMAND" in
             status)
@@ -74,6 +95,15 @@ jobs:
               ;;
             logs-srs)
               CMD="docker compose -f docker-compose.staging.yml logs --tail=200 srs"
+              ;;
+            logs-nginx)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 nginx"
+              ;;
+            load-test-live)
+              CMD="__RUN_LOAD_TEST_LIVE__"
+              ;;
+            nginx-health)
+              CMD="__RUN_NGINX_HEALTH__"
               ;;
             restart)
               CMD="docker compose -f docker-compose.staging.yml restart"
@@ -99,5 +129,88 @@ jobs:
               ;;
           esac
 
-          echo "Executing: $CMD"
-          ssh $USER@$HOST "cd /opt/dorami && $CMD"
+          if [ "$CMD" = "__RUN_LOAD_TEST_LIVE__" ]; then
+            echo "Executing live load test in staging (concurrency=${CONCURRENCY}, duration=${DURATION_SECONDS}s)"
+            ssh $USER@$HOST "bash -s -- \"$STREAM_KEY_INPUT\" \"$CONCURRENCY\" \"$DURATION_SECONDS\"" <<'ENDSSH'
+              set -euo pipefail
+              cd /opt/dorami
+
+              STREAM_KEY="${1:-}"
+              CONC="${2:-30}"
+              DUR="${3:-60}"
+
+              if [ -z "$STREAM_KEY" ]; then
+                ACTIVE_JSON="$(curl -s http://localhost:3001/api/streaming/active)"
+                STREAM_KEY="$(printf '%s' "$ACTIVE_JSON" | sed -n 's/.*"streamKey":"\([^"]*\)".*/\1/p')"
+              fi
+
+              if [ -z "$STREAM_KEY" ]; then
+                echo "No active stream key found from /api/streaming/active. Aborting."
+                exit 1
+              fi
+
+              echo "Using stream key: $STREAM_KEY"
+              echo "Load target: http://localhost:8080/hls/${STREAM_KEY}.m3u8"
+              echo "Start load test: concurrency=${CONC}, duration=${DUR}s"
+
+              TMP_CODES="$(mktemp)"
+              START_TS="$(date +%s)"
+
+              while [ $(( $(date +%s) - START_TS )) -lt "$DUR" ]; do
+                seq 1 "$CONC" | xargs -P "$CONC" -I{} sh -c \
+                  'curl -m 5 -s -o /dev/null -w "%{http_code}\n" "http://localhost:8080/hls/'"$STREAM_KEY"'.m3u8" || echo "000"' \
+                  >> "$TMP_CODES"
+                sleep 1
+              done
+
+              TOTAL="$(wc -l < "$TMP_CODES" | tr -d ' ')"
+              OK_200="$(grep -c '^200$' "$TMP_CODES" || true)"
+              ERR_404="$(grep -c '^404$' "$TMP_CODES" || true)"
+              ERR_5XX="$(grep -E -c '^5[0-9][0-9]$' "$TMP_CODES" || true)"
+              ERR_000="$(grep -c '^000$' "$TMP_CODES" || true)"
+
+              echo "=== Load Test Summary ==="
+              echo "total=${TOTAL} ok_200=${OK_200} err_404=${ERR_404} err_5xx=${ERR_5XX} err_timeout_or_conn=${ERR_000}"
+              echo "status_distribution:"
+              sort "$TMP_CODES" | uniq -c | sort -nr
+
+              echo "=== Container Stats Snapshot ==="
+              docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | \
+                grep -E 'dorami-(backend|frontend|nginx|postgres|redis|srs)' || true
+
+              rm -f "$TMP_CODES"
+          ENDSSH
+          elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
+            echo "Executing nginx health diagnostics in staging"
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              set -euo pipefail
+              cd /opt/dorami
+
+              echo "=== docker compose ps (nginx) ==="
+              docker compose -f docker-compose.staging.yml ps nginx || true
+
+              echo "=== docker inspect (state/health) ==="
+              docker inspect dorami-nginx-1 --format 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}'
+
+              echo "=== docker inspect (health logs last 10) ==="
+              docker inspect dorami-nginx-1 --format '{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} output={{printf "%q" .Output}}{{println}}{{end}}' | tail -n 10 || true
+
+              echo "=== nginx container logs (tail 120) ==="
+              docker compose -f docker-compose.staging.yml logs --tail=120 nginx || true
+
+              echo "=== inside nginx container ==="
+              docker exec dorami-nginx-1 sh -lc '
+                echo "wget=$(command -v wget || echo not-found)";
+                wget -q -S -O- http://localhost/health >/tmp/health.out 2>/tmp/health.err || true;
+                echo "--- health.out ---";
+                cat /tmp/health.out || true;
+                echo "--- health.err ---";
+                cat /tmp/health.err || true;
+                echo "--- nginx -t ---";
+                nginx -t
+              '
+          ENDSSH
+          else
+            echo "Executing: $CMD"
+            ssh $USER@$HOST "cd /opt/dorami && $CMD"
+          fi

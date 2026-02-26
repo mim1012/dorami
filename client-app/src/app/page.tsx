@@ -360,23 +360,32 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 -mx-4 px-4 snap-x snap-mandatory">
-          {upcomingLives.map((live, index) => (
-            <div
-              key={live.id}
-              className="min-w-[280px] max-w-[300px] snap-start flex-shrink-0 animate-stagger-fade"
-              style={{ animationDelay: `${index * 150}ms` }}
-            >
-              <UpcomingLiveCard
-                id={live.id}
-                title={live.title}
-                scheduledTime={new Date(live.scheduledTime)}
-                thumbnailUrl={live.thumbnailUrl}
-                isLive={live.isLive}
-                onClick={() => live.streamKey && handleLiveClick(live.streamKey)}
-                size="small"
-              />
-            </div>
-          ))}
+          {upcomingLives
+            .filter((live) => {
+              // 진행 중인 라이브는 표시
+              if (live.isLive) return true;
+              // 예정 시간이 지나지 않은 것만 표시
+              const now = new Date().getTime();
+              const target = new Date(live.scheduledTime).getTime();
+              return target > now;
+            })
+            .map((live, index) => (
+              <div
+                key={live.id}
+                className="min-w-[280px] max-w-[300px] snap-start flex-shrink-0 animate-stagger-fade"
+                style={{ animationDelay: `${index * 150}ms` }}
+              >
+                <UpcomingLiveCard
+                  id={live.id}
+                  title={live.title}
+                  scheduledTime={new Date(live.scheduledTime)}
+                  thumbnailUrl={live.thumbnailUrl}
+                  isLive={live.isLive}
+                  onClick={() => live.streamKey && handleLiveClick(live.streamKey)}
+                  size="small"
+                />
+              </div>
+            ))}
         </div>
       </section>
 

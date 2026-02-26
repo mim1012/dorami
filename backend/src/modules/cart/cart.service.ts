@@ -384,6 +384,18 @@ export class CartService {
 
       this.logger.log(`Expired ${expiredCarts.length} cart items`);
 
+      // Synchronize: Expire linked PROMOTED reservations (timer sync)
+      for (const cart of expiredCarts) {
+        await this.prisma.reservation.updateMany({
+          where: {
+            userId: cart.userId,
+            productId: cart.productId,
+            status: 'PROMOTED',
+          },
+          data: { status: 'EXPIRED' },
+        });
+      }
+
       // Emit event for each product to trigger reservation promotion
       const productIds = [...new Set(expiredCarts.map((c) => c.productId))];
       for (const productId of productIds) {
