@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 describe('CartService', () => {
@@ -75,6 +76,13 @@ describe('CartService', () => {
                 freeShippingThreshold: 150,
               }),
             },
+          },
+        },
+        {
+          provide: EncryptionService,
+          useValue: {
+            decryptAddress: jest.fn((v) => v),
+            encryptAddress: jest.fn((v) => v),
           },
         },
         {
