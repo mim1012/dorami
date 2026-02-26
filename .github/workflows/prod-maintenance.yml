@@ -10,6 +10,8 @@ on:
         type: choice
         options:
           - status
+          - show-db-env
+          - sync-db-env
           - diagnose
           - fix-ssl
           - fix-ports
@@ -59,6 +61,96 @@ jobs:
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           echo "=== 디스크 ==="
           df -h / && docker system df
+          EOF
+
+      - name: show-db-env
+        if: inputs.command == 'show-db-env'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+          echo "=== PostgreSQL container env ==="
+          PGUSER=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_USER=' | cut -d= -f2 || true)
+          PGDB=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_DB=' | cut -d= -f2 || true)
+          PGPASS=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_PASSWORD=' | cut -d= -f2 || true)
+          echo "POSTGRES_USER(container): ${PGUSER}"
+          echo "POSTGRES_DB(container):   ${PGDB}"
+          echo "POSTGRES_PASSWORD(container): [hidden length=${#PGPASS}]"
+          echo ""
+          echo "=== /opt/dorami/.env.production values ==="
+          grep -E '^(POSTGRES_USER|POSTGRES_DB)=' /opt/dorami/.env.production || true
+          if grep -q '^POSTGRES_PASSWORD=' /opt/dorami/.env.production; then
+            LEN=$(grep '^POSTGRES_PASSWORD=' /opt/dorami/.env.production | cut -d= -f2- | wc -c)
+            echo "POSTGRES_PASSWORD(.env.production): [hidden length=$((LEN-1))]"
+          else
+            echo "POSTGRES_PASSWORD(.env.production): [missing]"
+          fi
+          EOF
+
+      - name: sync-db-env
+        if: inputs.command == 'sync-db-env'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          echo "=== Reading PostgreSQL container env ==="
+          PGUSER=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_USER=' | cut -d= -f2)
+          PGDB=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_DB=' | cut -d= -f2)
+          PGPASS=$(docker exec dorami-postgres-prod env | grep '^POSTGRES_PASSWORD=' | cut -d= -f2-)
+
+          echo "Container POSTGRES_USER=${PGUSER}"
+          echo "Container POSTGRES_DB=${PGDB}"
+          echo "Container POSTGRES_PASSWORD=[hidden length=${#PGPASS}]"
+
+          cd /opt/dorami
+          if [ ! -f .env.production ]; then
+            echo "ERROR: /opt/dorami/.env.production not found"
+            exit 1
+          fi
+
+          echo "=== Syncing .env.production ==="
+          sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=${PGUSER}|" .env.production \
+            || echo "POSTGRES_USER=${PGUSER}" >> .env.production
+          sed -i "s|^POSTGRES_DB=.*|POSTGRES_DB=${PGDB}|" .env.production \
+            || echo "POSTGRES_DB=${PGDB}" >> .env.production
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${PGPASS}|" .env.production \
+            || echo "POSTGRES_PASSWORD=${PGPASS}" >> .env.production
+
+          echo "=== Recreate backend/frontend with synced DB env ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate backend frontend
+
+          echo "=== Waiting for backend health ==="
+          ok=false
+          for i in $(seq 1 24); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo "unknown")
+            if [ "$status" = "healthy" ]; then
+              ok=true
+              echo "Backend healthy"
+              break
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              echo "Backend unhealthy"
+              docker logs dorami-backend-prod --tail=50 2>/dev/null || true
+              exit 1
+            fi
+            echo "Waiting backend... $i/24 (status=$status)"
+            sleep 5
+          done
+
+          if [ "$ok" != "true" ]; then
+            echo "ERROR: backend health timeout"
+            docker logs dorami-backend-prod --tail=80 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "=== Final container status ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           EOF
 
       - name: logs-backend
