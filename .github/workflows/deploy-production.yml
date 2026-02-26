@@ -52,6 +52,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard - workflow_dispatch main only
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "ERROR: Manual production deploy must be triggered from main branch."
+            echo "Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
       - name: Determine Version
         id: version
         run: |

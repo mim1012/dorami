@@ -39,6 +39,15 @@ jobs:
     environment: production
 
     steps:
+      - name: Guard - main branch only
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "ERROR: Production maintenance must run from main branch."
+            echo "Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
       - name: Setup SSH
         env:
           SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
@@ -248,9 +257,10 @@ jobs:
           set +a
 
           echo "=== Repair DB auth (no data/schema change) ==="
+          ESCAPED_PASS=${POSTGRES_PASSWORD//\'/\'\'}
           docker exec dorami-postgres-prod \
-            psql -U postgres -d postgres -v ON_ERROR_STOP=1 -v db_user="$POSTGRES_USER" -v db_pass="$POSTGRES_PASSWORD" \
-            -c "SELECT format('ALTER USER %I WITH PASSWORD %L', :'db_user', :'db_pass') \gexec"
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "ALTER USER \"${POSTGRES_USER}\" WITH PASSWORD '${ESCAPED_PASS}';"
 
           NETWORK=$(docker inspect dorami-postgres-prod --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s\n" $k}}{{end}}' | head -1)
           if [ -z "${NETWORK}" ]; then
