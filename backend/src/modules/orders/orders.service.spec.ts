@@ -8,6 +8,7 @@ import { InventoryService } from './inventory.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PointsService } from '../points/points.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 describe('OrdersService - createOrderFromCart', () => {
@@ -203,6 +204,13 @@ describe('OrdersService - createOrderFromCart', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn().mockReturnValue(10),
+          },
+        },
+        {
+          provide: EncryptionService,
+          useValue: {
+            decryptAddress: jest.fn((v) => v),
+            encryptAddress: jest.fn((v) => v),
           },
         },
       ],
