@@ -11,6 +11,7 @@ on:
         options:
           - status
           - show-db-env
+          - test-db-auth-tcp
           - sync-db-env
           - diagnose
           - fix-ssl
@@ -87,6 +88,39 @@ jobs:
           else
             echo "POSTGRES_PASSWORD(.env.production): [missing]"
           fi
+          EOF
+
+      - name: test-db-auth-tcp
+        if: inputs.command == 'test-db-auth-tcp'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          if [ ! -f .env.production ]; then
+            echo "ERROR: /opt/dorami/.env.production not found"
+            exit 1
+          fi
+
+          set -a
+          source .env.production
+          set +a
+
+          echo "=== TCP auth test with .env.production credentials ==="
+          docker exec \
+            -e PGPASSWORD="${POSTGRES_PASSWORD}" \
+            dorami-postgres-prod \
+            psql -h 127.0.0.1 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-env.out 2>/tmp/db-auth-env.err \
+            && echo "ENV_TCP_AUTH=PASS" \
+            || (echo "ENV_TCP_AUTH=FAIL"; cat /tmp/db-auth-env.err; exit 1)
+
+          echo "=== Local socket auth (reference) ==="
+          docker exec dorami-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-local.out 2>/tmp/db-auth-local.err \
+            && echo "LOCAL_AUTH=PASS" \
+            || (echo "LOCAL_AUTH=FAIL"; cat /tmp/db-auth-local.err; exit 1)
           EOF
 
       - name: sync-db-env
