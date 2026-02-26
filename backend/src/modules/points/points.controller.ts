@@ -40,16 +40,33 @@ export class PointsController {
    * Get specific user's point balance (admin or self)
    */
   @Get('users/:userId/points')
-  async getUserBalance(@Param('userId') userId: string) {
-    return this.pointsService.getBalance(userId);
+  async getUserBalance(
+    @Param('userId') targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    // Only allow access to own data or if admin
+    if (targetUserId !== currentUserId && role !== 'ADMIN') {
+      throw new Error("Forbidden: Cannot view another user's points");
+    }
+    return this.pointsService.getBalance(targetUserId);
   }
 
   /**
    * Get specific user's point transaction history (admin or self)
    */
   @Get('users/:userId/points/history')
-  async getUserHistory(@Param('userId') userId: string, @Query() query: GetPointHistoryQueryDto) {
-    return this.pointsService.getTransactionHistory(userId, query);
+  async getUserHistory(
+    @Param('userId') targetUserId: string,
+    @Query() query: GetPointHistoryQueryDto,
+    @CurrentUser('userId') currentUserId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    // Only allow access to own data or if admin
+    if (targetUserId !== currentUserId && role !== 'ADMIN') {
+      throw new Error("Forbidden: Cannot view another user's point history");
+    }
+    return this.pointsService.getTransactionHistory(targetUserId, query);
   }
 
   // ── Admin Endpoints ──
