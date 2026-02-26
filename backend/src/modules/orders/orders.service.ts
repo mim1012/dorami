@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { InventoryService } from './inventory.service';
 import {
   CreateOrderDto,
@@ -61,8 +62,33 @@ export class OrdersService {
     private notificationsService: NotificationsService,
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
+    private encryptionService: EncryptionService,
   ) {
     this.orderExpirationMinutes = this.configService.get<number>('ORDER_EXPIRATION_MINUTES', 10);
+  }
+
+  private isCaliforniaAddress(shippingAddress: unknown): boolean {
+    if (!shippingAddress) {
+      return false;
+    }
+
+    // Legacy/plain JSON address shape
+    if (typeof shippingAddress === 'object') {
+      const state = (shippingAddress as Record<string, unknown>).state;
+      return typeof state === 'string' && state.toUpperCase() === 'CA';
+    }
+
+    // Current encrypted address shape (stored as string in JSON column)
+    if (typeof shippingAddress === 'string') {
+      try {
+        const decrypted = this.encryptionService.decryptAddress(shippingAddress);
+        return decrypted.state.toUpperCase() === 'CA';
+      } catch {
+        this.logger.warn('Failed to decrypt shipping address while calculating shipping fee');
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -416,8 +442,7 @@ export class OrdersService {
             select: { shippingAddress: true },
           });
           if (user?.shippingAddress) {
-            const address = user.shippingAddress as Record<string, any>;
-            isCA = address.state === 'CA';
+            isCA = this.isCaliforniaAddress(user.shippingAddress);
           }
         }
         totalShippingFee = isCA ? caShippingFee : defaultShippingFee;

@@ -397,6 +397,14 @@ describe('StreamingService', () => {
   });
 
   describe('handleStreamDone', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('should update stream to OFFLINE and calculate duration', async () => {
       jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(mockLiveStream as any);
       jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue({
@@ -408,6 +416,7 @@ describe('StreamingService', () => {
       jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
 
       await service.handleStreamDone('abc123');
+      await jest.runOnlyPendingTimersAsync();
 
       expect(prismaService.liveStream.update).toHaveBeenCalledWith({
         where: { id: 'stream-2' },
@@ -426,7 +435,7 @@ describe('StreamingService', () => {
     });
 
     it('should handle stream with null startedAt', async () => {
-      const streamWithoutStart = { ...mockStream, startedAt: null };
+      const streamWithoutStart = { ...mockLiveStream, id: 'stream-1', startedAt: null };
       jest
         .spyOn(prismaService.liveStream, 'findUnique')
         .mockResolvedValue(streamWithoutStart as any);
@@ -439,6 +448,7 @@ describe('StreamingService', () => {
       jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
 
       await service.handleStreamDone('abc123');
+      await jest.runOnlyPendingTimersAsync();
 
       expect(prismaService.liveStream.update).toHaveBeenCalledWith({
         where: { id: 'stream-1' },
@@ -454,6 +464,7 @@ describe('StreamingService', () => {
       jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(null);
 
       await expect(service.handleStreamDone('invalid-key')).resolves.toBeUndefined();
+      await jest.runOnlyPendingTimersAsync();
       expect(prismaService.liveStream.update).not.toHaveBeenCalled();
     });
 
@@ -466,6 +477,7 @@ describe('StreamingService', () => {
       jest.spyOn(redisService, 'del').mockResolvedValue(undefined);
 
       await service.handleStreamDone('abc123');
+      await jest.runOnlyPendingTimersAsync();
 
       expect(redisService.del).toHaveBeenCalledTimes(2);
       expect(redisService.del).toHaveBeenCalledWith('stream:abc123:meta');

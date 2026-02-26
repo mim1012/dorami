@@ -32,6 +32,8 @@ interface VideoPlayerProps {
   hideErrorOverlay?: boolean;
   /** Controls whether the video element is muted. Default: false (sound on). */
   muted?: boolean;
+  /** Controls the video volume (0.0 - 1.0). Default: 1.0. */
+  volume?: number;
 }
 
 export default function VideoPlayer({
@@ -42,6 +44,7 @@ export default function VideoPlayer({
   onStreamStateChange,
   hideErrorOverlay = false,
   muted = false,
+  volume = 1,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -100,6 +103,12 @@ export default function VideoPlayer({
   useEffect(() => {
     onStreamError?.(!!error);
   }, [error, onStreamError]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    videoRef.current.volume = clampedVolume;
+  }, [volume]);
 
   useEffect(() => {
     streamEndedRef.current = streamEnded;
