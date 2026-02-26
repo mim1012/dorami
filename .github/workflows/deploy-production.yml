@@ -28,6 +28,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      skip_live_check:
+        description: '라이브 방송 중 배포 강제 진행 (긴급 시에만 사용)'
+        required: false
+        default: 'false'
+        type: boolean
 
 concurrency:
   group: production-deployment
@@ -90,6 +95,68 @@ jobs:
     needs: [validate]
     if: inputs.skip_tests != true && inputs.skip_tests != 'true' && inputs.rollback != 'true'
     uses: ./.github/workflows/ci.yml
+
+  # ===========================================
+  # Live Stream Safety Check
+  # ===========================================
+  live-check:
+    name: Live Stream Safety Check
+    runs-on: ubuntu-latest
+    needs: [validate]
+    if: inputs.rollback != 'true'
+
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+
+      - name: Check for active live streams
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          SKIP_LIVE_CHECK: ${{ inputs.skip_live_check }}
+        run: |
+          ssh $USER@$HOST bash << 'ENDSSH' > /tmp/live-count.txt
+          if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
+            docker exec dorami-postgres-prod psql -U dorami_prod -d dorami_production -t \
+              -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
+          elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
+            docker exec live-commerce-postgres psql -U postgres -d live_commerce_production -t \
+              -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
+          else
+            echo "0"
+          fi
+          ENDSSH
+
+          LIVE_COUNT=$(cat /tmp/live-count.txt | tr -d ' \r\n')
+          echo "현재 LIVE 스트림 수: ${LIVE_COUNT}"
+
+          if [ -n "${LIVE_COUNT}" ] && [ "${LIVE_COUNT}" -gt "0" ] 2>/dev/null; then
+            if [ "${SKIP_LIVE_CHECK}" == "true" ]; then
+              echo "⚠️ WARNING: 라이브 방송 중이지만 skip_live_check=true로 강제 진행합니다."
+              echo "라이브 방송과 Instagram 동시송출이 중단될 수 있습니다."
+            else
+              echo "❌ BLOCKED: 현재 라이브 방송 중입니다."
+              echo ""
+              echo "방송이 끝난 후 배포하거나,"
+              echo "긴급 상황이라면 workflow_dispatch에서 skip_live_check=true 로 재실행하세요."
+              exit 1
+            fi
+          else
+            echo "✅ 현재 라이브 방송 없음 — 배포 안전"
+          fi
 
   # ===========================================
   # Promote Existing Image (reuse staging-tested image)
@@ -157,8 +224,8 @@ jobs:
   # ===========================================
   approval:
     name: Production Approval
-    needs: [validate, build]
-    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true')
+    needs: [validate, build, live-check]
+    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: production-approval
