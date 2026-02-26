@@ -179,7 +179,7 @@ jobs:
                 grep -E 'dorami-(backend|frontend|nginx|postgres|redis|srs)' || true
 
               rm -f "$TMP_CODES"
-ENDSSH
+          ENDSSH
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
@@ -209,7 +209,7 @@ ENDSSH
                 echo "--- nginx -t ---";
                 nginx -t
               '
-ENDSSH
+          ENDSSH
           else
             echo "Executing: $CMD"
             ssh $USER@$HOST "cd /opt/dorami && $CMD"
