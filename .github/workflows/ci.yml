@@ -55,7 +55,7 @@ jobs:
   backend-ci:
     name: Backend CI
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -144,7 +144,7 @@ jobs:
   frontend-ci:
     name: Frontend CI
     needs: changes
-    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

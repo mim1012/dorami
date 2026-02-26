@@ -14,6 +14,7 @@ import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
 export const dynamic = 'force-dynamic';
 
 interface SystemSettings {
+  defaultCartTimerMinutes: number;
   defaultShippingFee: number;
   caShippingFee: number;
   freeShippingEnabled: boolean;
@@ -27,8 +28,13 @@ interface SystemSettings {
   kakaoChannelId: string;
 }
 
+const MIN_CART_TIMER_HOURS = 1;
+const MAX_CART_TIMER_HOURS = 120; // 5 days
+const MINUTES_PER_HOUR = 60;
+
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>({
+    defaultCartTimerMinutes: 60,
     defaultShippingFee: 10,
     caShippingFee: 8,
     freeShippingEnabled: false,
@@ -147,6 +153,39 @@ export default function AdminSettingsPage() {
 
         {/* Secondary Settings Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cart Timer Settings */}
+          <div className="bg-content-bg rounded-button p-6">
+            <Heading2 className="text-primary-text mb-4">장바구니 타이머 설정</Heading2>
+            <Input
+              label="기본 타이머 시간 (시간)"
+              type="number"
+              step="1"
+              min={MIN_CART_TIMER_HOURS}
+              max={MAX_CART_TIMER_HOURS}
+              value={Math.max(
+                MIN_CART_TIMER_HOURS,
+                Math.ceil((settings.defaultCartTimerMinutes || 0) / MINUTES_PER_HOUR),
+              )}
+              onChange={(e) => {
+                const parsedHours = parseInt(e.target.value, 10);
+                const hours = Number.isFinite(parsedHours)
+                  ? Math.min(
+                      MAX_CART_TIMER_HOURS,
+                      Math.max(MIN_CART_TIMER_HOURS, parsedHours || MIN_CART_TIMER_HOURS),
+                    )
+                  : MIN_CART_TIMER_HOURS;
+                setSettings({
+                  ...settings,
+                  defaultCartTimerMinutes: hours * MINUTES_PER_HOUR,
+                });
+              }}
+              fullWidth
+            />
+            <Caption className="text-secondary-text mt-2">
+              1시간~120시간(최대 5일) 범위에서 설정합니다.
+            </Caption>
+          </div>
+
           {/* Shipping Settings */}
           <div className="bg-content-bg rounded-button p-6">
             <Heading2 className="text-primary-text mb-4">배송 설정</Heading2>

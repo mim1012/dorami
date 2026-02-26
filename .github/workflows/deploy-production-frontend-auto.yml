@@ -1,0 +1,170 @@
+name: Auto Deploy Frontend to Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client-app/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-production-frontend-auto.yml'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: production-frontend-deployment
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  frontend-ci:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js with Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint & Type Check
+        run: |
+          npm run lint &
+          npx tsc --noEmit &
+          wait
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+          NEXT_PUBLIC_WS_URL: http://localhost:3001
+          NEXT_PUBLIC_CDN_URL: http://localhost:8080
+
+  build:
+    name: Build Frontend Image
+    needs: [frontend-ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        run: echo "tag=sha-${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./client-app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    name: Deploy Frontend to Production
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://www.doremi-live.com
+
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "✅ SSH key OK" || { echo "❌ SSH key invalid"; exit 1; }
+
+      - name: Pull frontend image and restart frontend only
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          SSH_USER: ${{ secrets.PRODUCTION_USER }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh $SSH_USER@$HOST bash << ENDSSH
+          set -euo pipefail
+          cd /opt/dorami
+
+          echo "========================================"
+          echo "Deploying frontend image: ${IMAGE_TAG}"
+          echo "========================================"
+
+          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production \
+            || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
+          sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production \
+            || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
+
+          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
+
+          set -a; source .env.production; set +a
+
+          echo "=== Pulling frontend image ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production pull frontend
+
+          echo "=== Restarting frontend only ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate frontend
+
+          echo "=== Waiting for frontend health ==="
+          for i in $(seq 1 18); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-frontend-prod 2>/dev/null || echo unknown)
+            if [ "$status" = "healthy" ]; then
+              echo "Frontend healthy!"
+              break
+            fi
+            if [ "$i" = "18" ]; then
+              echo "ERROR: Frontend not healthy after 3 minutes"
+              docker logs dorami-frontend-prod --tail 40 || true
+              exit 1
+            fi
+            echo "  waiting... $i/18 (status: $status)"
+            sleep 10
+          done
+
+          echo "=== Final status ==="
+          docker compose -f docker-compose.prod.yml ps frontend backend srs
+          ENDSSH
+
+      - name: Verify - Public site
+        run: |
+          curl -sf -o /dev/null -w "HTTP %{http_code}" https://www.doremi-live.com \
+            && echo " — Site OK" || (echo " — Site check failed"; exit 1)

@@ -13,6 +13,15 @@ name: Auto Deploy to Production
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'packages/shared-types/**'
+      - 'docker-compose*.yml'
+      - 'infrastructure/**'
+      - 'nginx/**'
+      - '.github/workflows/deploy-production-auto.yml'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/build-images.yml'
 
 concurrency:
   group: production-deployment

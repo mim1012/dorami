@@ -328,7 +328,7 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(4800)
+  @Max(7200)
   defaultCartTimerMinutes?: number;
 
   @IsOptional()
