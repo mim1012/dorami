@@ -16,6 +16,7 @@ on:
           - test-db-url-parse
           - inspect-backend-db-url
           - repair-db-auth
+          - repair-redis-auth
           - sync-db-env
           - diagnose
           - fix-ssl
@@ -308,6 +309,110 @@ jobs:
           echo "=== Recreate frontend ==="
           docker compose -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate frontend || true
+
+          echo "=== Final status ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          EOF
+
+      - name: repair-redis-auth
+        if: inputs.command == 'repair-redis-auth'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          if [ ! -f .env.production ]; then
+            echo "ERROR: /opt/dorami/.env.production not found"
+            exit 1
+          fi
+
+          echo "=== Resolve Redis password from running container ==="
+          REDIS_PASS_CONTAINER=$(docker inspect dorami-redis-prod --format '{{range .Config.Cmd}}{{println .}}{{end}}' \
+            | awk 'prev=="--requirepass"{print; exit}{prev=$0}')
+          if [ -z "${REDIS_PASS_CONTAINER}" ]; then
+            echo "ERROR: failed to extract Redis password from dorami-redis-prod"
+            exit 1
+          fi
+
+          REDIS_PASS_ENV=$(grep '^REDIS_PASSWORD=' .env.production | head -1 | cut -d= -f2- || true)
+          echo "REDIS_PASSWORD(container): [hidden length=${#REDIS_PASS_CONTAINER}]"
+          if [ -n "${REDIS_PASS_ENV}" ]; then
+            echo "REDIS_PASSWORD(.env.production): [hidden length=${#REDIS_PASS_ENV}]"
+          else
+            echo "REDIS_PASSWORD(.env.production): [missing]"
+          fi
+
+          if [ "${REDIS_PASS_ENV}" != "${REDIS_PASS_CONTAINER}" ]; then
+            echo "=== Sync REDIS_PASSWORD into .env.production ==="
+            TMP=$(mktemp)
+            awk -v v="${REDIS_PASS_CONTAINER}" '
+              BEGIN { done=0 }
+              /^REDIS_PASSWORD=/ {
+                if (!done) {
+                  print "REDIS_PASSWORD=" v
+                  done=1
+                }
+                next
+              }
+              { print }
+              END {
+                if (!done) {
+                  print "REDIS_PASSWORD=" v
+                }
+              }
+            ' .env.production > "${TMP}"
+            mv "${TMP}" .env.production
+            chmod 600 .env.production || true
+            echo "REDIS_PASSWORD synced"
+          else
+            echo "REDIS_PASSWORD already synced"
+          fi
+
+          NETWORK=$(docker inspect dorami-redis-prod --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s\n" $k}}{{end}}' | head -1)
+          if [ -z "${NETWORK}" ]; then
+            echo "ERROR: redis network not found"
+            exit 1
+          fi
+
+          echo "=== Verify Redis auth on network ==="
+          docker run --rm \
+            --network "${NETWORK}" \
+            redis:7-alpine \
+            redis-cli -h redis -a "${REDIS_PASS_CONTAINER}" ping >/tmp/redis-auth-net.out 2>/tmp/redis-auth-net.err \
+            && grep -q '^PONG' /tmp/redis-auth-net.out \
+            && echo "REDIS_NETWORK_AUTH=PASS" \
+            || (echo "REDIS_NETWORK_AUTH=FAIL"; cat /tmp/redis-auth-net.err; cat /tmp/redis-auth-net.out || true; exit 1)
+
+          echo "=== Recreate backend with synced REDIS_PASSWORD ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate backend
+
+          echo "=== Wait backend health ==="
+          ok=false
+          for i in $(seq 1 24); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo "unknown")
+            if [ "$status" = "healthy" ]; then
+              ok=true
+              echo "Backend healthy"
+              break
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              echo "Backend unhealthy"
+              docker logs dorami-backend-prod --tail=120 2>/dev/null || true
+              exit 1
+            fi
+            echo "Waiting backend... $i/24 (status=$status)"
+            sleep 5
+          done
+
+          if [ "$ok" != "true" ]; then
+            echo "ERROR: backend health timeout"
+            docker logs dorami-backend-prod --tail=120 2>/dev/null || true
+            exit 1
+          fi
 
           echo "=== Final status ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
