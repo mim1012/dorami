@@ -15,6 +15,7 @@ on:
           - test-db-auth-network
           - test-db-url-parse
           - inspect-backend-db-url
+          - repair-db-auth
           - sync-db-env
           - diagnose
           - fix-ssl
@@ -230,6 +231,76 @@ jobs:
           print("ENV_PASSWORD_LEN=", len(os.environ["POSTGRES_PASSWORD"]))
           print("BACKEND_URL_PASSWORD_MATCH=", str(parsed_pw == os.environ["POSTGRES_PASSWORD"]))
           PY
+          EOF
+
+      - name: repair-db-auth
+        if: inputs.command == 'repair-db-auth'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          set -a
+          source .env.production
+          set +a
+
+          echo "=== Repair DB auth (no data/schema change) ==="
+          docker exec dorami-postgres-prod \
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 -v db_user="$POSTGRES_USER" -v db_pass="$POSTGRES_PASSWORD" \
+            -c "SELECT format('ALTER USER %I WITH PASSWORD %L', :'db_user', :'db_pass') \gexec"
+
+          NETWORK=$(docker inspect dorami-postgres-prod --format '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s\n" $k}}{{end}}' | head -1)
+          if [ -z "${NETWORK}" ]; then
+            echo "ERROR: postgres network not found"
+            exit 1
+          fi
+
+          echo "=== Verify network auth ==="
+          docker run --rm \
+            --network "${NETWORK}" \
+            -e PGPASSWORD="${POSTGRES_PASSWORD}" \
+            postgres:16-alpine \
+            psql -h postgres -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1;" >/tmp/db-auth-net.out 2>/tmp/db-auth-net.err \
+            && echo "NETWORK_AUTH=PASS" \
+            || (echo "NETWORK_AUTH=FAIL"; cat /tmp/db-auth-net.err; exit 1)
+
+          echo "=== Recreate backend ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate backend
+
+          echo "=== Wait backend health ==="
+          ok=false
+          for i in $(seq 1 24); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo "unknown")
+            if [ "$status" = "healthy" ]; then
+              ok=true
+              echo "Backend healthy"
+              break
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              echo "Backend unhealthy"
+              docker logs dorami-backend-prod --tail=80 2>/dev/null || true
+              exit 1
+            fi
+            echo "Waiting backend... $i/24 (status=$status)"
+            sleep 5
+          done
+
+          if [ "$ok" != "true" ]; then
+            echo "ERROR: backend health timeout"
+            docker logs dorami-backend-prod --tail=80 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "=== Recreate frontend ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate frontend || true
+
+          echo "=== Final status ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           EOF
 
       - name: sync-db-env
