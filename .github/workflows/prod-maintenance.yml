@@ -21,6 +21,7 @@ on:
           - diagnose
           - fix-ssl
           - fix-ports
+          - fix-stream-ports
           - logs-backend
           - logs-frontend
           - logs-proxy
@@ -619,6 +620,43 @@ jobs:
             up -d --no-deps --force-recreate backend frontend
           echo "=== 결과 ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          EOF
+
+      - name: fix-stream-ports
+        if: inputs.command == 'fix-stream-ports'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          echo "=== SRS force-recreate (apply host port bindings) ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            up -d --no-deps --force-recreate srs
+
+          echo "=== wait for 8080 listener ==="
+          ok=false
+          for i in $(seq 1 24); do
+            if ss -tln | grep -q ':8080'; then
+              ok=true
+              echo "SRS port 8080 is listening"
+              break
+            fi
+            echo "waiting 8080... $i/24"
+            sleep 3
+          done
+
+          if [ "$ok" != "true" ]; then
+            echo "ERROR: 8080 listener not ready"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            docker logs dorami-srs-prod --tail=120 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "=== verify container ports ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "dorami-srs-prod|NAMES"
           EOF
 
       - name: fix-ssl
