@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RedisService } from '../../common/redis/redis.service';
 import {
   CreateReservationDto,
   ReservationResponseDto,
@@ -19,6 +20,7 @@ export class ReservationService {
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
     // Get timer duration from environment variable
     this.promotionTimerMinutes = this.configService.get<number>(
@@ -76,28 +78,18 @@ export class ReservationService {
     }
 
     // 4. Create reservation with atomic reservation number assignment
-    // Use transaction to prevent race condition
-    const reservation = await this.prisma.$transaction(async (tx) => {
-      // Get next reservation number within transaction
-      const lastReservation = await tx.reservation.findFirst({
-        where: { productId },
-        orderBy: { reservationNumber: 'desc' },
-      });
+    // Use Redis INCR for atomic sequence generation (prevents race conditions)
+    const nextReservationNumber = await this.redisService.incr(`reservation:sequence:${productId}`);
 
-      const nextReservationNumber = (lastReservation?.reservationNumber || 0) + 1;
-
-      // Create reservation with unique constraint protection
-      // If duplicate number occurs, transaction will rollback due to @@unique([productId, reservationNumber])
-      return await tx.reservation.create({
-        data: {
-          userId,
-          productId,
-          productName: product.name,
-          quantity,
-          reservationNumber: nextReservationNumber,
-          status: 'WAITING',
-        },
-      });
+    const reservation = await this.prisma.reservation.create({
+      data: {
+        userId,
+        productId,
+        productName: product.name,
+        quantity,
+        reservationNumber: nextReservationNumber as number,
+        status: 'WAITING',
+      },
     });
 
     this.logger.log(
