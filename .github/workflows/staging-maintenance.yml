@@ -13,7 +13,9 @@ on:
           - logs-backend
           - logs-frontend
           - logs-srs
+          - logs-nginx
           - load-test-live
+          - nginx-health
           - restart
           - restart-backend
           - restart-frontend
@@ -94,8 +96,14 @@ jobs:
             logs-srs)
               CMD="docker compose -f docker-compose.staging.yml logs --tail=200 srs"
               ;;
+            logs-nginx)
+              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 nginx"
+              ;;
             load-test-live)
               CMD="__RUN_LOAD_TEST_LIVE__"
+              ;;
+            nginx-health)
+              CMD="__RUN_NGINX_HEALTH__"
               ;;
             restart)
               CMD="docker compose -f docker-compose.staging.yml restart"
@@ -171,7 +179,37 @@ jobs:
                 grep -E 'dorami-(backend|frontend|nginx|postgres|redis|srs)' || true
 
               rm -f "$TMP_CODES"
-          ENDSSH
+ENDSSH
+          elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
+            echo "Executing nginx health diagnostics in staging"
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              set -euo pipefail
+              cd /opt/dorami
+
+              echo "=== docker compose ps (nginx) ==="
+              docker compose -f docker-compose.staging.yml ps nginx || true
+
+              echo "=== docker inspect (state/health) ==="
+              docker inspect dorami-nginx-1 --format 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}'
+
+              echo "=== docker inspect (health logs last 10) ==="
+              docker inspect dorami-nginx-1 --format '{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} output={{printf "%q" .Output}}{{println}}{{end}}' | tail -n 10 || true
+
+              echo "=== nginx container logs (tail 120) ==="
+              docker compose -f docker-compose.staging.yml logs --tail=120 nginx || true
+
+              echo "=== inside nginx container ==="
+              docker exec dorami-nginx-1 sh -lc '
+                echo "wget=$(command -v wget || echo not-found)";
+                wget -q -S -O- http://localhost/health >/tmp/health.out 2>/tmp/health.err || true;
+                echo "--- health.out ---";
+                cat /tmp/health.out || true;
+                echo "--- health.err ---";
+                cat /tmp/health.err || true;
+                echo "--- nginx -t ---";
+                nginx -t
+              '
+ENDSSH
           else
             echo "Executing: $CMD"
             ssh $USER@$HOST "cd /opt/dorami && $CMD"
