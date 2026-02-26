@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Param,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { ReservationService } from './reservation.service';
 import { CreateOrderDto, CreateOrderFromCartDto } from './dto/order.dto';
@@ -34,26 +26,16 @@ export class OrdersController {
   }
 
   @Post()
-  async createOrder(
-    @CurrentUser('userId') userId: string,
-    @Body() createOrderDto: CreateOrderDto,
-  ) {
+  async createOrder(@CurrentUser('userId') userId: string, @Body() createOrderDto: CreateOrderDto) {
     return this.ordersService.createOrder(userId, createOrderDto);
   }
 
-  @Patch(':id/confirm')
-  async confirmOrder(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
-    return this.ordersService.confirmOrder(orderId, userId);
-  }
+  // NOTE: confirmOrder endpoint removed for security
+  // Payment confirmation should only be available via admin:
+  // PATCH /api/admin/orders/:id/confirm-payment (see admin.controller.ts)
 
   @Patch(':id/cancel')
-  async cancelOrder(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async cancelOrder(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
     await this.ordersService.cancelOrder(orderId, userId);
     return { message: 'Order cancelled successfully' };
   }
@@ -64,19 +46,13 @@ export class OrdersController {
   }
 
   @Get(':id')
-  async getOrderById(
-    @Param('id') orderId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async getOrderById(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
     return this.ordersService.findById(orderId, userId);
   }
 
   // Reservation endpoints
   @Post('reservations/:productId')
-  async joinQueue(
-    @Param('productId') productId: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  async joinQueue(@Param('productId') productId: string, @CurrentUser('userId') userId: string) {
     return this.reservationService.addToQueue(userId, productId);
   }
 
