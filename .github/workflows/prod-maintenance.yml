@@ -22,6 +22,8 @@ on:
           - fix-ssl
           - fix-ports
           - fix-stream-ports
+          - test-srs-ingest
+          - check-nginx-upstream
           - logs-backend
           - logs-frontend
           - logs-proxy
@@ -657,6 +659,117 @@ jobs:
 
           echo "=== verify container ports ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "dorami-srs-prod|NAMES"
+          EOF
+
+      - name: test-srs-ingest
+        if: inputs.command == 'test-srs-ingest'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          STREAM_KEY="smoke$(date +%s)"
+          LOG_FILE="/tmp/srs-smoke-${STREAM_KEY}.log"
+          echo "STREAM_KEY=${STREAM_KEY}"
+
+          echo "=== precheck: srs container and listener ==="
+          docker ps --format '{{.Names}}' | grep -q '^dorami-srs-prod$' || { echo "ERROR: dorami-srs-prod not running"; exit 1; }
+          ss -tln | grep -q ':1935' || { echo "ERROR: RTMP 1935 not listening"; exit 1; }
+          ss -tln | grep -q ':8080' || { echo "ERROR: HTTP 8080 not listening"; exit 1; }
+
+          echo "=== start synthetic RTMP publish (15s) ==="
+          if command -v ffmpeg >/dev/null 2>&1; then
+            ffmpeg -hide_banner -loglevel error -re \
+              -f lavfi -i testsrc=size=640x360:rate=15 \
+              -f lavfi -i anullsrc=r=44100:cl=stereo \
+              -shortest -t 15 \
+              -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p \
+              -c:a aac -ar 44100 -b:a 96k \
+              -f flv "rtmp://127.0.0.1:1935/live/${STREAM_KEY}" > "${LOG_FILE}" 2>&1 &
+          else
+            docker run --rm --network host jrottenberg/ffmpeg:6.0-alpine \
+              -hide_banner -loglevel error -re \
+              -f lavfi -i testsrc=size=640x360:rate=15 \
+              -f lavfi -i anullsrc=r=44100:cl=stereo \
+              -shortest -t 15 \
+              -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p \
+              -c:a aac -ar 44100 -b:a 96k \
+              -f flv "rtmp://127.0.0.1:1935/live/${STREAM_KEY}" > "${LOG_FILE}" 2>&1 &
+          fi
+          PUB_PID=$!
+          trap 'kill ${PUB_PID} 2>/dev/null || true' EXIT
+
+          echo "=== probe outputs while publishing ==="
+          FLV_OK=false
+          for i in $(seq 1 25); do
+            FLV_CODE=$(curl --max-time 2 -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8080/live/live/${STREAM_KEY}.flv" || true)
+            HLS_CODE=$(curl --max-time 2 -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8080/live/${STREAM_KEY}.m3u8" || true)
+            echo "probe ${i}: flv=${FLV_CODE}, hls=${HLS_CODE}"
+            if [ "${FLV_CODE}" = "200" ]; then
+              FLV_OK=true
+              break
+            fi
+            sleep 1
+          done
+
+          wait ${PUB_PID} || true
+          trap - EXIT
+
+          if [ "${FLV_OK}" != "true" ]; then
+            echo "ERROR: FLV output not reachable during ingest"
+            echo "--- ffmpeg log ---"
+            cat "${LOG_FILE}" || true
+            echo "--- srs log tail ---"
+            docker logs dorami-srs-prod --tail=120 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "SRS_INGEST_TEST=PASS"
+          echo "STREAM_KEY=${STREAM_KEY}"
+          echo "Playback candidates:"
+          echo "  FLV: https://www.doremi-live.com/live/live/${STREAM_KEY}.flv"
+          echo "  HLS: https://www.doremi-live.com/hls/${STREAM_KEY}.m3u8"
+          EOF
+
+      - name: check-nginx-upstream
+        if: inputs.command == 'check-nginx-upstream'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          echo "=== nginx error.log upstream keywords (last 300 lines) ==="
+          if [ -r /var/log/nginx/error.log ]; then
+            tail -n 300 /var/log/nginx/error.log \
+              | grep -E 'upstream|connect\(\) failed|timed out|no live upstreams|502' \
+              || echo "(no upstream error keywords)"
+          else
+            sudo tail -n 300 /var/log/nginx/error.log 2>/dev/null \
+              | grep -E 'upstream|connect\(\) failed|timed out|no live upstreams|502' \
+              || echo "(no upstream error keywords or no permission)"
+          fi
+
+          echo "=== nginx access.log 502 entries (last 500 lines) ==="
+          if [ -r /var/log/nginx/access.log ]; then
+            tail -n 500 /var/log/nginx/access.log | awk '$9==502{print}' | tail -n 50 || true
+          else
+            sudo tail -n 500 /var/log/nginx/access.log 2>/dev/null | awk '$9==502{print}' | tail -n 50 || true
+          fi
+
+          echo "=== direct upstream probes ==="
+          echo -n "frontend(3000): "
+          curl --max-time 3 -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/ || true
+          echo
+          echo -n "backend(3001/live): "
+          curl --max-time 3 -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/api/health/live || true
+          echo
+          echo -n "srs(8080/hls missing): "
+          curl --max-time 3 -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/live/nonexistent.m3u8 || true
+          echo
           EOF
 
       - name: fix-ssl
