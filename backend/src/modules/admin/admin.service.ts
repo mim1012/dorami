@@ -41,6 +41,7 @@ interface OrderWhereClause {
   paymentStatus?: { in: PaymentStatus[] };
   shippingStatus?: { in: ShippingStatus[] };
   total?: { gte?: number; lte?: number };
+  orderItems?: any;
 }
 
 interface SystemConfigUpdateData {
@@ -183,6 +184,7 @@ export class AdminService {
       shippingStatus,
       minAmount,
       maxAmount,
+      streamKey,
     } = query;
 
     const skip = (page - 1) * limit;
@@ -241,6 +243,17 @@ export class AdminService {
       }
     }
 
+    // StreamKey filter
+    if (streamKey) {
+      where.orderItems = {
+        some: {
+          product: {
+            streamKey: { equals: streamKey, mode: 'insensitive' },
+          },
+        },
+      };
+    }
+
     // Get total count with filters
     const total = await this.prisma.order.count({ where });
 
@@ -254,15 +267,19 @@ export class AdminService {
       },
       include: {
         orderItems: {
-          select: {
-            id: true,
+          include: {
+            Product: {
+              select: {
+                streamKey: true,
+              },
+            },
           },
         },
       },
     });
 
     // Map orders to DTOs
-    const orderDtos: OrderListItemDto[] = orders.map((order) => ({
+    const orderDtos: OrderListItemDto[] = orders.map((order: any) => ({
       id: order.id,
       userId: order.userId,
       userEmail: order.userEmail,
@@ -279,6 +296,7 @@ export class AdminService {
       paidAt: order.paidAt,
       shippedAt: order.shippedAt,
       deliveredAt: order.deliveredAt,
+      streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -305,6 +323,7 @@ export class AdminService {
       shippingStatus,
       minAmount,
       maxAmount,
+      streamKey,
     } = query;
 
     const where: OrderWhereClause = {};
@@ -347,6 +366,17 @@ export class AdminService {
       if (maxAmount !== undefined) {
         where.total.lte = maxAmount;
       }
+    }
+
+    // StreamKey filter
+    if (streamKey) {
+      where.orderItems = {
+        some: {
+          product: {
+            streamKey: { equals: streamKey, mode: 'insensitive' },
+          },
+        },
+      };
     }
 
     const MAX_EXPORT_ROWS = 10000;

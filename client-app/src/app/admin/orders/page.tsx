@@ -30,6 +30,7 @@ interface OrderListItem {
   paidAt: string | null;
   shippedAt: string | null;
   deliveredAt: string | null;
+  streamKey: string | null;
 }
 
 interface OrderListResponse {
@@ -70,6 +71,7 @@ function AdminOrdersContent() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<string[]>(
     searchParams.get('orderStatus')?.split(',').filter(Boolean) || [],
   );
+  const [streamKeyFilter, setStreamKeyFilter] = useState(searchParams.get('streamKey') || '');
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
@@ -96,6 +98,7 @@ function AdminOrdersContent() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
+    if (streamKeyFilter) params.set('streamKey', streamKeyFilter);
 
     router.push(`/admin/orders?${params.toString()}`, { scroll: false });
   }, [
@@ -107,6 +110,7 @@ function AdminOrdersContent() {
     dateFrom,
     dateTo,
     orderStatusFilter,
+    streamKeyFilter,
     router,
   ]);
 
@@ -130,6 +134,7 @@ function AdminOrdersContent() {
         if (dateFrom) params.dateFrom = dateFrom;
         if (dateTo) params.dateTo = dateTo;
         if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter;
+        if (streamKeyFilter) params.streamKey = streamKeyFilter;
 
         const response = await apiClient.get<OrderListResponse>('/admin/orders', { params });
 
@@ -155,6 +160,7 @@ function AdminOrdersContent() {
     dateFrom,
     dateTo,
     orderStatusFilter,
+    streamKeyFilter,
   ]);
 
   const handleSort = (key: string) => {
@@ -181,6 +187,7 @@ function AdminOrdersContent() {
     setDateFrom('');
     setDateTo('');
     setOrderStatusFilter([]);
+    setStreamKeyFilter('');
     setPage(1);
   };
 
@@ -350,6 +357,17 @@ function AdminOrdersContent() {
       label: '주문번호',
       sortable: true,
       render: (order) => <span className="font-mono text-caption">{order.id}</span>,
+    },
+    {
+      key: 'streamKey',
+      label: '방송(스트림키)',
+      sortable: false,
+      render: (order) =>
+        order.streamKey ? (
+          <span className="font-mono text-caption text-hot-pink">{order.streamKey}</span>
+        ) : (
+          <span className="text-secondary-text text-caption">-</span>
+        ),
     },
     {
       key: 'userEmail',
@@ -530,6 +548,20 @@ function AdminOrdersContent() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* StreamKey Filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="스트림키"
+                placeholder="특정 방송 스트림키 입력..."
+                value={streamKeyFilter}
+                onChange={(e) => {
+                  setStreamKeyFilter(e.target.value);
+                  setPage(1);
+                }}
+                fullWidth
+              />
             </div>
 
             {/* 배송사 미연동 — 배송/결제 필터 불필요 */}

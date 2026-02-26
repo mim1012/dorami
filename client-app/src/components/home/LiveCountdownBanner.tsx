@@ -15,7 +15,7 @@ export function LiveCountdownBanner({
   liveStartTime,
   isLive = false,
   onLiveClick,
-  liveStreamId
+  liveStreamId,
 }: LiveCountdownBannerProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const { isSupported, permission, subscribe } = useNotifications();
@@ -47,7 +47,9 @@ export function LiveCountdownBanner({
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-      setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+      setTimeLeft(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
+      );
     };
 
     updateCountdown();
@@ -80,21 +82,19 @@ export function LiveCountdownBanner({
     );
   }
 
-  if (!liveStartTime) {
-    return (
-      <div className="relative w-full aspect-video bg-content-bg rounded-[12px] overflow-hidden">
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-          <h2 className="text-h1 text-primary-text mb-2">예정된 라이브가 없습니다</h2>
-          <p className="text-body text-secondary-text">곧 새로운 라이브가 시작됩니다</p>
-        </div>
-      </div>
-    );
+  if (!liveStartTime || timeLeft === 'LIVE NOW') {
+    return null;
   }
 
   return (
-    <div className="mx-4 mb-6 p-6 rounded-2xl gradient-hot-pink text-white shadow-hot-pink" aria-live="polite">
+    <div
+      className="mx-4 mb-6 p-6 rounded-2xl gradient-hot-pink text-white shadow-hot-pink"
+      aria-live="polite"
+    >
       <p className="text-sm font-semibold mb-2 opacity-90">다음 라이브</p>
-      <p className="text-5xl font-bold mb-4 tracking-wider" aria-label={`남은 시간 ${timeLeft}`}>{timeLeft}</p>
+      <p className="text-5xl font-bold mb-4 tracking-wider" aria-label={`남은 시간 ${timeLeft}`}>
+        {timeLeft}
+      </p>
       <p className="text-sm mb-4 opacity-90">라이브 시작까지</p>
       <button
         onClick={handleNotificationClick}
