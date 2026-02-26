@@ -113,12 +113,12 @@ export class CreateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 2880,
+    maximum: 7200,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(2880)
+  @Max(7200)
   @Type(() => Number)
   timerDuration?: number;
 
@@ -270,12 +270,12 @@ export class UpdateProductDto {
     description: 'Reservation timer duration in minutes',
     example: 10,
     minimum: 1,
-    maximum: 2880,
+    maximum: 7200,
   })
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(2880)
+  @Max(7200)
   @Type(() => Number)
   timerDuration?: number;
 
