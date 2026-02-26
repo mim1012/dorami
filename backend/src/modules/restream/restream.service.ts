@@ -195,13 +195,15 @@ export class ReStreamService implements OnModuleDestroy {
     this.emitStatus(liveStreamId, target.id, 'CONNECTING', log.id);
 
     // muteAudio: drop audio track (-an), copy video only
-    // normal: copy both streams (-c copy)
+    // normal: copy video + transcode audio to AAC (Instagram requires AAC 44100Hz)
     const args = [
       '-rw_timeout',
       '10000000', // 10s network timeout
       '-i',
       inputUrl,
-      ...(target.muteAudio ? ['-an', '-c:v', 'copy'] : ['-c', 'copy']),
+      '-c:v',
+      'copy',
+      ...(target.muteAudio ? ['-an'] : ['-c:a', 'aac', '-ar', '44100', '-b:a', '128k', '-ac', '2']),
       '-f',
       'flv',
       outputUrl,
