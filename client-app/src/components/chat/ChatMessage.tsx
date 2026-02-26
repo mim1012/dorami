@@ -25,12 +25,13 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
 
   // Check if message is deleted
   const isDeleted = message.isDeleted || false;
+  const username = (message.username || '').replace(/^@+/, '');
 
   if (compact) {
     return (
       <div className={`animate-fade-in mb-1 mx-1 ${isDeleted ? 'opacity-50' : ''}`}>
         <p className="text-[13px] leading-snug break-words">
-          <span className="text-hot-pink font-semibold">@{message.username}</span>
+          <span className="text-hot-pink font-semibold">@{username}</span>
           <span className="text-white/90 ml-1">
             {isDeleted ? '관리자에 의해 삭제된 메시지입니다.' : message.message}
           </span>
@@ -43,7 +44,7 @@ function ChatMessage({ message, compact = false, isAdmin = false, onDelete }: Ch
     <div className={`animate-fade-in mb-3 ${isDeleted ? 'opacity-50' : ''}`}>
       {/* Username + Timestamp */}
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <span className="text-hot-pink font-semibold text-caption">@{message.username}</span>
+        <span className="text-hot-pink font-semibold text-caption">@{username}</span>
         <div className="flex items-center gap-2">
           <span className="text-white/50 text-small">{formatTime(message.timestamp)}</span>
           {isAdmin && !isDeleted && onDelete && (

@@ -100,7 +100,8 @@ export default function LiveStreamPage() {
   const [activeProductOverride, setActiveProductOverride] = useState<FeaturedProduct | null>(null);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
-  const [isMobileMuted, setIsMobileMuted] = useState(false);
+  const [mobileVolume, setMobileVolume] = useState(1);
+  const [isVolumeControlOpen, setIsVolumeControlOpen] = useState(false);
   const [mobileMessage, setMobileMessage] = useState('');
   const [purchaseNotif, setPurchaseNotif] = useState<string | null>(null);
   const purchaseNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -539,6 +540,8 @@ export default function LiveStreamPage() {
   };
 
   const layout = computeLayout(snapshot, !!displayedProduct);
+  const isMobileMuted = mobileVolume <= 0;
+  const mobileVolumePercent = Math.round(mobileVolume * 100);
 
   return (
     <div className="live-fullscreen w-full bg-[#0d0d18] lg:h-screen lg:flex lg:overflow-hidden">
@@ -561,7 +564,7 @@ export default function LiveStreamPage() {
 
       {/* ── MOBILE: fullscreen overlay layout ── */}
       {isMobile && (
-        <div className="relative w-full h-screen overflow-hidden bg-black">
+        <div className="relative w-full h-[100dvh] overflow-hidden bg-black">
           {/* 0. Video — fullscreen background */}
           <div className="absolute inset-0 z-0">
             <VideoPlayer
@@ -569,6 +572,7 @@ export default function LiveStreamPage() {
               streamKey={streamKey}
               title={streamStatus.title}
               muted={isMobileMuted}
+              volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
               onStreamError={setVideoError}
               hideErrorOverlay
@@ -604,11 +608,14 @@ export default function LiveStreamPage() {
                 layout.topBar.dim ? 'opacity-40' : 'opacity-100'
               }`}
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent h-32 pointer-events-none" />
-              <div className="relative px-4 pt-12 pb-4 flex items-center justify-between">
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent h-24 pointer-events-none" />
+              <div
+                className="relative px-3 xs:px-4 pb-3 flex items-center justify-between gap-2"
+                style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+              >
                 {/* Left: profile + name + LIVE + viewers */}
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-1">
+                  <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
                     <Image
                       src="/logo.png"
                       alt="도레미 Live"
@@ -618,15 +625,15 @@ export default function LiveStreamPage() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white text-sm font-medium line-clamp-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-white text-[13px] xs:text-sm font-medium line-clamp-1">
                         {streamStatus.title}
                       </span>
                       {(snapshot === 'LIVE_NORMAL' || snapshot === 'LIVE_TYPING') &&
                         stream !== 'error' && (
-                          <div className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded flex-shrink-0">
+                          <div className="flex items-center gap-1 bg-red-500 px-1.5 xs:px-2 py-0.5 rounded flex-shrink-0">
                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                            <span className="text-white text-[10px] uppercase tracking-wider">
+                            <span className="text-white text-[9px] uppercase tracking-wider">
                               LIVE
                             </span>
                           </div>
@@ -634,29 +641,68 @@ export default function LiveStreamPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-white/80">
                       <Eye className="w-3 h-3" />
-                      <span className="text-xs">{viewerCount.toLocaleString()}</span>
+                      <span className="text-[11px] xs:text-xs">{viewerCount.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right: 공지, 소리, 문의, 닫기 pink circles */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Right: 공지, 소리(볼륨), 문의, 닫기 pink circles */}
+                <div className="flex items-start gap-1.5 xs:gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      setIsVolumeControlOpen(false);
+                      setIsNoticeOpen(true);
+                    }}
+                    className="flex flex-col items-center gap-0.5"
+                    aria-label="공지"
+                  >
+                    <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                      <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
+                    </div>
+                    <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">공지</span>
+                  </button>
+
+                  <div className="relative flex flex-col items-center gap-0.5">
+                    <button
+                      onClick={() => setIsVolumeControlOpen((prev) => !prev)}
+                      className="flex flex-col items-center gap-0.5"
+                      aria-label="소리 조절"
+                    >
+                      <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                        {isMobileMuted ? (
+                          <VolumeX className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
+                        ) : (
+                          <Volume2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
+                        )}
+                      </div>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">소리</span>
+                    </button>
+
+                    {isVolumeControlOpen && (
+                      <div className="absolute top-9 xs:top-10 right-0 w-32 xs:w-36 rounded-lg border border-white/20 bg-black/80 backdrop-blur-md px-2.5 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <VolumeX className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={mobileVolumePercent}
+                            onChange={(e) => setMobileVolume(Number(e.target.value) / 100)}
+                            className="w-full accent-[#FF007A]"
+                            aria-label="볼륨 조절"
+                          />
+                          <Volume2 className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
+                        </div>
+                        <div className="mt-1 text-right text-[10px] text-white/80">
+                          {mobileVolumePercent}%
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {(
                     [
-                      {
-                        key: 'notice',
-                        icon: Bell,
-                        label: '공지',
-                        ariaLabel: '공지',
-                        onClick: () => setIsNoticeOpen(true),
-                      },
-                      {
-                        key: 'sound',
-                        icon: isMobileMuted ? VolumeX : Volume2,
-                        label: '소리',
-                        ariaLabel: isMobileMuted ? '소리 켜기' : '소리 끄기',
-                        onClick: () => setIsMobileMuted((prev) => !prev),
-                      },
                       {
                         key: 'inquiry',
                         icon: MessageCircle,
@@ -675,14 +721,17 @@ export default function LiveStreamPage() {
                   ).map(({ key, icon: Icon, label, ariaLabel, onClick }) => (
                     <button
                       key={key}
-                      onClick={onClick}
+                      onClick={() => {
+                        setIsVolumeControlOpen(false);
+                        onClick();
+                      }}
                       className="flex flex-col items-center gap-0.5"
                       aria-label={ariaLabel}
                     >
-                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
-                        <Icon className="w-4 h-4 text-white" />
+                      <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                        <Icon className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                       </div>
-                      <span className="text-white text-[9px] drop-shadow-lg">{label}</span>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -693,15 +742,14 @@ export default function LiveStreamPage() {
           {/* 2. Notice banner */}
           {notice?.text && (
             <div
-              className="absolute left-0 right-0 z-20 bg-[rgba(255,100,100,0.85)] px-3 py-1.5 overflow-hidden"
-              style={{ top: 'calc(max(48px, env(safe-area-inset-top)) + 76px)' }}
+              className="absolute left-0 right-0 z-20 bg-[rgba(255,100,100,0.85)] px-2.5 xs:px-3 py-1.5 overflow-hidden"
+              style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)' }}
             >
               <div className="flex items-center gap-2">
                 <Zap className="w-3 h-3 text-white flex-shrink-0" />
                 <div className="overflow-hidden flex-1">
-                  <div className="notice-track text-white text-[11px] font-medium">
-                    <span className="pr-12">{notice.text}</span>
-                    <span className="pr-12">{notice.text}</span>
+                  <div className="notice-track text-white text-[11px] xs:text-xs font-medium">
+                    <span className="pr-10">{notice.text}</span>
                   </div>
                 </div>
               </div>
@@ -710,7 +758,7 @@ export default function LiveStreamPage() {
 
           {/* 2b. Purchase notification pill */}
           {purchaseNotif && (
-            <div className="absolute top-[140px] left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
+            <div className="absolute left-0 right-0 z-40 flex justify-center pointer-events-none px-4 top-[calc(env(safe-area-inset-top,0px)+88px)]">
               <div className="bg-black/70 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 flex items-center gap-2 shadow-xl animate-slide-up-sheet">
                 <span className="text-lg">🎉</span>
                 <span className="text-white text-xs font-medium">{purchaseNotif}</span>
@@ -719,16 +767,16 @@ export default function LiveStreamPage() {
           )}
 
           {/* 3. Right FABs */}
-          <div className="absolute right-4 bottom-32 z-30 flex flex-col gap-4">
+          <div className="absolute right-3 xs:right-4 bottom-[calc(112px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-3 xs:gap-4">
             <button
               onClick={handleShare}
               className="flex flex-col items-center gap-1"
               aria-label="공유하기"
             >
-              <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
-                <Share2 className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+                <Share2 className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
-              <span className="text-white text-xs drop-shadow-lg">공유</span>
+              <span className="text-white text-[10px] xs:text-xs drop-shadow-lg">공유</span>
             </button>
 
             <button
@@ -736,24 +784,24 @@ export default function LiveStreamPage() {
               className="flex flex-col items-center gap-1"
               aria-label="지난 상품 목록"
             >
-              <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
-                <Package className="w-4 h-4 text-white" />
+              <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+                <Package className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
               </div>
-              <span className="text-white text-xs font-medium drop-shadow-lg">
+              <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
                 {allProducts.length}개
               </span>
-              <span className="text-white/70 text-[9px] drop-shadow-lg">지난상품</span>
+              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">지난상품</span>
             </button>
           </div>
 
           {/* 4. Chat messages — absolute overlay */}
-          <div className="absolute left-4 bottom-[160px] z-10 w-[70%] space-y-1.5">
+          <div className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] bottom-[166px] z-10 space-y-1.5">
             <ChatMessageList messages={allMessages} compact maxMessages={4} />
           </div>
 
           {/* 5. Featured product card — glassmorphism */}
           {displayedProduct && snapshot !== 'ENDED' && snapshot !== 'NO_STREAM' && (
-            <div className="absolute left-4 bottom-[90px] z-20 w-[65%]">
+            <div className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] bottom-[96px] z-20">
               <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 p-1.5 shadow-2xl">
                 <div className="flex items-center gap-2">
                   {/* Thumbnail */}
@@ -808,12 +856,12 @@ export default function LiveStreamPage() {
           {/* 6. Bottom bar: chat input + CTA */}
           {layout.bottomInput.visible && (
             <div
-              className="absolute bottom-0 left-0 right-0 z-10 px-4 pt-3"
+              className="absolute bottom-0 left-0 right-0 z-10 px-3 xs:px-4 pt-2.5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }}
             >
               <div className="flex items-center gap-2">
                 {/* Chat input pill */}
-                <div className="flex-1 bg-black/30 backdrop-blur-md rounded-full px-4 py-3 border border-white/10">
+                <div className="flex-1 bg-black/30 backdrop-blur-md rounded-full px-3.5 xs:px-4 py-2.5 xs:py-3 border border-white/10">
                   <input
                     type="text"
                     value={mobileMessage}
@@ -826,7 +874,7 @@ export default function LiveStreamPage() {
                     }}
                     placeholder="메시지를 입력하세요..."
                     disabled={layout.bottomInput.disabled || !isConnected}
-                    className="w-full bg-transparent text-white text-sm placeholder:text-white/50 focus:outline-none disabled:opacity-50"
+                    className="w-full bg-transparent text-white text-[13px] xs:text-sm placeholder:text-white/50 focus:outline-none disabled:opacity-50"
                   />
                 </div>
                 {/* Purchase CTA */}
@@ -837,11 +885,13 @@ export default function LiveStreamPage() {
                     handleProductClick(displayedProduct)
                   }
                   disabled={!displayedProduct || displayedProduct.status === 'SOLD_OUT'}
-                  className="flex-shrink-0 bg-gradient-to-r from-[#FF007A] to-[#FF4E50] px-5 py-3 rounded-full flex items-center gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-shrink-0 bg-gradient-to-r from-[#FF007A] to-[#FF4E50] px-3.5 xs:px-5 py-2.5 xs:py-3 rounded-full flex items-center gap-1.5 xs:gap-2 transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="구매하기"
                 >
-                  <ShoppingCart className="w-5 h-5 text-white" />
-                  <span className="text-white text-sm font-medium whitespace-nowrap">구매하기</span>
+                  <ShoppingCart className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
+                  <span className="text-white text-[13px] xs:text-sm font-medium whitespace-nowrap">
+                    구매하기
+                  </span>
                 </button>
               </div>
             </div>
