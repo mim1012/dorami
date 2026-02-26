@@ -3,9 +3,9 @@
 # Only triggered manually or via release tags
 #
 # Production architecture:
-#   - App: PM2 manages backend + frontend from /home/ubuntu/dorami/
+#   - App: Docker manages backend + frontend (pre-built GHCR images)
 #   - Infra: Docker manages postgres, redis, srs
-#   - Proxy: Host nginx handles SSL termination (NOT Docker nginx-proxy)
+#   - Proxy: Docker nginx handles SSL termination (includes certbot renewal hooks)
 
 name: Deploy to Production
 
@@ -381,12 +381,10 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
+          ssh $USER@$HOST 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker'
           scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
-          scp -r infrastructure/docker/nginx-proxy $USER@$HOST:/opt/dorami/infrastructure/docker/
+          scp nginx/production.conf $USER@$HOST:/opt/dorami/nginx/production.conf
           scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
-          scp infrastructure/nginx/doremi-live.com $USER@$HOST:/tmp/doremi-live.com
-          ssh $USER@$HOST 'sudo mv /tmp/doremi-live.com /etc/nginx/sites-enabled/doremi-live.com && sudo nginx -t && sudo nginx -s reload && echo "nginx reloaded"'
 
       - name: Create .env.production on server
         # Writes production env file from GitHub Secrets (overwrites each deploy to pick up rotated secrets).
@@ -497,17 +495,6 @@ jobs:
           echo "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io \
             -u "${DEPLOY_REPO_OWNER}" --password-stdin
 
-          # Stop PM2 processes (backend/frontend running outside Docker)
-          echo "=== Stopping PM2 processes (if any) ==="
-          for PM2_BIN in pm2 "${HOME}/.nvm/versions/node/$(ls ${HOME}/.nvm/versions/node 2>/dev/null | head -1)/bin/pm2" /usr/local/bin/pm2 /usr/bin/pm2; do
-            if command -v "${PM2_BIN}" &>/dev/null 2>&1 || [ -x "${PM2_BIN}" ]; then
-              "${PM2_BIN}" stop all 2>/dev/null || true
-              "${PM2_BIN}" delete all 2>/dev/null || true
-              echo "INFO: PM2 stopped via ${PM2_BIN}"
-              break
-            fi
-          done
-
           # Stop legacy redis/srs (NOT postgres — keep data in place)
           echo "=== Removing legacy redis/srs containers ==="
           docker stop live-commerce-redis live-commerce-srs 2>/dev/null || true
@@ -563,12 +550,6 @@ jobs:
             sleep 3
           done
           ${db_ready} || { echo "ERROR: Database not ready"; exit 1; }
-
-          # 7. Ensure uploads volume is writable by nestjs user (UID 1001)
-          echo "=== Ensuring uploads volume permissions ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
-            run --rm --no-deps --user root --entrypoint sh backend \
-            -c "mkdir -p /app/uploads && chown -R 1001:1001 /app/uploads" 2>/dev/null || true
 
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
@@ -631,12 +612,12 @@ jobs:
             && echo "SRS started" \
             || echo "WARNING: SRS failed (non-fatal)"
 
-          # 12. Start nginx-proxy (non-fatal — needs SSL certs)
-          echo "=== Starting nginx-proxy ==="
+          # 12. Start nginx service (Now includes nginx service with SSL)
+          echo "=== Starting nginx ==="
           docker compose -f docker-compose.prod.yml --env-file .env.production \
-            up -d --no-deps nginx-proxy 2>&1 | tail -5 \
-            && echo "nginx-proxy started" \
-            || echo "WARNING: nginx-proxy failed (non-fatal: SSL certs may need setup)"
+            up -d --no-deps nginx 2>&1 | tail -5 \
+            && echo "nginx started" \
+            || echo "WARNING: nginx failed (non-fatal: SSL certs may need setup)"
 
           # 13. Final status
           echo "--- Docker Compose status ---"
@@ -676,6 +657,46 @@ jobs:
              DEPLOY_REPO_OWNER='${REPO_OWNER}' \
              bash /tmp/deploy-prod.sh"
 
+      - name: Setup certbot renewal hook for nginx reload
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            sudo mkdir -p /etc/letsencrypt/renewal-hooks/post
+            cat > /tmp/reload-nginx.sh << 'EOF'
+            #!/bin/bash
+            cd /opt/dorami
+            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
+            EOF
+            sudo mv /tmp/reload-nginx.sh /etc/letsencrypt/renewal-hooks/post/reload-nginx.sh
+            sudo chmod +x /etc/letsencrypt/renewal-hooks/post/reload-nginx.sh
+            echo "Certbot renewal hook installed"
+          ENDSSH
+
+      - name: Wait for nginx container health
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            nginx_ok=false
+            for i in $(seq 1 12); do
+              status=$(docker compose -f /opt/dorami/docker-compose.prod.yml ps nginx 2>/dev/null | grep -E 'healthy|running' | head -1 || echo "")
+              if echo "$status" | grep -q 'healthy'; then
+                echo "nginx container healthy!"
+                nginx_ok=true
+                break
+              fi
+              echo "Waiting for nginx container... (${i}/12)"
+              sleep 5
+            done
+            if ! ${nginx_ok}; then
+              echo "WARNING: nginx container did not reach healthy state (may be starting up)"
+              docker ps --filter name=nginx 2>/dev/null || true
+            fi
+          ENDSSH
+
       - name: Upload Endpoint Smoke Test
         # Verify nginx is passing upload requests to backend (not blocking with 413).
         # Sends an unauthenticated request — expects 401/403 (auth error), NOT 413 (nginx body size limit).
@@ -693,7 +714,7 @@ jobs:
           rm -f /tmp/smoke-upload.png
           echo "Upload endpoint status: $STATUS"
           if [ "$STATUS" = "413" ]; then
-            echo "FAIL: nginx is blocking uploads with 413 — check client_max_body_size in infrastructure/nginx/doremi-live.com"
+            echo "FAIL: nginx is blocking uploads with 413 — check client_max_body_size in nginx/production.conf"
             exit 1
           fi
           echo "PASSED: nginx is forwarding upload requests to backend (got $STATUS, not 413)"
@@ -703,6 +724,19 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
+          echo "=== HTTPS health check ==="
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://www.doremi-live.com/api/health 2>/dev/null || echo "000")
+          [ "$STATUS" = "200" ] || { echo "FAIL: HTTPS health check returned $STATUS (expected 200)"; exit 1; }
+          echo "PASSED: HTTPS health check ($STATUS)"
+
+          echo "=== HTTP redirect check ==="
+          REDIRECT=$(curl -I http://www.doremi-live.com 2>/dev/null | grep -E "301|302" || echo "")
+          if [ -z "$REDIRECT" ]; then
+            echo "FAIL: HTTP did not redirect to HTTPS (expected 301 or 302)"
+            exit 1
+          fi
+          echo "PASSED: HTTP redirects to HTTPS"
+
           echo "=== SRS API check (via SSH) ==="
           STATUS=$(ssh $USER@$HOST 'curl -sf -o /dev/null -w "%{http_code}" http://localhost:1985/api/v1/versions 2>/dev/null || echo 000')
           [ "$STATUS" = "200" ] || { echo "FAIL: SRS API returned $STATUS (expected 200)"; exit 1; }
