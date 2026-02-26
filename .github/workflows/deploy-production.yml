@@ -309,6 +309,8 @@ jobs:
           scp docker-compose.prod.yml $USER@$HOST:/opt/dorami/docker-compose.prod.yml
           scp -r infrastructure/docker/nginx-proxy $USER@$HOST:/opt/dorami/infrastructure/docker/
           scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
+          scp infrastructure/nginx/doremi-live.com $USER@$HOST:/tmp/doremi-live.com
+          ssh $USER@$HOST 'sudo mv /tmp/doremi-live.com /etc/nginx/sites-enabled/doremi-live.com && sudo nginx -t && sudo nginx -s reload && echo "nginx reloaded"'
 
       - name: Create .env.production on server
         # Writes production env file from GitHub Secrets (overwrites each deploy to pick up rotated secrets).
@@ -486,6 +488,12 @@ jobs:
           done
           ${db_ready} || { echo "ERROR: Database not ready"; exit 1; }
 
+          # 7. Ensure uploads volume is writable by nestjs user (UID 1001)
+          echo "=== Ensuring uploads volume permissions ==="
+          docker compose -f docker-compose.prod.yml --env-file .env.production \
+            run --rm --no-deps --user root --entrypoint sh backend \
+            -c "mkdir -p /app/uploads && chown -R 1001:1001 /app/uploads" 2>/dev/null || true
+
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
           docker compose -f docker-compose.prod.yml --env-file .env.production \
@@ -591,6 +599,66 @@ jobs:
              DEPLOY_GHCR_TOKEN='${GHCR_TOKEN}' \
              DEPLOY_REPO_OWNER='${REPO_OWNER}' \
              bash /tmp/deploy-prod.sh"
+
+      - name: Upload Endpoint Smoke Test
+        # Verify nginx is passing upload requests to backend (not blocking with 413).
+        # Sends an unauthenticated request — expects 401/403 (auth error), NOT 413 (nginx body size limit).
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "=== Upload endpoint smoke test ==="
+          # Generate minimal 1px PNG
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" \
+            | base64 -d > /tmp/smoke-upload.png
+          STATUS=$(curl -sk -o /dev/null -w "%{http_code}" \
+            -X POST https://www.doremi-live.com/api/upload/image \
+            -F "file=@/tmp/smoke-upload.png;type=image/png" 2>/dev/null || echo "000")
+          rm -f /tmp/smoke-upload.png
+          echo "Upload endpoint status: $STATUS"
+          if [ "$STATUS" = "413" ]; then
+            echo "FAIL: nginx is blocking uploads with 413 — check client_max_body_size in infrastructure/nginx/doremi-live.com"
+            exit 1
+          fi
+          echo "PASSED: nginx is forwarding upload requests to backend (got $STATUS, not 413)"
+
+      - name: SRS & Live Stream Smoke Test
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "=== SRS API check (via SSH) ==="
+          STATUS=$(ssh $USER@$HOST 'curl -sf -o /dev/null -w "%{http_code}" http://localhost:1985/api/v1/versions 2>/dev/null || echo 000')
+          [ "$STATUS" = "200" ] || { echo "FAIL: SRS API returned $STATUS (expected 200)"; exit 1; }
+          echo "PASSED: SRS API ($STATUS)"
+
+          echo "=== RTMP port 1935 check ==="
+          ssh $USER@$HOST 'nc -zw3 localhost 1935' \
+            && echo "PASSED: RTMP port 1935 listening" \
+            || { echo "FAIL: RTMP port 1935 not listening"; exit 1; }
+
+          echo "=== nginx → SRS HTTP-FLV routing ==="
+          STATUS=$(curl -sk -o /dev/null -w "%{http_code}" \
+            "https://www.doremi-live.com/live/live/smoke-check.flv" 2>/dev/null || echo "000")
+          [ "$STATUS" != "502" ] && [ "$STATUS" != "000" ] \
+            || { echo "FAIL: nginx→SRS HTTP-FLV routing broken ($STATUS)"; exit 1; }
+          echo "PASSED: HTTP-FLV route ($STATUS)"
+
+          echo "=== nginx → SRS HLS routing ==="
+          STATUS=$(curl -sk -o /dev/null -w "%{http_code}" \
+            "https://www.doremi-live.com/hls/smoke-check.m3u8" 2>/dev/null || echo "000")
+          [ "$STATUS" != "502" ] && [ "$STATUS" != "000" ] \
+            || { echo "FAIL: nginx→SRS HLS routing broken ($STATUS)"; exit 1; }
+          echo "PASSED: HLS route ($STATUS)"
+
+          echo "=== Live page accessibility ==="
+          STATUS=$(curl -sk -o /dev/null -w "%{http_code}" \
+            "https://www.doremi-live.com/live" 2>/dev/null || echo "000")
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ] || [ "$STATUS" = "302" ] \
+            || { echo "FAIL: Live page returned $STATUS"; exit 1; }
+          echo "PASSED: Live page ($STATUS)"
+
+          echo "All SRS & live stream smoke tests PASSED"
 
       - name: Create Sentry Release
         if: success() && inputs.rollback != 'true'
