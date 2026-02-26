@@ -13,6 +13,7 @@ on:
           - show-db-env
           - test-db-auth-tcp
           - test-db-url-parse
+          - inspect-backend-db-url
           - sync-db-env
           - diagnose
           - fix-ssl
@@ -158,6 +159,45 @@ jobs:
           print("ENV_PASSWORD_LEN=", len(raw_pw))
           print("URL_PARSE_PASSWORD_MATCH=", str(parsed_pw == raw_pw))
           print("URL_AT_COUNT=", url.count("@"))
+          PY
+          EOF
+
+      - name: inspect-backend-db-url
+        if: inputs.command == 'inspect-backend-db-url'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          set -euo pipefail
+
+          cd /opt/dorami
+          set -a
+          source .env.production
+          set +a
+
+          BACKEND_URL=$(docker inspect dorami-backend-prod --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep '^DATABASE_URL=' | sed 's/^DATABASE_URL=//')
+          if [ -z "${BACKEND_URL}" ]; then
+            echo "ERROR: DATABASE_URL not found in backend container env"
+            exit 1
+          fi
+
+          export BACKEND_URL POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB
+          python3 - << 'PY'
+          import os
+          import urllib.parse
+
+          backend_url = os.environ["BACKEND_URL"]
+          parsed = urllib.parse.urlparse(backend_url)
+          parsed_pw = urllib.parse.unquote(parsed.password or "")
+
+          print("BACKEND_URL_SCHEME=", parsed.scheme)
+          print("BACKEND_URL_HOST=", parsed.hostname)
+          print("BACKEND_URL_DB=", parsed.path.lstrip("/"))
+          print("BACKEND_URL_USER_MATCH=", str((parsed.username or "") == os.environ["POSTGRES_USER"]))
+          print("BACKEND_URL_PASSWORD_LEN=", len(parsed_pw))
+          print("ENV_PASSWORD_LEN=", len(os.environ["POSTGRES_PASSWORD"]))
+          print("BACKEND_URL_PASSWORD_MATCH=", str(parsed_pw == os.environ["POSTGRES_PASSWORD"]))
           PY
           EOF
 
