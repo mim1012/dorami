@@ -580,7 +580,10 @@ export class AdminService {
 
     orders.forEach((order) => {
       // 상품 정보 조합
-      const productNames = order.orderItems?.map((item) => item.productName).join(', ') || '-';
+      const productNames =
+        order.orderItems && order.orderItems.length > 0
+          ? order.orderItems.map((item) => item.productName).join(', ')
+          : '-';
 
       // 배송지 정보 추출
       let shippingAddressStr = '-';
