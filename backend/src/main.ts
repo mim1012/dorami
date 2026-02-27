@@ -92,13 +92,19 @@ async function bootstrap() {
     }),
   );
   // Permissions-Policy: restrict browser features
-  app.use((_req: any, res: any, next: any) => {
-    res.setHeader(
-      'Permissions-Policy',
-      'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
-    );
-    next();
-  });
+  app.use(
+    (
+      _req: unknown,
+      res: { setHeader: (name: string, value: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+      );
+      next();
+    },
+  );
   logger.log('Security headers (helmet + permissions-policy) enabled');
 
   // Response Compression
@@ -148,7 +154,7 @@ async function bootstrap() {
   }
 
   // CORS Configuration - Whitelist based
-  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim());
 
@@ -191,7 +197,7 @@ async function bootstrap() {
 
   // Attach Redis adapter to Socket.IO
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
-  const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+  const pubClient = createClient({ url: process.env.REDIS_URL ?? 'redis://localhost:6379' });
   const subClient = pubClient.duplicate();
 
   await Promise.all([pubClient.connect(), subClient.connect()]);
@@ -205,7 +211,7 @@ async function bootstrap() {
   logger.log('✅ SocketIoProvider configured for DI');
 
   // Attach to httpServer
-  (httpServer as any).io = io;
+  (httpServer as unknown as { io: Server }).io = io;
   logger.log('✅ Socket.IO server attached to HTTP server');
 
   // Use CustomIoAdapter to allow NestJS Gateways to use our pre-configured Socket.IO server
@@ -291,7 +297,7 @@ async function bootstrap() {
     logger.log('Swagger documentation available at /api/docs');
   }
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT ?? 3001;
   logger.log(`Starting server on port ${port}...`);
 
   await app.listen(port);
@@ -443,7 +449,7 @@ async function bootstrap() {
             where: { id: authenticatedSocket.user.userId },
             select: { instagramId: true },
           });
-          username = user?.instagramId || '익명';
+          username = user?.instagramId ?? '익명';
         } catch {
           // Fallback to anonymous
         }
@@ -537,7 +543,7 @@ async function bootstrap() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Chat connection failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
-        logger.error(error.stack);
+        logger.error(error instanceof Error ? error.stack : String(error));
       }
       socket.emit('error', {
         type: 'error',
@@ -673,7 +679,7 @@ async function bootstrap() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Streaming connection failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
-        logger.error(error.stack);
+        logger.error(error instanceof Error ? error.stack : String(error));
       }
       socket.emit('error', {
         type: 'error',
@@ -758,7 +764,7 @@ async function bootstrap() {
           }),
         ]);
 
-        const displayName = user?.instagramId || user?.name || '익명';
+        const displayName = user?.instagramId ?? user?.name ?? '익명';
         const streamKey = order?.orderItems?.[0]?.Product?.streamKey;
 
         if (!streamKey) {
@@ -844,7 +850,7 @@ async function bootstrap() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Root connection failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
-        logger.error(error.stack);
+        logger.error(error instanceof Error ? error.stack : String(error));
       }
       socket.emit('error', { message: 'Authentication failed' });
       socket.disconnect();
@@ -852,7 +858,15 @@ async function bootstrap() {
   });
 
   // Expose ProductGateway broadcast methods on the io server for use by services
-  (io as any).broadcastProductAdded = (streamKey: string, product: any) => {
+  interface IoWithBroadcast {
+    broadcastProductAdded: (streamKey: string, product: { id: string }) => void;
+    broadcastProductUpdated: (streamKey: string, product: { id: string }) => void;
+    broadcastProductSoldOut: (streamKey: string, productId: string) => void;
+    broadcastProductDeleted: (streamKey: string, productId: string) => void;
+  }
+  const ioExt = io as unknown as IoWithBroadcast;
+
+  ioExt.broadcastProductAdded = (streamKey: string, product: { id: string }) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:added', {
       type: 'live:product:added',
@@ -861,7 +875,7 @@ async function bootstrap() {
     logger.log(`Product added broadcast sent to room ${room}: ${product.id}`);
   };
 
-  (io as any).broadcastProductUpdated = (streamKey: string, product: any) => {
+  ioExt.broadcastProductUpdated = (streamKey: string, product: { id: string }) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:updated', {
       type: 'live:product:updated',
@@ -870,7 +884,7 @@ async function bootstrap() {
     logger.log(`Product updated broadcast sent to room ${room}: ${product.id}`);
   };
 
-  (io as any).broadcastProductSoldOut = (streamKey: string, productId: string) => {
+  ioExt.broadcastProductSoldOut = (streamKey: string, productId: string) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:soldout', {
       type: 'live:product:soldout',
@@ -879,7 +893,7 @@ async function bootstrap() {
     logger.log(`Product sold out broadcast sent to room ${room}: ${productId}`);
   };
 
-  (io as any).broadcastProductDeleted = (streamKey: string, productId: string) => {
+  ioExt.broadcastProductDeleted = (streamKey: string, productId: string) => {
     const room = `stream:${streamKey}`;
     rootNamespace.to(room).emit('live:product:deleted', {
       type: 'live:product:deleted',
@@ -890,7 +904,7 @@ async function bootstrap() {
 
   // Check if Socket.IO is attached
   setTimeout(() => {
-    const sio = (httpServer as any).io;
+    const sio = (httpServer as unknown as { io?: { _nsps: Map<string, unknown> } }).io;
     if (sio) {
       const namespaces = Array.from(sio._nsps.keys()).join(', ');
       logger.log(`✅ Socket.IO server verified, namespaces: ${namespaces}`);

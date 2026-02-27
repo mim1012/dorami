@@ -17,9 +17,12 @@ export class RedisIoAdapter extends IoAdapter {
    * Connect to Redis with timeout and error handling
    */
   async connectToRedis(): Promise<boolean> {
-    const redisUrl = process.env.REDIS_PUBSUB_URL || process.env.REDIS_URL || 'redis://localhost:6379/1';
+    const redisUrl =
+      process.env.REDIS_PUBSUB_URL ?? process.env.REDIS_URL ?? 'redis://localhost:6379/1';
 
-    this.logger.log(`Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`);
+    this.logger.log(
+      `Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`,
+    );
 
     try {
       this.pubClient = createClient({
@@ -39,11 +42,11 @@ export class RedisIoAdapter extends IoAdapter {
       this.subClient = this.pubClient.duplicate() as RedisClientType;
 
       // Add error handlers
-      this.pubClient.on('error', (err) => {
+      this.pubClient.on('error', (err: Error) => {
         this.logger.error(`Redis pub client error: ${err.message}`);
       });
 
-      this.subClient.on('error', (err) => {
+      this.subClient.on('error', (err: Error) => {
         this.logger.error(`Redis sub client error: ${err.message}`);
       });
 
@@ -51,7 +54,9 @@ export class RedisIoAdapter extends IoAdapter {
       await Promise.race([
         Promise.all([this.pubClient.connect(), this.subClient.connect()]),
         new Promise((_, reject) =>
-          setTimeout(() => { reject(new Error('Redis connection timeout')); }, CONNECTION_TIMEOUT),
+          setTimeout(() => {
+            reject(new Error('Redis connection timeout'));
+          }, CONNECTION_TIMEOUT),
         ),
       ]);
 
@@ -91,11 +96,11 @@ export class RedisIoAdapter extends IoAdapter {
     this.isConnected = false;
   }
 
-  createIOServer(port: number, options?: ServerOptions): any {
+  createIOServer(port: number, options?: ServerOptions): ReturnType<IoAdapter['createIOServer']> {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') || [
+        origin: process.env.CORS_ORIGINS?.split(',') ?? [
           'http://localhost:3000',
           'http://localhost:3002',
         ],

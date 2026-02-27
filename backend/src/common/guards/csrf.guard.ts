@@ -15,7 +15,7 @@ export const SKIP_CSRF_KEY = 'skipCsrf';
  * Decorator to skip CSRF check for specific routes
  */
 export const SkipCsrf = () => {
-  return (target: any, propertyKey?: string, descriptor?: PropertyDescriptor) => {
+  return (target: object, propertyKey?: string, descriptor?: PropertyDescriptor) => {
     if (propertyKey && descriptor) {
       Reflect.defineMetadata(SKIP_CSRF_KEY, true, descriptor.value);
     } else {
@@ -98,8 +98,12 @@ export class CsrfGuard implements CanActivate {
   /**
    * Ensure CSRF token exists in cookie
    */
-  private ensureCsrfToken(request: Request, response: any, forceNew = false): void {
-    const existingToken = request.cookies?.['csrf-token'];
+  private ensureCsrfToken(
+    request: Request,
+    response: { cookie: (name: string, value: string, options: object) => void },
+    forceNew = false,
+  ): void {
+    const existingToken = request.cookies?.['csrf-token'] as string | undefined;
 
     if (!existingToken || forceNew) {
       const newToken = this.generateCsrfToken();
@@ -107,7 +111,8 @@ export class CsrfGuard implements CanActivate {
       // Use x-forwarded-proto to detect HTTPS — NODE_ENV='production' even on
       // HTTP staging environments, so it cannot be used as the secure indicator.
       const proto: string = (request.headers['x-forwarded-proto'] as string) ?? '';
-      const isHttps = proto === 'https' || (request.socket as any)?.encrypted === true;
+      const isHttps =
+        proto === 'https' || (request.socket as { encrypted?: boolean }).encrypted === true;
 
       response.cookie('csrf-token', newToken, {
         httpOnly: false, // Must be readable by JavaScript
