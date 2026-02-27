@@ -127,6 +127,7 @@ export class AdminService {
         id: true,
         email: true,
         name: true,
+        phone: true,
         instagramId: true,
         createdAt: true,
         lastLoginAt: true,
@@ -150,6 +151,7 @@ export class AdminService {
       id: user.id,
       email: user.email,
       name: user.name,
+      phone: user.phone,
       instagramId: user.instagramId,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt,
@@ -299,6 +301,7 @@ export class AdminService {
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
       items: order.orderItems.map((item: any) => ({
         productName: item.productName,
+        price: Number(item.price),
         quantity: item.quantity,
         color: item.color,
         size: item.size,
@@ -515,7 +518,10 @@ export class AdminService {
       where,
       orderBy: { [sortBy]: sortOrder },
       take: MAX_EXPORT_ROWS,
-      include: { orderItems: true },
+      include: {
+        orderItems: true,
+        user: { select: { phone: true } },
+      },
     });
 
     const ORDER_STATUS_KO: Record<string, string> = {
@@ -554,14 +560,15 @@ export class AdminService {
 
     sheet.columns = [
       { header: '주문번호', key: 'id', width: 28 },
-      { header: '고객이메일', key: 'userEmail', width: 28 },
-      { header: '입금자명', key: 'depositorName', width: 14 },
+      { header: '이메일', key: 'userEmail', width: 28 },
       { header: '인스타그램ID', key: 'instagramId', width: 18 },
-      { header: '상품명', key: 'productName', width: 30 },
-      { header: '배송지', key: 'shippingAddress', width: 40 },
+      { header: '입금자명', key: 'depositorName', width: 14 },
+      { header: '전화번호', key: 'phone', width: 16 },
       { header: '주문상태', key: 'status', width: 12 },
-      { header: '결제상태', key: 'paymentStatus', width: 10 },
-      { header: '배송상태', key: 'shippingStatus', width: 10 },
+      { header: '상품명', key: 'productName', width: 30 },
+      { header: '색상', key: 'color', width: 12 },
+      { header: '사이즈', key: 'size', width: 10 },
+      { header: '배송지', key: 'shippingAddress', width: 40 },
       { header: '소계', key: 'subtotal', width: 12 },
       { header: '배송비', key: 'shippingFee', width: 10 },
       { header: '합계', key: 'total', width: 12 },
@@ -579,12 +586,6 @@ export class AdminService {
     headerRow.alignment = { horizontal: 'center' };
 
     orders.forEach((order) => {
-      // 상품 정보 조합
-      const productNames =
-        order.orderItems && order.orderItems.length > 0
-          ? order.orderItems.map((item) => item.productName).join(', ')
-          : '-';
-
       // 배송지 정보 추출
       let shippingAddressStr = '-';
       if (order.shippingAddress) {
@@ -598,22 +599,39 @@ export class AdminService {
         }
       }
 
-      sheet.addRow({
+      const phone = order.user.phone ?? '-';
+      const baseRow = {
         id: order.id,
         userEmail: order.userEmail,
-        depositorName: order.depositorName,
         instagramId: order.instagramId?.replace(/^@/, ''),
-        productName: productNames,
-        shippingAddress: shippingAddressStr,
+        depositorName: order.depositorName,
+        phone,
         status: ORDER_STATUS_KO[order.status] ?? order.status,
-        paymentStatus: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
-        shippingStatus: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
+        shippingAddress: shippingAddressStr,
         subtotal: Number(order.subtotal),
         shippingFee: Number(order.shippingFee),
         total: Number(order.total),
         createdAt: toKST(order.createdAt),
         paidAt: order.paidAt ? toKST(order.paidAt) : '',
-      });
+      };
+
+      if (order.orderItems && order.orderItems.length > 0) {
+        order.orderItems.forEach((item) => {
+          sheet.addRow({
+            ...baseRow,
+            productName: item.productName,
+            color: item.color ?? '-',
+            size: item.size ?? '-',
+          });
+        });
+      } else {
+        sheet.addRow({
+          ...baseRow,
+          productName: '-',
+          color: '-',
+          size: '-',
+        });
+      }
     });
 
     const moneyFmt = '#,##0';

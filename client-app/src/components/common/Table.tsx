@@ -95,11 +95,13 @@ export function Table<T extends { id: string }>({
                   >
                     {columns.map((column) => (
                       <td key={column.key} className="px-6 py-4 whitespace-nowrap">
-                        <Body className="text-primary-text">
-                          {column.render
-                            ? column.render(item)
-                            : (item as any)[column.key]?.toString() || '-'}
-                        </Body>
+                        {column.render ? (
+                          column.render(item)
+                        ) : (
+                          <Body className="text-primary-text">
+                            {(item as any)[column.key]?.toString() || '-'}
+                          </Body>
+                        )}
                       </td>
                     ))}
                   </tr>
