@@ -233,7 +233,7 @@ export default function AdminOrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <Body>주문 상세를 불러오는 중...</Body>
       </div>
     );

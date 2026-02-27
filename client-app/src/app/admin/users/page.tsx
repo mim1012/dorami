@@ -241,10 +241,12 @@ function AdminUsersContent() {
   const hasActiveFilters = debouncedSearch || dateFrom || dateTo || statusFilter.length > 0;
 
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="mb-8">
-        <Display className="text-hot-pink mb-2">회원 관리</Display>
-        <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
+    <div className="space-y-6">
+      <div className="mb-6 md:mb-8 flex items-center justify-between">
+        <div>
+          <Display className="text-hot-pink mb-2">회원 관리</Display>
+          <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
+        </div>
       </div>
 
       {error && (

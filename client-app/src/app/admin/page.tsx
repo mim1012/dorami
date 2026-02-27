@@ -12,7 +12,7 @@ export default function AdminPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
+    <div className="flex items-center justify-center py-24">
       <Body className="text-secondary-text">Redirecting to dashboard...</Body>
     </div>
   );
