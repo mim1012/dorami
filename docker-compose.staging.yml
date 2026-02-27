@@ -8,6 +8,16 @@
 version: '3.8'
 
 services:
+  # Override postgres with staging volume
+  postgres:
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+
+  # Override redis with staging volume
+  redis:
+    volumes:
+      - redis_data_staging:/data
+
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:-latest}
     restart: always
@@ -63,4 +73,6 @@ services:
         max-file: "5"
 
 volumes:
+  postgres_data_staging:
+  redis_data_staging:
   certbot_www:
