@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export type ErrorContext = Record<string, any>;
+export type ErrorContext = Record<string, unknown>;
 
 export class BusinessException extends HttpException {
   constructor(
@@ -12,7 +12,7 @@ export class BusinessException extends HttpException {
     super(
       {
         errorCode,
-        message: message || errorCode,
+        message: message ?? errorCode,
         context,
         timestamp: new Date().toISOString(),
       },
@@ -46,7 +46,7 @@ export class OrderNotFoundException extends BusinessException {
 
 export class UnauthorizedException extends BusinessException {
   constructor(reason?: string) {
-    super('UNAUTHORIZED', { reason }, reason || 'Unauthorized access', HttpStatus.UNAUTHORIZED);
+    super('UNAUTHORIZED', { reason }, reason ?? 'Unauthorized access', HttpStatus.UNAUTHORIZED);
   }
 }
 

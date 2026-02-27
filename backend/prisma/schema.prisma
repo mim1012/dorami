@@ -66,6 +66,7 @@ model LiveStream {
   userId        String       @map("user_id")
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String       @default("Live Stream")
+  description   String?      @db.Text
   status        StreamStatus @default(PENDING)
   startedAt     DateTime?    @map("started_at")
   endedAt       DateTime?    @map("ended_at")

@@ -31,8 +31,8 @@ export function getSentryConfig(): SentryConfig | null {
 
   return {
     dsn,
-    environment: process.env.APP_ENV || process.env.NODE_ENV || 'development',
-    release: process.env.APP_VERSION || '1.0.0',
+    environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? 'development',
+    release: process.env.APP_VERSION ?? '1.0.0',
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
     profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
   };
@@ -85,10 +85,15 @@ export async function initSentry(): Promise<boolean> {
 /**
  * Capture an exception manually
  */
-export async function captureException(error: Error, context?: Record<string, any>): Promise<void> {
+export async function captureException(
+  error: Error,
+  context?: Record<string, unknown>,
+): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as any).captureException(error, { extra: context });
+    (Sentry as { captureException: (e: Error, opts: object) => void }).captureException(error, {
+      extra: context,
+    });
   } catch {
     // Sentry not available, just log
     console.error('Error:', error.message, context);
@@ -101,7 +106,7 @@ export async function captureException(error: Error, context?: Record<string, an
 export async function setUser(user: { id: string; email?: string; role?: string }): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as any).setUser({
+    (Sentry as { setUser: (u: object | null) => void }).setUser({
       id: user.id,
       email: user.email,
       // Don't include sensitive data
@@ -117,7 +122,7 @@ export async function setUser(user: { id: string; email?: string; role?: string 
 export async function clearUser(): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as any).setUser(null);
+    (Sentry as { setUser: (u: object | null) => void }).setUser(null);
   } catch {
     // Sentry not available
   }

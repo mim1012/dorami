@@ -8,24 +8,22 @@ import { PrismaClient, Prisma } from '@prisma/client';
 // Configure via DATABASE_URL query params: ?connection_limit=20&pool_timeout=30
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   private connectionRetries = 0;
   private readonly maxRetries = 3;
 
   constructor() {
     super({
-      log: process.env.NODE_ENV === 'development'
-        ? [
-            { emit: 'event', level: 'query' },
-            { emit: 'stdout', level: 'info' },
-            { emit: 'stdout', level: 'warn' },
-            { emit: 'stdout', level: 'error' },
-          ]
-        : [{ emit: 'stdout', level: 'error' }],
+      log:
+        process.env.NODE_ENV === 'development'
+          ? [
+              { emit: 'event', level: 'query' },
+              { emit: 'stdout', level: 'info' },
+              { emit: 'stdout', level: 'warn' },
+              { emit: 'stdout', level: 'error' },
+            ]
+          : [{ emit: 'stdout', level: 'error' }],
       // Transaction isolation level for consistency
       transactionOptions: {
         isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
@@ -38,11 +36,14 @@ export class PrismaService
   async onModuleInit() {
     // Log slow queries in development
     if (process.env.NODE_ENV === 'development') {
-      (this as any).$on('query', (e: Prisma.QueryEvent) => {
-        if (e.duration > 100) {
-          this.logger.warn(`Slow query (${e.duration}ms): ${e.query}`);
-        }
-      });
+      (this as unknown as { $on: (event: string, cb: (e: Prisma.QueryEvent) => void) => void }).$on(
+        'query',
+        (e: Prisma.QueryEvent) => {
+          if (e.duration > 100) {
+            this.logger.warn(`Slow query (${e.duration}ms): ${e.query}`);
+          }
+        },
+      );
     }
 
     await this.connectWithRetry();
