@@ -12,6 +12,15 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
@@ -32,6 +41,8 @@ import { RedisService } from '../../common/redis/redis.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import * as Papa from 'papaparse';
 
+@ApiTags('Admin')
+@ApiBearerAuth()
 @Controller('admin')
 @AdminOnly()
 export class AdminController {
@@ -42,56 +53,83 @@ export class AdminController {
   ) {}
 
   @Get('users')
+  @ApiOperation({ summary: '사용자 목록 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '사용자 목록 및 페이지네이션 정보' })
   async getUserList(@Query() query: GetUsersQueryDto) {
     return this.adminService.getUserList(query);
   }
 
   @Get('orders')
+  @ApiOperation({ summary: '주문 목록 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '주문 목록 및 페이지네이션 정보' })
   async getOrderList(@Query() query: GetOrdersQueryDto) {
     return this.adminService.getOrderList(query);
   }
 
   @Get('dashboard/stats')
+  @ApiOperation({ summary: '대시보드 통계 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '총 사용자수, 매출, 주문수 등 통계' })
   async getDashboardStats() {
     return this.adminService.getDashboardStats();
   }
 
   @Get('activities/recent')
+  @ApiOperation({ summary: '최근 활동 조회 (관리자)' })
+  @ApiQuery({ name: 'limit', required: false, description: '조회 수 (기본값: 10)', example: '10' })
+  @ApiResponse({ status: 200, description: '최근 활동 목록' })
   async getRecentActivities(@Query('limit') limit?: number) {
     return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
   }
 
   @Get('config/settings')
+  @ApiOperation({ summary: '시스템 설정 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '시스템 설정 정보' })
   async getSystemSettings() {
     return this.adminService.getSystemSettings();
   }
 
   @Put('config/settings')
+  @ApiOperation({ summary: '시스템 설정 업데이트 (관리자)' })
+  @ApiResponse({ status: 200, description: '설정 업데이트 성공' })
   async updateSystemSettings(@Body() dto: UpdateSystemSettingsDto) {
     return this.adminService.updateSystemSettings(dto);
   }
 
   @Get('config')
+  @ApiOperation({ summary: '시스템 구성 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '시스템 구성 정보' })
   async getSystemConfig() {
     return this.adminService.getSystemConfig();
   }
 
   @Put('config')
+  @ApiOperation({ summary: '시스템 구성 업데이트 (관리자)' })
+  @ApiResponse({ status: 200, description: '구성 업데이트 성공' })
   async updateSystemConfig(@Body() dto: UpdateNoticeDto) {
     return this.adminService.updateSystemConfig(dto);
   }
 
   @Get('config/shipping-messages')
+  @ApiOperation({ summary: '배송 메시지 템플릿 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '배송 단계별 메시지 템플릿' })
   async getShippingMessages() {
     return this.adminService.getShippingMessages();
   }
 
   @Put('config/shipping-messages')
+  @ApiOperation({ summary: '배송 메시지 템플릿 업데이트 (관리자)' })
+  @ApiResponse({ status: 200, description: '메시지 템플릿 업데이트 성공' })
   async updateShippingMessages(@Body() dto: UpdateShippingMessagesDto) {
     return this.adminService.updateShippingMessages(dto as unknown as Record<string, string>);
   }
 
   @Get('orders/export')
+  @ApiOperation({ summary: '주문 목록 엑셀 다운로드 (관리자)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Excel 파일 다운로드',
+    content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {} },
+  })
   async exportOrders(@Query() query: GetOrdersQueryDto, @Res() res: Response) {
     try {
       const buffer = await this.adminService.exportOrdersExcel(query);
@@ -109,21 +147,39 @@ export class AdminController {
   }
 
   @Get('orders/:id')
+  @ApiOperation({ summary: '주문 상세 조회 (관리자)' })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '주문 상세 정보' })
   async getOrderDetail(@Param('id') orderId: string) {
     return this.adminService.getOrderDetail(orderId);
   }
 
   @Patch('orders/:id/confirm-payment')
+  @ApiOperation({
+    summary: '결제 확인 처리 (관리자)',
+    description: '주문의 결제를 수동으로 확인합니다.',
+  })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '결제 확인 성공' })
   async confirmPayment(@Param('id') orderId: string) {
     return this.adminService.confirmOrderPayment(orderId);
   }
 
   @Patch('orders/:id/status')
+  @ApiOperation({ summary: '주문 상태 변경 (관리자)' })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '주문 상태 변경 성공' })
   async updateOrderStatus(@Param('id') orderId: string, @Body() dto: UpdateOrderStatusDto) {
     return this.adminService.updateOrderStatus(orderId, dto.status);
   }
 
   @Patch('orders/:id/shipping-status')
+  @ApiOperation({
+    summary: '배송 상태 변경 (관리자)',
+    description: '배송 상태와 운송장 번호를 업데이트합니다.',
+  })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '배송 상태 변경 성공' })
   async updateOrderShippingStatus(
     @Param('id') orderId: string,
     @Body() dto: UpdateOrderShippingStatusDto,
@@ -136,26 +192,43 @@ export class AdminController {
   }
 
   @Patch('orders/:id/send-reminder')
+  @ApiOperation({ summary: '결제 독촉 알림 발송 (관리자)' })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '알림 발송 성공' })
   async sendPaymentReminder(@Param('id') orderId: string) {
     return this.adminService.sendPaymentReminder(orderId);
   }
 
   @Get('users/:id')
+  @ApiOperation({ summary: '사용자 상세 조회 (관리자)' })
+  @ApiParam({ name: 'id', description: '사용자 ID' })
+  @ApiResponse({ status: 200, description: '사용자 상세 정보' })
   async getUserDetail(@Param('id') userId: string) {
     return this.adminService.getUserDetail(userId);
   }
 
   @Patch('users/:id/status')
+  @ApiOperation({
+    summary: '사용자 상태 변경 (관리자)',
+    description: '사용자 계정 활성/비활성 상태를 변경합니다.',
+  })
+  @ApiParam({ name: 'id', description: '사용자 ID' })
+  @ApiResponse({ status: 200, description: '사용자 상태 변경 성공' })
   async updateUserStatus(@Param('id') userId: string, @Body() dto: UpdateUserStatusDto) {
     return this.adminService.updateUserStatus(userId, dto);
   }
 
   @Get('notification-templates')
+  @ApiOperation({ summary: '알림 템플릿 목록 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '알림 템플릿 목록' })
   async getNotificationTemplates() {
     return this.adminService.getNotificationTemplates();
   }
 
   @Patch('notification-templates/:id')
+  @ApiOperation({ summary: '알림 템플릿 수정 (관리자)' })
+  @ApiParam({ name: 'id', description: '알림 템플릿 ID' })
+  @ApiResponse({ status: 200, description: '템플릿 수정 성공' })
   async updateNotificationTemplate(
     @Param('id') id: string,
     @Body() dto: UpdateNotificationTemplateDto,
@@ -164,11 +237,23 @@ export class AdminController {
   }
 
   @Get('settlement')
+  @ApiOperation({ summary: '정산 보고서 조회 (관리자)' })
+  @ApiQuery({ name: 'from', description: '시작일 (YYYY-MM-DD)', example: '2024-01-01' })
+  @ApiQuery({ name: 'to', description: '종료일 (YYYY-MM-DD)', example: '2024-01-31' })
+  @ApiResponse({ status: 200, description: '정산 보고서 데이터' })
   async getSettlementReport(@Query('from') from: string, @Query('to') to: string) {
     return this.adminService.getSettlementReport(from, to);
   }
 
   @Post('orders/bulk-notify')
+  @ApiOperation({
+    summary: '일괄 배송 알림 발송 (관리자)',
+    description:
+      'CSV 파일(Order ID, Tracking Number 컬럼)을 업로드하여 일괄 배송 알림을 발송합니다.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: '일괄 알림 발송 성공' })
+  @ApiResponse({ status: 400, description: '잘못된 CSV 형식' })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max CSV
@@ -199,9 +284,9 @@ export class AdminController {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const items = results.data.map((row: any) => ({
-            orderId: row['Order ID'] || row.orderId || row.order_id,
-            trackingNumber: row['Tracking Number'] || row.trackingNumber || row.tracking_number,
+          const items = (results.data as Record<string, string>[]).map((row) => ({
+            orderId: row['Order ID'] ?? row.orderId ?? row.order_id,
+            trackingNumber: row['Tracking Number'] ?? row.trackingNumber ?? row.tracking_number,
           }));
 
           // Validate data
@@ -217,7 +302,7 @@ export class AdminController {
 
           this.adminService.sendBulkShippingNotifications(items).then(resolve).catch(reject);
         },
-        error: (error) => {
+        error: (error: Error) => {
           reject(new BadRequestException(`Failed to parse CSV: ${error.message}`));
         },
       });
@@ -225,6 +310,16 @@ export class AdminController {
   }
 
   @Get('audit-logs')
+  @ApiOperation({
+    summary: '감사 로그 조회 (관리자)',
+    description: '관리자 작업 감사 로그를 조회합니다.',
+  })
+  @ApiQuery({ name: 'from', required: false, description: '시작일 (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'to', required: false, description: '종료일 (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'action', required: false, description: '액션 필터' })
+  @ApiQuery({ name: 'page', required: false, description: '페이지 번호', example: '1' })
+  @ApiQuery({ name: 'limit', required: false, description: '페이지 크기', example: '50' })
+  @ApiResponse({ status: 200, description: '감사 로그 목록' })
   async getAuditLogs(
     @Query('from') from?: string,
     @Query('to') to?: string,
@@ -241,6 +336,12 @@ export class AdminController {
    * Real-time system monitoring dashboard data
    */
   @Get('monitoring')
+  @ApiOperation({
+    summary: '실시간 시스템 모니터링 (관리자)',
+    description:
+      '서버 메모리, 스트림 상태, Redis/DB 연결 상태 등 실시간 모니터링 데이터를 반환합니다.',
+  })
+  @ApiResponse({ status: 200, description: '시스템 모니터링 데이터 (서버/스트림/Redis/DB 상태)' })
   async getMonitoring() {
     const redis = this.redisService.getClient();
 

@@ -14,6 +14,14 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
@@ -34,6 +42,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { SkipCsrf } from '../../common/guards/csrf.guard';
 import { SkipTransform } from '../../common/decorators/skip-transform.decorator';
 
+@ApiTags('Streaming')
 @Controller('streaming')
 export class StreamingController {
   private readonly logger = new Logger(StreamingController.name);
@@ -71,18 +80,33 @@ export class StreamingController {
 
   @Post('start')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '스트림 세션 생성',
+    description: 'PENDING 상태의 스트림 세션을 생성합니다. OBS 연결 전 호출.',
+  })
+  @ApiResponse({ status: 201, description: '스트림 세션 생성 성공 (streamKey, rtmpUrl 포함)' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   async startStream(@CurrentUser('userId') userId: string, @Body() startStreamDto: StartStreamDto) {
     return this.streamingService.startStream(userId, startStreamDto);
   }
 
   @Patch(':id/go-live')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 라이브 전환', description: 'PENDING → LIVE 상태로 전환합니다.' })
+  @ApiParam({ name: 'id', description: '스트림 ID' })
+  @ApiResponse({ status: 200, description: '라이브 전환 성공' })
   async goLive(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
     return this.streamingService.goLive(streamId, userId);
   }
 
   @Patch(':id/stop')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 종료', description: 'LIVE → OFFLINE 상태로 전환합니다.' })
+  @ApiParam({ name: 'id', description: '스트림 ID' })
+  @ApiResponse({ status: 200, description: '스트림 종료 성공' })
   async stopStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
     await this.streamingService.stopStream(streamId, userId);
     return { message: 'Stream ended successfully' };
@@ -90,6 +114,10 @@ export class StreamingController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 정보 수정' })
+  @ApiParam({ name: 'id', description: '스트림 ID' })
+  @ApiResponse({ status: 200, description: '스트림 정보 수정 성공' })
   async updateStream(
     @Param('id') streamId: string,
     @CurrentUser('userId') userId: string,
@@ -101,24 +129,41 @@ export class StreamingController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 취소 (PENDING 상태만)' })
+  @ApiParam({ name: 'id', description: '스트림 ID' })
+  @ApiResponse({ status: 204, description: '스트림 취소 성공' })
   async cancelStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
     await this.streamingService.cancelStream(streamId, userId);
   }
 
   @Public()
   @Get(':id/status')
+  @ApiOperation({ summary: '스트림 상태 조회 (공개)' })
+  @ApiParam({ name: 'id', description: '스트림 ID' })
+  @ApiResponse({ status: 200, description: '스트림 상태 정보' })
   async getStatus(@Param('id') streamId: string) {
     return this.streamingService.getStreamStatus(streamId);
   }
 
   @Public()
   @Get('active')
+  @ApiOperation({ summary: '현재 라이브 중인 스트림 목록 (공개)' })
+  @ApiResponse({ status: 200, description: '활성 스트림 목록' })
   async getActiveStreams() {
-    return this.streamingService.getActiveStreams();
+    return this.streamingService.getActiveStreamsPublic();
   }
 
   @Public()
   @Get('upcoming')
+  @ApiOperation({ summary: '예정된 스트림 목록 (공개)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: '조회 수 (기본값: 3, 최대: 10)',
+    example: '3',
+  })
+  @ApiResponse({ status: 200, description: '예정 스트림 목록' })
   async getUpcomingStreams(@Query('limit') limit?: string) {
     const { limit: limitNum } = parsePagination(1, limit, { limit: 3, maxLimit: 10 });
     return this.streamingService.getUpcomingStreams(limitNum);
@@ -126,12 +171,21 @@ export class StreamingController {
 
   @Post('generate-key')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '스트림 키 생성',
+    description: 'OBS 연결에 사용할 RTMP 스트림 키를 생성합니다.',
+  })
+  @ApiResponse({ status: 201, description: '스트림 키 생성 성공' })
   async generateKey(@CurrentUser('userId') userId: string, @Body() dto: GenerateKeyDto) {
     return this.streamingService.generateKey(userId, dto);
   }
 
   @Public()
   @Get('key/:streamKey/status')
+  @ApiOperation({ summary: '스트림 키로 상태 조회 (공개)' })
+  @ApiParam({ name: 'streamKey', description: 'OBS 스트림 키', example: 'live_abc123' })
+  @ApiResponse({ status: 200, description: '스트림 상태' })
   async getStatusByKey(@Param('streamKey') streamKey: string) {
     return this.streamingService.getStreamStatusByKey(streamKey);
   }
@@ -139,6 +193,9 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @AdminOnly()
   @Get('history')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 이력 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '스트림 이력 목록' })
   async getHistory(@Query() query: StreamHistoryQueryDto) {
     return this.streamingService.getStreamHistory(query);
   }
@@ -146,6 +203,9 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @AdminOnly()
   @Get('live-status')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '현재 라이브 상태 요약 (관리자)' })
+  @ApiResponse({ status: 200, description: '현재 라이브 상태' })
   async getLiveStatus() {
     return this.streamingService.getLiveStatus();
   }
@@ -160,9 +220,15 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('auth')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'nginx-rtmp on_publish 콜백 (내부 전용)',
+    description: 'OBS 스트림 키 검증. 내부 네트워크에서만 호출 가능.',
+  })
+  @ApiResponse({ status: 200, description: '스트림 키 유효' })
+  @ApiResponse({ status: 403, description: '유효하지 않은 스트림 키 또는 외부 IP' })
   async authenticateRtmpStream(@Body() dto: RtmpCallbackDto, @Req() req: Request) {
     // Only allow callbacks from internal/Docker network
-    const clientIp = req.ip || req.socket?.remoteAddress;
+    const clientIp = req.ip ?? req.socket?.remoteAddress;
     if (!this.isPrivateIp(clientIp)) {
       this.logger.warn(`RTMP auth rejected from external IP: ${clientIp}`);
       throw new ForbiddenException('Unauthorized callback source');
@@ -186,8 +252,13 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('done')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'nginx-rtmp on_publish_done 콜백 (내부 전용)',
+    description: 'OBS 스트림 종료 알림. 내부 네트워크에서만 호출 가능.',
+  })
+  @ApiResponse({ status: 200, description: '처리 성공' })
   async handleRtmpStreamDone(@Body() dto: RtmpCallbackDto, @Req() req: Request) {
-    const clientIp = req.ip || req.socket?.remoteAddress;
+    const clientIp = req.ip ?? req.socket?.remoteAddress;
     if (!this.isPrivateIp(clientIp)) {
       this.logger.warn(`RTMP done rejected from external IP: ${clientIp}`);
       throw new ForbiddenException('Unauthorized callback source');
@@ -206,7 +277,7 @@ export class StreamingController {
    * Validate SRS webhook request: private IP + optional shared secret
    */
   private validateSrsWebhook(req: Request): boolean {
-    const clientIp = req.ip || req.socket?.remoteAddress;
+    const clientIp = req.ip ?? req.socket?.remoteAddress;
     if (!this.isPrivateIp(clientIp)) {
       this.logger.warn(`SRS callback rejected from external IP: ${clientIp}`);
       return false;
@@ -214,7 +285,7 @@ export class StreamingController {
 
     const secret = this.configService.get<string>('SRS_WEBHOOK_SECRET');
     if (secret) {
-      const provided = req.headers['x-srs-secret'] || req.query?.['secret'];
+      const provided = req.headers['x-srs-secret'] ?? req.query?.['secret'];
       if (!provided || provided !== secret) {
         this.logger.warn('SRS callback rejected: missing or invalid webhook secret');
         return false;
@@ -230,8 +301,13 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-auth')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'SRS on_publish 콜백 (내부 전용)',
+    description: 'SRS 스트림 키 검증. code: 0 허용, code: 1 거부.',
+  })
+  @ApiResponse({ status: 200, description: '{ code: 0 } 허용 또는 { code: 1 } 거부' })
   async authenticateSrsStream(@Body() dto: SrsCallbackDto, @Req() req: Request) {
-    const clientIp = req.ip || req.socket?.remoteAddress;
+    const clientIp = req.ip ?? req.socket?.remoteAddress;
     this.logger.log(
       `SRS on_publish: stream=${dto.stream} app=${dto.app} clientIp=${clientIp} srcIp=${dto.ip} client_id=${dto.client_id}`,
     );
@@ -264,6 +340,8 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-done')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'SRS on_unpublish 콜백 (내부 전용)' })
+  @ApiResponse({ status: 200, description: '{ code: 0 } 성공' })
   async handleSrsStreamDone(@Body() dto: SrsCallbackDto, @Req() req: Request) {
     if (!this.validateSrsWebhook(req)) {
       return { code: 1 };
@@ -283,6 +361,11 @@ export class StreamingController {
   @SkipThrottle({ short: true, medium: true, long: true })
   @Post('srs-heartbeat')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'SRS 헬스체크 콜백 (내부 전용)',
+    description: 'SRS가 약 10초마다 호출하는 헬스체크.',
+  })
+  @ApiResponse({ status: 200, description: '{ code: 0 }' })
   async handleSrsHeartbeat(@Req() req: Request) {
     if (!this.validateSrsWebhook(req)) {
       return { code: 1 };
@@ -295,6 +378,16 @@ export class StreamingController {
    */
   @Public()
   @Get('key/:streamKey/featured-product')
+  @ApiOperation({
+    summary: '라이브 대표 상품 조회 (공개)',
+    description: '현재 라이브에서 소개 중인 상품을 반환합니다.',
+  })
+  @ApiParam({ name: 'streamKey', description: '스트림 키', example: 'live_abc123' })
+  @ApiResponse({
+    status: 200,
+    description: '대표 상품 정보 (없으면 null)',
+    schema: { example: { product: null } },
+  })
   async getFeaturedProduct(@Param('streamKey') streamKey: string) {
     const product = await this.streamingService.getFeaturedProduct(streamKey);
     return { product };
@@ -305,6 +398,10 @@ export class StreamingController {
    */
   @Post(':streamKey/featured-product')
   @AdminOnly()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '라이브 대표 상품 설정 (관리자)' })
+  @ApiParam({ name: 'streamKey', description: '스트림 키' })
+  @ApiResponse({ status: 201, description: '대표 상품 설정 성공' })
   async setFeaturedProduct(
     @Param('streamKey') streamKey: string,
     @Body('productId') productId: string,
@@ -320,6 +417,10 @@ export class StreamingController {
   @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @Patch(':streamKey/featured-product/clear')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '라이브 대표 상품 초기화 (관리자)' })
+  @ApiParam({ name: 'streamKey', description: '스트림 키' })
+  @ApiResponse({ status: 200, description: '대표 상품 초기화 성공' })
   async clearFeaturedProduct(
     @Param('streamKey') streamKey: string,
     @CurrentUser('userId') userId: string,
