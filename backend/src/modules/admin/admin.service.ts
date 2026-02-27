@@ -41,7 +41,7 @@ interface OrderWhereClause {
   paymentStatus?: { in: PaymentStatus[] };
   shippingStatus?: { in: ShippingStatus[] };
   total?: { gte?: number; lte?: number };
-  orderItems?: any;
+  orderItems?: Record<string, unknown>;
 }
 
 interface SystemConfigUpdateData {
@@ -75,7 +75,10 @@ export class AdminService {
   ) {}
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
-    const { page, limit, sortBy, sortOrder, search, dateFrom, dateTo, status } = query;
+    const { sortOrder, search, dateFrom, dateTo, status } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const sortBy = query.sortBy ?? 'createdAt';
 
     const skip = (page - 1) * limit;
 
@@ -122,7 +125,7 @@ export class AdminService {
       take: limit,
       orderBy: {
         [sortBy]: sortOrder,
-      },
+      } as Record<string, string>,
       select: {
         id: true,
         email: true,
@@ -149,7 +152,7 @@ export class AdminService {
     // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => ({
       id: user.id,
-      email: user.email,
+      email: user.email ?? '',
       name: user.name,
       phone: user.phone,
       instagramId: user.instagramId,
@@ -174,9 +177,6 @@ export class AdminService {
 
   async getOrderList(query: GetOrdersQueryDto): Promise<OrderListResponseDto> {
     const {
-      page,
-      limit,
-      sortBy,
       sortOrder,
       search,
       dateFrom,
@@ -188,6 +188,9 @@ export class AdminService {
       maxAmount,
       streamKey,
     } = query;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const sortBy = query.sortBy ?? 'createdAt';
 
     const skip = (page - 1) * limit;
 
@@ -266,7 +269,7 @@ export class AdminService {
       take: limit,
       orderBy: {
         [sortBy]: sortOrder,
-      },
+      } as Record<string, string>,
       include: {
         orderItems: {
           include: {
@@ -281,7 +284,7 @@ export class AdminService {
     });
 
     // Map orders to DTOs
-    const orderDtos: OrderListItemDto[] = orders.map((order: any) => ({
+    const orderDtos: OrderListItemDto[] = orders.map((order) => ({
       id: order.id,
       userId: order.userId,
       userEmail: order.userEmail,
@@ -299,7 +302,7 @@ export class AdminService {
       shippedAt: order.shippedAt,
       deliveredAt: order.deliveredAt,
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
-      items: order.orderItems.map((item: any) => ({
+      items: order.orderItems.map((item) => ({
         productName: item.productName,
         price: Number(item.price),
         quantity: item.quantity,
@@ -322,7 +325,6 @@ export class AdminService {
   async exportOrdersCsv(query: GetOrdersQueryDto): Promise<string> {
     // Reuse the same filter logic from getOrderList but without pagination
     const {
-      sortBy,
       sortOrder,
       search,
       dateFrom,
@@ -334,6 +336,7 @@ export class AdminService {
       maxAmount,
       streamKey,
     } = query;
+    const sortBy = query.sortBy ?? 'createdAt';
 
     const where: OrderWhereClause = {};
 
@@ -392,7 +395,7 @@ export class AdminService {
 
     const orders = await this.prisma.order.findMany({
       where,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { [sortBy]: sortOrder } as Record<string, string>,
       take: MAX_EXPORT_ROWS,
     });
 
@@ -461,7 +464,6 @@ export class AdminService {
 
   async exportOrdersExcel(query: GetOrdersQueryDto): Promise<Buffer> {
     const {
-      sortBy,
       sortOrder,
       search,
       dateFrom,
@@ -472,6 +474,7 @@ export class AdminService {
       minAmount,
       maxAmount,
     } = query;
+    const sortBy = query.sortBy ?? 'createdAt';
 
     const where: OrderWhereClause = {};
 
@@ -516,7 +519,7 @@ export class AdminService {
     const MAX_EXPORT_ROWS = 10000;
     const orders = await this.prisma.order.findMany({
       where,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { [sortBy]: sortOrder } as Record<string, string>,
       take: MAX_EXPORT_ROWS,
       include: {
         orderItems: true,
@@ -530,17 +533,6 @@ export class AdminService {
       SHIPPED: '배송중',
       DELIVERED: '배송완료',
       CANCELLED: '취소',
-    };
-    const PAYMENT_STATUS_KO: Record<string, string> = {
-      PENDING: '대기',
-      CONFIRMED: '완료',
-      FAILED: '실패',
-      REFUNDED: '환불',
-    };
-    const SHIPPING_STATUS_KO: Record<string, string> = {
-      PENDING: '준비중',
-      SHIPPED: '배송중',
-      DELIVERED: '배송완료',
     };
 
     const toKST = (date: Date) =>
@@ -592,7 +584,7 @@ export class AdminService {
         try {
           const addr = order.shippingAddress as Record<string, string>;
           shippingAddressStr =
-            `${addr.street || ''} ${addr.city || ''} ${addr.state || ''} ${addr.postalCode || ''}`.trim() ||
+            `${addr.street ?? ''} ${addr.city ?? ''} ${addr.state ?? ''} ${addr.postalCode ?? ''}`.trim() ||
             '-';
         } catch {
           shippingAddressStr = '-';
@@ -685,8 +677,8 @@ export class AdminService {
       _sum: { total: true },
     });
 
-    const revenueLast7Days = Number(last7DaysRevenue._sum.total || 0);
-    const revenuePrevious7Days = Number(previous7DaysRevenue._sum.total || 0);
+    const revenueLast7Days = Number(last7DaysRevenue._sum.total ?? 0);
+    const revenuePrevious7Days = Number(previous7DaysRevenue._sum.total ?? 0);
     const revenueTrend = this.calculateTrend(revenueLast7Days, revenuePrevious7Days);
 
     // 3. Pending Payments count
@@ -741,13 +733,16 @@ export class AdminService {
     });
 
     last7DaysConfirmedOrders.forEach((order) => {
+      if (!order.paidAt) {
+        return;
+      }
       const dateKey = order.paidAt.toISOString().split('T')[0]; // YYYY-MM-DD
 
       if (!dailyRevenueMap.has(dateKey)) {
         dailyRevenueMap.set(dateKey, { date: dateKey, revenue: 0, orderCount: 0 });
       }
 
-      const day = dailyRevenueMap.get(dateKey);
+      const day = dailyRevenueMap.get(dateKey)!;
       day.revenue += Number(order.total);
       day.orderCount += 1;
     });
@@ -778,9 +773,9 @@ export class AdminService {
         formatted: this.formatNumber(activeLiveStreams),
       },
       topProducts: topProducts.map((p) => ({
-        productId: p.productId,
+        productId: p.productId ?? '',
         productName: p.productName,
-        totalSold: p._sum.quantity || 0,
+        totalSold: p._sum.quantity ?? 0,
       })),
       messages: {
         value: last7DaysMessages,
@@ -811,7 +806,7 @@ export class AdminService {
       type: log.action,
       message: this.formatActivityMessage(log.action, log.entity),
       timestamp: log.createdAt,
-      metadata: log.changes as Record<string, any>,
+      metadata: log.changes as Record<string, unknown>,
     }));
 
     return {
@@ -846,7 +841,7 @@ export class AdminService {
       DELETE: 'deleted',
     };
 
-    const verb = actionMap[action] || action.toLowerCase();
+    const verb = actionMap[action] ?? action.toLowerCase();
     return `${entity} ${verb}`;
   }
 
@@ -888,7 +883,7 @@ export class AdminService {
    * Update system settings (cart timer, bank info, shipping fee, notifications)
    */
   async updateSystemSettings(dto: UpdateSystemSettingsDto) {
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (dto.defaultCartTimerMinutes !== undefined) {
       updateData.defaultCartTimerMinutes = dto.defaultCartTimerMinutes;
     }
@@ -1065,7 +1060,7 @@ export class AdminService {
       delivered: '{customerName}님, 주문번호 {orderId}의 상품이 배송 완료되었습니다.',
     };
 
-    return (config.shippingMessages as Record<string, string>) || defaultMessages;
+    return (config.shippingMessages as Record<string, string>) ?? defaultMessages;
   }
 
   /**
@@ -1253,18 +1248,18 @@ export class AdminService {
       throw new BadRequestException('취소된 주문의 상태는 변경할 수 없습니다');
     }
 
-    const data: any = { status };
+    const data: Record<string, unknown> = { status };
 
     // Sync related fields based on status
     if (status === 'SHIPPED') {
       data.shippingStatus = 'SHIPPED';
-      data.shippedAt = order.shippedAt || new Date();
+      data.shippedAt = order.shippedAt ?? new Date();
     } else if (status === 'DELIVERED') {
       data.shippingStatus = 'DELIVERED';
-      data.deliveredAt = order.deliveredAt || new Date();
+      data.deliveredAt = order.deliveredAt ?? new Date();
     } else if (status === 'PAYMENT_CONFIRMED') {
       data.paymentStatus = 'CONFIRMED';
-      data.paidAt = order.paidAt || new Date();
+      data.paidAt = order.paidAt ?? new Date();
     } else if (status === 'CANCELLED') {
       data.paymentStatus = 'FAILED';
 
@@ -1319,16 +1314,16 @@ export class AdminService {
       throw new NotFoundException('Order not found');
     }
 
-    const data: any = { shippingStatus };
+    const data: Record<string, unknown> = { shippingStatus };
 
     if (shippingStatus === 'SHIPPED') {
-      data.shippedAt = order.shippedAt || new Date();
+      data.shippedAt = order.shippedAt ?? new Date();
       data.status = 'SHIPPED';
       if (trackingNumber) {
         data.trackingNumber = trackingNumber;
       }
     } else if (shippingStatus === 'DELIVERED') {
-      data.deliveredAt = order.deliveredAt || new Date();
+      data.deliveredAt = order.deliveredAt ?? new Date();
       data.status = 'DELIVERED';
     }
 
@@ -1454,7 +1449,9 @@ export class AdminService {
         results.push({
           orderId: item.orderId,
           success: false,
-          error: error.message || 'Failed to send notification',
+          error:
+            (error instanceof Error ? error.message : String(error)) ??
+            'Failed to send notification',
         });
         failed++;
       }
@@ -1529,7 +1526,7 @@ export class AdminService {
 
     return {
       id: user.id,
-      email: user.email,
+      email: user.email ?? '',
       name: user.name,
       instagramId: user.instagramId,
       depositorName: user.depositorName,
@@ -1699,6 +1696,9 @@ export class AdminService {
     const dailyRevenue = new Map<string, { date: string; revenue: number; orderCount: number }>();
 
     orders.forEach((order) => {
+      if (!order.paidAt) {
+        return;
+      }
       const dateKey = order.paidAt.toISOString().split('T')[0]; // YYYY-MM-DD
 
       if (!dailyRevenue.has(dateKey)) {
@@ -1709,7 +1709,7 @@ export class AdminService {
         });
       }
 
-      const day = dailyRevenue.get(dateKey);
+      const day = dailyRevenue.get(dateKey)!;
       day.revenue += Number(order.total);
       day.orderCount += 1;
     });
@@ -1724,9 +1724,9 @@ export class AdminService {
       orders: orders.map((order) => ({
         orderId: order.id,
         orderDate: order.createdAt.toISOString(),
-        customerId: order.instagramId || order.userEmail,
+        customerId: order.instagramId ?? order.userEmail,
         total: Number(order.total),
-        paidAt: order.paidAt.toISOString(),
+        paidAt: order.paidAt ? order.paidAt.toISOString() : '',
       })),
       dailyRevenue: dailyData,
       dateRange: {
@@ -1787,7 +1787,7 @@ export class AdminService {
       data: logs.map((log) => ({
         id: log.id,
         timestamp: log.createdAt.toISOString(),
-        adminEmail: log.admin?.email || 'Unknown',
+        adminEmail: log.admin?.email ?? 'Unknown',
         action: log.action,
         entity: log.entity,
         entityId: log.entityId,

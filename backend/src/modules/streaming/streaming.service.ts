@@ -52,7 +52,7 @@ export class StreamingService {
    * Get upcoming live streams for homepage
    * Returns streams with PENDING status ordered by scheduled time
    */
-  async getUpcomingStreams(limit = 3): Promise<any[]> {
+  async getUpcomingStreams(limit = 3): Promise<Record<string, unknown>[]> {
     try {
       const now = new Date();
       const streams = await this.prisma.liveStream.findMany({
@@ -89,6 +89,7 @@ export class StreamingService {
         id: stream.id,
         streamKey: stream.streamKey,
         title: stream.title,
+        description: stream.description ?? null,
         scheduledTime: stream.scheduledAt ?? null, // expiresAt fallback 제거
         thumbnailUrl: stream.thumbnailUrl || null,
         isLive: stream.status === 'LIVE',
@@ -98,14 +99,17 @@ export class StreamingService {
         },
       }));
     } catch (error) {
-      this.logger.error(`Failed to get upcoming streams: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get upcoming streams: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
       throw new BusinessException(
         'FAILED_TO_GET_UPCOMING_STREAMS',
         {
           statusCode: 500,
           error: 'Internal Server Error',
         },
-        `Failed to retrieve upcoming streams: ${error.message}`,
+        `Failed to retrieve upcoming streams: ${(error as Error).message}`,
       );
     }
   }
@@ -162,7 +166,12 @@ export class StreamingService {
       throw new BusinessException('STREAM_NOT_FOUND', { streamId });
     }
 
-    const data: { title?: string; expiresAt?: Date; thumbnailUrl?: string | null; freeShippingEnabled?: boolean } = {};
+    const data: {
+      title?: string;
+      expiresAt?: Date;
+      thumbnailUrl?: string | null;
+      freeShippingEnabled?: boolean;
+    } = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
     }
@@ -310,6 +319,33 @@ export class StreamingService {
     return sessions.map((s) => this.mapToResponseDto(s));
   }
 
+  async getActiveStreamsPublic(): Promise<Record<string, unknown>[]> {
+    const sessions = await this.prisma.liveStream.findMany({
+      where: { status: 'LIVE' },
+      orderBy: { startedAt: 'desc' },
+      include: {
+        user: { select: { id: true, name: true } },
+      },
+    });
+
+    return Promise.all(
+      sessions.map(async (s) => {
+        const viewerCountStr = await this.redisService.get(`stream:${s.streamKey}:viewers`);
+        const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+        return {
+          id: s.id,
+          streamKey: s.streamKey,
+          title: s.title,
+          description: s.description ?? null,
+          viewerCount,
+          thumbnailUrl: s.thumbnailUrl ?? null,
+          startedAt: s.startedAt?.toISOString() ?? null,
+          host: { id: s.user.id, name: s.user.name },
+        };
+      }),
+    );
+  }
+
   async generateKey(userId: string, dto: GenerateKeyDto): Promise<StreamingSessionResponseDto> {
     // Auto-clean expired PENDING streams for this user
     await this.prisma.liveStream.updateMany({
@@ -342,7 +378,7 @@ export class StreamingService {
       // If PENDING, return the existing session so user can see their stream key
       this.logger.log(`Returning existing PENDING stream ${existingStream.id} for user ${userId}`);
       // Update title/scheduledAt/thumbnailUrl if new values were provided
-      const pendingUpdates: Record<string, any> = {};
+      const pendingUpdates: Record<string, unknown> = {};
       if (dto.title && dto.title !== existingStream.title) {
         pendingUpdates.title = dto.title;
       }
@@ -374,9 +410,9 @@ export class StreamingService {
       data: {
         userId,
         streamKey,
-        title: dto.title || 'Live Stream',
+        title: dto.title ?? 'Live Stream',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
-        thumbnailUrl: dto.thumbnailUrl || null,
+        thumbnailUrl: dto.thumbnailUrl ?? null,
         freeShippingEnabled: dto.freeShippingEnabled ?? false,
         expiresAt,
         status: 'PENDING',
@@ -430,7 +466,7 @@ export class StreamingService {
       if (session) {
         title = session.title;
         status = session.status;
-        startedAt = session.startedAt || undefined;
+        startedAt = session.startedAt ?? undefined;
       }
     }
 
@@ -447,7 +483,7 @@ export class StreamingService {
   }
 
   async getStreamHistory(query: StreamHistoryQueryDto): Promise<StreamHistoryResponseDto> {
-    const { page, limit, userId, dateFrom, dateTo } = query;
+    const { page = 1, limit = 20, userId, dateFrom, dateTo } = query;
 
     const skip = (page - 1) * limit;
 
@@ -696,56 +732,58 @@ export class StreamingService {
     this.clearPendingStreamDone(streamKey, 'rescheduled by new on_unpublish');
     const graceMs = this.getStreamDoneGraceMs();
 
-    const timer = setTimeout(async () => {
-      try {
-        this.pendingStreamDoneTimers.delete(streamKey);
+    const timer = setTimeout(() => {
+      (async () => {
+        try {
+          this.pendingStreamDoneTimers.delete(streamKey);
 
-        // Find stream session by key
-        const session = await this.prisma.liveStream.findUnique({
-          where: { streamKey },
-        });
+          // Find stream session by key
+          const session = await this.prisma.liveStream.findUnique({
+            where: { streamKey },
+          });
 
-        if (!session) {
-          this.logger.warn(`RTMP done: Stream key not found - ${streamKey}`);
-          return;
-        }
+          if (!session) {
+            this.logger.warn(`RTMP done: Stream key not found - ${streamKey}`);
+            return;
+          }
 
-        // Stream was already transitioned by another flow.
-        if (session.status !== 'LIVE') {
+          // Stream was already transitioned by another flow.
+          if (session.status !== 'LIVE') {
+            this.logger.log(
+              `Skipping delayed stream-offline for ${streamKey}; current status is ${session.status}`,
+            );
+            return;
+          }
+
+          // Calculate total duration if stream was live
+          let totalDuration: number | null = null;
+          if (session.startedAt) {
+            totalDuration = Math.floor((new Date().getTime() - session.startedAt.getTime()) / 1000);
+          }
+
+          // Update stream status to OFFLINE
+          await this.prisma.liveStream.update({
+            where: { id: session.id },
+            data: {
+              status: 'OFFLINE',
+              endedAt: new Date(),
+              totalDuration,
+            },
+          });
+
+          // Remove from Redis cache
+          await this.redisService.del(`stream:${streamKey}:meta`);
+          await this.redisService.del(`stream:${streamKey}:viewers`);
+
           this.logger.log(
-            `Skipping delayed stream-offline for ${streamKey}; current status is ${session.status}`,
+            `Stream ${streamKey} ended after ${graceMs}ms grace. Duration: ${totalDuration}s`,
           );
-          return;
+          this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed delayed stream-offline for ${streamKey}: ${message}`);
         }
-
-        // Calculate total duration if stream was live
-        let totalDuration: number | null = null;
-        if (session.startedAt) {
-          totalDuration = Math.floor((new Date().getTime() - session.startedAt.getTime()) / 1000);
-        }
-
-        // Update stream status to OFFLINE
-        await this.prisma.liveStream.update({
-          where: { id: session.id },
-          data: {
-            status: 'OFFLINE',
-            endedAt: new Date(),
-            totalDuration,
-          },
-        });
-
-        // Remove from Redis cache
-        await this.redisService.del(`stream:${streamKey}:meta`);
-        await this.redisService.del(`stream:${streamKey}:viewers`);
-
-        this.logger.log(
-          `Stream ${streamKey} ended after ${graceMs}ms grace. Duration: ${totalDuration}s`,
-        );
-        this.eventEmitter.emit('stream:ended', { streamId: session.id, streamKey });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed delayed stream-offline for ${streamKey}: ${message}`);
-      }
+      })().catch((err) => this.logger.error('Error in delayed stream done:', err));
     }, graceMs);
 
     this.pendingStreamDoneTimers.set(streamKey, timer);
@@ -879,11 +917,24 @@ export class StreamingService {
     this.logger.log(`Featured product cleared for stream ${streamKey}`);
   }
 
-  private mapToResponseDto(session: any): StreamingSessionResponseDto {
+  private mapToResponseDto(session: {
+    id: string;
+    userId: string;
+    streamKey: string;
+    title: string;
+    description?: string | null;
+    status: string;
+    startedAt?: Date | null;
+    endedAt?: Date | null;
+    scheduledAt?: Date | null;
+    thumbnailUrl?: string | null;
+    expiresAt: Date;
+    createdAt: Date;
+  }): StreamingSessionResponseDto {
     const rtmpBase = (
-      this.configService.get('RTMP_SERVER_URL') || 'rtmp://localhost:1935/live'
+      this.configService.get<string>('RTMP_SERVER_URL') ?? 'rtmp://localhost:1935/live'
     ).replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
-    const hlsBase = this.configService.get('HLS_SERVER_URL') || 'http://localhost:8080/hls';
+    const hlsBase = this.configService.get<string>('HLS_SERVER_URL') ?? 'http://localhost:8080/hls';
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
 
@@ -891,12 +942,13 @@ export class StreamingService {
       id: session.id,
       userId: session.userId,
       streamKey: session.streamKey,
-      title: session.title || 'Live Stream',
+      title: session.title ?? 'Live Stream',
+      description: session.description ?? null,
       status: session.status,
       rtmpUrl,
       hlsUrl,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt,
+      startedAt: session.startedAt ?? undefined,
+      endedAt: session.endedAt ?? undefined,
       scheduledAt: session.scheduledAt ?? null,
       thumbnailUrl: session.thumbnailUrl ?? null,
       expiresAt: session.expiresAt,

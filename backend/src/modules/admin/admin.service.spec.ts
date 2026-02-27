@@ -632,12 +632,11 @@ describe('AdminService', () => {
       jest.spyOn(prisma.liveStream, 'count').mockResolvedValue(2);
 
       // Mock top products
-      // @ts-expect-error - Complex Prisma groupBy type
       jest.spyOn(prisma.orderItem, 'groupBy').mockResolvedValue([
         { productId: 'p1', productName: 'Product 1', _sum: { quantity: 50 } },
         { productId: 'p2', productName: 'Product 2', _sum: { quantity: 40 } },
         { productId: 'p3', productName: 'Product 3', _sum: { quantity: 30 } },
-      ]);
+      ] as any);
 
       // Mock chat message counts
       jest
