@@ -25,6 +25,7 @@ export interface Product {
   timerEnabled: boolean;
   timerDuration: number;
   imageUrl?: string;
+  images?: string[];
   isNew?: boolean;
   discountRate?: number;
   originalPrice?: number;
