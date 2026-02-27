@@ -509,6 +509,7 @@ export class AdminService {
       where,
       orderBy: { [sortBy]: sortOrder },
       take: MAX_EXPORT_ROWS,
+      include: { orderItems: true },
     });
 
     const ORDER_STATUS_KO: Record<string, string> = {
@@ -550,6 +551,8 @@ export class AdminService {
       { header: '고객이메일', key: 'userEmail', width: 28 },
       { header: '입금자명', key: 'depositorName', width: 14 },
       { header: '인스타그램ID', key: 'instagramId', width: 18 },
+      { header: '상품명', key: 'productName', width: 30 },
+      { header: '배송지', key: 'shippingAddress', width: 40 },
       { header: '주문상태', key: 'status', width: 12 },
       { header: '결제상태', key: 'paymentStatus', width: 10 },
       { header: '배송상태', key: 'shippingStatus', width: 10 },
@@ -570,11 +573,29 @@ export class AdminService {
     headerRow.alignment = { horizontal: 'center' };
 
     orders.forEach((order) => {
+      // 상품 정보 조합
+      const productNames = order.orderItems?.map((item) => item.productName).join(', ') || '-';
+
+      // 배송지 정보 추출
+      let shippingAddressStr = '-';
+      if (order.shippingAddress) {
+        try {
+          const addr = order.shippingAddress as Record<string, string>;
+          shippingAddressStr =
+            `${addr.street || ''} ${addr.city || ''} ${addr.state || ''} ${addr.postalCode || ''}`.trim() ||
+            '-';
+        } catch {
+          shippingAddressStr = '-';
+        }
+      }
+
       sheet.addRow({
         id: order.id,
         userEmail: order.userEmail,
         depositorName: order.depositorName,
         instagramId: order.instagramId?.replace(/^@/, ''),
+        productName: productNames,
+        shippingAddress: shippingAddressStr,
         status: ORDER_STATUS_KO[order.status] ?? order.status,
         paymentStatus: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
         shippingStatus: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
