@@ -478,7 +478,7 @@ function AdminOrdersContent() {
 
   if (authLoading || (user && user.role !== 'ADMIN')) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <Body>Loading...</Body>
       </div>
     );
@@ -636,7 +636,7 @@ export default function AdminOrdersPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex items-center justify-center py-24">
           <Body>불러오는 중...</Body>
         </div>
       }

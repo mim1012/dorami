@@ -148,7 +148,7 @@ export default function AdminUserDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <Body>회원 정보를 불러오는 중...</Body>
       </div>
     );
@@ -156,214 +156,207 @@ export default function AdminUserDetailPage() {
 
   if (error || !user) {
     return (
-      <div className="min-h-screen bg-white py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
-            <Body className="text-error">{error || '회원을 찾을 수 없습니다'}</Body>
-          </div>
-          <Button onClick={() => router.push('/admin/users')}>회원 목록으로</Button>
+      <div className="space-y-4">
+        <div className="bg-error/10 border border-error rounded-button p-4">
+          <Body className="text-error">{error || '회원을 찾을 수 없습니다'}</Body>
         </div>
+        <Button onClick={() => router.push('/admin/users')}>회원 목록으로</Button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <Display className="text-hot-pink mb-2">회원 상세</Display>
-            <Body className="text-secondary-text">{user.instagramId || user.email}</Body>
-          </div>
-          <Button variant="outline" onClick={() => router.push('/admin/users')}>
-            ← 회원 목록
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-6 md:mb-8 flex items-center justify-between">
+        <div>
+          <Display className="text-hot-pink mb-2">회원 상세</Display>
+          <Body className="text-secondary-text">{user.instagramId || user.email}</Body>
         </div>
+        <Button variant="outline" onClick={() => router.push('/admin/users')}>
+          ← 회원 목록
+        </Button>
+      </div>
 
-        {error && (
-          <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
-            <Body className="text-error">{error}</Body>
+      {error && (
+        <div className="bg-error/10 border border-error rounded-button p-4 mb-6">
+          <Body className="text-error">{error}</Body>
+        </div>
+      )}
+
+      {/* Blacklist Warning Banner */}
+      {user.status === 'SUSPENDED' && (
+        <div className="bg-error/10 border-2 border-error rounded-button p-4 mb-6 flex items-center gap-3">
+          <span className="text-2xl">🚫</span>
+          <div>
+            <Body className="text-error font-bold">차단된 회원 (블랙리스트)</Body>
+            <Caption className="text-error">
+              방송 참여, 장바구니, 알림 등 모든 기능 사용 불가 | 차단일:{' '}
+              {formatDate(user.suspendedAt)}
+            </Caption>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Blacklist Warning Banner */}
-        {user.status === 'SUSPENDED' && (
-          <div className="bg-error/10 border-2 border-error rounded-button p-4 mb-6 flex items-center gap-3">
-            <span className="text-2xl">🚫</span>
+      {/* Profile and Address Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* User Profile Card */}
+        <div className="bg-content-bg rounded-button p-6">
+          <Heading2 className="text-hot-pink mb-4">회원 정보</Heading2>
+
+          <div className="space-y-4">
             <div>
-              <Body className="text-error font-bold">차단된 회원 (블랙리스트)</Body>
-              <Caption className="text-error">
-                방송 참여, 장바구니, 알림 등 모든 기능 사용 불가 | 차단일:{' '}
-                {formatDate(user.suspendedAt)}
-              </Caption>
+              <Body className="text-secondary-text text-caption">인스타그램</Body>
+              <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
             </div>
-          </div>
-        )}
 
-        {/* Profile and Address Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* User Profile Card */}
-          <div className="bg-content-bg rounded-button p-6">
-            <Heading2 className="text-hot-pink mb-4">회원 정보</Heading2>
-
-            <div className="space-y-4">
-              <div>
-                <Body className="text-secondary-text text-caption">인스타그램</Body>
-                <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">이메일</Body>
-                <Body>{user.email}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">이름</Body>
-                <Body>{user.name}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">입금자명</Body>
-                <Body>{user.depositorName || '-'}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">가입일</Body>
-                <Body>{formatDate(user.createdAt)}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">최근 접속</Body>
-                <Body>{formatDate(user.lastLoginAt)}</Body>
-              </div>
-
-              <div>
-                <Body className="text-secondary-text text-caption">상태</Body>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className={`mt-1 block w-full px-4 py-2 border rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink ${
-                    selectedStatus === 'SUSPENDED'
-                      ? 'border-error bg-error/5 text-error font-bold'
-                      : 'border-gray-300'
-                  }`}
-                >
-                  <option value="ACTIVE">활성</option>
-                  <option value="INACTIVE">비활성</option>
-                  <option value="SUSPENDED">차단 (블랙리스트)</option>
-                </select>
-              </div>
-
-              {user.suspendedAt && (
-                <div>
-                  <Body className="text-secondary-text text-caption">차단일</Body>
-                  <Body className="text-error">{formatDate(user.suspendedAt)}</Body>
-                </div>
-              )}
+            <div>
+              <Body className="text-secondary-text text-caption">이메일</Body>
+              <Body>{user.email}</Body>
             </div>
-          </div>
 
-          {/* Shipping Address Card */}
-          <div className="bg-content-bg rounded-button p-6">
-            <Heading2 className="text-hot-pink mb-4">배송지</Heading2>
+            <div>
+              <Body className="text-secondary-text text-caption">이름</Body>
+              <Body>{user.name}</Body>
+            </div>
 
-            {user.shippingAddress ? (
-              <div className="space-y-2">
-                <Body className="font-medium">{user.shippingAddress.fullName}</Body>
-                <Body>{user.shippingAddress.address1}</Body>
-                {user.shippingAddress.address2 && <Body>{user.shippingAddress.address2}</Body>}
-                <Body>
-                  {user.shippingAddress.city} {user.shippingAddress.state}{' '}
-                  {user.shippingAddress.zip}
-                </Body>
-                <Body>연락처: {user.shippingAddress.phone}</Body>
+            <div>
+              <Body className="text-secondary-text text-caption">입금자명</Body>
+              <Body>{user.depositorName || '-'}</Body>
+            </div>
+
+            <div>
+              <Body className="text-secondary-text text-caption">가입일</Body>
+              <Body>{formatDate(user.createdAt)}</Body>
+            </div>
+
+            <div>
+              <Body className="text-secondary-text text-caption">최근 접속</Body>
+              <Body>{formatDate(user.lastLoginAt)}</Body>
+            </div>
+
+            <div>
+              <Body className="text-secondary-text text-caption">상태</Body>
+              <select
+                value={selectedStatus}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className={`mt-1 block w-full px-4 py-2 border rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink ${
+                  selectedStatus === 'SUSPENDED'
+                    ? 'border-error bg-error/5 text-error font-bold'
+                    : 'border-gray-300'
+                }`}
+              >
+                <option value="ACTIVE">활성</option>
+                <option value="INACTIVE">비활성</option>
+                <option value="SUSPENDED">차단 (블랙리스트)</option>
+              </select>
+            </div>
+
+            {user.suspendedAt && (
+              <div>
+                <Body className="text-secondary-text text-caption">차단일</Body>
+                <Body className="text-error">{formatDate(user.suspendedAt)}</Body>
               </div>
-            ) : (
-              <Body className="text-secondary-text">배송지 미등록</Body>
             )}
           </div>
         </div>
 
-        {/* User Statistics */}
-        <div className="bg-content-bg rounded-button p-6 mb-6">
-          <Heading2 className="text-hot-pink mb-4">주문 통계</Heading2>
+        {/* Shipping Address Card */}
+        <div className="bg-content-bg rounded-button p-6">
+          <Heading2 className="text-hot-pink mb-4">배송지</Heading2>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <Display className="text-hot-pink">{user.statistics.totalOrders}</Display>
-              <Body className="text-secondary-text text-caption">총 주문</Body>
-            </div>
-
-            <div className="text-center">
-              <Display className="text-hot-pink">
-                {formatCurrency(user.statistics.totalPurchaseAmount)}
-              </Display>
-              <Body className="text-secondary-text text-caption">총 구매액</Body>
-            </div>
-
-            <div className="text-center">
-              <Display className="text-hot-pink">
-                {formatCurrency(user.statistics.averageOrderValue)}
-              </Display>
-              <Body className="text-secondary-text text-caption">평균 주문액</Body>
-            </div>
-
-            <div className="text-center">
-              <Display className="text-hot-pink">
-                {user.statistics.orderFrequency.toFixed(1)}
-              </Display>
-              <Body className="text-secondary-text text-caption">월 주문 수</Body>
-            </div>
-          </div>
-        </div>
-
-        {/* Points Section */}
-        <div className="bg-content-bg rounded-button p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <Heading2 className="text-hot-pink">적립 포인트</Heading2>
-            <Button variant="outline" size="sm" onClick={() => setShowPointsModal(true)}>
-              포인트 조정
-            </Button>
-          </div>
-
-          {pointBalance ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <Display className="text-hot-pink">
-                  {new Intl.NumberFormat('ko-KR').format(pointBalance.currentBalance)}
-                </Display>
-                <Caption className="text-secondary-text">현재 잔액</Caption>
-              </div>
-              <div className="text-center">
-                <Display className="text-success">
-                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeEarned)}
-                </Display>
-                <Caption className="text-secondary-text">총 적립</Caption>
-              </div>
-              <div className="text-center">
-                <Display className="text-info">
-                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeUsed)}
-                </Display>
-                <Caption className="text-secondary-text">총 사용</Caption>
-              </div>
-              <div className="text-center">
-                <Display className="text-gray-500">
-                  {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeExpired)}
-                </Display>
-                <Caption className="text-secondary-text">만료</Caption>
-              </div>
+          {user.shippingAddress ? (
+            <div className="space-y-2">
+              <Body className="font-medium">{user.shippingAddress.fullName}</Body>
+              <Body>{user.shippingAddress.address1}</Body>
+              {user.shippingAddress.address2 && <Body>{user.shippingAddress.address2}</Body>}
+              <Body>
+                {user.shippingAddress.city} {user.shippingAddress.state} {user.shippingAddress.zip}
+              </Body>
+              <Body>연락처: {user.shippingAddress.phone}</Body>
             </div>
           ) : (
-            <Body className="text-secondary-text">포인트 데이터 없음</Body>
+            <Body className="text-secondary-text">배송지 미등록</Body>
           )}
         </div>
+      </div>
 
-        {/* Order History Placeholder */}
-        <div className="bg-content-bg rounded-button p-6">
-          <Heading2 className="text-hot-pink mb-4">주문 내역</Heading2>
-          <Body className="text-secondary-text">주문 내역은 추후 제공 예정입니다</Body>
+      {/* User Statistics */}
+      <div className="bg-content-bg rounded-button p-6 mb-6">
+        <Heading2 className="text-hot-pink mb-4">주문 통계</Heading2>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <Display className="text-hot-pink">{user.statistics.totalOrders}</Display>
+            <Body className="text-secondary-text text-caption">총 주문</Body>
+          </div>
+
+          <div className="text-center">
+            <Display className="text-hot-pink">
+              {formatCurrency(user.statistics.totalPurchaseAmount)}
+            </Display>
+            <Body className="text-secondary-text text-caption">총 구매액</Body>
+          </div>
+
+          <div className="text-center">
+            <Display className="text-hot-pink">
+              {formatCurrency(user.statistics.averageOrderValue)}
+            </Display>
+            <Body className="text-secondary-text text-caption">평균 주문액</Body>
+          </div>
+
+          <div className="text-center">
+            <Display className="text-hot-pink">{user.statistics.orderFrequency.toFixed(1)}</Display>
+            <Body className="text-secondary-text text-caption">월 주문 수</Body>
+          </div>
         </div>
+      </div>
+
+      {/* Points Section */}
+      <div className="bg-content-bg rounded-button p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <Heading2 className="text-hot-pink">적립 포인트</Heading2>
+          <Button variant="outline" size="sm" onClick={() => setShowPointsModal(true)}>
+            포인트 조정
+          </Button>
+        </div>
+
+        {pointBalance ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <Display className="text-hot-pink">
+                {new Intl.NumberFormat('ko-KR').format(pointBalance.currentBalance)}
+              </Display>
+              <Caption className="text-secondary-text">현재 잔액</Caption>
+            </div>
+            <div className="text-center">
+              <Display className="text-success">
+                {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeEarned)}
+              </Display>
+              <Caption className="text-secondary-text">총 적립</Caption>
+            </div>
+            <div className="text-center">
+              <Display className="text-info">
+                {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeUsed)}
+              </Display>
+              <Caption className="text-secondary-text">총 사용</Caption>
+            </div>
+            <div className="text-center">
+              <Display className="text-gray-500">
+                {new Intl.NumberFormat('ko-KR').format(pointBalance.lifetimeExpired)}
+              </Display>
+              <Caption className="text-secondary-text">만료</Caption>
+            </div>
+          </div>
+        ) : (
+          <Body className="text-secondary-text">포인트 데이터 없음</Body>
+        )}
+      </div>
+
+      {/* Order History Placeholder */}
+      <div className="bg-content-bg rounded-button p-6">
+        <Heading2 className="text-hot-pink mb-4">주문 내역</Heading2>
+        <Body className="text-secondary-text">주문 내역은 추후 제공 예정입니다</Body>
       </div>
 
       {/* Point Adjustment Modal */}
