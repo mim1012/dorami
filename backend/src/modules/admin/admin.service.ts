@@ -297,6 +297,12 @@ export class AdminService {
       shippedAt: order.shippedAt,
       deliveredAt: order.deliveredAt,
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
+      items: order.orderItems.map((item: any) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        color: item.color,
+        size: item.size,
+      })),
     }));
 
     const totalPages = Math.ceil(total / limit);
