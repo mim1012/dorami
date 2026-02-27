@@ -65,25 +65,26 @@ services:
     environment:
       NODE_ENV: production
       APP_ENV: production
+      PORT: 3001
       LOG_LEVEL: ${LOG_LEVEL:-warn}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=30
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required (64+ chars)}
-      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY required}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL required}
       CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS required}
-      RTMP_SERVER_URL: rtmp://srs:1935/live
-      HLS_SERVER_URL: http://srs:8080/hls
       CSRF_ENABLED: 'true'
-      DISABLE_CSRF: 'false'
       COOKIE_SECURE: 'true'
       ENABLE_DEV_AUTH: 'false'
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY required}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      RTMP_SERVER_URL: rtmp://srs:1935/live
+      HLS_SERVER_URL: http://srs:8080/hls
       SENTRY_DSN: ${SENTRY_DSN:-}
       APP_VERSION: ${APP_VERSION:-1.0.0}
     deploy:

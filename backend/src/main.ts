@@ -27,7 +27,7 @@ async function bootstrap() {
   logger.log('🚀 Bootstrap starting...');
 
   // Validate critical environment variables
-  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_URL'];
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_HOST', 'REDIS_PORT'];
 
   const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
   if (missingEnvVars.length > 0) {
