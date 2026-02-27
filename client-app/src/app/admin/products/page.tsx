@@ -1128,7 +1128,7 @@ export default function AdminProductsPage() {
                     <img
                       src={url}
                       alt={`Gallery ${idx + 1}`}
-                      className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                      className="w-full h-20 object-contain rounded-lg border border-gray-200"
                     />
                     <button
                       type="button"
