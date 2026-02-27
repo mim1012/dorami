@@ -73,33 +73,6 @@ services:
     networks:
       - dorami-internal
 
-  srs:
-    image: ossrs/srs:6
-    container_name: dorami-srs-prod
-    restart: always
-    ports:
-      - '1935:1935'  # RTMP ingest
-      - '127.0.0.1:8080:8080'  # HTTP-FLV + HLS
-    volumes:
-      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
-    depends_on:
-      - backend
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 256M
-    logging:
-      driver: json-file
-      options:
-        max-size: 100m
-        max-file: 10
-    networks:
-      - dorami-internal
-
   nginx:
     image: nginx:alpine
     container_name: dorami-nginx-prod
