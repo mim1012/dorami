@@ -1,5 +1,5 @@
 # Docker Compose Production Overlay
-# 사용법: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+# 사용법: docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
 # Env: --env-file .env.production
 #
 # 특징:
@@ -13,6 +13,7 @@ version: '3.8'
 
 services:
   postgres:
+    image: postgres:16-alpine
     container_name: dorami-postgres-prod
     restart: always
     environment:
@@ -32,10 +33,13 @@ services:
       options:
         max-size: 50m
         max-file: 5
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
     networks:
       - dorami-internal
 
   redis:
+    image: redis:7-alpine
     container_name: dorami-redis-prod
     restart: always
     environment:
@@ -54,10 +58,13 @@ services:
       options:
         max-size: 20m
         max-file: 3
+    volumes:
+      - redis_data_prod:/data
     networks:
       - dorami-internal
 
   backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:-latest}
     container_name: dorami-backend-prod
     restart: always
     ports:
@@ -105,6 +112,7 @@ services:
       - dorami-internal
 
   frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:-latest}
     container_name: dorami-frontend-prod
     restart: always
     ports:
@@ -113,11 +121,11 @@ services:
       NODE_ENV: production
       APP_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL required}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:?NEXT_PUBLIC_WS_URL required}
+      NEXT_PUBLIC_WS_URL: ${WS_URL:-}
       NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
       NEXT_PUBLIC_ENABLE_DEV_AUTH: 'false'
       NEXT_PUBLIC_PREVIEW_ENABLED: 'false'
-      NEXT_PUBLIC_KAKAO_JS_KEY: ${KAKAO_JS_KEY:?KAKAO_JS_KEY required}
+      NEXT_PUBLIC_KAKAO_JS_KEY: ${NEXT_PUBLIC_KAKAO_JS_KEY:-}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
       NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
@@ -187,6 +195,8 @@ services:
       - dorami-internal
 
 volumes:
+  postgres_data_prod:
+  redis_data_prod:
   uploads_data:
     driver: local
 
