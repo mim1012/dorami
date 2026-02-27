@@ -18,7 +18,9 @@ export class SettlementController {
   async downloadExcel(@Query() query: GetSettlementQueryDto, @Response() res: ExpressResponse) {
     const buffer = await this.settlementService.generateExcelReport(query);
 
-    const filename = `settlement_${query.from}_${query.to}.xlsx`;
+    // Sanitize filename to prevent header injection
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9\-_]/g, '');
+    const filename = `settlement_${sanitize(query.from)}_${sanitize(query.to)}.xlsx`;
 
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

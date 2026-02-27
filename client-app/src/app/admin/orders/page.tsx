@@ -14,6 +14,14 @@ import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 import { Download } from 'lucide-react';
 
+interface OrderItem {
+  productName: string;
+  price: number;
+  quantity: number;
+  color?: string;
+  size?: string;
+}
+
 interface OrderListItem {
   id: string;
   userId: string;
@@ -31,6 +39,7 @@ interface OrderListItem {
   shippedAt: string | null;
   deliveredAt: string | null;
   streamKey: string | null;
+  items?: OrderItem[];
 }
 
 interface OrderListResponse {
@@ -374,12 +383,10 @@ function AdminOrdersContent() {
       label: '고객',
       sortable: false,
       render: (order) => (
-        <div className="flex flex-col">
-          <span className="text-caption">{order.userEmail}</span>
-          <span className="text-caption text-secondary-text">
-            @{order.instagramId?.replace(/^@/, '')}
-          </span>
-        </div>
+        <span className="flex flex-col text-caption">
+          <span>{order.userEmail}</span>
+          <span className="text-secondary-text">@{order.instagramId?.replace(/^@/, '')}</span>
+        </span>
       ),
     },
     {
@@ -391,6 +398,29 @@ function AdminOrdersContent() {
       key: 'status',
       label: '주문 상태',
       render: (order) => getStatusBadge(order.status),
+    },
+    {
+      key: 'items',
+      label: '상품',
+      sortable: false,
+      render: (order) => (
+        <div className="flex flex-col gap-1 text-caption">
+          {order.items && order.items.length > 0 ? (
+            order.items.map((item, idx) => (
+              <div key={idx} className="border-b border-border-color pb-1 last:border-0">
+                <div className="font-medium text-primary-text">{item.productName}</div>
+                <div className="text-secondary-text">
+                  {item.color && <span>{item.color} / </span>}
+                  {item.size && <span>{item.size} / </span>}
+                  {formatCurrency(item.price)} × {item.quantity}
+                </div>
+              </div>
+            ))
+          ) : (
+            <span className="text-secondary-text">-</span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'total',
