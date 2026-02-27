@@ -145,7 +145,7 @@ jobs:
             up -d --no-deps --force-recreate frontend
 
           echo "=== Waiting for frontend health ==="
-          for i in $(seq 1 18); do
+          for i in {1..18}; do
             status=$(docker inspect --format='{{.State.Health.Status}}' dorami-frontend-prod 2>/dev/null || echo unknown)
             if [ "$status" = "healthy" ]; then
               echo "Frontend healthy!"
