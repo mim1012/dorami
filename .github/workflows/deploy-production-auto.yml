@@ -125,11 +125,11 @@ jobs:
 
           # Pull new images
           echo "=== Pulling images ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production pull backend frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
 
           # Restart backend and frontend (backend runs prisma migrate on startup)
           echo "=== Restarting backend ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate backend
 
           # Wait for backend to be healthy
@@ -150,11 +150,11 @@ jobs:
           done
 
           echo "=== Restarting frontend ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate frontend
 
           echo "=== Final status ==="
-          docker compose -f docker-compose.prod.yml ps
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
 
           echo "========================================"
           echo "Deployment complete!"

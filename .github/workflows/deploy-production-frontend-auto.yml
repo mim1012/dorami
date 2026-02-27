@@ -138,10 +138,10 @@ jobs:
           set -a; source .env.production; set +a
 
           echo "=== Pulling frontend image ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production pull frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull frontend
 
           echo "=== Restarting frontend only ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate frontend
 
           echo "=== Waiting for frontend health ==="
@@ -161,7 +161,7 @@ jobs:
           done
 
           echo "=== Final status ==="
-          docker compose -f docker-compose.prod.yml ps frontend backend srs
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps frontend backend srs
           ENDSSH
 
       - name: Verify - Public site
