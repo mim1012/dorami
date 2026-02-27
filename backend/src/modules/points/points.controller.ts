@@ -1,21 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { PointsService } from './points.service';
 import { PointsConfigService } from './points-config.service';
-import {
-  GetPointHistoryQueryDto,
-  AdjustPointsDto,
-  UpdatePointsConfigDto,
-} from './dto/points.dto';
+import { GetPointHistoryQueryDto, AdjustPointsDto, UpdatePointsConfigDto } from './dto/points.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PointTransactionType } from '@prisma/client';
 
@@ -52,8 +40,16 @@ export class PointsController {
    * Get specific user's point balance (admin or self)
    */
   @Get('users/:userId/points')
-  async getUserBalance(@Param('userId') userId: string) {
-    return this.pointsService.getBalance(userId);
+  async getUserBalance(
+    @Param('userId') targetUserId: string,
+    @CurrentUser('userId') currentUserId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    // Only allow access to own data or if admin
+    if (targetUserId !== currentUserId && role !== 'ADMIN') {
+      throw new Error("Forbidden: Cannot view another user's points");
+    }
+    return this.pointsService.getBalance(targetUserId);
   }
 
   /**
@@ -61,10 +57,16 @@ export class PointsController {
    */
   @Get('users/:userId/points/history')
   async getUserHistory(
-    @Param('userId') userId: string,
+    @Param('userId') targetUserId: string,
     @Query() query: GetPointHistoryQueryDto,
+    @CurrentUser('userId') currentUserId: string,
+    @CurrentUser('role') role: string,
   ) {
-    return this.pointsService.getTransactionHistory(userId, query);
+    // Only allow access to own data or if admin
+    if (targetUserId !== currentUserId && role !== 'ADMIN') {
+      throw new Error("Forbidden: Cannot view another user's point history");
+    }
+    return this.pointsService.getTransactionHistory(targetUserId, query);
   }
 
   // ── Admin Endpoints ──
@@ -73,6 +75,7 @@ export class PointsController {
    * Get points configuration (Admin)
    */
   @Get('admin/config/points')
+  @AdminOnly()
   async getPointsConfig() {
     return this.pointsConfigService.getPointsConfig();
   }
@@ -81,6 +84,7 @@ export class PointsController {
    * Update points configuration (Admin)
    */
   @Put('admin/config/points')
+  @AdminOnly()
   async updatePointsConfig(@Body() dto: UpdatePointsConfigDto) {
     return this.pointsConfigService.updatePointsConfig(dto);
   }
@@ -89,10 +93,8 @@ export class PointsController {
    * Manual point adjustment (Admin)
    */
   @Post('admin/users/:userId/points/adjust')
-  async adjustPoints(
-    @Param('userId') userId: string,
-    @Body() dto: AdjustPointsDto,
-  ) {
+  @AdminOnly()
+  async adjustPoints(@Param('userId') userId: string, @Body() dto: AdjustPointsDto) {
     if (dto.type === 'add') {
       return this.pointsService.addPoints(
         userId,

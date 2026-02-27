@@ -243,7 +243,7 @@ jobs:
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
-        run: ssh $USER@$HOST 'docker logs dorami-proxy-prod --tail=200 2>&1'
+        run: ssh $USER@$HOST 'docker logs dorami-nginx-prod --tail=200 2>&1'
 
       - name: logs-srs
         if: inputs.command == 'logs-srs'
@@ -332,10 +332,10 @@ jobs:
           echo "=== Docker 포트 바인딩 상세 ==="
           docker inspect dorami-frontend-prod --format '포트: {{json .HostConfig.PortBindings}}' 2>/dev/null
           docker inspect dorami-backend-prod --format '포트: {{json .HostConfig.PortBindings}}' 2>/dev/null
-          echo "=== PM2 프로세스 ==="
-          pm2 list 2>/dev/null || echo "PM2 없음"
-          echo "=== Host Nginx 설정 ==="
-          cat /etc/nginx/sites-enabled/* 2>/dev/null || cat /etc/nginx/conf.d/*.conf 2>/dev/null || echo "설정 파일 없음"
+          echo "=== Docker nginx 설정 확인 ==="
+          # nginx는 Docker 컨테이너(dorami-nginx-prod)로 관리됩니다. 호스트 nginx 없음.
+          # certbot 갱신: sudo certbot renew (호스트에서 실행, renewal hook이 nginx reload 자동 처리)
+          docker compose -f /opt/dorami/docker-compose.prod.yml exec nginx nginx -T 2>/dev/null | head -60 || echo "nginx 컨테이너 없음"
           echo "=== docker-compose.prod.yml ports 섹션 ==="
           grep -A3 "ports:" /opt/dorami/docker-compose.prod.yml 2>/dev/null || echo "파일 없음"
           EOF
@@ -348,9 +348,7 @@ jobs:
         run: |
           ssh $USER@$HOST bash << 'EOF'
           set -euo pipefail
-          echo "=== PM2 중지 ==="
-          pm2 stop all 2>/dev/null || true
-          pm2 delete all 2>/dev/null || true
+          # PM2는 사용하지 않습니다. 모든 프로세스는 Docker 컨테이너로 관리됩니다.
           echo "=== 포트 점유 프로세스 종료 ==="
           fuser -k 3000/tcp 2>/dev/null || true
           fuser -k 3001/tcp 2>/dev/null || true
@@ -372,34 +370,29 @@ jobs:
           ssh $USER@$HOST bash << 'EOF'
           echo "=== 호스트 인증서 확인 ==="
           ls /etc/letsencrypt/live/ 2>/dev/null || echo "호스트에 letsencrypt 없음"
-          echo "=== certbot_conf 볼륨 내용 ==="
-          docker run --rm -v dorami_certbot_conf:/etc/letsencrypt alpine ls /etc/letsencrypt/live/ 2>/dev/null || echo "볼륨 비어있음"
-          echo "=== 호스트 → Docker 볼륨 인증서 복사 ==="
+          echo "=== nginx 컨테이너에서 인증서 확인 ==="
+          docker compose -f /opt/dorami/docker-compose.prod.yml exec nginx ls /etc/letsencrypt/live/doremi-live.com 2>/dev/null || echo "인증서 마운트 확인 필요"
+          echo "=== 호스트 인증서에서 Docker nginx로 마운트 ==="
           if [ -d /etc/letsencrypt/live/doremi-live.com ]; then
-            docker run --rm \
-              -v /etc/letsencrypt:/host-letsencrypt:ro \
-              -v dorami_certbot_conf:/etc/letsencrypt \
-              alpine sh -c "cp -r /host-letsencrypt/live /host-letsencrypt/archive /host-letsencrypt/renewal /etc/letsencrypt/ 2>/dev/null; ls /etc/letsencrypt/live/"
-            echo "복사 완료"
+            echo "호스트 인증서 발견: /etc/letsencrypt/live/doremi-live.com"
+            echo "Docker nginx가 호스트의 /etc/letsencrypt을 읽기 전용으로 마운트합니다."
+            cd /opt/dorami
+            docker compose -f docker-compose.prod.yml --env-file .env.production \
+              up -d --no-deps --force-recreate nginx
+            echo "nginx 재시작 완료"
           else
-            echo "호스트에 doremi-live.com 인증서 없음 — certbot 직접 발급 시도"
-            docker stop dorami-proxy-prod 2>/dev/null || true
-            docker run --rm \
-              -v dorami_certbot_conf:/etc/letsencrypt \
-              -v dorami_certbot_www:/var/www/certbot \
-              -p 80:80 \
-              certbot/certbot certonly --standalone \
+            echo "호스트에 인증서 없음 — certbot으로 발급"
+            sudo certbot certonly --standalone \
               -d doremi-live.com -d www.doremi-live.com \
               --email admin@dorami.shop \
               --agree-tos --no-eff-email --non-interactive 2>&1
+            cd /opt/dorami
+            docker compose -f docker-compose.prod.yml --env-file .env.production \
+              up -d --no-deps --force-recreate nginx
           fi
-          echo "=== nginx-proxy 재시작 ==="
-          cd /opt/dorami
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
-            up -d --no-deps --force-recreate nginx-proxy
-          sleep 5
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "proxy|NAME"
-          docker logs dorami-proxy-prod --tail=10 2>&1
+          echo "=== nginx 상태 확인 ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep nginx
+          docker logs dorami-nginx-prod --tail=10 2>&1
           EOF
 
       - name: restart-backend
