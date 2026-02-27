@@ -289,3 +289,17 @@ jobs:
           echo "PASSED: Live page ($STATUS)"
           echo "All SRS & live stream checks passed"
           EOF
+
+      - name: Compare staging baseline against production (informational, not blocking)
+        id: parity_check
+        if: vars.STAGING_URL != '' && vars.PRODUCTION_URL != ''
+        continue-on-error: true
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          node scripts/streaming-parity-check.mjs \
+            --staging-url "$STAGING_URL" \
+            --production-url "$PRODUCTION_URL" \
+            --stream-key smoke-check \
+            --max-latency-ms 2500
