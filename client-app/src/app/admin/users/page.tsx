@@ -14,6 +14,7 @@ interface UserListItem {
   id: string;
   email: string;
   name: string;
+  phone: string | null;
   instagramId: string | null;
   createdAt: string;
   lastLoginAt: string | null;
@@ -201,6 +202,12 @@ function AdminUsersContent() {
       key: 'name',
       label: '이름',
       sortable: true,
+    },
+    {
+      key: 'phone',
+      label: '전화번호',
+      sortable: false,
+      render: (user) => user.phone || '-',
     },
     {
       key: 'createdAt',

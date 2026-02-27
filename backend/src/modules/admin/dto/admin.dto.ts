@@ -85,6 +85,7 @@ export class UserListItemDto {
   id: string;
   email: string;
   name: string;
+  phone: string | null;
   instagramId: string | null;
   createdAt: Date;
   lastLoginAt: Date | null;
