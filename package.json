@@ -67,7 +67,5 @@
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "dependencies": {
-    "@next/swc-linux-x64-gnu": "^16.1.6"
-  }
+  "dependencies": {}
 }
