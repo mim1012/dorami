@@ -10,6 +10,16 @@
 version: '3.8'
 
 services:
+  # Override postgres with prod volume
+  postgres:
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+  # Override redis with prod volume
+  redis:
+    volumes:
+      - redis_data_prod:/data
+
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:-latest}
     container_name: dorami-backend-prod
@@ -120,6 +130,8 @@ services:
       - dorami-internal
 
 volumes:
+  postgres_data_prod:
+  redis_data_prod:
   uploads_data:
     driver: local
 
