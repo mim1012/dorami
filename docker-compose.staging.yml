@@ -1,37 +1,13 @@
+# Docker Compose Staging Overlay
+# 사용법: docker-compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
+# 특징:
+# - Backend, Frontend, Nginx 서비스만 포함 (postgres, redis, srs는 base.yml에서)
+# - 모든 환경변수는 .env.staging에서만 주입 (--env-file)
+# - 네트워크: default (base.yml의 live-commerce-network 상속)
+
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: live_commerce
-      POSTGRES_USER: dorami
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dorami -d live_commerce"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-    ports:
-      - "127.0.0.1:6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:-latest}
     restart: always
@@ -40,32 +16,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
-      NODE_ENV: production
-      APP_ENV: staging
-      PORT: 3001
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgresql://dorami:${DB_PASSWORD}@postgres:5432/live_commerce
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
-      JWT_SECRET: ${JWT_SECRET}
-      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
-      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
-      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL}
-      FRONTEND_URL: ${FRONTEND_URL}
-      CORS_ORIGINS: ${FRONTEND_URL}
-      CSRF_ENABLED: ${CSRF_ENABLED:-true}
-      ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-true}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@dorami.shop}
-      BANK_NAME: ${BANK_NAME:-KB국민은행}
-      BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER}
-      BANK_ACCOUNT_HOLDER: ${BANK_ACCOUNT_HOLDER}
-      RTMP_SERVER_URL: rtmp://${STAGING_HOST:-localhost}/live
-      HLS_SERVER_URL: ${FRONTEND_URL:-http://localhost}/hls
     ports:
       - "127.0.0.1:3001:3001"
     volumes:
@@ -81,19 +31,6 @@ services:
     restart: always
     depends_on:
       - backend
-    environment:
-      BACKEND_URL: http://backend:3001
-      HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
-      NEXT_PUBLIC_WS_URL: ${WS_URL:-}
-      NEXT_PUBLIC_CDN_URL: ${CDN_URL:-}
-      NEXT_PUBLIC_KAKAO_JS_KEY: ${KAKAO_JS_KEY:-}
-      NEXT_PUBLIC_ENABLE_DEV_AUTH: "true"
-      NEXT_PUBLIC_PREVIEW_ENABLED: "true"
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
-      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
-      NEXT_PUBLIC_APP_ENV: staging
     ports:
       - "127.0.0.1:3000:3000"
     logging:
@@ -125,27 +62,5 @@ services:
         max-size: "50m"
         max-file: "5"
 
-  # SRS Media Server (RTMP ingest → HTTP-FLV + HLS)
-  srs:
-    build:
-      context: ./infrastructure/docker/srs
-      dockerfile: Dockerfile
-    restart: always
-    depends_on:
-      - backend
-    links:
-      - backend
-    ports:
-      - "1935:1935"
-      - "8443:1935"
-      - "127.0.0.1:8080:8080"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-
 volumes:
-  postgres_data:
-  redis_data:
   certbot_www:
