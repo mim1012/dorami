@@ -64,7 +64,7 @@ services:
       - dorami-internal
 
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-backend-prod
     restart: always
     ports:
@@ -112,7 +112,7 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-frontend-prod
     restart: always
     ports:
@@ -179,6 +179,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/production.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/streaming-routing.conf:/etc/nginx/conf.d/streaming-routing.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
       - uploads_data:/var/www/uploads:ro
