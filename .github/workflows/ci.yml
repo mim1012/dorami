@@ -65,8 +65,8 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
@@ -105,7 +105,7 @@ jobs:
       - name: Run Prisma Migrations
         run: npx prisma migrate deploy
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
 
       # 린트와 타입 체크를 병렬로 실행
       - name: Lint & Type Check
@@ -118,7 +118,7 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
@@ -129,7 +129,7 @@ jobs:
         run: npm run test:e2e
         env:
           NODE_ENV: test
-          DATABASE_URL: postgresql://test:test@localhost:5432/test_db?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only

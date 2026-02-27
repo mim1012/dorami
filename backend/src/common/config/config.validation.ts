@@ -36,6 +36,9 @@ export const configValidationSchema = Joi.object({
   KAKAO_CLIENT_ID: Joi.string().required().messages({
     'any.required': 'KAKAO_CLIENT_ID is required for Kakao OAuth',
   }),
+  KAKAO_CLIENT_SECRET: Joi.string().required().messages({
+    'any.required': 'KAKAO_CLIENT_SECRET is required for Kakao OAuth',
+  }),
   KAKAO_CALLBACK_URL: Joi.string().uri().required(),
 
   // Frontend
@@ -73,11 +76,11 @@ export const configValidationSchema = Joi.object({
   VAPID_PRIVATE_KEY: Joi.string().optional(),
   VAPID_SUBJECT: Joi.string().optional(),
 
-  // Redis full URL (alternative to host/port/password)
-  REDIS_URL: Joi.string().uri().optional(),
-
   // Feature flags
   ENABLE_DEV_AUTH: Joi.string().valid('true', 'false').default('false'),
-  CSRF_ENABLED: Joi.string().valid('true', 'false').optional(),
+  CSRF_ENABLED: Joi.string().valid('true', 'false').required().default('true').messages({
+    'any.required': 'CSRF_ENABLED is required (set to true or false)',
+  }),
   COOKIE_SECURE: Joi.string().valid('true', 'false').optional(),
+  DISABLE_CSRF: Joi.string().valid('true', 'false').optional().allow(''),
 });

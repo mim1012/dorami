@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED_PATHS = ['/live/', '/cart', '/checkout', '/orders', '/alerts'];
+const PROTECTED_PATHS = ['/live/', '/cart', '/checkout', '/orders', '/alerts', '/products', '/'];
 
 /**
  * Decode a JWT without verifying the signature (middleware runs on the Edge runtime
@@ -29,7 +29,9 @@ function redirectToLogin(request: NextRequest, pathname: string): NextResponse {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  const isProtected = PROTECTED_PATHS.some((path) =>
+    path === '/' ? pathname === path : pathname.startsWith(path),
+  );
   if (!isProtected) return NextResponse.next();
 
   const accessToken = request.cookies.get('accessToken')?.value;
@@ -56,5 +58,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/live/:path*', '/cart', '/checkout', '/orders/:path*', '/alerts'],
+  matcher: [
+    '/',
+    '/products/:path*',
+    '/live/:path*',
+    '/cart',
+    '/checkout',
+    '/orders/:path*',
+    '/alerts',
+  ],
 };

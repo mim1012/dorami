@@ -99,6 +99,7 @@ jobs:
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           REPO_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
         run: |
           ssh $SSH_USER@$HOST bash << ENDSSH
           set -euo pipefail
@@ -108,11 +109,13 @@ jobs:
           echo "Deploying image: ${IMAGE_TAG}"
           echo "========================================"
 
-          # Update image tag in .env.production
+          # Update environment variables in .env.production
           sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production \
             || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
           sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production \
             || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
+          sed -i "s|^KAKAO_JS_KEY=.*|KAKAO_JS_KEY=${KAKAO_JS_KEY}|" .env.production \
+            || echo "KAKAO_JS_KEY=${KAKAO_JS_KEY}" >> .env.production
 
           # Login to GHCR
           echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
@@ -122,11 +125,11 @@ jobs:
 
           # Pull new images
           echo "=== Pulling images ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production pull backend frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
 
           # Restart backend and frontend (backend runs prisma migrate on startup)
           echo "=== Restarting backend ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate backend
 
           # Wait for backend to be healthy
@@ -147,11 +150,11 @@ jobs:
           done
 
           echo "=== Restarting frontend ==="
-          docker compose -f docker-compose.prod.yml --env-file .env.production \
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
             up -d --no-deps --force-recreate frontend
 
           echo "=== Final status ==="
-          docker compose -f docker-compose.prod.yml ps
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
 
           echo "========================================"
           echo "Deployment complete!"
