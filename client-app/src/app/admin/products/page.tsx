@@ -571,6 +571,29 @@ export default function AdminProductsPage() {
         }
       }
 
+      // Auto-upload pending gallery files
+      let finalImages = formData.images;
+      if (galleryFiles.length > 0) {
+        setIsUploadingGallery(true);
+        try {
+          const urls: string[] = [];
+          for (const file of galleryFiles) {
+            const url = await uploadSingleImage(file);
+            urls.push(url);
+          }
+          finalImages = [...formData.images, ...urls];
+          setFormData((prev) => ({ ...prev, images: finalImages }));
+          setGalleryFiles([]);
+        } catch {
+          showToast('갤러리 이미지 업로드에 실패했습니다.', 'error');
+          setIsSubmitting(false);
+          setIsUploadingGallery(false);
+          return;
+        } finally {
+          setIsUploadingGallery(false);
+        }
+      }
+
       const basePayload = {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -593,7 +616,7 @@ export default function AdminProductsPage() {
             ),
           ) * MINUTES_PER_HOUR,
         imageUrl: finalImageUrl || undefined,
-        images: formData.images,
+        images: finalImages,
         discountRate: formData.discountRate ? parseFloat(formData.discountRate) : undefined,
         originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
         isNew: formData.isNew,
