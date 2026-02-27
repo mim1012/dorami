@@ -163,6 +163,12 @@ export class AuthController {
     long: { limit: 20, ttl: 300000 },
   })
   @Post('refresh')
+  @ApiOperation({
+    summary: 'Access 토큰 갱신',
+    description: 'Refresh 토큰 쿠키를 이용해 새 Access 토큰을 발급합니다.',
+  })
+  @ApiResponse({ status: 200, description: '토큰 갱신 성공' })
+  @ApiResponse({ status: 401, description: 'Refresh 토큰 없음 또는 만료' })
   async refresh(@Req() req: Request, @Res() res: Response) {
     try {
       const refreshToken = req.cookies?.refreshToken;

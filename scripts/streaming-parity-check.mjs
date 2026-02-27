@@ -17,13 +17,14 @@
 const args = Object.fromEntries(
   process.argv
     .slice(2)
-    .map((arg, i, arr) => ({ arg, i }))
-    .filter(({ arg }) => arg.startsWith('--'))
-    .map(({ arg, i, arr }) => {
-      const key = arg.replace(/^--/, '');
-      const value = arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : 'true';
-      return [key, value];
-    }),
+    .reduce((acc, arg, i, arr) => {
+      if (arg.startsWith('--')) {
+        const key = arg.replace(/^--/, '');
+        const value = (arr[i + 1] && !arr[i + 1].startsWith('--')) ? arr[i + 1] : 'true';
+        acc.push([key, value]);
+      }
+      return acc;
+    }, [])
 );
 
 const stagingBase = args['staging-url'];
