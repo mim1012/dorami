@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProductById } from '@/lib/api/products';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
@@ -43,9 +43,43 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
 
   const colors = product?.colorOptions ?? [];
   const sizes = product?.sizeOptions ?? [];
+
+  // 모든 이미지 배열 (대표이미지 + 상세이미지)
+  const allImages = product?.imageUrl
+    ? [
+        { url: product.imageUrl, label: '대표이미지' },
+        ...(product.images || []).map((img, idx) => ({ url: img, label: `상세이미지 ${idx + 1}` })),
+      ]
+    : (product?.images || []).map((img, idx) => ({ url: img, label: `상세이미지 ${idx + 1}` }));
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setTouchEnd(e.changedTouches[0].clientX);
+    handleSwipe();
+  };
+
+  const handleSwipe = () => {
+    if (!allImages.length) return;
+    const isLeftSwipe = touchStart - touchEnd > 50;
+    const isRightSwipe = touchEnd - touchStart > 50;
+
+    if (isLeftSwipe) {
+      setImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+    }
+    if (isRightSwipe) {
+      setImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+    }
+  };
 
   useEffect(() => {
     async function fetchProduct() {
@@ -126,29 +160,119 @@ export default function ProductDetailPage() {
           <ArrowLeft className="w-5 h-5 text-primary-text" />
         </button>
 
-        {/* Product Image */}
-        <div className="relative w-full aspect-[4/3] bg-content-bg">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-              unoptimized={product.imageUrl.startsWith('/uploads/')}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="text-secondary-text">No Image</span>
+        {/* Unified Image Carousel with Touch Slide */}
+        {allImages.length > 0 && (
+          <div className="px-4 py-4 space-y-4">
+            {/* Main Slide */}
+            <div
+              className="relative w-full aspect-[4/3] bg-content-bg rounded-lg overflow-hidden cursor-pointer active:opacity-90"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onClick={() => setExpandedImageIndex(imageIndex)}
+            >
+              <Image
+                src={allImages[imageIndex].url}
+                alt={allImages[imageIndex].label}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                unoptimized={allImages[imageIndex].url.startsWith('/uploads/')}
+              />
+
+              {/* Image Label */}
+              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs">
+                {allImages[imageIndex].label}
+              </div>
+
+              {/* Slide Counter */}
+              <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs">
+                {imageIndex + 1} / {allImages.length}
+              </div>
+
+              {/* Left Arrow */}
+              {allImages.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5 text-white" />
+                </button>
+              )}
+
+              {/* Right Arrow */}
+              {allImages.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5 text-white" />
+                </button>
+              )}
+
+              {/* SOLD_OUT Badge */}
+              {product.status === 'SOLD_OUT' && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <Display className="text-white">품절</Display>
+                </div>
+              )}
             </div>
-          )}
-          {product.status === 'SOLD_OUT' && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-              <Display className="text-white">품절</Display>
+
+            {/* Thumbnail Scroll */}
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {allImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setImageIndex(idx)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                      idx === imageIndex ? 'border-hot-pink' : 'border-border-color'
+                    }`}
+                  >
+                    <Image
+                      src={img.url}
+                      alt={img.label}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-contain"
+                      unoptimized={img.url.startsWith('/uploads/')}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Expanded Image Modal */}
+        {expandedImageIndex !== null && (
+          <div
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+            onClick={() => setExpandedImageIndex(null)}
+          >
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              <Image
+                src={allImages[expandedImageIndex].url}
+                alt={allImages[expandedImageIndex].label}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                unoptimized={allImages[expandedImageIndex].url.startsWith('/uploads/')}
+              />
+              <button
+                onClick={() => setExpandedImageIndex(null)}
+                className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30"
+              >
+                ✕
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="px-4 py-6 space-y-6">
