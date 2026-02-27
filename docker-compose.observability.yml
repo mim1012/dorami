@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: dorami-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - dorami-internal
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: dorami-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    ports:
+      - '3002:3000'
+    networks:
+      - dorami-internal
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: dorami-node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    networks:
+      - dorami-internal
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: dorami-cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro
+    networks:
+      - dorami-internal
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: dorami-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+    networks:
+      - dorami-internal
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: dorami-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-live_commerce}?sslmode=disable
+    networks:
+      - dorami-internal
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.0
+    container_name: dorami-nginx-exporter
+    restart: unless-stopped
+    command:
+      - '-nginx.scrape-uri=http://nginx:80/nginx_status'
+      - '-web.telemetry-path=/metrics'
+    networks:
+      - dorami-internal
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  dorami-internal:
+    external: true
+    name: ${DORAMI_INTERNAL_NETWORK:-dorami_dorami-internal}
