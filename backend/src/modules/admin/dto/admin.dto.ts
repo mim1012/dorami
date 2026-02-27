@@ -276,6 +276,12 @@ export class OrderListItemDto {
   shippedAt: Date | null;
   deliveredAt: Date | null;
   streamKey: string | null;
+  items?: Array<{
+    productName: string;
+    quantity: number;
+    color?: string | null;
+    size?: string | null;
+  }>;
 }
 
 export class OrderListResponseDto {
