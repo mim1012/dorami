@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
@@ -104,6 +104,7 @@ export default function BroadcastsPage() {
   const [editFreeShipping, setEditFreeShipping] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
+  const [actionLoadingStreamId, setActionLoadingStreamId] = useState<string | null>(null);
 
   const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(
     null,
@@ -132,7 +133,7 @@ export default function BroadcastsPage() {
   }, [user]);
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchHistoryData = async () => {
       if (!user || user.role !== 'ADMIN') return;
       setIsLoading(true);
       setError(null);
@@ -149,7 +150,7 @@ export default function BroadcastsPage() {
         setIsLoading(false);
       }
     };
-    fetchHistory();
+    fetchHistoryData();
   }, [user, page, pageSize]);
 
   const formatDate = (dateString: string | null) => {
@@ -173,7 +174,7 @@ export default function BroadcastsPage() {
   const getStatusBadge = (status: string) => {
     const configs: Record<string, { label: string; className: string; Icon: any }> = {
       LIVE: { label: '방송중', className: 'bg-red-100 text-red-700 animate-pulse', Icon: Play },
-      PENDING: { label: '대기', className: 'bg-amber-100 text-amber-700', Icon: Clock },
+      PENDING: { label: '예정', className: 'bg-amber-100 text-amber-700', Icon: Clock },
       OFFLINE: { label: '오프라인', className: 'bg-gray-100 text-gray-500', Icon: StopCircle },
     };
     const config = configs[status] || configs.OFFLINE;
@@ -348,6 +349,64 @@ export default function BroadcastsPage() {
     }
   };
 
+  const fetchHistory = useCallback(async () => {
+    if (!user || user.role !== 'ADMIN') return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
+        params: { page, limit: pageSize },
+      });
+      setStreams(response.data.streams);
+      setTotal(response.data.total);
+      setTotalPages(response.data.totalPages);
+    } catch (err: any) {
+      setError(err.message || '방송 기록을 불러오지 못했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, page, pageSize]);
+
+  const handleStartStream = async (streamId: string) => {
+    setActionLoadingStreamId(streamId);
+    setError(null);
+    try {
+      await apiClient.patch(`/streaming/${streamId}/go-live`);
+      await fetchHistory();
+    } catch (err: any) {
+      setError(err.message || '방송 시작에 실패했습니다.');
+    } finally {
+      setActionLoadingStreamId(null);
+    }
+  };
+
+  const handleStopStream = async (streamId: string) => {
+    setActionLoadingStreamId(streamId);
+    setError(null);
+    try {
+      await apiClient.patch(`/streaming/${streamId}/stop`);
+      await fetchHistory();
+    } catch (err: any) {
+      setError(err.message || '방송 종료에 실패했습니다.');
+    } finally {
+      setActionLoadingStreamId(null);
+    }
+  };
+
+  const handleCancelStream = async (streamId: string) => {
+    if (!confirm('이 방송을 취소하시겠습니까?')) return;
+    setActionLoadingStreamId(streamId);
+    setError(null);
+    try {
+      await apiClient.delete(`/streaming/${streamId}`);
+      await fetchHistory();
+    } catch (err: any) {
+      setError(err.message || '방송 취소에 실패했습니다.');
+    } finally {
+      setActionLoadingStreamId(null);
+    }
+  };
+
   if (authLoading || !user || user?.role !== 'ADMIN') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -363,15 +422,17 @@ export default function BroadcastsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Radio className="w-7 h-7 text-[#FF4D8D]" />
-            방송 관리
+            라이브 방송 관리
           </h1>
-          <p className="text-sm text-gray-500 mt-1">실시간 방송 현황 및 기록을 관리하세요</p>
+          <p className="text-sm text-gray-500 mt-1">
+            실시간 방송 현황, 동시 송출, 방송 기록을 한 화면에서 관리하세요
+          </p>
         </div>
         <button
           onClick={() => setShowGenerateModal(true)}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF4D8D] text-white rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors"
         >
-          <Plus className="w-4 h-4" />새 방송 시작
+          <Plus className="w-4 h-4" />새 방송 생성
         </button>
       </div>
 
@@ -465,6 +526,7 @@ export default function BroadcastsPage() {
 
       {/* ReStream Manager */}
       <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h2 className="text-base font-bold text-gray-900 mb-4">동시 송출 관리</h2>
         <ReStreamManager
           liveStreamId={liveStatus?.streamId || null}
           isLive={!!liveStatus?.isLive}
@@ -561,24 +623,53 @@ export default function BroadcastsPage() {
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEditModal(stream)}
+                            disabled={actionLoadingStreamId === stream.id}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            편집
+                          </button>
+
                           {stream.status === 'PENDING' && (
                             <button
-                              onClick={() => handleOpenEditModal(stream)}
-                              className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium flex items-center gap-1"
+                              onClick={() => handleStartStream(stream.id)}
+                              disabled={actionLoadingStreamId === stream.id}
+                              className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Pencil className="w-3.5 h-3.5" />
-                              편집
+                              <Play className="w-3.5 h-3.5" />
+                              시작
+                            </button>
+                          )}
+                          {stream.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleCancelStream(stream.id)}
+                              disabled={actionLoadingStreamId === stream.id}
+                              className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              취소
                             </button>
                           )}
                           {stream.status === 'LIVE' && (
                             <button
-                              onClick={() => setSelectedStreamForFeatured(stream)}
-                              className="px-3 py-1.5 bg-pink-50 text-[#FF4D8D] rounded-lg hover:bg-pink-100 transition-colors text-xs font-medium flex items-center gap-1"
+                              onClick={() => handleStopStream(stream.id)}
+                              disabled={actionLoadingStreamId === stream.id}
+                              className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Star className="w-3.5 h-3.5" />
-                              추천 상품
+                              <StopCircle className="w-3.5 h-3.5" />
+                              종료
                             </button>
                           )}
+                          <button
+                            onClick={() => setSelectedStreamForFeatured(stream)}
+                            disabled={actionLoadingStreamId === stream.id}
+                            className="px-3 py-1.5 bg-pink-50 text-[#FF4D8D] rounded-lg hover:bg-pink-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                            추천 상품
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -620,7 +711,7 @@ export default function BroadcastsPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900">
-                {generatedStream ? '방송 설정 정보' : '새 방송 시작'}
+                {generatedStream ? '방송 설정 정보' : '새 방송 생성'}
               </h2>
               <button
                 onClick={handleCloseModal}

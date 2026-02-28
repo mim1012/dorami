@@ -1,7 +1,9 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
+import { useToast } from '@/components/common/Toast';
 import type { Order, OrderStatus } from '@/lib/types';
 
 // Query Keys
@@ -44,6 +46,8 @@ export function useOrder(orderId: string) {
 // Create order mutation
 export function useCreateOrder() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { showToast } = useToast();
 
   return useMutation({
     mutationFn: async (data: {
@@ -58,12 +62,24 @@ export function useCreateOrder() {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
+    onError: (error: any) => {
+      if (error.statusCode === 401) {
+        showToast('로그인 세션이 만료되었습니다', 'error');
+        router.push('/login?reason=session_expired');
+      } else if (error.statusCode === 400) {
+        showToast(error.message || '요청 실패', 'error');
+      } else {
+        showToast(error.message || '알 수 없는 오류', 'error');
+      }
+    },
   });
 }
 
 // Cancel order mutation
 export function useCancelOrder() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { showToast } = useToast();
 
   return useMutation({
     mutationFn: async (orderId: string) => {
@@ -73,6 +89,16 @@ export function useCancelOrder() {
     onSuccess: (_, orderId) => {
       queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
       queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
+    },
+    onError: (error: any) => {
+      if (error.statusCode === 401) {
+        showToast('로그인 세션이 만료되었습니다', 'error');
+        router.push('/login?reason=session_expired');
+      } else if (error.statusCode === 400) {
+        showToast(error.message || '주문 취소 실패', 'error');
+      } else {
+        showToast(error.message || '알 수 없는 오류', 'error');
+      }
     },
   });
 }

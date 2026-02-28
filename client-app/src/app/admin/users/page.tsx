@@ -158,50 +158,31 @@ function AdminUsersContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      ACTIVE: 'bg-success/10 text-success border-success',
-      INACTIVE: 'bg-secondary-text/10 text-secondary-text border-secondary-text',
-      SUSPENDED: 'bg-error/10 text-error border-error',
-    };
-
-    const color = colors[status as keyof typeof colors] || colors.INACTIVE;
-
-    const statusLabels: Record<string, string> = {
-      ACTIVE: '활성',
-      INACTIVE: '비활성',
-      SUSPENDED: '정지',
-    };
-    return (
-      <span className={`px-2 py-1 rounded text-caption border ${color}`}>
-        {statusLabels[status] || status}
-      </span>
-    );
+  const getUserGrade = (user: UserListItem) => {
+    if (user.totalPurchaseAmount >= 1000000) return 'VIP';
+    if (user.totalPurchaseAmount > 200000) return '일반';
+    return '신규';
   };
 
   const columns: Column<UserListItem>[] = [
     {
-      key: 'instagramId',
-      label: '인스타그램 ID',
-      sortable: true,
-      render: (user) => user.instagramId || '-',
-    },
-    {
-      key: 'email',
-      label: '이메일',
-      sortable: true,
-    },
-    {
       key: 'name',
-      label: '이름',
+      label: '고객명',
       sortable: true,
+      render: (user) => user.name,
+    },
+    {
+      key: 'grade',
+      label: '등급',
+      sortable: false,
+      render: (user) => getUserGrade(user),
     },
     {
       key: 'phone',
@@ -210,31 +191,40 @@ function AdminUsersContent() {
       render: (user) => user.phone || '-',
     },
     {
+      key: 'instagramId',
+      label: '인스타그램',
+      sortable: false,
+      render: (user) => user.instagramId || '-',
+    },
+    {
+      key: 'shippingAddress',
+      label: '배송지',
+      sortable: false,
+      render: () => '-',
+    },
+    {
+      key: 'totalOrders',
+      label: '주문횟수',
+      sortable: true,
+      render: (user) => `${user.totalOrders}회`,
+    },
+    {
+      key: 'totalPurchaseAmount',
+      label: '총 구매액',
+      sortable: true,
+      render: (user) => formatCurrency(user.totalPurchaseAmount),
+    },
+    {
       key: 'createdAt',
       label: '가입일',
       sortable: true,
       render: (user) => formatDate(user.createdAt),
     },
     {
-      key: 'lastLoginAt',
-      label: '최근 로그인',
-      sortable: true,
+      key: 'recentPurchaseAt',
+      label: '최근구매일',
+      sortable: false,
       render: (user) => formatDate(user.lastLoginAt),
-    },
-    {
-      key: 'totalOrders',
-      label: '총 주문수',
-      render: (user) => user.totalOrders.toString(),
-    },
-    {
-      key: 'totalPurchaseAmount',
-      label: '총 구매액',
-      render: (user) => formatCurrency(user.totalPurchaseAmount),
-    },
-    {
-      key: 'status',
-      label: '상태',
-      render: (user) => getStatusBadge(user.status),
     },
   ];
 
@@ -244,8 +234,8 @@ function AdminUsersContent() {
     <div className="space-y-6">
       <div className="mb-6 md:mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Display className="text-hot-pink mb-2">회원 관리</Display>
-          <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
+          <Display className="text-hot-pink mb-2">사용자 관리</Display>
+          <Body className="text-secondary-text">사용자 정보를 조회하고 관리합니다</Body>
         </div>
       </div>
 
@@ -260,7 +250,7 @@ function AdminUsersContent() {
         {/* Search Input */}
         <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <Input
-            placeholder="이름, 이메일 또는 인스타그램 ID로 검색..."
+            placeholder="고객명, 전화번호, 인스타그램 ID로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             fullWidth

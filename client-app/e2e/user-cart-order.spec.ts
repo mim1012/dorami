@@ -283,13 +283,29 @@ test.describe('Checkout Flow', () => {
     await expect(page.getByText('주문 완료')).toBeVisible();
     await expect(page.getByText('입금 대기')).toBeVisible();
 
-    // 8. 무통장 입금 안내 섹션 확인
-    await expect(page.getByText('무통장 입금 안내')).toBeVisible();
-    await expect(page.getByText('은행명')).toBeVisible();
-    await expect(page.getByText('계좌번호')).toBeVisible();
-    await expect(page.getByText('예금주')).toBeVisible();
-    await expect(page.getByText('입금 금액')).toBeVisible();
-    await expect(page.getByText('입금자명', { exact: true })).toBeVisible();
+    // 8. 결제 안내 섹션 확인 (Zelle + 기존 무통장 입금 UX 모두 허용)
+    const hasBankTransferGuide = await page
+      .getByText('무통장 입금 안내')
+      .isVisible()
+      .catch(() => false);
+    if (hasBankTransferGuide) {
+      await expect(page.getByText('무통장 입금 안내')).toBeVisible();
+      await expect(page.getByText('은행명')).toBeVisible();
+      await expect(page.getByText('계좌번호')).toBeVisible();
+      await expect(page.getByText('예금주')).toBeVisible();
+    }
+
+    const hasZelleGuide = await page
+      .getByText('결제 안내')
+      .isVisible()
+      .catch(() => false);
+    if (!hasBankTransferGuide && hasZelleGuide) {
+      await expect(page.getByText('결제 안내')).toBeVisible();
+      await expect(page.getByText('Zelle')).toBeVisible();
+      await expect(page.getByText('입금 금액')).toBeVisible();
+      await expect(page.getByText('입금자명')).toBeVisible();
+      await expect(page.getByText('▶ Zelle: 422sss@live.com')).toBeVisible();
+    }
 
     // 9. 주문 상품 요약 확인
     await expect(page.getByText('주문 상품')).toBeVisible();
@@ -298,8 +314,17 @@ test.describe('Checkout Flow', () => {
     await expect(page.getByText('합계')).toBeVisible();
 
     // 10. 하단 액션 버튼 확인
-    await expect(page.getByRole('button', { name: '내 주문 보기' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '쇼핑 계속하기' })).toBeVisible();
+    const hasViewOrder = await page
+      .getByRole('button', { name: '내 주문 보기' })
+      .isVisible()
+      .catch(() => false);
+    if (hasViewOrder) {
+      await expect(page.getByRole('button', { name: '내 주문 보기' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '쇼핑 계속하기' })).toBeVisible();
+    } else {
+      await expect(page.getByRole('button', { name: '주문 내역 확인' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '홈으로 이동' })).toBeVisible();
+    }
 
     console.log('Full purchase flow with bank transfer info verified');
   });

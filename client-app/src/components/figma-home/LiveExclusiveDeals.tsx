@@ -4,6 +4,8 @@ import { Flame, PlayCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { LiveDealProductDto } from '@live-commerce/shared-types';
+import { useAuthStore } from '@/lib/store/auth';
+import { useToast } from '@/components/common/Toast';
 
 type LiveExclusiveDealsProps = {
   liveDeals: LiveDealProductDto[];
@@ -15,8 +17,17 @@ const PLACEHOLDER_IMAGE =
 
 export function LiveExclusiveDeals({ liveDeals, isLoading = false }: LiveExclusiveDealsProps) {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const { showToast } = useToast();
 
   const goToProduct = (dealId: string) => {
+    if (!isAuthenticated) {
+      showToast('로그인 후 이용해주세요', 'error', {
+        label: '로그인',
+        onClick: () => router.push('/login'),
+      });
+      return;
+    }
     router.push(`/products/${dealId}`);
   };
 

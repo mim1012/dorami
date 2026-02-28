@@ -306,7 +306,7 @@ export default function AdminDashboardPage() {
                 <h2 className="text-base md:text-lg font-bold text-gray-900">라이브 방송 현황</h2>
               </div>
               <Link
-                href="/admin/broadcasts"
+                href="/admin/live-management"
                 className="text-xs md:text-sm text-[#FF1493] font-semibold hover:underline"
               >
                 전체보기

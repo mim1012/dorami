@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X, Plus, Minus, ShoppingCart, Heart } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { X, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface Product {
@@ -11,6 +11,7 @@ interface Product {
   originalPrice: number;
   discountRate?: number;
   image: string;
+  images?: string[];
   host?: string;
   sizeOptions?: string[];
   colorOptions?: string[];
@@ -39,12 +40,19 @@ export function ProductDetailModal({
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
-  const [isLiked, setIsLiked] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
+  const touchStartXRef = useRef<number | null>(null);
 
   const sizeOptions = product.sizeOptions ?? [];
   const colorOptions = product.colorOptions ?? [];
   const hasSizeOptions = sizeOptions.length > 0;
   const hasColorOptions = colorOptions.length > 0;
+
+  // Build image list: prefer product.images if present, else use product.image
+  const imageList: string[] =
+    product.images && product.images.length > 0 ? product.images : [product.image];
+  const hasMultipleImages = imageList.length > 1;
 
   useEffect(() => {
     if (sizeOptions.length === 1) {
@@ -54,6 +62,11 @@ export function ProductDetailModal({
       setSelectedColor(colorOptions[0]);
     }
   }, [sizeOptions, colorOptions]);
+
+  // Reset carousel index when product changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [product.id]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
@@ -101,6 +114,40 @@ export function ProductDetailModal({
     });
   };
 
+  const goPrevImage = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? imageList.length - 1 : prev - 1));
+  };
+
+  const goNextImage = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === imageList.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartXRef.current) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartXRef.current - touchEndX;
+    const threshold = 50; // minimum swipe distance
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swiped left → next image
+        goNextImage(e);
+      } else {
+        // Swiped right → previous image
+        goPrevImage(e);
+      }
+    }
+
+    touchStartXRef.current = null;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -113,28 +160,66 @@ export function ProductDetailModal({
           <X className="w-5 h-5 text-gray-700" />
         </button>
 
-        <div className="relative aspect-square md:aspect-[4/3] overflow-hidden bg-gray-100">
+        {/* Image carousel */}
+        <div
+          className="relative aspect-square md:aspect-[4/3] overflow-hidden bg-gray-100 cursor-pointer"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onClick={() => setIsFullScreenOpen(true)}
+        >
           <ImageWithFallback
-            src={product.image}
+            src={imageList[currentImageIndex]}
             alt={product.name}
             className="w-full h-full object-cover"
           />
+
+          {/* Zoom indicator */}
+          <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 opacity-0 hover:opacity-100 transition-opacity">
+            <ZoomIn className="w-5 h-5 text-gray-700" />
+          </div>
+
           <div className="absolute top-4 left-4 bg-[#FF4D8D] text-white px-4 py-2 rounded-full shadow-lg">
             <span className="text-sm font-bold">
               {discountLabel > 0 ? `${discountLabel}% OFF` : '할인 정보 없음'}
             </span>
           </div>
 
-          <button
-            onClick={() => setIsLiked(!isLiked)}
-            className="absolute bottom-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-          >
-            <Heart
-              className={`w-6 h-6 transition-colors ${
-                isLiked ? 'fill-[#FF4D8D] text-[#FF4D8D]' : 'text-gray-600'
-              }`}
-            />
-          </button>
+          {/* Prev / Next arrows — only when multiple images */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={goPrevImage}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+                aria-label="이전 이미지"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
+              </button>
+              <button
+                onClick={goNextImage}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+                aria-label="다음 이미지"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-700" />
+              </button>
+
+              {/* Dot indicators */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {imageList.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex(idx);
+                    }}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      idx === currentImageIndex ? 'bg-[#FF4D8D] w-4' : 'bg-white/70 hover:bg-white'
+                    }`}
+                    aria-label={`이미지 ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="p-6 space-y-6">
@@ -256,6 +341,83 @@ export function ProductDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Full-screen image viewer modal */}
+      {isFullScreenOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center">
+          {/* Close button */}
+          <button
+            onClick={() => setIsFullScreenOpen(false)}
+            className="absolute top-4 right-4 z-[70] w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+            aria-label="닫기"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Image container */}
+          <div
+            className="relative w-full h-full flex items-center justify-center px-4"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <ImageWithFallback
+              src={imageList[currentImageIndex]}
+              alt={product.name}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {/* Navigation arrows */}
+            {hasMultipleImages && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goPrevImage(e);
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="이전 이미지"
+                >
+                  <ChevronLeft className="w-6 h-6 text-white" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goNextImage(e);
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="다음 이미지"
+                >
+                  <ChevronRight className="w-6 h-6 text-white" />
+                </button>
+
+                {/* Image counter and dot indicators */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+                  <div className="text-white text-sm font-medium">
+                    {currentImageIndex + 1} / {imageList.length}
+                  </div>
+                  <div className="flex gap-2">
+                    {imageList.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImageIndex(idx);
+                        }}
+                        className={`rounded-full transition-all ${
+                          idx === currentImageIndex
+                            ? 'bg-white w-2 h-2'
+                            : 'bg-white/50 hover:bg-white/70 w-1.5 h-1.5'
+                        }`}
+                        aria-label={`이미지 ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

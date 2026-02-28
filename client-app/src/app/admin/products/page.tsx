@@ -49,6 +49,8 @@ import type { Product as BaseProduct } from '@/lib/types';
 interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
+  category?: string;
+  soldCount?: number;
 }
 
 interface ProductFormData {
@@ -77,6 +79,15 @@ function minutesToHours(minutes: number): number {
   }
   return Math.max(MIN_TIMER_HOURS, Math.ceil(minutes / MINUTES_PER_HOUR));
 }
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
 
 // --- Sortable Row Component ---
 function SortableRow({
@@ -172,7 +183,7 @@ function SortableRow({
         </div>
       </td>
       <td className="px-4 py-4 text-center">
-        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{product.streamKey}</code>
+        <span className="text-sm text-primary-text">{product.category || '-'}</span>
       </td>
       <td className="px-4 py-4 text-right">
         <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
@@ -186,6 +197,21 @@ function SortableRow({
         <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
         </Body>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <Body className="text-primary-text">
+          {product.soldCount != null ? `${product.soldCount}개` : '-'}
+        </Body>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <Body className="text-primary-text">
+          {product.discountRate != null && product.discountRate !== ''
+            ? `${product.discountRate}%`
+            : '-'}
+        </Body>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <Body className="text-primary-text text-sm">{formatDate(product.createdAt)}</Body>
       </td>
       <td className="px-4 py-4 text-center">
         <span
@@ -202,6 +228,7 @@ function SortableRow({
             title="수정"
           >
             <Edit className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">수정</span>
           </button>
           <button
             onClick={() => handleDuplicate(product.id)}
@@ -209,6 +236,7 @@ function SortableRow({
             title="복제"
           >
             <Copy className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">복제</span>
           </button>
           {product.status === 'AVAILABLE' && (
             <button
@@ -217,6 +245,7 @@ function SortableRow({
               title="품절 처리"
             >
               <CheckCircle className="w-4 h-4" />
+              <span className="ml-1 hidden sm:inline">품절</span>
             </button>
           )}
           <button
@@ -225,6 +254,7 @@ function SortableRow({
             title="삭제"
           >
             <Trash2 className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">삭제</span>
           </button>
         </div>
       </td>
@@ -339,9 +369,9 @@ export default function AdminProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -903,10 +933,10 @@ export default function AdminProductsPage() {
                       />
                     </th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
-                      상품명
+                      상품 정보
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      Stream Key
+                      카테고리
                     </th>
                     <th className="px-4 py-4 text-right text-sm font-semibold text-secondary-text">
                       가격
@@ -915,10 +945,19 @@ export default function AdminProductsPage() {
                       재고
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                      판매량
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                      할인율
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                      등록일
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       상태
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      관리
+                      액션
                     </th>
                   </tr>
                 </thead>
