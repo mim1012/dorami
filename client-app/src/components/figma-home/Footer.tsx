@@ -1,107 +1,81 @@
 'use client';
 
-import { Instagram, Youtube, MessageCircle } from 'lucide-react';
+import { Instagram, MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+
+const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
+const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_DeEAX';
 
 export function Footer() {
+  const handleKakaoChannel = () => {
+    if (KAKAO_CHANNEL_ID) {
+      window.open(`https://pf.kakao.com/${KAKAO_CHANNEL_ID}/chat`, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <footer className="bg-gray-50 border-t border-gray-100 mt-20">
       <div className="max-w-screen-2xl mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Logo & Description */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF4D8D] to-[#B084CC] flex items-center justify-center">
-                <span className="text-white font-bold">L</span>
-              </div>
-              <h1 className="font-bold text-xl bg-gradient-to-r from-[#FF4D8D] to-[#B084CC] bg-clip-text text-transparent">
-                LIVE
-              </h1>
+        {/* Logo & Description */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF4D8D] to-[#B084CC] flex items-center justify-center">
+              <span className="text-white font-bold">L</span>
             </div>
-            <p className="text-sm text-gray-600 mb-4 max-w-md">
-              실시간으로 만나는 당신만을 위한 패션 큐레이션.
-              <br />
-              매일 새로운 라이브로 특별한 스타일을 경험하세요.
-            </p>
-            <div className="flex items-center gap-3">
-              <a
-                href="#"
-                className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#FF4D8D] hover:text-white transition-colors shadow-sm"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#FF4D8D] hover:text-white transition-colors shadow-sm"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
-              <a
-                href="#"
-                className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#FF4D8D] hover:text-white transition-colors shadow-sm"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </a>
-            </div>
+            <h1 className="font-bold text-xl bg-gradient-to-r from-[#FF4D8D] to-[#B084CC] bg-clip-text text-transparent">
+              LIVE
+            </h1>
           </div>
+          <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">라이브로 만나는 특별한 쇼핑</p>
 
-          {/* Links */}
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">고객센터</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  공지사항
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  자주 묻는 질문
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  1:1 문의
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-3">셀러 지원</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  입점 신청
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  라이브 가이드
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-[#FF4D8D] transition-colors">
-                  파트너 센터
-                </a>
-              </li>
-            </ul>
+          {/* Social Links */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <a
+              href={`https://www.instagram.com/${INSTAGRAM_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#FF4D8D] hover:text-white transition-colors shadow-sm"
+              aria-label="Instagram"
+            >
+              <Instagram className="w-4 h-4" />
+            </a>
+            <button
+              onClick={handleKakaoChannel}
+              className="w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#FEE500] transition-colors shadow-sm"
+              aria-label="KakaoTalk Channel"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="pt-8 border-t border-gray-200">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-gray-500">© 2026 LIVE. All rights reserved.</p>
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                이용약관
-              </a>
-              <span>·</span>
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                개인정보처리방침
-              </a>
-            </div>
+        {/* Links */}
+        <div className="border-t border-gray-200 pt-8">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 text-sm text-gray-600 mb-6">
+            <Link href="/notices" className="hover:text-[#FF4D8D] transition-colors">
+              공지사항
+            </Link>
+            <span className="hidden sm:inline text-gray-300">·</span>
+            <Link href="/support" className="hover:text-[#FF4D8D] transition-colors">
+              1:1 문의
+            </Link>
+            <span className="hidden sm:inline text-gray-300">·</span>
+            <Link href="/my-page" className="hover:text-[#FF4D8D] transition-colors">
+              마이페이지
+            </Link>
+            <span className="hidden sm:inline text-gray-300">·</span>
+            <Link href="/terms" className="hover:text-[#FF4D8D] transition-colors">
+              이용약관
+            </Link>
+            <span className="hidden sm:inline text-gray-300">·</span>
+            <Link href="/privacy" className="hover:text-[#FF4D8D] transition-colors">
+              개인정보처리방침
+            </Link>
           </div>
+
+          <p className="text-xs text-gray-500 text-center">
+            © {new Date().getFullYear()} LIVE. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>
