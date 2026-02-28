@@ -33,13 +33,13 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @ApiProperty({ description: 'Product price in KRW', example: 29000, minimum: 1 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   @Type(() => Number)
-  price: number;
+  price!: number;
 
   @ApiProperty({
     description: 'Available quantity (stock)',
@@ -51,7 +51,7 @@ export class CreateProductDto {
   @Min(1)
   @Max(9999)
   @Type(() => Number)
-  stock: number; // Maps to quantity in database
+  stock!: number; // Maps to quantity in database
 
   @ApiPropertyOptional({
     description: 'Color options',
@@ -355,33 +355,33 @@ export class UpdateStockDto {
     example: -5,
   })
   @IsNumber()
-  quantity: number;
+  quantity!: number;
 }
 
 export class ProductResponseDto {
   @ApiProperty({ description: 'Product ID', example: '123e4567-e89b-12d3-a456-426614174000' })
-  id: string;
+  id!: string;
 
   @ApiPropertyOptional({ description: 'Stream key', example: 'abc123def456' })
   streamKey?: string | null;
 
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt' })
-  name: string;
+  name!: string;
 
   @ApiProperty({ description: 'Product price in KRW', example: 29000 })
-  price: number;
+  price!: number;
 
   @ApiProperty({ description: 'Available quantity (stock)', example: 50 })
-  stock: number; // Maps from quantity in database
+  stock!: number; // Maps from quantity in database
 
   @ApiProperty({ description: 'Color options', example: ['Red', 'Blue', 'Black'], type: [String] })
-  colorOptions: string[];
+  colorOptions!: string[];
 
   @ApiProperty({ description: 'Size options', example: ['S', 'M', 'L', 'XL'], type: [String] })
-  sizeOptions: string[];
+  sizeOptions!: string[];
 
   @ApiProperty({ description: 'Shipping fee in KRW', example: 3000 })
-  shippingFee: number;
+  shippingFee!: number;
 
   @ApiPropertyOptional({
     description: 'Free shipping message',
@@ -390,10 +390,10 @@ export class ProductResponseDto {
   freeShippingMessage?: string;
 
   @ApiProperty({ description: 'Timer enabled', example: false })
-  timerEnabled: boolean;
+  timerEnabled!: boolean;
 
   @ApiProperty({ description: 'Timer duration in minutes', example: 10 })
-  timerDuration: number;
+  timerDuration!: number;
 
   @ApiPropertyOptional({
     description: 'Product image URL',
@@ -406,13 +406,13 @@ export class ProductResponseDto {
     example: [],
     type: [String],
   })
-  images: string[];
+  images!: string[];
 
   @ApiProperty({ description: 'Sort order for display', example: 0 })
-  sortOrder: number;
+  sortOrder!: number;
 
   @ApiProperty({ description: 'Display NEW badge', example: false })
-  isNew: boolean;
+  isNew!: boolean;
 
   @ApiPropertyOptional({ description: 'Discount rate percentage', example: 15 })
   discountRate?: number;
@@ -425,13 +425,13 @@ export class ProductResponseDto {
     enum: ProductStatus,
     example: ProductStatus.AVAILABLE,
   })
-  status: ProductStatus;
+  status!: ProductStatus;
 
   @ApiProperty({ description: 'Created timestamp', example: '2024-01-15T10:30:00.000Z' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty({ description: 'Updated timestamp', example: '2024-01-15T10:30:00.000Z' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   // Legacy fields (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
@@ -444,7 +444,7 @@ export class ProductResponseDto {
 export class GetProductsQueryDto {
   @ApiProperty({ description: 'Stream key to filter products', example: 'abc123def456' })
   @IsString()
-  streamKey: string;
+  streamKey!: string;
 
   @ApiPropertyOptional({ description: 'Filter by product status', enum: ProductStatus })
   @IsOptional()
@@ -462,7 +462,7 @@ export class BulkDeleteDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(500)
   @IsString({ each: true })
-  ids: string[];
+  ids!: string[];
 }
 
 export class ReorderProductsDto {
@@ -475,7 +475,29 @@ export class ReorderProductsDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(500)
   @IsString({ each: true })
-  ids: string[];
+  ids!: string[];
+}
+
+export class PopularProductsQueryDto {
+  @ApiPropertyOptional({ description: 'Page number', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Items per page', example: 8 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(50)
+  @Type(() => Number)
+  limit?: number = 8;
+}
+
+export class PopularProductResponseDto extends ProductResponseDto {
+  @ApiProperty({ description: 'Number of confirmed sales', example: 42 })
+  soldCount!: number;
 }
 
 export class BulkUpdateStatusDto {
@@ -486,7 +508,7 @@ export class BulkUpdateStatusDto {
   })
   @IsArray()
   @IsString({ each: true })
-  ids: string[];
+  ids!: string[];
 
   @ApiProperty({
     description: 'New status for all selected products',
@@ -494,5 +516,5 @@ export class BulkUpdateStatusDto {
     example: ProductStatus.SOLD_OUT,
   })
   @IsEnum(ProductStatus)
-  status: ProductStatus;
+  status!: ProductStatus;
 }

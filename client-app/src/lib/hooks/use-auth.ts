@@ -34,17 +34,14 @@ export function useAuth() {
   }, [setLoading, setUser]);
 
   useEffect(() => {
-    // Always verify session on mount (handles stale localStorage user).
-    // We intentionally do NOT skip the login page: if the user arrives at /login
-    // with stale isAuthenticated=true in localStorage (e.g. after a full-page
-    // redirect caused by a 401 on a non-auth endpoint), we must verify the
-    // session here so that LoginContent's useEffect sees the correct
-    // isAuthenticated=false and renders the form instead of redirecting away.
-    if (isLoading && !fetchedRef.current) {
+    // Skip profile fetch on /login page to avoid 401 infinite loops
+    const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+
+    if (!isLoginPage && !fetchedRef.current && isLoading) {
       fetchedRef.current = true;
       fetchProfile();
     }
-  }, [isLoading, fetchProfile]);
+  }, [fetchProfile]);
 
   const handleLogout = async () => {
     try {

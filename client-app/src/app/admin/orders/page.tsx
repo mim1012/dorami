@@ -486,12 +486,16 @@ function AdminOrdersContent() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Display className="text-hot-pink mb-2">주문 관리</Display>
           <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
-        <Button variant="outline" onClick={handleExportCsv} className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          className="w-full sm:w-auto flex items-center justify-center gap-2"
+        >
           <Download className="w-4 h-4" />
           엑셀 내보내기
         </Button>
@@ -506,7 +510,7 @@ function AdminOrdersContent() {
       {/* Search and Filter Section */}
       <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
         {/* Search Input */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <Input
             placeholder="주문번호, 이메일, 입금자명, 인스타그램 ID로 검색..."
             value={searchQuery}
@@ -521,7 +525,7 @@ function AdminOrdersContent() {
             {isFilterOpen ? '필터 숨기기' : '필터 보기'}
           </Button>
           {hasActiveFilters && (
-            <Button variant="ghost" onClick={handleClearFilters}>
+            <Button variant="ghost" onClick={handleClearFilters} className="w-full sm:w-auto">
               전체 초기화
             </Button>
           )}

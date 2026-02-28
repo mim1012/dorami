@@ -3,7 +3,6 @@ import Script from 'next/script';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme/theme-context';
 import { QueryProvider } from '@/lib/providers/query-provider';
-import { CartProvider } from '@/lib/contexts/CartContext';
 import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { KakaoInAppBrowserGuard } from '@/components/common/KakaoInAppBrowserGuard';
@@ -60,9 +59,7 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <CartProvider>
-                  <main id="main-content">{children}</main>
-                </CartProvider>
+                <main id="main-content">{children}</main>
               </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>

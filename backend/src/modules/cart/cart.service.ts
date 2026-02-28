@@ -92,8 +92,8 @@ export class CartService {
         where: {
           userId,
           productId,
-          color: color || null,
-          size: size || null,
+          color: color ?? null,
+          size: size ?? null,
           status: 'ACTIVE',
         },
       }),
@@ -108,7 +108,7 @@ export class CartService {
     }
 
     // 2. Check stock availability
-    const reservedQuantity = reservedResult._sum.quantity || 0;
+    const reservedQuantity = reservedResult._sum.quantity ?? 0;
     const availableStock = product.quantity - reservedQuantity;
 
     if (availableStock < quantity) {
@@ -195,7 +195,7 @@ export class CartService {
         where: { id: userId },
         select: { instagramId: true },
       });
-      userName = user?.instagramId || '익명';
+      userName = user?.instagramId ?? '익명';
     } catch {
       // Fallback to anonymous
     }
@@ -411,7 +411,7 @@ export class CartService {
         timestamp: now,
       });
     } catch (error) {
-      this.logger.error('Failed to expire timed-out carts', error.stack);
+      this.logger.error('Failed to expire timed-out carts', (error as Error).stack);
     }
   }
 
@@ -429,7 +429,7 @@ export class CartService {
       },
     });
 
-    return result._sum.quantity || 0;
+    return result._sum.quantity ?? 0;
   }
 
   /**
@@ -449,7 +449,7 @@ export class CartService {
       },
     });
 
-    return result._sum.quantity || 0;
+    return result._sum.quantity ?? 0;
   }
 
   /**
@@ -528,7 +528,7 @@ export class CartService {
     const earliestExpiration =
       expiringItems.length > 0
         ? expiringItems.reduce((earliest, item) => {
-            return new Date(item.expiresAt) < new Date(earliest) ? item.expiresAt : earliest;
+            return new Date(item.expiresAt!) < new Date(earliest!) ? item.expiresAt! : earliest!;
           }, expiringItems[0].expiresAt)
         : undefined;
 
@@ -599,8 +599,8 @@ export class CartService {
       productName: cartItem.productName,
       price,
       quantity: cartItem.quantity,
-      color: cartItem.color,
-      size: cartItem.size,
+      color: cartItem.color ?? undefined,
+      size: cartItem.size ?? undefined,
       shippingFee,
       timerEnabled: cartItem.timerEnabled,
       expiresAt: cartItem.expiresAt?.toISOString(),

@@ -12,6 +12,11 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const currentPath =
+    typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search || ''}`
+      : '/';
+  const safeCurrentPath = currentPath.startsWith('/') ? currentPath : '/';
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,11 +29,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   useEffect(() => {
     if (!mounted || isLoading) return;
     if (!isAuthenticated && !hasUser) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(safeCurrentPath)}`);
     } else if (requiredRole && user?.role !== requiredRole) {
       router.push('/'); // Redirect to home if role doesn't match
     }
-  }, [mounted, isAuthenticated, isLoading, hasUser, user, requiredRole, router]);
+  }, [mounted, isAuthenticated, isLoading, hasUser, user, requiredRole, router, safeCurrentPath]);
 
   // During SSR and initial hydration, always render children to avoid server/client mismatch.
   // Zustand's persist reads localStorage (client-only), causing different `hasUser` values
@@ -47,11 +52,19 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (!isAuthenticated && !hasUser) {
-    return null; // Will redirect
+    return (
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center px-6">
+        <p>로그인 세션을 확인하는 중입니다. 잠시만 기다려 주세요.</p>
+      </div>
+    );
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return null; // Will redirect
+    return (
+      <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center px-6">
+        <p>해당 계정으로는 접근할 수 없는 페이지입니다.</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
@@ -19,7 +19,7 @@ import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
-import { useCart } from '@/lib/hooks/queries/use-cart';
+import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
@@ -82,6 +82,7 @@ export default function LiveStreamPage() {
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const { data: cartData } = useCart();
+  const queryClient = useQueryClient();
   const [cartActivities, setCartActivities] = useState<
     Array<{ id: string; userName: string; productName: string; timestamp: string }>
   >([]);
@@ -385,7 +386,8 @@ export default function LiveStreamPage() {
   useEffect(() => {
     void fetchStreamStatus();
 
-    const intervalMs = snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
+    const intervalMs =
+      snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
     const interval = setInterval(() => {
       void fetchStreamStatus();
     }, intervalMs);
@@ -510,6 +512,7 @@ export default function LiveStreamPage() {
         color: selectedColor,
         size: selectedSize,
       });
+      await queryClient.invalidateQueries({ queryKey: cartKeys.all });
 
       showToast('장바구니에 담았어요!', 'success', {
         label: '장바구니 보기',
@@ -675,7 +678,9 @@ export default function LiveStreamPage() {
                           <Volume2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                         )}
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">소리</span>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
+                        소리
+                      </span>
                     </button>
 
                     {isVolumeControlOpen && (
@@ -731,7 +736,9 @@ export default function LiveStreamPage() {
                       <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                         <Icon className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">{label}</span>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
+                        {label}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -790,7 +797,9 @@ export default function LiveStreamPage() {
               <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
                 {allProducts.length}개
               </span>
-              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">지난상품</span>
+              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">
+                지난상품
+              </span>
             </button>
           </div>
 

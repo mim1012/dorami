@@ -47,10 +47,10 @@ export class AuthController {
 
     // Parse JWT expiration times from environment (e.g., "15m" -> 900000ms)
     this.accessTokenMaxAge = this.parseJwtExpiration(
-      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '1h'),
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m'),
     );
     this.refreshTokenMaxAge = this.parseJwtExpiration(
-      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d'),
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
     );
   }
 
@@ -124,6 +124,11 @@ export class AuthController {
   @Public()
   @Get('kakao/callback')
   @UseGuards(KakaoAuthGuard)
+  @ApiOperation({
+    summary: '카카오 OAuth 콜백',
+    description: '카카오 인증 후 JWT 토큰을 쿠키에 설정하고 프론트엔드로 리다이렉트합니다.',
+  })
+  @ApiResponse({ status: 302, description: '프론트엔드로 리다이렉트 (/ 또는 /profile/register)' })
   async kakaoCallback(@Req() req: Request, @Res() res: Response) {
     try {
       const user = req.user as User;
@@ -175,9 +180,12 @@ export class AuthController {
 
       if (!refreshToken) {
         return res.status(401).json({
-          statusCode: 401,
+          success: false,
+          error: 'NO_REFRESH_TOKEN',
           errorCode: 'NO_REFRESH_TOKEN',
+          statusCode: 401,
           message: 'Refresh token not found',
+          timestamp: new Date().toISOString(),
         });
       }
 
@@ -187,20 +195,28 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
 
       return res.json({
+        success: true,
         data: { message: 'Token refreshed successfully' },
+        timestamp: new Date().toISOString(),
       });
     } catch {
       // Never leak internal error details from token refresh — always return generic 401
       return res.status(401).json({
-        statusCode: 401,
+        success: false,
+        error: 'TOKEN_REFRESH_FAILED',
         errorCode: 'TOKEN_REFRESH_FAILED',
+        statusCode: 401,
         message: 'Token refresh failed',
+        timestamp: new Date().toISOString(),
       });
     }
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 로그아웃합니다.' })
+  @ApiResponse({ status: 200, description: '로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   async logout(@CurrentUser('userId') userId: string, @Res() res: Response) {
     await this.authService.logout(userId);
 
@@ -219,12 +235,20 @@ export class AuthController {
     });
 
     return res.json({
+      success: true,
       data: { message: 'Logged out successfully' },
+      timestamp: new Date().toISOString(),
     });
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '현재 로그인 사용자 정보 조회',
+    description: 'JWT 토큰에서 사용자 정보를 반환합니다.',
+  })
+  @ApiResponse({ status: 200, description: '현재 사용자 토큰 페이로드' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(@CurrentUser() user: TokenPayload) {
     return user;
   }
@@ -238,6 +262,13 @@ export class AuthController {
   @SkipCsrf()
   @SkipThrottle()
   @Post('dev-login')
+  @ApiOperation({
+    summary: '개발용 로그인 (개발 환경 전용)',
+    description:
+      'Kakao OAuth 없이 이메일로 로그인합니다. NODE_ENV=development 환경에서만 동작합니다.',
+  })
+  @ApiResponse({ status: 200, description: '개발 로그인 성공' })
+  @ApiResponse({ status: 403, description: '개발 환경이 아님' })
   async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'production');
     if (nodeEnv !== 'development') {
@@ -246,7 +277,13 @@ export class AuthController {
 
     const { email, name } = body;
     if (!email) {
-      return res.status(400).json({ message: 'email is required' });
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_INPUT',
+        errorCode: 'INVALID_INPUT',
+        message: 'email is required',
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // Assign role based on ADMIN_EMAILS whitelist (same logic as Kakao OAuth)
@@ -287,10 +324,12 @@ export class AuthController {
     res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
     return res.json({
+      success: true,
       data: {
         message: 'Dev login successful',
         user: loginResponse.user,
       },
+      timestamp: new Date().toISOString(),
     });
   }
 }

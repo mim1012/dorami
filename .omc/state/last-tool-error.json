@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"head -50 /d/Project/dorami/client-app/e2e/admin-user-detail.e2e-spec.ts\",\"description\":\"어드민 E2E 테스트 확인\"}",
+  "error": "Exit code 1\nhead: cannot open '/d/Project/dorami/client-app/e2e/admin-user-detail.e2e-spec.ts' for reading: No such file or directory\n\nhead: cannot open '/d/Project/dorami/client-app/e2e/admin-user-detail.e2e-spec.ts' for reading: No such file or directory",
+  "timestamp": "2026-02-28T10:07:12.666Z",
+  "retry_count": 1
+}

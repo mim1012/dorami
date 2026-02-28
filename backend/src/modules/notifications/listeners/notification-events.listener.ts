@@ -48,7 +48,7 @@ export class NotificationEventsListener {
 
       await this.notificationsService.sendOrderCreatedNotification(payload.userId, payload.orderId);
     } catch (error) {
-      this.logger.error('Failed to send order created notification', error.message);
+      this.logger.error('Failed to send order created notification', (error as Error).message);
     }
   }
 
@@ -62,7 +62,7 @@ export class NotificationEventsListener {
         payload.orderId,
       );
     } catch (error) {
-      this.logger.error('Failed to send payment confirmed notification', error.message);
+      this.logger.error('Failed to send payment confirmed notification', (error as Error).message);
     }
   }
 
@@ -100,7 +100,10 @@ export class NotificationEventsListener {
         payload.productId,
       );
     } catch (error) {
-      this.logger.error('Failed to send reservation promoted notification', error.message);
+      this.logger.error(
+        'Failed to send reservation promoted notification',
+        (error as Error).message,
+      );
     }
   }
 
@@ -115,7 +118,7 @@ export class NotificationEventsListener {
     try {
       await this.notificationsService.sendCartExpiredNotification(payload.userId);
     } catch (error) {
-      this.logger.error('Failed to send cart expired notification', error.message);
+      this.logger.error('Failed to send cart expired notification', (error as Error).message);
     }
   }
 }

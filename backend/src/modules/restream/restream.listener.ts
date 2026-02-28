@@ -36,7 +36,10 @@ export class ReStreamListener {
         liveStream.userId,
       );
     } catch (error) {
-      this.logger.error(`Failed to start restreaming: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to start restreaming: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
     }
   }
 
@@ -49,7 +52,10 @@ export class ReStreamListener {
     try {
       await this.restreamService.stopRestreaming(payload.streamId);
     } catch (error) {
-      this.logger.error(`Failed to stop restreaming: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to stop restreaming: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
     }
   }
 }

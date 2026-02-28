@@ -229,9 +229,11 @@ jobs:
     # GitHub's success() evaluates the full upstream graph and returns false.
     if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
-    continue-on-error: true  # GitHub Actions runner IP may be blocked by security group; backup manually if needed
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup SSH
         env:
           SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
@@ -248,54 +250,63 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
           ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
-      - name: Create Database Backup
+      - name: Copy backup script to server
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+          scp scripts/backup-postgres.sh $USER@$HOST:/tmp/backup-postgres.sh
+          ssh $USER@$HOST 'chmod +x /tmp/backup-postgres.sh'
+
+      - name: Create Database Backup
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          S3_BUCKET: ${{ secrets.PROD_S3_BACKUP_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+        run: |
+          ssh $USER@$HOST bash -s << 'ENDSSH'
             set -e
 
-            BACKUP_DIR="/opt/dorami/backups"
-            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            export POSTGRES_USER="dorami_prod"
+            export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+            export POSTGRES_DB="dorami_production"
+            export S3_BUCKET="${S3_BUCKET}"
+            export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+            export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+            export AWS_DEFAULT_REGION="ap-northeast-2"
 
-            mkdir -p $BACKUP_DIR
+            echo "=== Pre-deployment Backup Started ==="
 
-            echo "=== Creating database backup ==="
-            # Read DB credentials from .env.production
-            if [ -f /opt/dorami/.env.production ]; then
-              POSTGRES_USER=$(grep '^POSTGRES_USER=' /opt/dorami/.env.production | cut -d= -f2)
-              POSTGRES_DB=$(grep '^POSTGRES_DB=' /opt/dorami/.env.production | cut -d= -f2)
+            # If S3 credentials are not available, skip S3 upload but still create local backup
+            if [ -z "${S3_BUCKET}" ] || [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+              echo "WARNING: S3 credentials not fully configured — local backup only"
+              # Create local backup manually as fallback
+              BACKUP_DIR="/opt/dorami/backups"
+              mkdir -p $BACKUP_DIR
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+              if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
+                docker exec dorami-postgres-prod pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
+              elif docker ps --format '{{.Names}}' | grep -q live-commerce-postgres; then
+                docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from legacy container)"
+              else
+                echo "ERROR: No PostgreSQL container found"
+                exit 1
+              fi
+
+              # Keep only last 7 local backups
+              ls -t ${BACKUP_DIR}/db_backup_*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm
             else
-              POSTGRES_USER="postgres"
-              POSTGRES_DB="live_commerce_production"
+              # Use the backup script (S3 + local)
+              /tmp/backup-postgres.sh
             fi
 
-            # Try new container name first, fall back to legacy name
-            if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
-              BACKUP_CONTAINER="dorami-postgres-prod"
-            elif docker ps --format '{{.Names}}' | grep -q live-commerce-postgres; then
-              BACKUP_CONTAINER="live-commerce-postgres"
-              POSTGRES_USER="postgres"
-              POSTGRES_DB="live_commerce_production"
-              echo "INFO: Backing up from legacy container (live-commerce-postgres)"
-            else
-              BACKUP_CONTAINER=""
-            fi
-
-            if [ -n "${BACKUP_CONTAINER}" ]; then
-              docker exec "${BACKUP_CONTAINER}" \
-                pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
-                | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-              echo "=== Backup created: db_backup_${TIMESTAMP}.sql.gz from ${BACKUP_CONTAINER} ==="
-            else
-              echo "WARNING: No postgres container running, skipping backup"
-            fi
-
-            # Keep only last 5 backups
-            ls -t ${BACKUP_DIR}/db_backup_*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm
-
-            echo "=== Backup complete ==="
+            echo "=== Pre-deployment Backup Completed ==="
           ENDSSH
 
   # ===========================================

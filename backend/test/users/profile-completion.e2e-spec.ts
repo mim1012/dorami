@@ -54,10 +54,12 @@ describe('Profile Completion (E2E)', () => {
 
   afterAll(async () => {
     // Cleanup (외래 키 순서 고려)
-    const testUserIds = (await prismaService.user.findMany({
-      where: { id: { startsWith: 'user-profile' } },
-      select: { id: true },
-    })).map(u => u.id);
+    const testUserIds = (
+      await prismaService.user.findMany({
+        where: { id: { startsWith: 'user-profile' } },
+        select: { id: true },
+      })
+    ).map((u) => u.id);
 
     if (testUserIds.length > 0) {
       await prismaService.cart.deleteMany({
@@ -110,14 +112,14 @@ describe('Profile Completion (E2E)', () => {
         where: { id: testUser.id },
       });
 
-      expect(updatedUser.depositorName).toBe('Kim MinJi');
-      expect(updatedUser.instagramId).toBe('@minji_official_e2e');
-      expect(updatedUser.shippingAddress).toBeDefined();
-      expect(updatedUser.profileCompletedAt).toBeDefined();
-      expect(updatedUser.profileCompletedAt).toBeInstanceOf(Date);
+      expect(updatedUser!.depositorName).toBe('Kim MinJi');
+      expect(updatedUser!.instagramId).toBe('@minji_official_e2e');
+      expect(updatedUser!.shippingAddress).toBeDefined();
+      expect(updatedUser!.profileCompletedAt).toBeDefined();
+      expect(updatedUser!.profileCompletedAt).toBeInstanceOf(Date);
 
       // Verify address is encrypted (should contain colons in format iv:authTag:ciphertext)
-      const encryptedAddress = JSON.stringify(updatedUser.shippingAddress);
+      const encryptedAddress = JSON.stringify(updatedUser!.shippingAddress);
       expect(encryptedAddress).toContain(':');
     });
 
@@ -368,7 +370,7 @@ describe('Profile Completion (E2E)', () => {
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
 
-      expect(response.body.data.available).toBe(true);
+      expect(response.body.available).toBe(true);
     });
 
     it('should return available: false for taken Instagram ID', async () => {
@@ -391,7 +393,7 @@ describe('Profile Completion (E2E)', () => {
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
 
-      expect(response.body.data.available).toBe(false);
+      expect(response.body.available).toBe(false);
 
       // Cleanup
       await prismaService.user.delete({ where: { id: takenUser.id } });

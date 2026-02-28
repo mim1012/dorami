@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
-import { useCart } from '@/lib/contexts/CartContext';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { getActiveStreams } from '@/lib/api/streaming';
@@ -28,9 +28,9 @@ const tabs: TabItem[] = [
 export function BottomTabBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { getTotalItems } = useCart();
+  const { data: cartData } = useCart();
   const { user } = useAuth();
-  const cartItemCount = getTotalItems();
+  const cartItemCount = cartData?.itemCount ?? 0;
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [noLiveToast, setNoLiveToast] = useState(false);
 

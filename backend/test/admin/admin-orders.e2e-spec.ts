@@ -209,9 +209,7 @@ describe('Admin Order Management (E2E)', () => {
       expect(response.status).toBe(200);
       expect(response.body.orders.length).toBeGreaterThanOrEqual(1);
 
-      const johnOrder = response.body.orders.find(
-        (o: any) => o.depositorName === 'John Doe'
-      );
+      const johnOrder = response.body.orders.find((o: any) => o.depositorName === 'John Doe');
       expect(johnOrder).toBeDefined();
       expect(johnOrder.id).toBe('ORD-20260201-001');
     });
@@ -238,9 +236,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(response.status).toBe(200);
 
-      const allPending = response.body.orders.every(
-        (o: any) => o.paymentStatus === 'PENDING'
-      );
+      const allPending = response.body.orders.every((o: any) => o.paymentStatus === 'PENDING');
       expect(allPending).toBe(true);
     });
 
@@ -252,9 +248,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(response.status).toBe(200);
 
-      const shippedOrders = response.body.orders.filter(
-        (o: any) => o.status === 'SHIPPED'
-      );
+      const shippedOrders = response.body.orders.filter((o: any) => o.status === 'SHIPPED');
       expect(shippedOrders.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -266,9 +260,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(response.status).toBe(200);
 
-      const shippedOrders = response.body.orders.filter(
-        (o: any) => o.shippingStatus === 'SHIPPED'
-      );
+      const shippedOrders = response.body.orders.filter((o: any) => o.shippingStatus === 'SHIPPED');
       expect(shippedOrders.length).toBeGreaterThanOrEqual(1);
       expect(shippedOrders[0].shippedAt).toBeDefined();
     });
@@ -281,9 +273,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(response.status).toBe(200);
 
-      const allInRange = response.body.orders.every(
-        (o: any) => o.total >= 100 && o.total <= 150
-      );
+      const allInRange = response.body.orders.every((o: any) => o.total >= 100 && o.total <= 150);
       expect(allInRange).toBe(true);
     });
 
@@ -359,8 +349,9 @@ describe('Admin Order Management (E2E)', () => {
 
   describe('PATCH /admin/orders/:id/confirm-payment', () => {
     it('should return 401 without authentication', async () => {
-      const response = await request(app.getHttpServer())
-        .patch(`/api/admin/orders/${testOrders[0].id}/confirm-payment`);
+      const response = await request(app.getHttpServer()).patch(
+        `/api/admin/orders/${testOrders[0].id}/confirm-payment`,
+      );
 
       expect(response.status).toBe(401);
     });
@@ -415,7 +406,7 @@ describe('Admin Order Management (E2E)', () => {
 
       expect(beforeConfirm?.paidAt).toBeDefined();
 
-      const paidAtTime = beforeConfirm.paidAt.getTime();
+      const paidAtTime = beforeConfirm!.paidAt!.getTime();
       const now = new Date().getTime();
 
       // paidAt should be within last minute (just confirmed)

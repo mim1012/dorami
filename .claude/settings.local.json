@@ -137,7 +137,16 @@
       "Bash(pkill -f \"nest\" 2>/dev/null; sleep 1; pkill -f \"next\" 2>/dev/null; sleep 1; echo \"done\")",
       "Bash(ls -la /mnt/d/Project/dorami/client-app/.env* 2>/dev/null)",
       "Bash(npx nest build 2>&1)",
-      "Bash(npx nest build 2>&1 && echo \"BUILD_SUCCESS\")"
+      "Bash(npx nest build 2>&1 && echo \"BUILD_SUCCESS\")",
+      "Bash(bash:*)",
+      "Bash(chmod +x:*)",
+      "Bash(__NEW_LINE_5a4efdb916b6abac__ echo:*)",
+      "Bash(__NEW_LINE_19002b52a86ebd19__ echo:*)",
+      "Bash(__NEW_LINE_d1b1ebe4ad5e83ba__ echo:*)",
+      "Bash(__NEW_LINE_4bb06c85731f5ed1__ echo:*)",
+      "Bash(scp:*)",
+      "mcp__plugin_oh-my-claudecode_t__state_list_active",
+      "WebFetch(domain:track-pair-22731471.figma.site)"
     ]
   },
   "teammateMode": "tmux"

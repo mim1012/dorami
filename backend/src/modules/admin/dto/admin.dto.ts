@@ -328,7 +328,9 @@ export class UserDetailDto {
 
 export class UpdateUserStatusDto {
   @IsString()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
+  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'], {
+    message: 'status must be one of ACTIVE, INACTIVE, SUSPENDED',
+  })
   status!: string;
 
   @IsOptional()

@@ -198,8 +198,13 @@ export default function CartPage() {
                       ? '만료된 상품이 있습니다'
                       : `${formatPrice(cart.grandTotal)} 결제하기`}
                   </Button>
-                  <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/')}>
-                    계속 쇼핑하기
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    fullWidth
+                    onClick={() => router.push('/shop')}
+                  >
+                    쇼핑 계속하기
                   </Button>
                 </div>
               </>

@@ -196,10 +196,10 @@ export class OrdersService {
           data: {
             id: orderId,
             userId,
-            userEmail: user.email,
-            depositorName: user.depositorName || user.name,
-            instagramId: user.instagramId || '',
-            shippingAddress: user.shippingAddress || {},
+            userEmail: user.email ?? '',
+            depositorName: user.depositorName ?? user.name,
+            instagramId: user.instagramId ?? '',
+            shippingAddress: user.shippingAddress ?? {},
             status: 'PENDING_PAYMENT',
             paymentMethod: 'BANK_TRANSFER',
             paymentStatus: 'PENDING',
@@ -253,7 +253,7 @@ export class OrdersService {
       order.userId,
       Number(order.total),
       order.orderItems.map((item) => ({
-        productId: item.productId,
+        productId: item.productId!,
         quantity: item.quantity,
         priceAtPurchase: Number(item.price),
       })),
@@ -331,10 +331,10 @@ export class OrdersService {
           data: {
             id: orderId,
             userId,
-            userEmail: user.email,
-            depositorName: user.depositorName || user.name,
-            instagramId: user.instagramId || '',
-            shippingAddress: user.shippingAddress || {},
+            userEmail: user.email ?? '',
+            depositorName: user.depositorName ?? user.name,
+            instagramId: user.instagramId ?? '',
+            shippingAddress: user.shippingAddress ?? {},
             status: 'PENDING_PAYMENT',
             subtotal: new Decimal(totals.subtotal),
             shippingFee: new Decimal(totals.totalShippingFee),
@@ -368,7 +368,7 @@ export class OrdersService {
       order.userId,
       Number(order.total),
       order.orderItems.map((item) => ({
-        productId: item.productId,
+        productId: item.productId!,
         quantity: item.quantity,
         priceAtPurchase: Number(item.price),
       })),
@@ -497,7 +497,7 @@ export class OrdersService {
     await this.redisService.del(`order:timer:${orderId}`);
 
     // Emit domain event
-    const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt);
+    const paidEvent = new OrderPaidEvent(orderId, userId, updatedOrder.paidAt!);
     this.eventEmitter.emit('order:paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);
@@ -514,7 +514,10 @@ export class OrdersService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await this.inventoryService.batchRestoreStockTx(tx, order.orderItems);
+      await this.inventoryService.batchRestoreStockTx(
+        tx,
+        order.orderItems as { productId: string; quantity: number }[],
+      );
       await tx.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
     });
 
@@ -548,9 +551,9 @@ export class OrdersService {
       return {
         ...responseDto,
         bankTransferInfo: {
-          bankName: this.configService.get<string>('BANK_NAME') || '',
-          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') || '',
-          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') || '',
+          bankName: this.configService.get<string>('BANK_NAME') ?? '',
+          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') ?? '',
+          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') ?? '',
           amount: responseDto.total,
           depositorName: order.depositorName,
         },
@@ -582,9 +585,9 @@ export class OrdersService {
       return {
         ...responseDto,
         bankTransferInfo: {
-          bankName: this.configService.get<string>('BANK_NAME') || '',
-          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') || '',
-          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') || '',
+          bankName: this.configService.get<string>('BANK_NAME') ?? '',
+          accountNumber: this.configService.get<string>('BANK_ACCOUNT_NUMBER') ?? '',
+          accountHolder: this.configService.get<string>('BANK_ACCOUNT_HOLDER') ?? '',
           amount: responseDto.total,
           depositorName: order.depositorName,
         },
@@ -613,6 +616,7 @@ export class OrdersService {
     try {
       const now = new Date();
       const expirationTime = new Date(now.getTime() - this.orderExpirationMinutes * 60 * 1000);
+      const batchSize = 200;
 
       // Find orders that should be expired
       const expiredOrders = await this.prisma.order.findMany({
@@ -622,8 +626,14 @@ export class OrdersService {
             lte: expirationTime,
           },
         },
-        include: {
-          orderItems: true,
+        select: {
+          id: true,
+          orderItems: {
+            select: {
+              productId: true,
+              quantity: true,
+            },
+          },
         },
       });
 
@@ -633,23 +643,30 @@ export class OrdersService {
 
       this.logger.log(`Found ${expiredOrders.length} expired orders to cancel`);
 
-      for (const order of expiredOrders) {
-        // Double-check Redis timer doesn't exist (payment confirmed)
-        const timerExists = await this.redisService.exists(`order:timer:${order.id}`);
-        if (timerExists) {
-          continue; // Still active
+      for (let offset = 0; offset < expiredOrders.length; offset += batchSize) {
+        const batch = expiredOrders.slice(offset, offset + batchSize);
+
+        for (const order of batch) {
+          // Double-check Redis timer doesn't exist (payment confirmed)
+          const timerExists = await this.redisService.exists(`order:timer:${order.id}`);
+          if (timerExists) {
+            continue; // Still active
+          }
+
+          await this.prisma.$transaction(async (tx) => {
+            await this.inventoryService.batchRestoreStockTx(
+              tx,
+              order.orderItems as { productId: string; quantity: number }[],
+            );
+            await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } });
+          });
+
+          this.logger.log(`Auto-cancelled expired order: ${order.id}`);
+          this.eventEmitter.emit('order:cancelled', { orderId: order.id });
         }
-
-        await this.prisma.$transaction(async (tx) => {
-          await this.inventoryService.batchRestoreStockTx(tx, order.orderItems);
-          await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } });
-        });
-
-        this.logger.log(`Auto-cancelled expired order: ${order.id}`);
-        this.eventEmitter.emit('order:cancelled', { orderId: order.id });
       }
     } catch (error) {
-      this.logger.error('Failed to cancel expired orders', error.stack);
+      this.logger.error('Failed to cancel expired orders', (error as Error).stack);
     }
   }
 
@@ -704,11 +721,14 @@ export class OrdersService {
 
           this.logger.log(`Payment reminder sent for order ${order.id}`);
         } catch (error) {
-          this.logger.error(`Failed to send payment reminder for order ${order.id}`, error.stack);
+          this.logger.error(
+            `Failed to send payment reminder for order ${order.id}`,
+            (error as Error).stack,
+          );
         }
       }
     } catch (error) {
-      this.logger.error('Failed to process payment reminders', error.stack);
+      this.logger.error('Failed to process payment reminders', (error as Error).stack);
     }
   }
 
@@ -731,7 +751,7 @@ export class OrdersService {
       updatedAt: order.updatedAt,
       items: order.orderItems.map((item) => ({
         id: item.id,
-        productId: item.productId,
+        productId: item.productId!,
         productName: item.productName,
         quantity: item.quantity,
         price: Number(item.price),

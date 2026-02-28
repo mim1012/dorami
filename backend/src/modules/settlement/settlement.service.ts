@@ -81,15 +81,15 @@ export class SettlementService {
     const orderDtos: SettlementOrderItemDto[] = orders.map((order) => ({
       orderId: order.id,
       orderDate: order.createdAt.toISOString(),
-      customerId: order.user.instagramId || order.instagramId,
+      customerId: order.user.instagramId ?? order.instagramId,
       total: Number(order.total),
-      paidAt: order.paidAt.toISOString(),
+      paidAt: order.paidAt!.toISOString(),
     }));
 
     // Aggregate daily revenue from already-fetched orders (group by paidAt date)
     const dailyMap = new Map<string, { revenue: number; orderCount: number }>();
     for (const order of orders) {
-      const date = this.formatDate(order.paidAt);
+      const date = this.formatDate(order.paidAt!);
       const existing = dailyMap.get(date) ?? { revenue: 0, orderCount: 0 };
       existing.revenue += Number(order.total);
       existing.orderCount += 1;
