@@ -42,13 +42,15 @@ export const cartKeys = {
 };
 
 // Fetch cart summary
-export function useCart() {
+export function useCart(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
   return useQuery({
     queryKey: cartKeys.summary(),
     queryFn: async () => {
       const response = await apiClient.get<CartSummary>('/cart');
       return response.data;
     },
+    enabled,
     refetchInterval: (query) => {
       // Refetch more frequently if there are timer-enabled items
       const data = query.state.data;

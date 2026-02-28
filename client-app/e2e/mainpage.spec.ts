@@ -566,7 +566,13 @@ test.describe('MainPage — 기존 네비게이션 유지', () => {
       timeout: 15_000,
     });
     await expect(page.getByRole('button', { name: '장바구니', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '라이브', exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole('button', { name: '라이브', exact: true })
+        .filter({ has: page.locator('svg') }),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByRole('button', { name: '마이', exact: true })).toBeVisible();
   });
 

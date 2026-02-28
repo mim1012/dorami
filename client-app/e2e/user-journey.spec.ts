@@ -78,7 +78,9 @@ test.describe('사용자 여정 - 모든 하단 탭 기능', () => {
     // 라이브 탭 클릭
     // 라이브 탭은 API를 호출해 활성 스트림이 있으면 /live/{streamKey}로 이동,
     // 없으면 토스트 메시지를 표시하고 현재 페이지에 머문다.
-    const liveTab = page.getByRole('button', { name: '라이브' });
+    const liveTab = page
+      .getByRole('button', { name: '라이브', exact: true })
+      .filter({ has: page.locator('svg') });
     await liveTab.click();
 
     // 활성 스트림이 있을 때만 /live/{streamKey}로 이동하므로 URL 변경을 기다리되 실패해도 계속 진행

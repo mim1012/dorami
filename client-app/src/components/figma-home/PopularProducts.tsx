@@ -7,6 +7,8 @@ import type { PopularProductDto } from '@live-commerce/shared-types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailModal } from './ProductDetailModal';
 import { ViewAllModal } from './ViewAllModal';
+import { useAuthStore } from '@/lib/store/auth';
+import { useToast } from '@/components/common/Toast';
 
 type HomeProduct = {
   id: string;
@@ -134,6 +136,8 @@ export function PopularProducts({
   isError = false,
 }: PopularProductsProps) {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const { showToast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<HomeProduct | null>(null);
   const [showViewAll, setShowViewAll] = useState(false);
 
@@ -147,6 +151,14 @@ export function PopularProducts({
     intent?: 'cart' | 'buy',
     options?: ModalSelectionPayload,
   ) => {
+    if (!isAuthenticated) {
+      showToast('로그인 후 이용해주세요', 'error', {
+        label: '로그인',
+        onClick: () => router.push('/login'),
+      });
+      return;
+    }
+
     const params = new URLSearchParams();
 
     if (intent) {
@@ -198,7 +210,16 @@ export function PopularProducts({
           <button
             key={product.id}
             type="button"
-            onClick={() => setSelectedProduct(product)}
+            onClick={() => {
+              if (!isAuthenticated) {
+                showToast('로그인 후 이용해주세요', 'error', {
+                  label: '로그인',
+                  onClick: () => router.push('/login'),
+                });
+                return;
+              }
+              setSelectedProduct(product);
+            }}
             className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left"
           >
             <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">

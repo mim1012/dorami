@@ -328,9 +328,9 @@ function AdminOrdersContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(amount);
   };
@@ -363,6 +363,20 @@ function AdminOrdersContent() {
     return <span className={`px-2 py-1 rounded text-caption border ${color}`}>{label}</span>;
   };
 
+  const getPaymentMethodLabel = (order: OrderListItem) => {
+    const paymentMethod = (order as OrderListItem & { paymentMethod?: string }).paymentMethod;
+    if (paymentMethod) return paymentMethod;
+    if (order.paymentStatus === 'CONFIRMED' || order.paymentStatus === 'PENDING') return '카드';
+    return '계좌이체';
+  };
+
+  const getShippingStatus = (order: OrderListItem) => {
+    if (order.deliveredAt) return '배송완료';
+    if (order.shippedAt) return '배송중';
+    if (order.status === 'SHIPPED') return '배송중';
+    return '준비중';
+  };
+
   const columns: Column<OrderListItem>[] = [
     {
       key: 'id',
@@ -371,63 +385,33 @@ function AdminOrdersContent() {
       render: (order) => <span className="font-mono text-caption">{order.id}</span>,
     },
     {
-      key: 'streamKey',
-      label: '방송(스트림키)',
-      sortable: false,
-      render: (order) =>
-        order.streamKey ? (
-          <span className="font-mono text-caption text-hot-pink">{order.streamKey}</span>
-        ) : (
-          <span className="text-secondary-text text-caption">-</span>
-        ),
-    },
-    {
-      key: 'userEmail',
-      label: '고객',
-      sortable: false,
-      render: (order) => (
-        <span className="flex flex-col text-caption">
-          <span>{order.userEmail}</span>
-          <span className="text-secondary-text">@{order.instagramId?.replace(/^@/, '')}</span>
-        </span>
-      ),
-    },
-    {
-      key: 'depositorName',
-      label: '입금자명',
-      sortable: false,
-    },
-    {
-      key: 'status',
-      label: '주문 상태',
-      render: (order) => getStatusBadge(order.status),
-    },
-    {
       key: 'items',
       label: '상품',
       sortable: false,
       render: (order) => (
-        <div className="flex flex-col gap-1 text-caption">
+        <span className="flex flex-col text-caption">
           {order.items && order.items.length > 0 ? (
-            order.items.map((item, idx) => (
-              <div key={idx} className="border-b border-border-color pb-1 last:border-0">
-                <div className="font-medium text-primary-text">{item.productName}</div>
-                <div className="text-secondary-text">
-                  {item.color && <span>{item.color} / </span>}
-                  {item.size && <span>{item.size} / </span>}
-                  {formatCurrency(item.price)} × {item.quantity}
-                </div>
-              </div>
-            ))
+            <>
+              <span className="font-medium">{order.items[0].productName}</span>
+              <span className="text-secondary-text">
+                {order.items.length > 1 ? `외 ${order.items.length - 1}건` : ''}
+              </span>
+            </>
           ) : (
             <span className="text-secondary-text">-</span>
           )}
-        </div>
+        </span>
       ),
     },
     {
+      key: 'itemCount',
+      label: '수량',
+      sortable: false,
+      render: (order) => `${order.itemCount}개`,
+    },
+    {
       key: 'total',
-      label: '합계',
+      label: '금액',
       sortable: true,
       render: (order) => (
         <div className="flex flex-col">
@@ -437,14 +421,37 @@ function AdminOrdersContent() {
       ),
     },
     {
+      key: 'paymentMethod',
+      label: '결제수단',
+      sortable: false,
+      render: (order) => getPaymentMethodLabel(order),
+    },
+    {
       key: 'createdAt',
-      label: '주문일',
+      label: '주문일시',
       sortable: true,
       render: (order) => formatDate(order.createdAt),
     },
     {
+      key: 'paidAt',
+      label: '결제일시',
+      sortable: true,
+      render: (order) => formatDate(order.paidAt),
+    },
+    {
+      key: 'shippingStatus',
+      label: '배송상태',
+      sortable: false,
+      render: (order) => getShippingStatus(order),
+    },
+    {
+      key: 'status',
+      label: '상태',
+      render: (order) => getStatusBadge(order.status),
+    },
+    {
       key: 'actions',
-      label: '작업',
+      label: '액션',
       render: (order) => (
         <div className="flex gap-2 items-center justify-end">
           {order.paymentStatus === 'PENDING' && (

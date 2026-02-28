@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
@@ -46,6 +46,7 @@ import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuthStore } from '@/lib/store/auth';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -68,6 +69,7 @@ interface FeaturedProduct {
 export default function LiveStreamPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const streamKey = params.streamKey as string;
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
@@ -110,6 +112,14 @@ export default function LiveStreamPage() {
   const previousStreamStatusRef = useRef<StreamStatus['status'] | null>(null);
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+
+  // ── Auth guard: redirect unauthenticated users to login ───────────────────
+  useEffect(() => {
+    if (!isAuthenticated && !isAuthLoading && !pathname.startsWith('/login')) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, pathname, router]);
 
   // ── FSM ────────────────────────────────────────────────────────────────────
   const { snapshot, stream, dispatch } = useLiveLayoutMachine();
@@ -508,6 +518,17 @@ export default function LiveStreamPage() {
     selectedColor?: string,
     selectedSize?: string,
   ) => {
+    const { isAuthenticated } = useAuthStore.getState();
+
+    // Check authentication first
+    if (!isAuthenticated) {
+      showToast('로그인 후 이용해주세요', 'error', {
+        label: '로그인',
+        onClick: () => router.push('/login'),
+      });
+      return;
+    }
+
     try {
       await apiClient.post('/cart', {
         productId,
@@ -531,7 +552,18 @@ export default function LiveStreamPage() {
       });
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
+
+      // Handle specific error types
+      if (error.statusCode === 401) {
+        showToast('로그인 세션이 만료되었습니다', 'error', {
+          label: '로그인',
+          onClick: () => router.push('/login?reason=session_expired'),
+        });
+      } else if (error.statusCode === 400) {
+        showToast(`${error.message || '장바구니 담기 실패'}`, 'error');
+      } else {
+        showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
+      }
     }
   };
 

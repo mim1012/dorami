@@ -17,21 +17,27 @@ import {
   X,
   ArrowLeft,
   BarChart3,
-  Megaphone,
   Calendar,
+  CreditCard,
+  Receipt,
+  Megaphone,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 
 const menuItems = [
-  { name: '대시보드', icon: LayoutDashboard, href: '/admin/dashboard' },
-  { name: '라이브 관리', icon: Calendar, href: '/admin/broadcasts' },
-  { name: '홈 특가 상품', icon: Sparkles, href: '/admin/featured-products' },
-  { name: '상품 관리', icon: ShoppingBag, href: '/admin/products' },
-  { name: '주문 관리', icon: Package, href: '/admin/orders', badgeKey: 'pendingPayments' },
-  { name: '사용자 관리', icon: Users, href: '/admin/users' },
-  { name: '분석', icon: BarChart3, href: '/admin/analytics' },
-  { name: '마케팅', icon: Megaphone, href: '/admin/marketing' },
-  { name: '설정', icon: Settings, href: '/admin/settings' },
+  { name: '대시보드', icon: LayoutDashboard, href: '/admin/dashboard', badgeKey: undefined },
+  { name: '라이브 관리', icon: Calendar, href: '/admin/live-management', badgeKey: undefined },
+  { name: '상품관리', icon: ShoppingBag, href: '/admin/products', badgeKey: undefined },
+  { name: '주문관리', icon: Package, href: '/admin/orders', badgeKey: undefined },
+  { name: '사용자관리', icon: Users, href: '/admin/users', badgeKey: undefined },
+  { name: '분석', icon: BarChart3, href: '/admin/analytics', badgeKey: undefined },
+  { name: '정산관리', icon: Receipt, href: '/admin/settlement', badgeKey: undefined },
+  { name: '해외 결제', icon: CreditCard, href: '/admin/payment-settings', badgeKey: undefined },
+  { name: '마케팅', icon: Megaphone, href: '/admin/marketing', badgeKey: undefined },
+  { name: '홈특가', icon: Sparkles, href: '/admin/featured-products', badgeKey: undefined },
+  { name: '설정', icon: Settings, href: '/admin/settings', badgeKey: undefined },
+  { name: '관리 기록', icon: FileText, href: '/admin/audit-log', badgeKey: undefined },
 ];
 
 export default function Sidebar() {
@@ -115,7 +121,10 @@ export default function Sidebar() {
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <ul className="space-y-1">
             {menuItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + '/') ||
+                (item.href === '/admin/dashboard' && pathname === '/admin');
               return (
                 <li key={item.href}>
                   <Link

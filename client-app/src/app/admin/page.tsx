@@ -13,7 +13,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex items-center justify-center py-24">
-      <Body className="text-secondary-text">Redirecting to dashboard...</Body>
+      <Body className="text-secondary-text">관리자 대시보드로 이동 중...</Body>
     </div>
   );
 }
