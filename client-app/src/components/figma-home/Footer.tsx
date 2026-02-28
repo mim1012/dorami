@@ -14,7 +14,7 @@ export function Footer() {
     if (KAKAO_CHANNEL_ID) {
       window.open(`https://pf.kakao.com/${KAKAO_CHANNEL_ID}/chat`, '_blank', 'noopener,noreferrer');
     } else {
-      window.location.href = 'mailto:422sss@live.com';
+      window.location.href = 'mailto:doremimarketusa@gmail.com';
     }
   };
 
@@ -131,10 +131,10 @@ export function Footer() {
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">문의</span>
                 <a
-                  href="mailto:422sss@live.com"
+                  href="mailto:doremimarketusa@gmail.com"
                   className="text-hot-pink/80 font-medium hover:text-hot-pink transition-colors"
                 >
-                  422sss@live.com
+                  doremimarketusa@gmail.com
                 </a>
               </div>
               <div className="flex gap-2">
