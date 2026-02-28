@@ -1,7 +1,22 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
+const DEFAULT_TIMEOUT_MS = 30000;
+
 interface ApiResponse<T> {
   data: T;
+}
+
+export interface RequestOptions {
+  params?: Record<string, any>;
+  signal?: AbortSignal;
+  timeout?: number;
+}
+
+export class TimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Request timeout after ${timeoutMs}ms`);
+    this.name = 'TimeoutError';
+  }
 }
 
 /**
@@ -82,12 +97,14 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 /**
- * Execute a fetch request with the given merged options.
+ * Execute a fetch request with the given merged options and an optional timeout.
  * Factored out so the retry path can reuse it without rebuilding options.
  */
 async function executeFetch(
   url: string,
   options?: RequestInit & { params?: Record<string, any> },
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  callerSignal?: AbortSignal,
 ): Promise<Response> {
   // Include CSRF token for non-GET requests
   const csrfToken = getCsrfToken();
@@ -110,21 +127,58 @@ async function executeFetch(
     credentials: 'include',
   };
 
-  return fetch(url, {
-    ...defaultOptions,
-    ...options,
-    headers: {
-      ...defaultOptions.headers,
-      ...options?.headers,
-    },
-  });
+  // Create a timeout-based AbortController and combine with any caller-provided signal
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+
+  // Combine caller signal + timeout signal so either can abort the request
+  let combinedSignal: AbortSignal;
+  if (callerSignal) {
+    if (typeof AbortSignal.any === 'function') {
+      combinedSignal = AbortSignal.any([callerSignal, timeoutController.signal]);
+    } else {
+      // Fallback for environments without AbortSignal.any
+      const combined = new AbortController();
+      const abort = () => combined.abort();
+      callerSignal.addEventListener('abort', abort, { once: true });
+      timeoutController.signal.addEventListener('abort', abort, { once: true });
+      combinedSignal = combined.signal;
+    }
+  } else {
+    combinedSignal = timeoutController.signal;
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...defaultOptions,
+      ...options,
+      headers: {
+        ...defaultOptions.headers,
+        ...options?.headers,
+      },
+      signal: combinedSignal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      if (timeoutController.signal.aborted && !callerSignal?.aborted) {
+        throw new TimeoutError(timeoutMs);
+      }
+    }
+    throw error;
+  }
 }
 
 async function request<T>(
   endpoint: string,
-  options?: RequestInit & { params?: Record<string, any> },
+  options?: RequestInit & { params?: Record<string, any>; timeout?: number; signal?: AbortSignal },
 ): Promise<ApiResponse<T>> {
   let url = `${API_BASE_URL}${endpoint}`;
+
+  const timeoutMs = options?.timeout ?? DEFAULT_TIMEOUT_MS;
+  const callerSignal = options?.signal;
 
   // Add query parameters if provided
   if (options?.params) {
@@ -150,7 +204,7 @@ async function request<T>(
     await ensureCsrfToken();
   }
 
-  let response = await executeFetch(url, options);
+  let response = await executeFetch(url, options, timeoutMs, callerSignal);
 
   // On 401, attempt to refresh the access token and retry once
   if (response.status === 401 && endpoint !== '/auth/refresh') {
@@ -165,7 +219,7 @@ async function request<T>(
 
     if (refreshed) {
       // Retry the original request with fresh token
-      response = await executeFetch(url, options);
+      response = await executeFetch(url, options, timeoutMs, callerSignal);
     } else {
       // Refresh failed.
       // For non-auth endpoints: redirect to login with clear reason so users
@@ -221,26 +275,30 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(endpoint: string, options?: { params?: Record<string, any>; signal?: AbortSignal }) =>
+  get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { method: 'GET', ...options }),
 
-  post: <T>(endpoint: string, body?: any) =>
+  post: <T>(endpoint: string, body?: any, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
     request<T>(endpoint, {
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...options,
     }),
 
-  patch: <T>(endpoint: string, body?: any) =>
+  patch: <T>(endpoint: string, body?: any, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
     request<T>(endpoint, {
       method: 'PATCH',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...options,
     }),
 
-  put: <T>(endpoint: string, body?: any) =>
+  put: <T>(endpoint: string, body?: any, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
     request<T>(endpoint, {
       method: 'PUT',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...options,
     }),
 
-  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+  delete: <T>(endpoint: string, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
+    request<T>(endpoint, { method: 'DELETE', ...options }),
 };

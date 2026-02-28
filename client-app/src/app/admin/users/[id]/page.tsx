@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
 import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentModal';
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { useToast } from '@/components/common/Toast';
+import { validateUserStatusForm } from '@/lib/schemas/user';
 
 interface ShippingAddress {
   fullName: string;
@@ -45,6 +47,7 @@ export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const [user, setUser] = useState<UserDetail | null>(null);
@@ -84,12 +87,20 @@ export default function AdminUserDetailPage() {
   };
 
   const confirmStatusUpdate = async () => {
+    const errors = validateUserStatusForm({
+      status: selectedStatus as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
+    });
+    if (Object.keys(errors).length > 0) {
+      showToast(errors.status || '유효하지 않은 상태입니다', 'error');
+      return;
+    }
     setIsUpdating(true);
     try {
       await apiClient.patch(`/admin/users/${userId}/status`, {
         status: selectedStatus,
       });
 
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowConfirmModal(false);
       await fetchUserDetail();
 
