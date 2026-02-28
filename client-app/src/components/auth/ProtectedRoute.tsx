@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (!isAuthenticated && !hasUser) {
       router.push(`/login?redirect=${encodeURIComponent(safeCurrentPath)}`);
     } else if (requiredRole && user?.role !== requiredRole) {
-      router.push('/'); // Redirect to home if role doesn't match
+      router.push('/403');
     }
   }, [mounted, isAuthenticated, isLoading, hasUser, user, requiredRole, router, safeCurrentPath]);
 
@@ -62,7 +62,19 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   if (requiredRole && user?.role !== requiredRole) {
     return (
       <div className="min-h-screen bg-primary-black text-primary-text flex items-center justify-center px-6">
-        <p>해당 계정으로는 접근할 수 없는 페이지입니다.</p>
+        <div className="text-center max-w-md">
+          <h1 className="text-6xl font-bold text-hot-pink mb-4">403</h1>
+          <h2 className="text-2xl font-semibold mb-2">접근 권한 없음</h2>
+          <p className="text-secondary-text mb-8">
+            해당 페이지에 접근할 수 있는 권한이 없습니다. 관리자 계정으로 로그인하세요.
+          </p>
+          <a
+            href="/"
+            className="inline-block bg-hot-pink hover:bg-hot-pink/80 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+          >
+            홈으로 돌아가기
+          </a>
+        </div>
       </div>
     );
   }
