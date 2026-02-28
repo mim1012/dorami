@@ -20,6 +20,7 @@ import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
 import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
+import { productKeys } from '@/lib/hooks/queries/use-products';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
@@ -261,6 +262,18 @@ export default function LiveStreamPage() {
     return () => vv.removeEventListener('resize', onResize);
   }, [dispatch]);
 
+  // Extracted so handleAddToCart can re-fetch after stock changes
+  const fetchAllProducts = useCallback(async () => {
+    try {
+      const response = await apiClient.get<Product[]>('/products', {
+        params: { streamKey, status: 'AVAILABLE' },
+      });
+      setAllProducts(response.data ?? []);
+    } catch {
+      // non-critical
+    }
+  }, [streamKey]);
+
   // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -269,16 +282,6 @@ export default function LiveStreamPage() {
           `/streaming/key/${streamKey}/featured-product`,
         );
         setFeaturedProduct(response.data.product);
-      } catch {
-        // non-critical
-      }
-    };
-    const fetchAllProducts = async () => {
-      try {
-        const response = await apiClient.get<Product[]>('/products', {
-          params: { streamKey, status: 'AVAILABLE' },
-        });
-        setAllProducts(response.data ?? []);
       } catch {
         // non-critical
       }
@@ -343,7 +346,7 @@ export default function LiveStreamPage() {
       ws.disconnect();
       if (purchaseNotifTimerRef.current) clearTimeout(purchaseNotifTimerRef.current);
     };
-  }, [streamKey]);
+  }, [streamKey, fetchAllProducts]);
 
   const fetchStreamStatus = useCallback(async () => {
     try {
@@ -512,7 +515,15 @@ export default function LiveStreamPage() {
         color: selectedColor,
         size: selectedSize,
       });
-      await queryClient.invalidateQueries({ queryKey: cartKeys.all });
+      // Invalidate cart AND product queries so stock counts update immediately
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cartKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: productKeys.list({ streamKey, status: 'AVAILABLE' }),
+        }),
+      ]);
+      // Also refresh local allProducts state for the mobile product sheet
+      void fetchAllProducts();
 
       showToast('장바구니에 담았어요!', 'success', {
         label: '장바구니 보기',
