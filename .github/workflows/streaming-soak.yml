@@ -126,6 +126,29 @@ jobs:
             echo "STAGING_SSH_KEY_FILE=${SSH_KEY_FILE}" >> "$GITHUB_ENV"
           fi
 
+      - name: Start RTMP test stream on staging (via SSH)
+        env:
+          SSH_HOST: ${{ inputs.ssh_host || secrets.STAGING_HOST || vars.STAGING_HOST }}
+          SSH_USER: ${{ inputs.ssh_user || secrets.STAGING_USER }}
+          STREAM_KEY: ${{ inputs.stream_key || 'smoke-check' }}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+          [ -n "${STAGING_SSH_KEY_FILE}" ] && SSH_OPTS="${SSH_OPTS} -i ${STAGING_SSH_KEY_FILE}"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "
+            nohup ffmpeg -re \
+              -f lavfi -i 'testsrc2=size=1280x720:rate=30' \
+              -f lavfi -i 'sine=frequency=440:sample_rate=44100' \
+              -vcodec libx264 -preset ultrafast -tune zerolatency \
+              -b:v 1500k -maxrate 1500k -bufsize 3000k \
+              -g 60 -keyint_min 60 \
+              -acodec aac -b:a 128k \
+              -f flv rtmp://localhost:1935/live/${STREAM_KEY} \
+              -loglevel warning \
+              > /tmp/ffmpeg-soak.log 2>&1 &
+            echo \$! > /tmp/ffmpeg-soak.pid && echo 'ffmpeg started'
+          "
+          sleep 15
+
       - name: Run streaming soak gate
         id: run
         env:
@@ -191,3 +214,16 @@ jobs:
           if [ "${STATUS}" != "PASS" ]; then
             exit 1
           fi
+
+      - name: Stop RTMP test stream on staging
+        if: always()
+        env:
+          SSH_HOST: ${{ inputs.ssh_host || secrets.STAGING_HOST || vars.STAGING_HOST }}
+          SSH_USER: ${{ inputs.ssh_user || secrets.STAGING_USER }}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no"
+          [ -n "${STAGING_SSH_KEY_FILE}" ] && SSH_OPTS="${SSH_OPTS} -i ${STAGING_SSH_KEY_FILE}"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "
+            [ -f /tmp/ffmpeg-soak.pid ] && kill \$(cat /tmp/ffmpeg-soak.pid) 2>/dev/null || true
+            rm -f /tmp/ffmpeg-soak.pid && echo 'ffmpeg stopped'
+          " || true
