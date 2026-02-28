@@ -371,6 +371,39 @@ jobs:
           echo "All SRS & live stream checks passed"
           EOF
 
+      - name: Mainpage API Smoke Test
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash -s' << 'EOF'
+          set -e
+          BASE="http://localhost:3001/api"
+
+          # GET /api/streaming/active — must return 200 with data array
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/streaming/active")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /streaming/active returned $STATUS"; exit 1; }
+          echo "PASSED: /streaming/active ($STATUS)"
+
+          # GET /api/streaming/upcoming?limit=4 — must return 200
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/streaming/upcoming?limit=4")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /streaming/upcoming returned $STATUS"; exit 1; }
+          echo "PASSED: /streaming/upcoming ($STATUS)"
+
+          # GET /api/products/popular?limit=8 — must return 200 within 500ms
+          START=$(date +%s%3N)
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/products/popular?limit=8")
+          END=$(date +%s%3N)
+          ELAPSED=$((END - START))
+          [ "$STATUS" = "200" ] || { echo "FAIL: /products/popular returned $STATUS"; exit 1; }
+          echo "PASSED: /products/popular ($STATUS) in ${ELAPSED}ms"
+          [ "$ELAPSED" -lt 500 ] || echo "WARNING: /products/popular took ${ELAPSED}ms (target <500ms)"
+
+          # GET /api/products/live-deals — must return 200 (null body is valid when no live stream)
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/products/live-deals")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /products/live-deals returned $STATUS"; exit 1; }
+          echo "PASSED: /products/live-deals ($STATUS)"
+
+          echo "All mainpage API smoke tests passed"
+          EOF
+
       - name: Compare staging parity against production
         id: parity_check
         if: always() && needs.deploy.result == 'success'

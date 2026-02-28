@@ -71,10 +71,12 @@ describe('My Page - Address Update (E2E)', () => {
 
   afterAll(async () => {
     // Cleanup (외래 키 순서 고려)
-    const testUserIds = (await prismaService.user.findMany({
-      where: { id: { startsWith: 'user-mypage' } },
-      select: { id: true },
-    })).map(u => u.id);
+    const testUserIds = (
+      await prismaService.user.findMany({
+        where: { id: { startsWith: 'user-mypage' } },
+        select: { id: true },
+      })
+    ).map((u) => u.id);
 
     if (testUserIds.length > 0) {
       await prismaService.cart.deleteMany({
@@ -123,9 +125,7 @@ describe('My Page - Address Update (E2E)', () => {
     });
 
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/api/users/profile/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/users/profile/me').expect(401);
     });
   });
 
@@ -152,14 +152,16 @@ describe('My Page - Address Update (E2E)', () => {
         where: { id: testUser.id },
       });
 
-      expect(updatedUser.shippingAddress).toBeDefined();
+      expect(updatedUser!.shippingAddress).toBeDefined();
 
       // Verify address is encrypted (should contain colons in format iv:authTag:ciphertext)
-      const encryptedAddress = JSON.stringify(updatedUser.shippingAddress);
+      const encryptedAddress = JSON.stringify(updatedUser!.shippingAddress);
       expect(encryptedAddress).toContain(':');
 
       // Decrypt and verify new values
-      const decryptedAddress = encryptionService.decryptAddress(updatedUser.shippingAddress as any as string);
+      const decryptedAddress = encryptionService.decryptAddress(
+        updatedUser!.shippingAddress as any as string,
+      );
       expect(decryptedAddress.fullName).toBe('Updated User');
       expect(decryptedAddress.address1).toBe('456 Updated Ave');
       expect(decryptedAddress.city).toBe('San Francisco');
@@ -266,7 +268,9 @@ describe('My Page - Address Update (E2E)', () => {
         where: { id: testUser.id },
       });
 
-      const decryptedAddress = encryptionService.decryptAddress(updatedUser.shippingAddress as any as string);
+      const decryptedAddress = encryptionService.decryptAddress(
+        updatedUser!.shippingAddress as any as string,
+      );
       expect(decryptedAddress.address1).toBe('789 Test Blvd');
       expect(decryptedAddress.city).toBe('Seattle');
       expect(decryptedAddress.address2).toBeUndefined();
@@ -290,7 +294,9 @@ describe('My Page - Address Update (E2E)', () => {
         where: { id: testUser.id },
       });
 
-      const decryptedAddress = encryptionService.decryptAddress(updatedUser.shippingAddress as any as string);
+      const decryptedAddress = encryptionService.decryptAddress(
+        updatedUser!.shippingAddress as any as string,
+      );
       expect(decryptedAddress.zip).toBe('10001-1234');
     });
 
@@ -315,7 +321,7 @@ describe('My Page - Address Update (E2E)', () => {
       });
 
       // Should be a string in format iv:authTag:ciphertext
-      const encryptedString = updatedUser.shippingAddress as any as string;
+      const encryptedString = updatedUser!.shippingAddress as any as string;
       expect(typeof encryptedString).toBe('string');
       expect(encryptedString.split(':').length).toBe(3);
 

@@ -67,7 +67,7 @@ export class ReservationEventsListener {
     } catch (err) {
       // Fail silently - PROMOTED status remains so user can manually add it
       this.logger.warn(
-        `Auto cart add failed for reservation ${payload.reservationId}: ${err.message}`,
+        `Auto cart add failed for reservation ${payload.reservationId}: ${(err as Error).message}`,
       );
     }
   }

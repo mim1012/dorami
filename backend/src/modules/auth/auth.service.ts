@@ -51,7 +51,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           kakaoId: profile.kakaoId,
-          email: profile.email || null, // Set to null if undefined (user denied email permission)
+          email: profile.email ?? null, // Set to null if undefined (user denied email permission)
           name: profile.nickname,
           role: assignedRole, // Assign role based on whitelist
           status: 'ACTIVE', // Set status to ACTIVE
@@ -66,7 +66,7 @@ export class AuthService {
         where: { id: user.id },
         data: {
           name: profile.nickname,
-          email: profile.email || user.email,
+          email: profile.email ?? user.email,
           role: assignedRole, // Update role based on current whitelist
           lastLoginAt: new Date(), // Update lastLoginAt
         },
@@ -95,7 +95,7 @@ export class AuthService {
     const payload: TokenPayload = {
       sub: user.id,
       userId: user.id, // Add userId for JWT strategy compatibility
-      email: user.email, // Include email per Story 2.1 spec
+      email: user.email ?? '', // Include email per Story 2.1 spec
       kakaoId: user.kakaoId,
       name: user.name,
       role: user.role,
@@ -103,10 +103,10 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(
       { ...payload, type: 'access', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') || '1h' },
+      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m' },
     );
 
-    const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') || '30d';
+    const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';
     const refreshToken = this.jwtService.sign(
       { ...payload, type: 'refresh', jti: randomUUID() },
       { expiresIn: refreshExpiresIn },
@@ -117,7 +117,7 @@ export class AuthService {
     try {
       await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
     } catch (error) {
-      this.logger.warn(`Failed to store refresh token in Redis: ${error.message}`);
+      this.logger.warn(`Failed to store refresh token in Redis: ${(error as Error).message}`);
     }
 
     return {
@@ -126,7 +126,7 @@ export class AuthService {
       user: {
         id: user.id,
         kakaoId: user.kakaoId,
-        email: user.email,
+        email: user.email ?? undefined,
         name: user.name,
         role: user.role,
       },

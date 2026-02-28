@@ -389,7 +389,7 @@ export default function AdminUserDetailPage() {
                 </Caption>
               </div>
             )}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <Button
                 variant="primary"
                 onClick={confirmStatusUpdate}

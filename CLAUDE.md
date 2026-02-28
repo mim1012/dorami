@@ -33,7 +33,7 @@ npm run docker:logs          # Follow docker-compose logs
 # Database
 npm run prisma:generate      # Generate Prisma Client after schema changes
 npm run prisma:migrate       # Create + apply migration (interactive)
-npm run prisma:studio        # Open Prisma Studio GUI
+npm run prisma:studio        # Open Prisma Studio GUI (web UI at http://localhost:5555)
 
 # Testing
 npm run test:backend                          # Jest unit tests (backend)
@@ -41,11 +41,13 @@ cd backend && npx jest --watch                # Watch mode
 cd backend && npx jest path/to/file.spec.ts   # Single test file
 cd backend && npx jest --coverage             # Coverage report
 
-# Playwright E2E (requires running app)
-cd client-app && npx playwright test                    # All tests
-cd client-app && npx playwright test --project=user     # User tests only
-cd client-app && npx playwright test --project=admin    # Admin tests only
-cd client-app && npx playwright test e2e/shop-purchase-flow.spec.ts  # Single file
+# Playwright E2E (requires running app at http://localhost:3000)
+cd client-app && npx playwright test                                   # All tests
+cd client-app && npx playwright test --project=user                    # User tests only
+cd client-app && npx playwright test --project=admin                   # Admin tests only
+cd client-app && npx playwright test --ui                              # Interactive UI mode
+cd client-app && npx playwright test e2e/shop-purchase-flow.spec.ts    # Single file
+cd client-app && npx playwright show-trace trace.zip                   # View test trace
 
 # Lint & Format
 npm run lint:all             # ESLint both workspaces
@@ -60,6 +62,9 @@ npm run type-check:all       # tsc --noEmit for all workspaces
 # Build
 npm run build:all            # Build shared-types → client → backend
 npm run build:shared         # Build shared-types package only
+
+# Clean
+npm run clean                # Delete all node_modules and dist directories
 ```
 
 ## Architecture
@@ -241,3 +246,138 @@ Husky + lint-staged: backend `.ts` files get ESLint fix + Prettier; frontend `.t
 ## CI Pipeline
 
 GitHub Actions (`.github/workflows/ci.yml`): path-based change detection → parallel jobs for backend CI (lint, type-check, unit tests, build with PostgreSQL + Redis services), frontend CI (lint, type-check, build), Docker build test, Trivy security scan.
+
+## Local Development Setup
+
+### Initial Setup
+
+1. **Clone and install:**
+
+   ```bash
+   npm install
+   npm run docker:up
+   npm run prisma:migrate
+   ```
+
+2. **Set environment variables** — create `.env.local` in backend root, or use defaults:
+   - Backend needs: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`
+   - Frontend needs: `NEXT_PUBLIC_WS_URL`, `BACKEND_URL` (both default to localhost)
+   - Kakao OAuth requires `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` (use dev credentials or disable OAuth for E2E)
+
+3. **Start development:**
+   ```bash
+   npm run dev:all          # Backend + frontend concurrently
+   # Backend: http://localhost:3001 (API + WebSocket + Swagger)
+   # Frontend: http://localhost:3000
+   # SRS media: http://localhost:8080
+   ```
+
+### Testing Workflow
+
+**Unit tests** (Jest, backend only):
+
+```bash
+npm run test:backend                    # Run all unit tests
+cd backend && npx jest --watch          # Watch mode for TDD
+cd backend && npx jest --coverage       # Coverage report
+```
+
+**E2E tests** (Playwright, frontend):
+
+- **Prerequisites:** Both dev servers running (`npm run dev:all`)
+- **Global setup** authenticates via `POST /api/auth/dev-login`
+- **Auth state** persisted in `client-app/e2e/.auth/`
+
+```bash
+cd client-app && npx playwright test --project=user    # User workflows
+cd client-app && npx playwright test --project=admin   # Admin workflows
+cd client-app && npx playwright test --ui              # Interactive mode (debug)
+```
+
+### Database Management
+
+- **Prisma Studio:** `npm run prisma:studio` → `http://localhost:5555`
+- **New migration:** `npm run prisma:migrate` creates `.sql` in `backend/prisma/migrations/`
+- **Reset database:** `cd backend && npx prisma migrate reset`
+- **Seed data:** Add logic to `backend/prisma/seed.ts`, then `npx prisma db seed`
+
+### Debugging
+
+**Backend (NestJS):**
+
+```bash
+cd backend && npm run start:debug       # Inspector on port 9229
+# Open chrome://inspect in Chrome DevTools
+```
+
+**WebSocket/Socket.IO:**
+
+```bash
+DEBUG=socket.io:* npm run dev:backend   # Enable debug logs
+# Check browser DevTools → Network → WS tab
+```
+
+**Database queries:**
+
+```typescript
+// In code: const prisma = new PrismaClient({ log: ['query', 'warn', 'error'] });
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**"Cannot find module '@live-commerce/shared-types'"**
+
+- Run `npm install` (postinstall builds shared-types)
+- Or: `npm run build:shared && npm run prisma:generate`
+
+**Port 3001 or 3000 already in use**
+
+- Kill: `lsof -i :3001` (macOS/Linux) or change `PORT=3002` for backend
+
+**Playwright test auth fails**
+
+- Ensure backend running at `BACKEND_URL` (default `http://127.0.0.1:3001`)
+- Dev login must exist: `POST /api/auth/dev-login`
+- Clear auth: `rm -rf client-app/e2e/.auth/`
+
+**Database connection errors**
+
+- Check Docker: `npm run docker:logs`
+- Verify `DATABASE_URL=postgresql://user:password@localhost:5432/dorami`
+- Reset: `npm run docker:down && npm run docker:up && npm run prisma:migrate`
+
+**WebSocket connection fails**
+
+- Verify `NEXT_PUBLIC_WS_URL` matches backend URL
+- Check Socket.IO namespaces authenticated in `backend/src/main.ts`
+
+**Husky hooks fail**
+
+- Fix linting: `npm run lint:backend --fix && npm run format`
+- Skip (not recommended): `git commit --no-verify`
+- Reinstall: `npx husky install`
+
+## Key Patterns to Remember
+
+**Error handling:** All exceptions inherit from `BusinessException` (in `backend/src/common/exceptions/`). Frontend's `ApiError` extracts `errorCode` for user messages.
+
+**Real-time:** Three Socket.IO namespaces (`/`, `/chat`, `/streaming`) managed separately. Services broadcast via `SocketIoProvider` singleton — never use `@WebSocketGateway` directly.
+
+**State:** Client state (Zustand) separate from server state (TanStack Query). Use Query for API data; Zustand for UI flags.
+
+**Validation:** Backend class-validator + frontend Zod. Validate at both boundaries.
+
+**Testing:** Backend unit tests via `@nestjs/testing`; frontend E2E via Playwright. No component unit tests.
+
+## Critical File Locations
+
+| Path                                 | Purpose                                |
+| ------------------------------------ | -------------------------------------- |
+| `backend/src/main.ts`                | Global middleware, Socket.IO bootstrap |
+| `backend/src/common/exceptions/`     | Error definitions                      |
+| `backend/prisma/schema.prisma`       | Database schema                        |
+| `client-app/lib/api/client.ts`       | HTTP + auth retry logic                |
+| `client-app/lib/store/auth.ts`       | Zustand auth store                     |
+| `packages/shared-types/src/index.ts` | Shared enums + utilities               |

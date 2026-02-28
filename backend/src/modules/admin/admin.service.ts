@@ -115,29 +115,29 @@ export class AdminService {
     // Note: Order count and purchase amount filters will be implemented in Epic 8
     // For now, these filters are ignored as we don't have Orders table populated
 
-    // Get total count with filters
-    const total = await this.prisma.user.count({ where });
-
-    // Get paginated users with sorting and filters
-    const users = await this.prisma.user.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: {
-        [sortBy]: sortOrder,
-      } as Record<string, string>,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        instagramId: true,
-        createdAt: true,
-        lastLoginAt: true,
-        status: true,
-        role: true,
-      },
-    });
+    // Get count and page rows together for better throughput
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        } as Record<string, string>,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          instagramId: true,
+          createdAt: true,
+          lastLoginAt: true,
+          status: true,
+          role: true,
+        },
+      }),
+    ]);
 
     // Batch fetch order stats for all users in this page
     const userIds = users.map((u) => u.id);
@@ -248,40 +248,47 @@ export class AdminService {
       }
     }
 
-    // StreamKey filter
-    if (streamKey) {
-      where.orderItems = {
-        some: {
-          product: {
-            streamKey: { equals: streamKey, mode: 'insensitive' },
-          },
-        },
+    // StreamKey filter (index-friendly with pre-filtered product list)
+    const noStreamMatch = await this.applyStreamKeyFilter(where, streamKey);
+    if (noStreamMatch) {
+      return {
+        orders: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
       };
     }
 
-    // Get total count with filters
-    const total = await this.prisma.order.count({ where });
-
-    // Get paginated orders with sorting and filters
-    const orders = await this.prisma.order.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: {
-        [sortBy]: sortOrder,
-      } as Record<string, string>,
-      include: {
-        orderItems: {
-          include: {
-            Product: {
-              select: {
-                streamKey: true,
+    // Get count and page rows together for better throughput
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: sortOrder,
+        } as Record<string, string>,
+        include: {
+          orderItems: {
+            select: {
+              productId: true,
+              productName: true,
+              price: true,
+              quantity: true,
+              color: true,
+              size: true,
+              Product: {
+                select: {
+                  streamKey: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     // Map orders to DTOs
     const orderDtos: OrderListItemDto[] = orders.map((order) => ({
@@ -380,15 +387,10 @@ export class AdminService {
       }
     }
 
-    // StreamKey filter
-    if (streamKey) {
-      where.orderItems = {
-        some: {
-          product: {
-            streamKey: { equals: streamKey, mode: 'insensitive' },
-          },
-        },
-      };
+    const noStreamMatch = await this.applyStreamKeyFilter(where, streamKey);
+    if (noStreamMatch) {
+      const Papa = await import('papaparse');
+      return Papa.unparse([]);
     }
 
     const MAX_EXPORT_ROWS = 10000;
@@ -473,6 +475,7 @@ export class AdminService {
       shippingStatus,
       minAmount,
       maxAmount,
+      streamKey,
     } = query;
     const sortBy = query.sortBy ?? 'createdAt';
 
@@ -516,16 +519,20 @@ export class AdminService {
       }
     }
 
+    const noStreamMatch = await this.applyStreamKeyFilter(where, streamKey);
+
     const MAX_EXPORT_ROWS = 10000;
-    const orders = await this.prisma.order.findMany({
-      where,
-      orderBy: { [sortBy]: sortOrder } as Record<string, string>,
-      take: MAX_EXPORT_ROWS,
-      include: {
-        orderItems: true,
-        user: { select: { phone: true } },
-      },
-    });
+    const orders = noStreamMatch
+      ? []
+      : await this.prisma.order.findMany({
+          where,
+          orderBy: { [sortBy]: sortOrder } as Record<string, string>,
+          take: MAX_EXPORT_ROWS,
+          include: {
+            orderItems: true,
+            user: { select: { phone: true } },
+          },
+        });
 
     const ORDER_STATUS_KO: Record<string, string> = {
       PENDING_PAYMENT: '입금대기',
@@ -635,6 +642,39 @@ export class AdminService {
     return Buffer.from(buffer);
   }
 
+  private async applyStreamKeyFilter(
+    where: OrderWhereClause,
+    streamKey?: string,
+  ): Promise<boolean> {
+    if (!streamKey) {
+      return false;
+    }
+
+    const normalizedStreamKey = streamKey.trim();
+    if (!normalizedStreamKey) {
+      return true;
+    }
+
+    const streamProducts = await this.prisma.product.findMany({
+      where: { streamKey: { equals: normalizedStreamKey, mode: 'insensitive' } },
+      select: { id: true },
+    });
+
+    if (streamProducts.length === 0) {
+      return true;
+    }
+
+    where.orderItems = {
+      some: {
+        productId: {
+          in: streamProducts.map((item) => item.id),
+        },
+      },
+    };
+
+    return false;
+  }
+
   async getDashboardStats(): Promise<DashboardStatsDto> {
     const now = new Date();
 
@@ -646,91 +686,87 @@ export class AdminService {
     const previous7DaysStart = new Date(last7DaysStart);
     previous7DaysStart.setDate(previous7DaysStart.getDate() - 7);
 
-    // 1. Total Orders (last 7 days vs previous 7 days)
-    const last7DaysOrders = await this.prisma.order.count({
-      where: { createdAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
-    });
-
-    const previous7DaysOrders = await this.prisma.order.count({
-      where: {
-        createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
-        paymentStatus: 'CONFIRMED',
-      },
-    });
+    const [
+      last7DaysOrders,
+      previous7DaysOrders,
+      last7DaysRevenue,
+      previous7DaysRevenue,
+      pendingPayments,
+      activeLiveStreams,
+      topProducts,
+      last7DaysMessages,
+      previous7DaysMessages,
+      last7DaysConfirmedOrders,
+    ] = await Promise.all([
+      this.prisma.order.count({
+        where: { createdAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
+      }),
+      this.prisma.order.count({
+        where: {
+          createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+          paymentStatus: 'CONFIRMED',
+        },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          createdAt: { gte: last7DaysStart },
+          paymentStatus: 'CONFIRMED',
+        },
+        _sum: { total: true },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+          paymentStatus: 'CONFIRMED',
+        },
+        _sum: { total: true },
+      }),
+      this.prisma.order.count({
+        where: { paymentStatus: 'PENDING' },
+      }),
+      this.prisma.liveStream.count({
+        where: { status: 'LIVE' },
+      }),
+      this.prisma.orderItem.groupBy({
+        by: ['productId', 'productName'],
+        where: { productId: { not: null }, order: { paymentStatus: 'CONFIRMED' } },
+        _sum: { quantity: true },
+        orderBy: { _sum: { quantity: 'desc' } },
+        take: 5,
+      }),
+      this.prisma.chatMessage.count({
+        where: {
+          timestamp: { gte: last7DaysStart },
+          isDeleted: false,
+        },
+      }),
+      this.prisma.chatMessage.count({
+        where: {
+          timestamp: { gte: previous7DaysStart, lt: last7DaysStart },
+          isDeleted: false,
+        },
+      }),
+      this.prisma.order.findMany({
+        where: {
+          paymentStatus: 'CONFIRMED',
+          paidAt: { gte: last7DaysStart },
+        },
+        select: { paidAt: true, total: true },
+        orderBy: { paidAt: 'asc' },
+      }),
+    ]);
 
     const ordersTrend = this.calculateTrend(last7DaysOrders, previous7DaysOrders);
-
-    // 2. Total Revenue (last 7 days)
-    const last7DaysRevenue = await this.prisma.order.aggregate({
-      where: {
-        createdAt: { gte: last7DaysStart },
-        paymentStatus: 'CONFIRMED',
-      },
-      _sum: { total: true },
-    });
-
-    const previous7DaysRevenue = await this.prisma.order.aggregate({
-      where: {
-        createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
-        paymentStatus: 'CONFIRMED',
-      },
-      _sum: { total: true },
-    });
-
     const revenueLast7Days = Number(last7DaysRevenue._sum.total ?? 0);
     const revenuePrevious7Days = Number(previous7DaysRevenue._sum.total ?? 0);
     const revenueTrend = this.calculateTrend(revenueLast7Days, revenuePrevious7Days);
 
-    // 3. Pending Payments count
-    const pendingPayments = await this.prisma.order.count({
-      where: { paymentStatus: 'PENDING' },
-    });
-
-    // 4. Active Live Streams count
-    const activeLiveStreams = await this.prisma.liveStream.count({
-      where: { status: 'LIVE' },
-    });
-
-    // 5. Top 5 Selling Products
-    const topProducts = await this.prisma.orderItem.groupBy({
-      by: ['productId', 'productName'],
-      where: { productId: { not: null }, order: { paymentStatus: 'CONFIRMED' } },
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: 'desc' } },
-      take: 5,
-    });
-
-    // Chat Messages Stats (kept for compatibility)
-    const last7DaysMessages = await this.prisma.chatMessage.count({
-      where: {
-        timestamp: { gte: last7DaysStart },
-        isDeleted: false,
-      },
-    });
-
-    const previous7DaysMessages = await this.prisma.chatMessage.count({
-      where: {
-        timestamp: { gte: previous7DaysStart, lt: last7DaysStart },
-        isDeleted: false,
-      },
-    });
-
     const messagesTrend = this.calculateTrend(last7DaysMessages, previous7DaysMessages);
 
-    // 6. Daily revenue aggregation (last 7 days)
     const dailyRevenueMap = new Map<
       string,
       { date: string; revenue: number; orderCount: number }
     >();
-
-    const last7DaysConfirmedOrders = await this.prisma.order.findMany({
-      where: {
-        paymentStatus: 'CONFIRMED',
-        paidAt: { gte: last7DaysStart },
-      },
-      select: { paidAt: true, total: true },
-      orderBy: { paidAt: 'asc' },
-    });
 
     last7DaysConfirmedOrders.forEach((order) => {
       if (!order.paidAt) {

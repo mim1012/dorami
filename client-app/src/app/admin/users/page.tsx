@@ -242,7 +242,7 @@ function AdminUsersContent() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6 md:mb-8 flex items-center justify-between">
+      <div className="mb-6 md:mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Display className="text-hot-pink mb-2">회원 관리</Display>
           <Body className="text-secondary-text">등록된 회원을 조회하고 관리합니다</Body>
@@ -258,7 +258,7 @@ function AdminUsersContent() {
       {/* Search and Filter Section */}
       <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
         {/* Search Input */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <Input
             placeholder="이름, 이메일 또는 인스타그램 ID로 검색..."
             value={searchQuery}

@@ -1,0 +1,125 @@
+{
+  "agents": [
+    {
+      "agent_id": "a7bd40bde47d9640f",
+      "agent_type": "color-migrator",
+      "started_at": "2026-02-28T06:57:14.571Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:09:22.220Z",
+      "duration_ms": 727649
+    },
+    {
+      "agent_id": "aae7ceed8d755d40c",
+      "agent_type": "hero-section-dev",
+      "started_at": "2026-02-28T06:57:18.454Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:02:59.104Z",
+      "duration_ms": 340650
+    },
+    {
+      "agent_id": "a4c74c76d97db0e79",
+      "agent_type": "grid-updater",
+      "started_at": "2026-02-28T06:57:20.827Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:02:51.055Z",
+      "duration_ms": 330228
+    },
+    {
+      "agent_id": "a252d164b0230d4c7",
+      "agent_type": "card-style-dev",
+      "started_at": "2026-02-28T06:57:23.716Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:09:41.043Z",
+      "duration_ms": 737327
+    },
+    {
+      "agent_id": "a5d81be30881ac180",
+      "agent_type": "badge-style-dev",
+      "started_at": "2026-02-28T06:57:27.022Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:10:42.456Z",
+      "duration_ms": 795434
+    },
+    {
+      "agent_id": "af01ed1f6d7fd9420",
+      "agent_type": "page-layout-dev",
+      "started_at": "2026-02-28T06:57:29.292Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:07:58.740Z",
+      "duration_ms": 629448
+    },
+    {
+      "agent_id": "af52b972ee76fc188",
+      "agent_type": "page-layout-dev",
+      "started_at": "2026-02-28T07:07:59.062Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:10:37.467Z",
+      "duration_ms": 158405
+    },
+    {
+      "agent_id": "a61c789a5f092537a",
+      "agent_type": "color-migrator",
+      "started_at": "2026-02-28T07:09:22.547Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:09:32.731Z",
+      "duration_ms": 10184
+    },
+    {
+      "agent_id": "ae0de6ca27f6fa27e",
+      "agent_type": "card-style-dev",
+      "started_at": "2026-02-28T07:09:41.449Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:10:05.276Z",
+      "duration_ms": 23827
+    },
+    {
+      "agent_id": "a32b49c0f0302f84e",
+      "agent_type": "card-style-dev",
+      "started_at": "2026-02-28T07:10:05.653Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:10:08.357Z",
+      "duration_ms": 2704
+    },
+    {
+      "agent_id": "a3b62450c45aac112",
+      "agent_type": "page-layout-dev",
+      "started_at": "2026-02-28T07:10:38.059Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:12:06.900Z",
+      "duration_ms": 88841
+    },
+    {
+      "agent_id": "ac4ea1395c00239d5",
+      "agent_type": "badge-style-dev",
+      "started_at": "2026-02-28T07:10:42.846Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:11:10.727Z",
+      "duration_ms": 27881
+    },
+    {
+      "agent_id": "a0ae773e0f2ad29f5",
+      "agent_type": "badge-style-dev",
+      "started_at": "2026-02-28T07:11:11.083Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-28T07:11:13.286Z",
+      "duration_ms": 2203
+    }
+  ],
+  "total_spawned": 13,
+  "total_completed": 13,
+  "total_failed": 0,
+  "last_updated": "2026-02-28T07:18:04.542Z"
+}

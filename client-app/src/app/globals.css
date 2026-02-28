@@ -4,7 +4,10 @@
 @theme inline {
   --color-primary-black: var(--primary-black);
   --color-content-bg: var(--content-bg);
-  --color-hot-pink: #FF007A;
+  --color-hot-pink: #FF4D8D;
+  --color-live-red: #FF3B30;
+  --color-purple-accent: #7928CA;
+  --color-orange-accent: #FF4500;
   --color-hot-pink-secondary: #FF6B35;
   --color-hot-pink-dark: #CC0062;
   --color-primary-text: var(--primary-text);
@@ -20,7 +23,7 @@
   --color-warning-bg: var(--warning-bg);
   --color-info-bg: var(--info-bg);
 
-  --shadow-hot-pink: 0 0 20px rgba(255, 0, 122, 0.3);
+  --shadow-hot-pink: 0 0 20px rgba(255, 77, 141, 0.3);
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
   --shadow-floating: var(--shadow-floating);
@@ -36,15 +39,15 @@
 
 /* CSS Variables for Theme Tokens */
 :root {
-  /* Light Mode Colors (default) */
+  /* Light Mode Colors (Fashion Platform style) */
   --primary-black: #FFFFFF;
-  --content-bg: #F8F9FA;
-  --hot-pink: #FF007A;
+  --content-bg: #F5F1F8;
+  --hot-pink: #FF4D8D;
   --hot-pink-secondary: #FF6B35;
   --hot-pink-dark: #CC0062;
-  --primary-text: #212529;
-  --secondary-text: #6C757D;
-  --border-color: #DEE2E6;
+  --primary-text: #1A1A1A;
+  --secondary-text: #666666;
+  --border-color: #E0E0E0;
   --card-bg: #FFFFFF;
   --success: #16A34A;
   --error: #DC2626;
@@ -86,7 +89,7 @@
 .dark {
   --primary-black: #0A0A0A;
   --content-bg: #1A1A1A;
-  --hot-pink: #FF007A;
+  --hot-pink: #FF4D8D;
   --hot-pink-secondary: #FF6B35;
   --hot-pink-dark: #CC0062;
   --primary-text: #FFFFFF;
@@ -331,10 +334,10 @@ body {
 /* Hero section pulse glow */
 @keyframes hero-glow {
   0%, 100% {
-    box-shadow: 0 0 40px rgba(255, 0, 122, 0.15), 0 0 80px rgba(121, 40, 202, 0.08);
+    box-shadow: 0 0 40px rgba(255, 77, 141, 0.15), 0 0 80px rgba(121, 40, 202, 0.08);
   }
   50% {
-    box-shadow: 0 0 60px rgba(255, 0, 122, 0.25), 0 0 120px rgba(121, 40, 202, 0.15);
+    box-shadow: 0 0 60px rgba(255, 77, 141, 0.25), 0 0 120px rgba(121, 40, 202, 0.15);
   }
 }
 
@@ -391,13 +394,13 @@ body {
 
 /* Hot pink text glow */
 .text-glow-pink {
-  text-shadow: 0 0 20px rgba(255, 0, 122, 0.5), 0 0 40px rgba(255, 0, 122, 0.2);
+  text-shadow: 0 0 20px rgba(255, 77, 141, 0.5), 0 0 40px rgba(255, 77, 141, 0.2);
 }
 
 /* Neon border */
 .neon-border {
-  border: 1px solid rgba(255, 0, 122, 0.3);
-  box-shadow: 0 0 15px rgba(255, 0, 122, 0.1), inset 0 0 15px rgba(255, 0, 122, 0.05);
+  border: 1px solid rgba(255, 77, 141, 0.3);
+  box-shadow: 0 0 15px rgba(255, 77, 141, 0.1), inset 0 0 15px rgba(255, 77, 141, 0.05);
 }
 
 /* Magazine card hover lift */
@@ -407,7 +410,7 @@ body {
 
 .card-magazine:hover {
   transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 30px rgba(255, 0, 122, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 30px rgba(255, 77, 141, 0.1);
 }
 
 /* Scrollbar none utility */

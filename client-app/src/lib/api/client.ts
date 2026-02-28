@@ -199,7 +199,7 @@ async function request<T>(
     throw new ApiError(
       error.statusCode || response.status,
       error.message || `HTTP ${response.status}`,
-      error.error || response.statusText,
+      error.error || error.errorCode || response.statusText,
       error.details,
     );
   }

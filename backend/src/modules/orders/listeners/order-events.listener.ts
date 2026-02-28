@@ -41,8 +41,13 @@ export class OrderEventsListener {
       return;
     }
 
-    // Promote next in queue for every product in the cancelled order
-    const productIds = [...new Set(order.orderItems.map((item) => item.productId))];
+    // Promote next in queue for every product in the cancelled order.
+    // productId is nullable (onDelete: SetNull) — filter nulls before queuing.
+    const productIds = [
+      ...new Set(
+        order.orderItems.map((item) => item.productId).filter((id): id is string => id !== null),
+      ),
+    ];
     for (const productId of productIds) {
       await this.reservationService.promoteNextInQueue(productId);
     }

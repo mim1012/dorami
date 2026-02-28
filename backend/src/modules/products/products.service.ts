@@ -557,6 +557,92 @@ export class ProductsService {
   }
 
   /**
+   * Get live deal products from currently active live stream
+   * Returns products linked to the active LIVE stream, or null if no live stream
+   */
+  @LogErrors('get live deals')
+  async getLiveDeals(): Promise<{
+    products: ProductResponseDto[];
+    streamTitle: string;
+    streamKey: string;
+  } | null> {
+    const activeLive = await this.prisma.liveStream.findFirst({
+      where: { status: 'LIVE' },
+      include: {
+        products: {
+          where: { status: 'AVAILABLE' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          take: 8,
+        },
+      },
+    });
+
+    if (!activeLive || activeLive.products.length === 0) {
+      return null;
+    }
+
+    return {
+      products: activeLive.products.map((p) => this.mapToResponseDto(p)),
+      streamTitle: activeLive.title,
+      streamKey: activeLive.streamKey,
+    };
+  }
+
+  /**
+   * Get popular products sorted by confirmed sales count
+   */
+  @LogErrors('get popular products')
+  async getPopularProducts(
+    page = 1,
+    limit = 8,
+  ): Promise<{
+    data: (ProductResponseDto & { soldCount: number })[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { status: 'AVAILABLE' },
+        include: {
+          _count: {
+            select: {
+              orderItems: {
+                where: {
+                  order: {
+                    status: { in: ['PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED'] },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          orderItems: {
+            _count: 'desc',
+          },
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({ where: { status: 'AVAILABLE' } }),
+    ]);
+
+    return {
+      data: products.map((p) => ({
+        ...this.mapToResponseDto(p),
+        soldCount: p._count.orderItems,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
    * Map Prisma model to Response DTO
    */
   private mapToResponseDto(product: Product): ProductResponseDto {

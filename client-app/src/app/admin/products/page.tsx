@@ -751,7 +751,7 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
@@ -797,7 +797,7 @@ export default function AdminProductsPage() {
 
       {/* Search & Filter (Feature 5) */}
       <div className="bg-content-bg border border-gray-200 rounded-card p-4 space-y-3">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-text" />
             <input
@@ -811,7 +811,7 @@ export default function AdminProductsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as '' | 'AVAILABLE' | 'SOLD_OUT')}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hot-pink/30 focus:border-hot-pink"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hot-pink/30 focus:border-hot-pink"
           >
             <option value="">전체 상태</option>
             <option value="AVAILABLE">판매중</option>
@@ -1179,7 +1179,7 @@ export default function AdminProductsPage() {
             </p>
           </div>
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
             <Button
               type="button"
               variant="outline"

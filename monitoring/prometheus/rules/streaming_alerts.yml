@@ -1,0 +1,74 @@
+groups:
+  - name: dorami-streaming-observability
+    interval: 30s
+    rules:
+      - alert: SRSCPUHigh
+        expr: |
+          (sum(rate(container_cpu_usage_seconds_total{container=~".*srs.*"}[5m])) by (container) * 100) > 85
+        for: 5m
+        labels:
+          severity: critical
+          service: streaming
+        annotations:
+          summary: "SRS CPU usage is above 85%"
+          description: "SRS container {{ $labels.container }} has sustained high CPU usage over 5 minutes."
+
+      - alert: RedisMemoryUsageHigh
+        expr: |
+          (
+            sum(redis_memory_used_bytes{instance=~".*redis.*"}) by (instance)
+            /
+            sum(redis_memory_max_bytes{instance=~".*redis.*"} or vector(1)) by (instance)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: streaming
+        annotations:
+          summary: "Redis memory usage above 80%"
+          description: "Redis memory utilization for {{ $labels.instance }} is above 80% for 5 minutes."
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          (
+            sum(pg_stat_activity_count{state="active"}) by (instance)
+            /
+            sum(pg_settings_max_connections) by (instance)
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: streaming
+        annotations:
+          summary: "PostgreSQL connection utilization above 85%"
+          description: "PostgreSQL active connections on {{ $labels.instance }} exceeded 85% of max_connections."
+
+      - alert: Nginx5xxRateHigh
+        expr: |
+          (
+            sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) by (instance)
+            /
+            clamp_min(sum(rate(nginx_http_requests_total[5m])) by (instance), 1)
+          ) > 0.01
+        for: 10m
+        labels:
+          severity: critical
+          service: streaming
+        annotations:
+          summary: "Nginx 5xx error ratio is high"
+          description: "Nginx 5xx ratio on {{ $labels.instance }} is above 1% over 10 minutes."
+
+      - alert: WebsocketDropRateHigh
+        expr: |
+          (
+            sum(rate(nginx_http_requests_total{status=~"5..", handler=~".*socket\\.io.*"}[5m])) by (instance)
+            /
+            clamp_min(sum(rate(nginx_http_requests_total{handler=~".*socket\\.io.*"}[5m])) by (instance), 1)
+          ) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+          service: streaming
+        annotations:
+          summary: "WebSocket error ratio is high"
+          description: "Socket.io related requests on {{ $labels.instance }} have >2% error/retry-like responses for 10 minutes."

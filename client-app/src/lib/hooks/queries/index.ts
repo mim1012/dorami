@@ -46,5 +46,8 @@ export {
 // Points
 export { usePointBalance, usePointHistory, type PointHistoryQuery } from './use-points';
 
+// MainPage
+export { mainpageKeys, useMainPageData, usePopularProducts } from './use-mainpage';
+
 // Query Key Factory
 export { createQueryKeys } from './create-query-keys';

@@ -45,6 +45,7 @@ model User {
 
   @@index([email])
   @@index([kakaoId])
+  @@index([status, createdAt])
   @@map("users")
 }
 
@@ -108,6 +109,7 @@ model ChatMessage {
   isDeleted  Boolean    @default(false) @map("is_deleted")
 
   @@index([streamKey, timestamp])
+  @@index([isDeleted, timestamp])
   @@map("chat_messages")
 }
 
@@ -263,11 +265,15 @@ model Order {
   orderItems OrderItem[]
 
   @@index([userId])
+  @@index([userId, paymentStatus])
   @@index([userId, createdAt])  // For user order history
   @@index([paymentStatus])
   @@index([status])
   @@index([status, createdAt])  // For cron job: cancelExpiredOrders
+  @@index([status, paymentStatus, createdAt])
+  @@index([paymentStatus, createdAt])
   @@index([paymentStatus, paidAt])
+  @@index([shippingStatus, createdAt])
   @@map("orders")
 }
 
@@ -285,6 +291,8 @@ model OrderItem {
   Product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([productId])
+  @@index([productId, orderId])
   @@map("order_items")
 }
 

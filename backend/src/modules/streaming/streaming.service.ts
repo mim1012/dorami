@@ -90,10 +90,10 @@ export class StreamingService {
         streamKey: stream.streamKey,
         title: stream.title,
         description: stream.description ?? null,
-        scheduledTime: stream.scheduledAt ?? null, // expiresAt fallback 제거
+        scheduledAt: stream.scheduledAt?.toISOString() ?? null,
         thumbnailUrl: stream.thumbnailUrl || null,
         isLive: stream.status === 'LIVE',
-        streamer: {
+        host: {
           id: stream.user.id,
           name: stream.user.name,
         },

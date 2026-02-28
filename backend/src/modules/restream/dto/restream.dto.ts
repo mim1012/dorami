@@ -9,22 +9,22 @@ export enum ReStreamPlatformDto {
 
 export class CreateReStreamTargetDto {
   @IsEnum(ReStreamPlatformDto)
-  platform: ReStreamPlatformDto;
+  platform!: ReStreamPlatformDto;
 
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsString()
   @IsNotEmpty()
   @Matches(/^rtmps?:\/\/[a-zA-Z0-9._-]+(:\d+)?\//, {
     message: 'rtmpUrl must be a valid RTMP URL (e.g., rtmp://host/app/)',
   })
-  rtmpUrl: string;
+  rtmpUrl!: string;
 
   @IsString()
   @IsNotEmpty()
-  streamKey: string;
+  streamKey!: string;
 
   @IsBoolean()
   @IsOptional()

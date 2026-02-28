@@ -731,3 +731,4 @@ export function isReservationExpired(reservation: Reservation): boolean {
 // ============================================================================
 
 export * from './events';
+export * from './mainpage';
