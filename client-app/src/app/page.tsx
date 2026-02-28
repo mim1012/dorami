@@ -3,5 +3,9 @@
 import { FigmaHomePage } from '@/components/figma-home/FigmaHomePage';
 
 export default function Home() {
-  return <FigmaHomePage />;
+  return (
+    <div className="home-page">
+      <FigmaHomePage />
+    </div>
+  );
 }

@@ -452,9 +452,10 @@ body {
     position: relative;
   }
 
-  /* Admin & Live pages break out to full width */
+  /* Admin, Live, and Home pages break out to full width */
   #main-content:has(.admin-layout),
-  #main-content:has(.live-fullscreen) {
+  #main-content:has(.live-fullscreen),
+  #main-content:has(.home-page) {
     max-width: none;
     border: none;
     box-shadow: none;
