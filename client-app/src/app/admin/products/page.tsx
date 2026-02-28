@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
+import { productKeys } from '@/lib/hooks/queries/use-products';
+import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import {
   Plus,
   Edit,
@@ -232,6 +235,7 @@ function SortableRow({
 // --- Main Page Component ---
 export default function AdminProductsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const confirmAction = useConfirm();
 
@@ -253,6 +257,7 @@ export default function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -345,6 +350,7 @@ export default function AdminProductsPage() {
   const handleDuplicate = async (productId: string) => {
     try {
       await apiClient.post(`/products/${productId}/duplicate`, {});
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 복제되었습니다!', 'success');
     } catch (err: any) {
@@ -408,6 +414,7 @@ export default function AdminProductsPage() {
         ids: Array.from(selectedIds),
         status,
       });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       showToast(`${selectedIds.size}개 상품이 "${label}"으로 변경되었습니다.`, 'success');
       setSelectedIds(new Set());
       fetchProducts();
@@ -501,6 +508,7 @@ export default function AdminProductsPage() {
     setSelectedFile(null);
     setGalleryFiles([]);
     setEditingProduct(null);
+    setFormErrors({});
     setIsModalOpen(false);
   };
 
@@ -551,6 +559,13 @@ export default function AdminProductsPage() {
   // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors = validateProductForm(formData);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
     setIsSubmitting(true);
 
     try {
@@ -631,6 +646,7 @@ export default function AdminProductsPage() {
         });
       }
 
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       handleCloseModal();
       showToast(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!', 'success');
@@ -653,6 +669,7 @@ export default function AdminProductsPage() {
 
     try {
       await apiClient.patch(`/products/${productId}/sold-out`, {});
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 품절 처리되었습니다.', 'success');
     } catch (err: any) {
@@ -700,6 +717,7 @@ export default function AdminProductsPage() {
       } else {
         showToast(`${deleted}개 상품이 삭제되었습니다.`, 'success');
       }
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       setSelectedIds(new Set());
       fetchProducts();
     } catch (err: any) {
@@ -721,6 +739,7 @@ export default function AdminProductsPage() {
 
     try {
       await apiClient.delete(`/products/${productId}`);
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 삭제되었습니다.', 'success');
     } catch (err: any) {
@@ -960,6 +979,7 @@ export default function AdminProductsPage() {
             placeholder="예: 프리미엄 무선 이어폰"
             required
             fullWidth
+            error={formErrors.name}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -972,6 +992,7 @@ export default function AdminProductsPage() {
               placeholder="29000"
               required
               fullWidth
+              error={formErrors.price}
             />
             <Input
               label="재고"
@@ -982,6 +1003,7 @@ export default function AdminProductsPage() {
               placeholder="50"
               required
               fullWidth
+              error={formErrors.stock}
             />
           </div>
 
@@ -996,6 +1018,7 @@ export default function AdminProductsPage() {
               min="0"
               max="100"
               fullWidth
+              error={formErrors.discountRate}
             />
             <Input
               label="정가 (할인 전 가격 $)"
@@ -1005,6 +1028,7 @@ export default function AdminProductsPage() {
               onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
               placeholder="예: 35"
               fullWidth
+              error={formErrors.originalPrice}
             />
           </div>
 

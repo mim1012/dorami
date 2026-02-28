@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { apiClient } from '@/lib/api/client';
@@ -53,6 +54,7 @@ interface OrderListResponse {
 function AdminOrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
@@ -220,6 +222,7 @@ function AdminOrdersContent() {
     setConfirmingOrderId(order.id);
     try {
       await apiClient.patch(`/admin/orders/${order.id}/confirm-payment`);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
       showToast(`주문 ${order.id} 입금이 확인되었습니다`, 'success');
 
       // Refetch orders to update the list
