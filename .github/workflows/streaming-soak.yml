@@ -111,7 +111,7 @@ jobs:
           node-version: "20"
 
       - name: Setup SSH Key
-        if: ${{ secrets.STAGING_SSH_KEY != '' || inputs.ssh_host != '' || vars.STAGING_HOST != '' }}
+        if: ${{ inputs.ssh_host != '' || vars.STAGING_HOST != '' }}
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
