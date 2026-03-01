@@ -1,20 +1,18 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ProductCard } from '@/components/home/ProductCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
-import { getProducts } from '@/lib/api/products';
+import { getProducts, getLiveDeals, getStoreProducts } from '@/lib/api/products';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { FloatingNav } from '@/components/layout/FloatingNav';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { ProductGridSkeleton } from '@/components/common/Skeleton';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Search } from 'lucide-react';
 
-// ── Fallback mock data ──
 interface ShopProduct {
   id: string;
   name: string;
@@ -27,150 +25,56 @@ interface ShopProduct {
   discountRate: number;
 }
 
-const MOCK_PRODUCTS: ShopProduct[] = [
-  {
-    id: '1',
-    name: 'Chic Evening Bag',
-    price: 129000,
-    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
-    stock: 10,
-    status: ProductStatus.AVAILABLE,
-    isNew: true,
-    discountRate: 0,
-  },
-  {
-    id: '2',
-    name: 'Pro Audio Pods',
-    price: 62300,
-    originalPrice: 89000,
-    imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
-    stock: 25,
-    status: ProductStatus.AVAILABLE,
-    isNew: false,
-    discountRate: 30,
-  },
-  {
-    id: '3',
-    name: 'Handmade Tableware',
-    price: 45000,
-    imageUrl: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500&q=80',
-    stock: 15,
-    status: ProductStatus.AVAILABLE,
-    isNew: false,
-    discountRate: 0,
-  },
-  {
-    id: '4',
-    name: 'Smart Fitness Watch',
-    price: 199000,
-    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-    stock: 8,
-    status: ProductStatus.AVAILABLE,
-    isNew: false,
-    discountRate: 0,
-  },
-  {
-    id: '5',
-    name: 'Premium Leather Wallet',
-    price: 67150,
-    originalPrice: 79000,
-    imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
-    stock: 20,
-    status: ProductStatus.AVAILABLE,
-    isNew: true,
-    discountRate: 15,
-  },
-  {
-    id: '6',
-    name: 'Wireless Keyboard',
-    price: 119200,
-    originalPrice: 149000,
-    imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80',
-    stock: 12,
-    status: ProductStatus.AVAILABLE,
-    isNew: false,
-    discountRate: 20,
-  },
-  {
-    id: '7',
-    name: 'Designer Sunglasses',
-    price: 159000,
-    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500&q=80',
-    stock: 18,
-    status: ProductStatus.AVAILABLE,
-    isNew: true,
-    discountRate: 0,
-  },
-  {
-    id: '8',
-    name: 'Ceramic Coffee Mug Set',
-    price: 32000,
-    imageUrl: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=500&q=80',
-    stock: 30,
-    status: ProductStatus.AVAILABLE,
-    isNew: false,
-    discountRate: 0,
-  },
-];
+const convertProduct = (p: Product): ShopProduct => ({
+  id: p.id,
+  name: p.name,
+  price: p.price as number,
+  originalPrice: p.originalPrice as number | undefined,
+  imageUrl: p.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+  stock: p.stock,
+  status: p.status,
+  discountRate: (p.discountRate as number | undefined) ?? 0,
+  isNew: p.isNew ?? false,
+});
 
 export default function ShopPage() {
-  return (
-    <Suspense>
-      <ShopPageContent />
-    </Suspense>
-  );
-}
-
-function ShopPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
-  const [products, setProducts] = useState<ShopProduct[]>([]);
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [pastProducts, setPastProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('latest');
-
-  const filters = [
-    { id: 'all', label: '전체' },
-    { id: 'sale', label: 'SALE' },
-    { id: 'new', label: 'NEW' },
-    { id: 'popular', label: '인기' },
-  ];
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchAllProducts() {
       try {
         setLoading(true);
+        const combinedProducts: ShopProduct[] = [];
 
-        // Try API first, fallback to mock
-        let fetchedProducts: ShopProduct[];
+        // 1. 지난 라이브 상품 (종료된 스트림의 상품)
         try {
-          const apiProducts = await getProducts();
-          if (apiProducts && apiProducts.length > 0) {
-            fetchedProducts = apiProducts.map((p) => ({
-              id: p.id,
-              name: p.name,
-              price: p.price,
-              originalPrice: p.originalPrice,
-              imageUrl:
-                p.imageUrl ||
-                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
-              stock: p.stock,
-              status: p.status,
-              discountRate: p.discountRate ?? 0,
-              isNew: p.isNew ?? false,
-            }));
-          } else {
-            fetchedProducts = MOCK_PRODUCTS;
+          const storeData = await getStoreProducts(1, 12);
+          if (storeData?.data) {
+            combinedProducts.push(...storeData.data.map(convertProduct));
           }
-        } catch {
-          console.warn('API /products failed, using mock data');
-          fetchedProducts = MOCK_PRODUCTS;
+        } catch (e) {
+          console.warn('Failed to fetch store products:', e);
         }
 
-        setProducts(fetchedProducts);
+        // 2. 일반 상품 (streamKey 없는 상품)
+        try {
+          const allProducts = await getProducts();
+          if (allProducts && allProducts.length > 0) {
+            // streamKey가 없는 상품들만 필터링
+            const generalOnly = allProducts.filter((p) => !p.streamKey).map(convertProduct);
+            combinedProducts.push(...generalOnly);
+          }
+        } catch (e) {
+          console.warn('Failed to fetch general products:', e);
+        }
+
+        // 중복 제거 (ID 기준)
+        const uniqueProducts = Array.from(new Map(combinedProducts.map((p) => [p.id, p])).values());
+        setPastProducts(uniqueProducts);
       } catch (err) {
         setError(err instanceof Error ? err.message : '상품을 불러오는데 실패했습니다');
       } finally {
@@ -178,26 +82,16 @@ function ShopPageContent() {
       }
     }
 
-    fetchProducts();
+    fetchAllProducts();
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
   }, []);
 
-  const filteredProducts = products
-    .filter((product) => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      if (activeFilter === 'sale') return matchesSearch && (product.discountRate ?? 0) > 0;
-      if (activeFilter === 'new') return matchesSearch && product.isNew;
-      return matchesSearch;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price-low') return a.price - b.price;
-      if (sortBy === 'price-high') return b.price - a.price;
-      if (sortBy === 'discount') return (b.discountRate ?? 0) - (a.discountRate ?? 0);
-      return 0;
-    });
+  const filterProducts = (products: ShopProduct[]): ShopProduct[] => {
+    return products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  };
 
   const handleProductClick = (productId: string) => {
     router.push(`/products/${productId}`);
@@ -208,7 +102,7 @@ function ShopPageContent() {
       <>
         <main className="min-h-screen bg-primary-black pb-bottom-nav">
           <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
-            <ProductGridSkeleton count={6} />
+            <ProductGridSkeleton count={12} />
           </div>
         </main>
         <BottomTabBar />
@@ -220,35 +114,8 @@ function ShopPageContent() {
     return (
       <>
         <main className="min-h-screen bg-primary-black pb-bottom-nav">
-          <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-error-bg flex items-center justify-center">
-                  <svg
-                    width="40"
-                    height="40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#DC2626"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                </div>
-                <p className="text-xl font-bold text-error mb-2">오류가 발생했습니다</p>
-                <p className="text-body text-secondary-text mb-6">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="bg-hot-pink text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-opacity active:scale-95 shadow-hot-pink"
-                >
-                  다시 시도
-                </button>
-              </div>
-            </div>
+          <div className="w-full px-4 py-6">
+            <EmptyState title="오류 발생" description={error} />
           </div>
         </main>
         <BottomTabBar />
@@ -258,144 +125,62 @@ function ShopPageContent() {
 
   return (
     <>
-      <main className="min-h-screen bg-primary-black text-primary-text pb-bottom-nav">
-        <div className="w-full md:max-w-screen-xl md:mx-auto">
-          {/* Header */}
-          <header className="sticky top-0 z-50 bg-primary-black/80 backdrop-blur-xl border-b border-[var(--border-color)]/30">
-            <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl gradient-hot-pink flex items-center justify-center shadow-hot-pink">
-                    <span className="text-white font-black text-sm">D</span>
-                  </div>
-                  <h1 className="text-2xl font-black bg-gradient-to-r from-hot-pink to-[#7928CA] bg-clip-text text-transparent">
-                    Shop
-                  </h1>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ThemeToggle />
-                  <button
-                    onClick={() => router.push('/cart')}
-                    className="relative w-11 h-11 rounded-full glass flex items-center justify-center hover:border-hot-pink/50 transition-all active:scale-95"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="9" cy="21" r="1" />
-                      <circle cx="20" cy="21" r="1" />
-                      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <SearchBar
-                defaultValue={initialQuery}
-                onChange={handleSearchChange}
-                placeholder="상품 검색..."
-              />
-            </div>
-
-            {/* Filter tabs */}
-            <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-none">
-              {filters.map((filter) => (
-                <button
-                  key={filter.id}
-                  onClick={() => setActiveFilter(filter.id)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${
-                    activeFilter === filter.id
-                      ? 'bg-gradient-to-r from-hot-pink to-[#7928CA] text-white shadow-hot-pink scale-105'
-                      : 'bg-content-bg text-secondary-text border border-[var(--border-color)] hover:border-hot-pink/40 hover:text-primary-text'
-                  }`}
-                >
-                  <span>{filter.label}</span>
-                </button>
-              ))}
-
-              {/* Sort dropdown */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="ml-auto px-3 py-2 rounded-full text-sm bg-content-bg text-secondary-text border border-[var(--border-color)] appearance-none cursor-pointer hover:border-hot-pink/30 transition-colors font-semibold"
-              >
-                <option value="latest">최신순</option>
-                <option value="price-low">낮은가격순</option>
-                <option value="price-high">높은가격순</option>
-                <option value="discount">할인율순</option>
-              </select>
-            </div>
-          </header>
-
-          {/* Results count + active filter badge */}
-          <div className="px-4 py-3 flex items-center justify-between">
-            <p className="text-sm text-secondary-text font-medium">
-              <span className="text-primary-text font-bold">{filteredProducts.length}</span>개의
-              상품
-              {searchQuery && (
-                <span className="text-hot-pink ml-1 font-semibold">&quot;{searchQuery}&quot;</span>
-              )}
-            </p>
-            {activeFilter !== 'all' && (
-              <button
-                onClick={() => setActiveFilter('all')}
-                className="text-xs text-hot-pink bg-hot-pink/10 px-3 py-1 rounded-full font-semibold border border-hot-pink/20 hover:bg-hot-pink/20 transition-colors"
-              >
-                필터 초기화
-              </button>
-            )}
+      <FloatingNav />
+      <main className="min-h-screen bg-primary-black pb-bottom-nav">
+        <div className="w-full px-4 py-6 md:max-w-screen-xl md:mx-auto">
+          {/* Search Bar */}
+          <div className="mb-6">
+            <SearchBar
+              defaultValue={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="상품 검색..."
+            />
           </div>
 
-          {/* Product Grid */}
-          <div className="px-4">
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                {filteredProducts.map((product, index) => (
-                  <div
+          {/* 📅 Scheduled Lives Section */}
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <span>📅</span>곧 시작하는 라이브
+            </h2>
+            <div className="p-8 bg-gray-900 rounded-lg text-center border border-gray-800">
+              <p className="text-gray-400 mb-2">
+                놓치지 마세요! 알림을 설정하고 특가 혜택을 받으세요
+              </p>
+              <p className="text-gray-500 text-sm">현재 예정된 라이브가 없습니다</p>
+            </div>
+          </section>
+
+          {/* 📦 Past Products Section */}
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <span>📦</span>
+              지난 상품 목록
+            </h2>
+            <p className="text-gray-400 text-sm mb-4">이전 라이브 및 일반 상품 목록</p>
+            {pastProducts.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {filterProducts(pastProducts).map((product) => (
+                  <ProductCard
                     key={product.id}
-                    className="animate-stagger-fade"
-                    style={{ animationDelay: `${index * 60}ms` }}
-                  >
-                    <ProductCard
-                      id={product.id}
-                      name={product.name}
-                      price={product.price}
-                      originalPrice={product.originalPrice}
-                      imageUrl={
-                        product.imageUrl ||
-                        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80'
-                      }
-                      isNew={product.isNew}
-                      discount={product.discountRate}
-                      onClick={() => handleProductClick(product.id)}
-                    />
-                  </div>
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    originalPrice={product.originalPrice}
+                    imageUrl={product.imageUrl}
+                    isNew={product.isNew}
+                    discount={product.discountRate}
+                    onClick={() => handleProductClick(product.id)}
+                  />
                 ))}
               </div>
-            ) : searchQuery ? (
-              <EmptyState
-                icon={Search}
-                title="검색 결과 없음"
-                description={`'${searchQuery}'에 대한 결과가 없습니다`}
-              />
             ) : (
-              <EmptyState
-                title="등록된 상품이 없습니다"
-                description="곧 새로운 상품이 등록됩니다"
-              />
+              <EmptyState title="상품이 없습니다" description="현재 판매 중인 상품이 없습니다." />
             )}
-          </div>
+          </section>
         </div>
       </main>
-
-      <FloatingNav />
       <BottomTabBar />
+      <ThemeToggle />
     </>
   );
 }
