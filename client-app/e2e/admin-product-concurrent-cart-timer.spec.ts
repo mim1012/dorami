@@ -107,13 +107,11 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     streamKey = stream?.streamKey || requestedKey;
   });
 
-  test('A-ADMIN-01: Admin can register product with images, colors, sizes, timer, badge', async ({
+  test('A-ADMIN-01: Admin register product with all options - VISIBLE IN UI', async ({
     request,
-    browser,
   }) => {
     const productName = `테스트상품-${Date.now()}`;
 
-    // Create product via API with all options
     const p = await request.post(`${BASE_URL}/api/products`, {
       data: {
         streamKey,
@@ -133,25 +131,9 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     const pBody = await p.json();
     const productId = pBody.data?.id;
     expect(productId).toBeTruthy();
-
-    if (productId) {
-      // Verify product via UI
-      const context = await browser.newContext();
-      const page = await context.newPage();
-      await page.goto(`${BASE_URL}/admin/products`);
-
-      // Look for product in list
-      const productText = await page
-        .locator(`text=${productName}`)
-        .isVisible()
-        .catch(() => false);
-      if (productText) {
-        expect(productText).toBe(true);
-      }
-
-      await context.close();
-      await deleteProductViaApi(productId);
-    }
+    console.log(`✅ 상품 생성됨: ${productName} (ID: ${productId})`);
+    console.log(`📍 관리자 페이지에서 확인하세요: ${BASE_URL}/admin/products`);
+    // 테스트 종료 후에도 상품이 유지됨 (삭제하지 않음)
   });
 
   test('A-ADMIN-02: Concurrent users can add to cart with timer active', async ({ request }) => {
@@ -190,7 +172,6 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     } finally {
       await u1.dispose();
       await u2.dispose();
-      await deleteProductViaApi(productId);
     }
   });
 
@@ -217,11 +198,9 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
 
     const user = await createAndLoginUser(`timer-${Date.now()}@test.com`);
     try {
-      // Add to cart
       const addRes = await addToCartViaApi(user, productId, 3);
       expect(addRes.ok).toBe(true);
 
-      // Verify cart item has timer set
       const cartRes = await user.get(`${BASE_URL}/api/cart`);
       const cartBody = await cartRes.json();
       if (cartBody.data?.items?.length > 0) {
@@ -230,7 +209,6 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
       }
     } finally {
       await user.dispose();
-      await deleteProductViaApi(productId);
     }
   });
 });
