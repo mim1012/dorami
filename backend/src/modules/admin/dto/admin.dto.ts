@@ -79,9 +79,18 @@ export class GetUsersQueryDto {
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => {
-    if (value == null) return undefined;
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
     return [value];
   })
   status?: string[];
@@ -242,9 +251,18 @@ export class GetOrdersQueryDto {
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => {
-    if (value == null) return undefined;
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
     return [value];
   })
   orderStatus?: string[];
@@ -254,9 +272,18 @@ export class GetOrdersQueryDto {
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => {
-    if (value == null) return undefined;
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
     return [value];
   })
   paymentStatus?: string[];
@@ -266,9 +293,18 @@ export class GetOrdersQueryDto {
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => {
-    if (value == null) return undefined;
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
     return [value];
   })
   shippingStatus?: string[];
@@ -499,13 +535,7 @@ export class UpdateNotificationTemplateDto {
 
 export class UpdateOrderStatusDto {
   @IsString()
-  @IsEnum([
-    'PENDING_PAYMENT',
-    'PAYMENT_CONFIRMED',
-    'SHIPPED',
-    'DELIVERED',
-    'CANCELLED',
-  ])
+  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
   status!: string;
 }
 
@@ -534,4 +564,3 @@ export interface BulkShippingNotificationResult {
     error?: string;
   }[];
 }
-
