@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED_PATHS = ['/admin', '/live/', '/cart', '/checkout', '/orders', '/alerts'];
+const PROTECTED_PATHS = [
+  '/admin',
+  '/live/',
+  '/cart',
+  '/checkout',
+  '/orders',
+  '/alerts',
+  '/my-page',
+];
 const ADMIN_PATHS = ['/admin'];
 
 /**
@@ -63,6 +71,12 @@ export function middleware(request: NextRequest) {
     return redirectToLogin(request, pathname);
   }
 
+  // /my-page 접근 시 admin은 /admin으로 리다이렉트
+  const isMyPage = pathname.startsWith('/my-page');
+  if (isMyPage && payload.role === 'ADMIN') {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
   // Check admin role for admin-only routes
   const isAdminPath = ADMIN_PATHS.some((path) => pathname.startsWith(path));
   if (isAdminPath && payload.role !== 'ADMIN') {
@@ -73,5 +87,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/live/:path*', '/cart', '/checkout', '/orders/:path*', '/alerts'],
+  matcher: [
+    '/admin/:path*',
+    '/live/:path*',
+    '/cart',
+    '/checkout',
+    '/orders/:path*',
+    '/alerts',
+    '/my-page',
+    '/my-page/:path*',
+  ],
 };
