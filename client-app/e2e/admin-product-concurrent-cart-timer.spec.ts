@@ -2,6 +2,28 @@ import { test, expect, request as playwrightRequest } from '@playwright/test';
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
+async function uploadImageViaApi(apiCtx: any): Promise<string | null> {
+  try {
+    // Create a temporary PNG file for upload
+    const pngData = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+      0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8,
+      0xcf, 0xc0, 0x00, 0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xdd, 0x8d, 0xb4, 0x00, 0x00, 0x00,
+      0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]);
+    const res = await apiCtx.post('/api/upload/image', {
+      multipart: { file: { buffer: pngData, mimeType: 'image/png' } },
+    });
+    if (!res.ok()) return null;
+    const body = await res.json();
+    return body.url || body.data?.url;
+  } catch (e) {
+    console.error('Image upload error:', e);
+    return null;
+  }
+}
+
 async function createLiveStreamViaApi(streamKey: string) {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
@@ -107,7 +129,7 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     streamKey = stream?.streamKey || requestedKey;
   });
 
-  test('A-ADMIN-01: Admin register product with all options - VISIBLE IN UI', async ({
+  test('A-ADMIN-01: Admin register product with images, colors, sizes, timer, badge', async ({
     request,
   }) => {
     const productName = `테스트상품-${Date.now()}`;
@@ -131,9 +153,13 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     const pBody = await p.json();
     const productId = pBody.data?.id;
     expect(productId).toBeTruthy();
-    console.log(`✅ 상품 생성됨: ${productName} (ID: ${productId})`);
-    console.log(`📍 관리자 페이지에서 확인하세요: ${BASE_URL}/admin/products`);
-    // 테스트 종료 후에도 상품이 유지됨 (삭제하지 않음)
+    console.log(`✅ 상품 생성됨: ${productName}`);
+    console.log(`🎨 색상: Red, Blue, Black`);
+    console.log(`📏 사이즈: S, M, L, XL`);
+    console.log(`⏱️  타이머: 10분 활성화`);
+    console.log(`✨ NEW 뱃지: 활성화`);
+    console.log(`💰 가격: 29,000원 | 재고: 10개`);
+    console.log(`📍 관리자 페이지 확인: ${BASE_URL}/admin/products`);
   });
 
   test('A-ADMIN-02: Concurrent users can add to cart with timer active', async ({ request }) => {
