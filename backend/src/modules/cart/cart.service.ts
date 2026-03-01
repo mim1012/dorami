@@ -265,18 +265,30 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
-    const reservedQuantity = await this.getReservedQuantity(cartItem.productId);
-    const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
+    const updatedItem = await this.prisma.$transaction(async (tx) => {
+      // Re-check stock within transaction to prevent TOCTOU race condition
+      const reservedQuantity = await this.getReservedQuantityInTransaction(tx, cartItem.productId);
+      const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
 
-    if (availableStock < updateDto.quantity) {
-      throw new BadRequestException(
-        `Insufficient stock. Available: ${availableStock}, Requested: ${updateDto.quantity}`,
-      );
-    }
+      if (availableStock < updateDto.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${availableStock}, Requested: ${updateDto.quantity}`,
+        );
+      }
 
-    const updatedItem = await this.prisma.cart.update({
-      where: { id: cartItemId },
-      data: { quantity: updateDto.quantity },
+      // Refresh timer on quantity change to match addToCart behaviour
+      const newExpiresAt = product.timerEnabled
+        ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+        : null;
+
+      return tx.cart.update({
+        where: { id: cartItemId },
+        data: {
+          quantity: updateDto.quantity,
+          timerEnabled: product.timerEnabled,
+          expiresAt: newExpiresAt,
+        },
+      });
     });
 
     this.logger.log(`Updated cart item ${cartItemId} quantity to ${updateDto.quantity}`);
