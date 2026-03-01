@@ -510,13 +510,20 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    // Get products from ended (OFFLINE) live streams
+    // Get products from OFFLINE streams (past live) or with no stream assigned
     const products = await this.prisma.product.findMany({
       where: {
-        liveStream: {
-          status: 'OFFLINE',
-        },
         status: 'AVAILABLE',
+        OR: [
+          {
+            liveStream: {
+              status: 'OFFLINE',
+            },
+          },
+          {
+            streamKey: null,
+          },
+        ],
       },
       include: {
         liveStream: {
@@ -526,21 +533,24 @@ export class ProductsService {
           },
         },
       },
-      orderBy: {
-        liveStream: {
-          endedAt: 'desc',
-        },
-      },
+      orderBy: [{ createdAt: 'desc' }],
       skip,
       take: limit,
     });
 
     const total = await this.prisma.product.count({
       where: {
-        liveStream: {
-          status: 'OFFLINE',
-        },
         status: 'AVAILABLE',
+        OR: [
+          {
+            liveStream: {
+              status: 'OFFLINE',
+            },
+          },
+          {
+            streamKey: null,
+          },
+        ],
       },
     });
 

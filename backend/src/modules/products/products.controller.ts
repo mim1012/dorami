@@ -90,7 +90,7 @@ export class ProductsController {
     data: ProductResponseDto[];
     meta: { total: number; page: number; totalPages: number };
   }> {
-    const { page: pageNum, limit: limitNum } = parsePagination(page, limit);
+    const { page: pageNum, limit: limitNum } = parsePagination(page, limit, { limit: 8 });
 
     const result = await this.productsService.getStoreProducts(pageNum, limitNum);
 

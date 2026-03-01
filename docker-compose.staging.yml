@@ -122,7 +122,7 @@ services:
       - certbot_www:/var/www/certbot:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

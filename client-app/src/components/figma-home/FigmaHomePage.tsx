@@ -1,18 +1,25 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { Header } from './Header';
 import { LiveBanner } from './LiveBanner';
-import { LiveExclusiveDeals } from './LiveExclusiveDeals';
 import { UpcomingLives } from './UpcomingLives';
-import { PopularProducts } from './PopularProducts';
+import { PastProducts } from './PastProducts';
 import { Footer } from './Footer';
 import { useMainPageData } from '@/lib/hooks/queries/use-mainpage';
+import { getPastProducts } from '@/lib/api/mainpage';
 
 export function FigmaHomePage() {
-  const { data, isLoading, isError } = useMainPageData();
-  const liveDeals = data?.liveDeals ?? [];
+  const { data, isLoading } = useMainPageData();
   const upcomingLives = data?.upcomingLives ?? [];
-  const popularProducts = data?.popularProducts ?? [];
+
+  const { data: pastData, isLoading: isPastLoading } = useQuery({
+    queryKey: ['past-products'],
+    queryFn: () => getPastProducts(1, 8),
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+  const pastProducts = pastData?.data ?? [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -23,13 +30,10 @@ export function FigmaHomePage() {
           <LiveBanner />
         </section>
         <section>
-          <LiveExclusiveDeals liveDeals={liveDeals} isLoading={isLoading} />
-        </section>
-        <section>
           <UpcomingLives upcomingLives={upcomingLives} isLoading={isLoading} />
         </section>
         <section>
-          <PopularProducts products={popularProducts} isLoading={isLoading} isError={isError} />
+          <PastProducts products={pastProducts} isLoading={isPastLoading} />
         </section>
       </main>
 

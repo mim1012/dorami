@@ -88,3 +88,6 @@ temp/
 tmp/
 *.tmp
 nul
+
+# Generated/temporary directories
+dorami/
