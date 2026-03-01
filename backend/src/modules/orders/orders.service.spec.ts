@@ -251,7 +251,7 @@ describe('OrdersService - createOrderFromCart', () => {
       expect(result.id).toMatch(/^ORD-\d{8}-\d{5}$/);
       expect(result.userId).toBe('user-123');
       expect(result.status).toBe('PENDING_PAYMENT');
-      expect(result.total).toBe(265);
+      expect(result.total).toBe('265');
       expect(result.items).toHaveLength(2);
       expect(mockTransaction).toHaveBeenCalledTimes(1);
     });
@@ -275,9 +275,9 @@ describe('OrdersService - createOrderFromCart', () => {
       const result = await service.createOrderFromCart('user-123');
 
       // Assert
-      expect(result.subtotal).toBe(250); // (100*2) + (50*1)
-      expect(result.shippingFee).toBe(15); // 10 + 5
-      expect(result.total).toBe(265); // 250 + 15
+      expect(result.subtotal).toBe('250'); // (100*2) + (50*1)
+      expect(result.shippingFee).toBe('15'); // 10 + 5
+      expect(result.total).toBe('265'); // 250 + 15
     });
 
     it('should update cart items status to COMPLETED', async () => {

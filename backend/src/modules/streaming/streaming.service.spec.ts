@@ -510,7 +510,7 @@ describe('StreamingService', () => {
         expiresAt: newExpiresAt.toISOString(),
       });
 
-      expect(result.expiresAt).toEqual(newExpiresAt);
+      expect(result.expiresAt).toEqual(newExpiresAt.toISOString());
       expect(prismaService.liveStream.update).toHaveBeenCalledWith({
         where: { id: 'stream-1' },
         data: { expiresAt: expect.any(Date) },

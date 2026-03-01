@@ -157,7 +157,7 @@ describe('AdminService', () => {
       expect(result.limit).toBe(20);
       expect(result.totalPages).toBe(3); // 47 / 20 = 2.35 → 3 pages
       expect(result.users[0].totalOrders).toBe(0); // Epic 8 placeholder
-      expect(result.users[0].totalPurchaseAmount).toBe(0); // Epic 8 placeholder
+      expect(result.users[0].totalPurchaseAmount).toBe('0'); // Epic 8 placeholder
     });
 
     it('should apply pagination correctly', async () => {
@@ -293,15 +293,15 @@ describe('AdminService', () => {
         email: 'user1@test.com',
         name: 'User One',
         instagramId: '@user_one',
-        createdAt: expect.any(Date),
-        lastLoginAt: expect.any(Date),
+        createdAt: expect.any(String),
+        lastLoginAt: expect.any(String),
         lastPurchaseAt: null,
         phone: undefined,
         shippingAddressSummary: '-',
         status: 'ACTIVE',
         role: 'USER',
         totalOrders: 0,
-        totalPurchaseAmount: 0,
+        totalPurchaseAmount: '0',
       });
     });
 
