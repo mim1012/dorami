@@ -2,38 +2,38 @@ import { IsDateString } from 'class-validator';
 
 export class GetSettlementQueryDto {
   @IsDateString()
-  from: string; // YYYY-MM-DD format
+  from!: string; // YYYY-MM-DD format
 
   @IsDateString()
-  to: string; // YYYY-MM-DD format
+  to!: string; // YYYY-MM-DD format
 }
 
 export class SettlementSummaryDto {
-  totalOrders: number;
-  totalRevenue: number;
-  avgOrderValue: number;
-  totalShippingFee: number;
+  totalOrders!: number;
+  totalRevenue!: number;
+  avgOrderValue!: number;
+  totalShippingFee!: number;
 }
 
 export class SettlementOrderItemDto {
-  orderId: string;
-  orderDate: string; // ISO 8601 format
-  customerId: string; // Instagram ID
-  total: number;
-  paidAt: string; // ISO 8601 format
+  orderId!: string;
+  orderDate!: string; // ISO 8601 format
+  customerId!: string; // Instagram ID
+  total!: number;
+  paidAt!: string; // ISO 8601 format
 }
 
 export class DailyRevenueDto {
-  date: string; // YYYY-MM-DD
-  revenue: number;
-  orderCount: number;
+  date!: string; // YYYY-MM-DD
+  revenue!: number;
+  orderCount!: number;
 }
 
 export class SettlementReportDto {
-  summary: SettlementSummaryDto;
-  orders: SettlementOrderItemDto[];
-  dailyRevenue: DailyRevenueDto[];
-  dateRange: {
+  summary!: SettlementSummaryDto;
+  orders!: SettlementOrderItemDto[];
+  dailyRevenue!: DailyRevenueDto[];
+  dateRange!: {
     from: string;
     to: string;
   };

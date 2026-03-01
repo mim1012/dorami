@@ -8,9 +8,9 @@ let redisClient: Redis | null = null;
 function getRedisClient(): Redis {
   if (!redisClient) {
     redisClient = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      password: process.env.REDIS_PASSWORD || undefined,
+      host: process.env.REDIS_HOST ?? 'localhost',
+      port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+      password: process.env.REDIS_PASSWORD ?? undefined,
       lazyConnect: true,
     });
     redisClient.connect().catch(() => {});
@@ -40,8 +40,8 @@ export async function authenticateSocket(
   jwtService: JwtService,
 ): Promise<AuthenticatedSocket> {
   const token =
-    socket.handshake.auth.token ||
-    socket.handshake.headers.authorization?.split(' ')[1] ||
+    (socket.handshake.auth.token as string | undefined) ??
+    socket.handshake.headers.authorization?.split(' ')[1] ??
     parseCookieToken(socket.handshake.headers.cookie as string | undefined);
 
   if (!token) {
@@ -78,7 +78,7 @@ export async function authenticateSocket(
     // When admin suspends a user, their userId is added to blacklist
     try {
       const redis = getRedisClient();
-      const uid = payload.userId || payload.sub;
+      const uid = (payload.userId ?? payload.sub) as string;
       const isSuspended = await redis.exists(`suspended:${uid}`);
       if (isSuspended === 1) {
         throw new WsException('Account is suspended');

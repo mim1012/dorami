@@ -97,11 +97,17 @@ export enum PointTransactionType {
 // ============================================================================
 
 export interface ShippingAddress {
-  street: string;
+  fullName: string;
+  address1: string;
+  address2?: string;
   city: string;
   state: string;
-  zipCode: string;
-  country: string;
+  zip: string;
+  phone?: string;
+  street?: string;
+  zipCode?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 export interface Pagination {
@@ -731,3 +737,4 @@ export function isReservationExpired(reservation: Reservation): boolean {
 // ============================================================================
 
 export * from './events';
+export * from './mainpage';

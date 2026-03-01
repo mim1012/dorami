@@ -18,7 +18,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || [
+    origin: process.env.CORS_ORIGINS?.split(',') ?? [
       'http://localhost:3000',
       'http://localhost:3001',
     ],
@@ -28,7 +28,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 })
 export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private logger: LoggerService;
 
@@ -55,11 +55,11 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
       // Extract and verify JWT token — auth.token, Authorization header, or HTTP-only cookie
       const cookieHeader = client.handshake.headers.cookie as string | undefined;
       const cookieToken = cookieHeader
-        ? (cookieHeader.match(/(?:^|;\s*)accessToken=([^;]*)/) || [])[1] || null
+        ? ((cookieHeader.match(/(?:^|;\s*)accessToken=([^;]*)/) ?? [])[1] ?? null)
         : null;
       const token =
-        client.handshake.auth.token ||
-        client.handshake.headers.authorization?.split(' ')[1] ||
+        (client.handshake.auth.token as string | undefined) ??
+        client.handshake.headers.authorization?.split(' ')[1] ??
         cookieToken;
 
       if (!token) {
@@ -80,7 +80,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
         userId: payload.sub,
       });
     } catch (error) {
-      this.logger.error(`Authentication failed for client ${client.id}`, error.message);
+      this.logger.error(
+        `Authentication failed for client ${client.id}`,
+        error instanceof Error ? error.message : String(error),
+      );
       client.emit('error', { message: 'Authentication failed' });
       client.disconnect();
     }

@@ -105,6 +105,49 @@ export class ProductsController {
   }
 
   /**
+   * Get live deal products from the current active live stream (Public)
+   * Note: This route must be before GET :id to avoid 'live-deals' being treated as an ID
+   */
+  @Public()
+  @Get('live-deals')
+  @ApiOperation({ summary: 'Get live deal products from active live stream (Public)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Live deal products retrieved successfully (null if no active stream)',
+  })
+  async getLiveDeals(): Promise<{
+    products: ProductResponseDto[];
+    streamTitle: string;
+    streamKey: string;
+  } | null> {
+    return this.productsService.getLiveDeals();
+  }
+
+  /**
+   * Get popular products sorted by confirmed sales count (Public)
+   * Note: This route must be before GET :id to avoid 'popular' being treated as an ID
+   */
+  @Public()
+  @Get('popular')
+  @ApiOperation({ summary: 'Get popular products sorted by sales count (Public)' })
+  @ApiQuery({ name: 'page', description: 'Page number', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', description: 'Items per page', required: false, example: 8 })
+  @ApiResponse({ status: 200, description: 'Popular products retrieved successfully' })
+  async getPopularProducts(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<{
+    data: (ProductResponseDto & { soldCount: number })[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const { page: pageNum, limit: limitNum } = parsePagination(page, limit, {
+      limit: 8,
+      maxLimit: 50,
+    });
+    return this.productsService.getPopularProducts(pageNum, limitNum);
+  }
+
+  /**
    * Epic 5 Story 5.2, 5.3: Get products by stream key (Public)
    * Query params: streamKey (required), status (optional)
    */
@@ -149,7 +192,11 @@ export class ProductsController {
   @AdminOnly()
   @ApiOperation({ summary: 'Duplicate a product (Admin only)' })
   @ApiParam({ name: 'id', description: 'Product ID to duplicate' })
-  @ApiResponse({ status: 201, description: 'Product duplicated successfully', type: ProductResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Product duplicated successfully',
+    type: ProductResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
   async duplicate(@Param('id') id: string): Promise<ProductResponseDto> {
     return this.productsService.duplicate(id);

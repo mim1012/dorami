@@ -15,15 +15,55 @@ import {
   LogOut,
   Menu,
   X,
+  ArrowLeft,
+  BarChart3,
+  Calendar,
 } from 'lucide-react';
 
 const menuItems = [
-  { name: '대시보드', icon: LayoutDashboard, href: '/admin/dashboard' },
-  { name: '방송 관리', icon: Radio, href: '/admin/broadcasts' },
-  { name: '상품 관리', icon: ShoppingBag, href: '/admin/products' },
-  { name: '주문 관리', icon: Package, href: '/admin/orders', badgeKey: 'pendingPayments' },
-  { name: '사용자 관리', icon: Users, href: '/admin/users' },
-  { name: '설정', icon: Settings, href: '/admin/settings' },
+  {
+    name: '대시보드',
+    icon: LayoutDashboard,
+    href: '/admin/dashboard',
+    aliases: ['/admin/overview'],
+    badgeKey: undefined,
+  },
+  {
+    name: '라이브 관리',
+    icon: Calendar,
+    href: '/admin/broadcasts',
+    aliases: ['/admin/live-management'],
+    badgeKey: undefined,
+  },
+  {
+    name: '상품관리',
+    icon: ShoppingBag,
+    href: '/admin/products',
+    aliases: ['/admin/product-management'],
+    badgeKey: undefined,
+  },
+  {
+    name: '주문관리',
+    icon: Package,
+    href: '/admin/orders',
+    aliases: ['/admin/order-management'],
+    badgeKey: undefined,
+  },
+  {
+    name: '사용자관리',
+    icon: Users,
+    href: '/admin/users',
+    aliases: ['/admin/customers'],
+    badgeKey: undefined,
+  },
+  {
+    name: '분석',
+    icon: BarChart3,
+    href: '/admin/analystic',
+    aliases: ['/admin/analytics'],
+    badgeKey: undefined,
+  },
+  { name: '설정', icon: Settings, href: '/admin/settings', badgeKey: undefined },
 ];
 
 export default function Sidebar() {
@@ -32,7 +72,6 @@ export default function Sidebar() {
   const { logout } = useAuth();
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
 
-  // Fetch pending payments count
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
@@ -46,17 +85,16 @@ export default function Sidebar() {
     };
 
     fetchPendingCount();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <>
-      {/* Mobile Menu Button (Hamburger) */}
+      {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-2 bg-content-bg border border-gray-300 rounded-lg text-primary-text hover:bg-gray-100 transition-colors"
+        className="lg:hidden fixed top-4 left-4 z-[60] p-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -73,73 +111,83 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={`
-                w-64 bg-white dark:bg-[#0A0A0A] border-r border-gray-200 dark:border-[#2A2A2A] flex flex-col h-screen fixed left-0 top-0 z-50 shadow-lg
-                transition-transform duration-300 ease-in-out
-                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-            `}
+          fixed left-0 top-0 h-[100dvh] w-[240px] bg-white border-r border-gray-200 flex flex-col z-50
+          transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
       >
-        {/* Logo Area */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]">
-          <Link
-            href="/"
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-          >
-            <div className="w-8 h-8 bg-hot-pink rounded-full flex items-center justify-center">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-4 sm:px-6 border-b border-gray-200">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-400 flex items-center justify-center">
               <Radio className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              Doremi<span className="text-hot-pink">Live</span>
-            </span>
+            <div>
+              <h1 className="font-bold text-gray-900 leading-tight">
+                Doremi<span className="text-pink-500">Live</span>
+              </h1>
+              <p className="text-xs text-gray-500 leading-tight">Admin</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Home Link */}
+        <div className="px-3 pt-4 pb-3 border-b border-gray-200">
+          <Link
+            href="/"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-pink-50 hover:text-pink-500 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" strokeWidth={2} />
+            <span className="text-sm font-medium">홈화면으로</span>
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto bg-white dark:bg-[#0A0A0A]">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-hot-pink/10 text-hot-pink'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1A1A] hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <item.icon
-                  className={`w-5 h-5 transition-colors ${
-                    isActive
-                      ? 'text-hot-pink'
-                      : 'text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
-                  }`}
-                />
-                <span className="font-medium">{item.name}</span>
-                <div className="ml-auto flex items-center gap-2">
-                  {item.badgeKey === 'pendingPayments' && pendingPaymentsCount > 0 && (
-                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-warning rounded-full">
-                      {pendingPaymentsCount > 99 ? '99+' : pendingPaymentsCount}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          <ul className="space-y-1">
+            {menuItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(item.href + '/') ||
+                (item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + '/')) ??
+                  false) ||
+                (item.href === '/admin/dashboard' && pathname === '/admin');
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                      isActive ? 'bg-pink-50 text-pink-500' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <item.icon className="w-5 h-5 flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                    <span className={`text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                      {item.name}
                     </span>
-                  )}
-                  {isActive && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-hot-pink shadow-[0_0_8px_rgba(255,0,122,0.8)]" />
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                    {item.badgeKey === 'pendingPayments' && pendingPaymentsCount > 0 && (
+                      <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-pink-500 rounded-full">
+                        {pendingPaymentsCount > 99 ? '99+' : pendingPaymentsCount}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
 
-        {/* Footer / User Profile */}
-        <div className="p-4 border-t border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A]">
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 space-y-2">
           <button
             onClick={logout}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1A1A] hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
           >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">로그아웃</span>
+            <LogOut className="w-5 h-5" strokeWidth={2} />
+            <span className="text-sm font-medium">로그아웃</span>
           </button>
+          <p className="text-xs text-gray-400 text-center">v1.0.0</p>
         </div>
       </aside>
     </>

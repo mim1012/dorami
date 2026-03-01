@@ -33,6 +33,11 @@ set -a
 source "$PROJECT_DIR/.env.staging"
 set +a
 
+# docker compose uses base + staging overlay for deterministic parity
+compose() {
+    docker-compose -f "$PROJECT_DIR/docker-compose.base.yml" -f "$PROJECT_DIR/docker-compose.staging.yml" --env-file "$PROJECT_DIR/.env.staging" "$@"
+}
+
 # Function to show help
 show_help() {
     echo "Usage: $0 [command]"
@@ -55,16 +60,14 @@ show_help() {
 # Build images
 build() {
     echo -e "${YELLOW}Building Docker images...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging build
+    compose build
     echo -e "${GREEN}Build complete!${NC}"
 }
 
 # Start services
 up() {
     echo -e "${YELLOW}Starting services...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d
+    compose up -d
     echo -e "${GREEN}Services started!${NC}"
     echo ""
     status
@@ -73,16 +76,14 @@ up() {
 # Start with proxy (for SSL)
 up_with_proxy() {
     echo -e "${YELLOW}Starting services with nginx proxy...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging --profile with-proxy up -d
+    compose --profile with-proxy up -d
     echo -e "${GREEN}Services started with proxy!${NC}"
 }
 
 # Stop services
 down() {
     echo -e "${YELLOW}Stopping services...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging down
+    compose down
     echo -e "${GREEN}Services stopped!${NC}"
 }
 
@@ -94,30 +95,26 @@ restart() {
 
 # Show logs
 logs() {
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging logs -f
+    compose logs -f
 }
 
 # Show status
 status() {
     echo -e "${YELLOW}Service Status:${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging ps
+    compose ps
 }
 
 # Run database migrations
 db_migrate() {
     echo -e "${YELLOW}Running database migrations...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging exec backend npx prisma migrate deploy
+    compose exec backend npx prisma migrate deploy
     echo -e "${GREEN}Migrations complete!${NC}"
 }
 
 # Seed database
 db_seed() {
     echo -e "${YELLOW}Seeding database...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging exec backend npx prisma db seed
+    compose exec backend npx prisma db seed
     echo -e "${GREEN}Seeding complete!${NC}"
 }
 
@@ -129,13 +126,12 @@ ssl_init() {
     fi
 
     echo -e "${YELLOW}Initializing SSL certificates for $DOMAIN...${NC}"
-    cd "$PROJECT_DIR"
 
     # Start nginx temporarily for ACME challenge
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging --profile with-proxy up -d nginx-proxy
+    compose --profile with-proxy up -d nginx-proxy
 
     # Get certificate
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging run --rm certbot certonly \
+    compose run --rm certbot certonly \
         --webroot \
         --webroot-path=/var/www/certbot \
         --email admin@$DOMAIN \
@@ -150,9 +146,8 @@ ssl_init() {
 # Renew SSL certificates
 ssl_renew() {
     echo -e "${YELLOW}Renewing SSL certificates...${NC}"
-    cd "$PROJECT_DIR"
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging run --rm certbot renew
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging exec nginx-proxy nginx -s reload
+    compose run --rm certbot renew
+    compose exec nginx-proxy nginx -s reload
     echo -e "${GREEN}SSL certificates renewed!${NC}"
 }
 
@@ -162,8 +157,7 @@ cleanup() {
     read -p "Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        cd "$PROJECT_DIR"
-        docker-compose -f docker-compose.staging.yml --env-file .env.staging down -v --rmi all
+        compose down -v --rmi all
         echo -e "${GREEN}Cleanup complete!${NC}"
     else
         echo "Cancelled."

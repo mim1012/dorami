@@ -17,10 +17,10 @@ const config: Config = {
         'hot-pink-dark': 'var(--hot-pink-dark)',
         'primary-text': 'var(--primary-text)',
         'secondary-text': 'var(--secondary-text)',
-        'success': 'var(--success)',
-        'error': 'var(--error)',
-        'warning': 'var(--warning)',
-        'info': 'var(--info)',
+        success: 'var(--success)',
+        error: 'var(--error)',
+        warning: 'var(--warning)',
+        info: 'var(--info)',
         'success-bg': 'var(--success-bg)',
         'error-bg': 'var(--error-bg)',
         'warning-bg': 'var(--warning-bg)',
@@ -31,41 +31,48 @@ const config: Config = {
 
       // Typography
       fontFamily: {
-        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+        sans: [
+          'Pretendard',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'system-ui',
+          'Roboto',
+          'sans-serif',
+        ],
       },
       fontSize: {
-        'display': ['28px', { lineHeight: '1.2', fontWeight: '700' }],
-        'h1': ['22px', { lineHeight: '1.3', fontWeight: '700' }],
-        'h2': ['18px', { lineHeight: '1.4', fontWeight: '600' }],
-        'h3': ['16px', { lineHeight: '1.4', fontWeight: '600' }],
-        'subtitle': ['15px', { lineHeight: '1.5', fontWeight: '500' }],
-        'body': ['16px', { lineHeight: '1.5', fontWeight: '400' }],
-        'caption': ['14px', { lineHeight: '1.4', fontWeight: '500' }],
-        'overline': ['11px', { lineHeight: '1.3', fontWeight: '700' }],
-        'small': ['12px', { lineHeight: '1.3', fontWeight: '400' }],
+        display: ['28px', { lineHeight: '1.2', fontWeight: '700' }],
+        h1: ['22px', { lineHeight: '1.3', fontWeight: '700' }],
+        h2: ['18px', { lineHeight: '1.4', fontWeight: '600' }],
+        h3: ['16px', { lineHeight: '1.4', fontWeight: '600' }],
+        subtitle: ['15px', { lineHeight: '1.5', fontWeight: '500' }],
+        body: ['16px', { lineHeight: '1.5', fontWeight: '400' }],
+        caption: ['14px', { lineHeight: '1.4', fontWeight: '500' }],
+        overline: ['11px', { lineHeight: '1.3', fontWeight: '700' }],
+        small: ['12px', { lineHeight: '1.3', fontWeight: '400' }],
       },
 
       // Border Radius
       borderRadius: {
-        'card': '12px',
-        'button': '8px',
-        'small': '4px',
-        'input': '8px',
+        card: '12px',
+        button: '8px',
+        small: '4px',
+        input: '8px',
       },
 
       // Spacing (8px grid system)
       spacing: {
-        '18': '4.5rem',  // 72px
-        '22': '5.5rem',  // 88px
+        '18': '4.5rem', // 72px
+        '22': '5.5rem', // 88px
       },
 
       // Mobile-first Breakpoints
       screens: {
-        'xs': '320px',   // Mobile (Small)
-        'sm': '640px',   // Mobile (Large)
-        'md': '768px',   // Tablet
-        'lg': '1024px',  // Desktop
-        'xl': '1280px',  // Desktop (Large)
+        xs: '320px', // Mobile (Small)
+        sm: '640px', // Mobile (Large)
+        md: '768px', // Tablet
+        lg: '1024px', // Desktop
+        xl: '1280px', // Desktop (Large)
         '2xl': '1536px', // Desktop (XL)
       },
 
@@ -102,10 +109,10 @@ const config: Config = {
 
       // Box Shadow (Light Mode)
       boxShadow: {
-        'hot-pink': '0 0 20px rgba(255, 0, 122, 0.3)',
-        'card': '0 2px 8px rgba(0, 0, 0, 0.08)',
+        'hot-pink': '0 0 20px rgba(255, 77, 141, 0.3)',
+        card: '0 2px 8px rgba(0, 0, 0, 0.08)',
         'card-hover': '0 4px 12px rgba(0, 0, 0, 0.12)',
-        'floating': 'var(--shadow-floating)',
+        floating: 'var(--shadow-floating)',
       },
 
       // Bottom Nav spacing
@@ -114,9 +121,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [
-    require('tailwind-scrollbar')({ nocompatible: true }),
-  ],
+  plugins: [require('tailwind-scrollbar')({ nocompatible: true })],
 };
 
 export default config;

@@ -3,7 +3,6 @@ import Script from 'next/script';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme/theme-context';
 import { QueryProvider } from '@/lib/providers/query-provider';
-import { CartProvider } from '@/lib/contexts/CartContext';
 import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { KakaoInAppBrowserGuard } from '@/components/common/KakaoInAppBrowserGuard';
@@ -21,10 +20,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {/* PWA */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0a0a0a" />
@@ -60,9 +56,7 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <CartProvider>
-                  <main id="main-content">{children}</main>
-                </CartProvider>
+                <div id="main-content">{children}</div>
               </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>

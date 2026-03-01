@@ -92,8 +92,8 @@ export class CartService {
         where: {
           userId,
           productId,
-          color: color || null,
-          size: size || null,
+          color: color ?? null,
+          size: size ?? null,
           status: 'ACTIVE',
         },
       }),
@@ -108,7 +108,7 @@ export class CartService {
     }
 
     // 2. Check stock availability
-    const reservedQuantity = reservedResult._sum.quantity || 0;
+    const reservedQuantity = reservedResult._sum.quantity ?? 0;
     const availableStock = product.quantity - reservedQuantity;
 
     if (availableStock < quantity) {
@@ -195,7 +195,7 @@ export class CartService {
         where: { id: userId },
         select: { instagramId: true },
       });
-      userName = user?.instagramId || '익명';
+      userName = user?.instagramId ?? '익명';
     } catch {
       // Fallback to anonymous
     }
@@ -265,18 +265,30 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
-    const reservedQuantity = await this.getReservedQuantity(cartItem.productId);
-    const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
+    const updatedItem = await this.prisma.$transaction(async (tx) => {
+      // Re-check stock within transaction to prevent TOCTOU race condition
+      const reservedQuantity = await this.getReservedQuantityInTransaction(tx, cartItem.productId);
+      const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
 
-    if (availableStock < updateDto.quantity) {
-      throw new BadRequestException(
-        `Insufficient stock. Available: ${availableStock}, Requested: ${updateDto.quantity}`,
-      );
-    }
+      if (availableStock < updateDto.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${availableStock}, Requested: ${updateDto.quantity}`,
+        );
+      }
 
-    const updatedItem = await this.prisma.cart.update({
-      where: { id: cartItemId },
-      data: { quantity: updateDto.quantity },
+      // Refresh timer on quantity change to match addToCart behaviour
+      const newExpiresAt = product.timerEnabled
+        ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+        : null;
+
+      return tx.cart.update({
+        where: { id: cartItemId },
+        data: {
+          quantity: updateDto.quantity,
+          timerEnabled: product.timerEnabled,
+          expiresAt: newExpiresAt,
+        },
+      });
     });
 
     this.logger.log(`Updated cart item ${cartItemId} quantity to ${updateDto.quantity}`);
@@ -411,7 +423,7 @@ export class CartService {
         timestamp: now,
       });
     } catch (error) {
-      this.logger.error('Failed to expire timed-out carts', error.stack);
+      this.logger.error('Failed to expire timed-out carts', (error as Error).stack);
     }
   }
 
@@ -429,7 +441,7 @@ export class CartService {
       },
     });
 
-    return result._sum.quantity || 0;
+    return result._sum.quantity ?? 0;
   }
 
   /**
@@ -449,7 +461,7 @@ export class CartService {
       },
     });
 
-    return result._sum.quantity || 0;
+    return result._sum.quantity ?? 0;
   }
 
   /**
@@ -463,7 +475,7 @@ export class CartService {
     items: CartItemResponseDto[],
     userId?: string,
   ): Promise<CartSummaryDto> {
-    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
     // Calculate global shipping fee
     let totalShippingFee = 0;
@@ -528,16 +540,16 @@ export class CartService {
     const earliestExpiration =
       expiringItems.length > 0
         ? expiringItems.reduce((earliest, item) => {
-            return new Date(item.expiresAt) < new Date(earliest) ? item.expiresAt : earliest;
+            return new Date(item.expiresAt!) < new Date(earliest!) ? item.expiresAt! : earliest!;
           }, expiringItems[0].expiresAt)
         : undefined;
 
     return {
       items,
       itemCount: items.length,
-      subtotal,
-      totalShippingFee,
-      grandTotal: subtotal + totalShippingFee,
+      subtotal: String(subtotal),
+      totalShippingFee: String(totalShippingFee),
+      grandTotal: String(subtotal + totalShippingFee),
       earliestExpiration,
     };
   }
@@ -597,18 +609,18 @@ export class CartService {
       userId: cartItem.userId,
       productId: cartItem.productId,
       productName: cartItem.productName,
-      price,
+      price: String(price),
       quantity: cartItem.quantity,
-      color: cartItem.color,
-      size: cartItem.size,
-      shippingFee,
+      color: cartItem.color ?? undefined,
+      size: cartItem.size ?? undefined,
+      shippingFee: String(shippingFee),
       timerEnabled: cartItem.timerEnabled,
       expiresAt: cartItem.expiresAt?.toISOString(),
       status: cartItem.status as CartStatus,
       createdAt: cartItem.createdAt.toISOString(),
       updatedAt: cartItem.updatedAt.toISOString(),
-      subtotal,
-      total,
+      subtotal: String(subtotal),
+      total: String(total),
       remainingSeconds,
     };
   }

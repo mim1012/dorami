@@ -36,7 +36,10 @@ export class KakaoTalkClient {
       this.logger.log(`KakaoTalk message sent to user ${userId}`);
       return { success: true };
     } catch (error) {
-      this.logger.error(`Failed to send KakaoTalk message to user ${userId}`, error.message);
+      this.logger.error(
+        `Failed to send KakaoTalk message to user ${userId}`,
+        (error as Error).message,
+      );
       throw error;
     }
   }
@@ -66,7 +69,10 @@ export class KakaoTalkClient {
       this.logger.log(`Custom KakaoTalk message sent to user ${userId}`);
       return { success: true };
     } catch (error) {
-      this.logger.error(`Failed to send custom message to user ${userId}`, error.message);
+      this.logger.error(
+        `Failed to send custom message to user ${userId}`,
+        (error as Error).message,
+      );
       throw error;
     }
   }

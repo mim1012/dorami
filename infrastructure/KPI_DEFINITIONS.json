@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0",
+  "project": "dorami-live-commerce",
+  "created": "2026-02-28",
+  "description": "Machine-readable KPI definitions for performance testing and monitoring",
+
+  "categories": {
+    "streaming_latency": {
+      "description": "End-to-end latency metrics for video delivery",
+      "metrics": {
+        "http_flv_latency_ms": {
+          "name": "HTTP-FLV Glass-to-Glass Latency",
+          "unit": "milliseconds",
+          "target": 3000,
+          "operator": "lte",
+          "measurement": "Time from SRS frame send to player decode (estimated via first-byte + GOP)",
+          "source": "k6_http_req_duration + player_decode_estimate",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "hls_latency_ms": {
+          "name": "HLS Glass-to-Glass Latency",
+          "unit": "milliseconds",
+          "target": 8000,
+          "operator": "lte",
+          "measurement": "Playlist fetch interval + segment duration + player buffer",
+          "source": "k6_custom_metric_hls_latency",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "hls_segment_generation_ms": {
+          "name": "HLS Segment Generation Time",
+          "unit": "milliseconds",
+          "target": 2000,
+          "operator": "lte",
+          "measurement": "Time from keyframe to .ts file availability",
+          "source": "k6_custom_metric_segment_fetch_lag",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "first_frame_flv_ms": {
+          "name": "First Frame Time (HTTP-FLV)",
+          "unit": "milliseconds",
+          "target": 3000,
+          "operator": "lte",
+          "measurement": "TCP connect to first video data received",
+          "source": "k6_http_req_connecting + k6_http_req_waiting",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "first_frame_hls_ms": {
+          "name": "First Frame Time (HLS)",
+          "unit": "milliseconds",
+          "target": 6000,
+          "operator": "lte",
+          "measurement": "Manifest fetch + first segment fetch + decode",
+          "source": "k6_custom_metric_hls_first_frame",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        }
+      }
+    },
+
+    "playback_quality": {
+      "description": "Video playback quality and reliability metrics",
+      "metrics": {
+        "rebuffer_rate_pct": {
+          "name": "Rebuffer Rate",
+          "unit": "percent",
+          "target": 1.0,
+          "operator": "lt",
+          "measurement": "(rebuffer_events / total_play_duration_seconds) * 100",
+          "source": "k6_custom_counter_rebuffer / k6_custom_counter_segments",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike", "soak"]
+        },
+        "rebuffer_ratio_pct": {
+          "name": "Rebuffer Ratio",
+          "unit": "percent",
+          "target": 0.5,
+          "operator": "lt",
+          "measurement": "(rebuffer_duration / session_duration) * 100",
+          "source": "k6_custom_gauge_rebuffer_duration",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "stream_start_success_pct": {
+          "name": "Stream Start Success Rate",
+          "unit": "percent",
+          "target": 99.0,
+          "operator": "gt",
+          "measurement": "successful_first_frame / total_play_attempts * 100",
+          "source": "k6_custom_rate_stream_start_success",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "frame_drop_rate_pct": {
+          "name": "Frame Drop Rate",
+          "unit": "percent",
+          "target": 0.1,
+          "operator": "lt",
+          "measurement": "Dropped frames / total frames from SRS stats",
+          "source": "srs_api_streams",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        }
+      }
+    },
+
+    "system_resources": {
+      "description": "Infrastructure resource utilization limits",
+      "metrics": {
+        "cpu_utilization_pct": {
+          "name": "CPU Utilization (per container)",
+          "unit": "percent",
+          "target": 75.0,
+          "operator": "lt",
+          "measurement": "Docker stats CPU percentage",
+          "source": "docker_stats_cpu_pct",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike", "soak"],
+          "containers": ["srs", "backend", "postgres", "redis", "nginx-proxy"]
+        },
+        "memory_utilization_pct": {
+          "name": "Memory Utilization (per container)",
+          "unit": "percent",
+          "target": 80.0,
+          "operator": "lt",
+          "measurement": "Docker stats memory percentage",
+          "source": "docker_stats_mem_pct",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike", "soak"]
+        },
+        "swap_usage_bytes": {
+          "name": "Swap Usage",
+          "unit": "bytes",
+          "target": 0,
+          "operator": "eq",
+          "measurement": "System swap used",
+          "source": "system_swap_used",
+          "severity": "critical",
+          "test_scenarios": ["soak"]
+        },
+        "srs_memory_mb": {
+          "name": "SRS Memory Usage",
+          "unit": "megabytes",
+          "target": 2048,
+          "operator": "lt",
+          "measurement": "SRS container memory from docker stats",
+          "source": "docker_stats_srs_mem_usage",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "nestjs_heap_mb": {
+          "name": "NestJS Heap Used",
+          "unit": "megabytes",
+          "target": 512,
+          "operator": "lt",
+          "measurement": "process.memoryUsage().heapUsed",
+          "source": "backend_process_memory",
+          "severity": "warning",
+          "test_scenarios": ["soak"]
+        },
+        "redis_memory_mb": {
+          "name": "Redis Memory Usage",
+          "unit": "megabytes",
+          "target": 200,
+          "operator": "lt",
+          "measurement": "Redis INFO used_memory",
+          "source": "redis_info_used_memory",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "memory_growth_6h_pct": {
+          "name": "Memory Growth Over 6 Hours",
+          "unit": "percent",
+          "target": 10.0,
+          "operator": "lt",
+          "measurement": "(mem_end - mem_start) / mem_start * 100 per container",
+          "source": "docker_stats_mem_trend",
+          "severity": "critical",
+          "test_scenarios": ["soak"]
+        }
+      }
+    },
+
+    "concurrent_capacity": {
+      "description": "Concurrency and throughput limits",
+      "metrics": {
+        "max_concurrent_viewers": {
+          "name": "Maximum Concurrent Viewers (CCU)",
+          "unit": "count",
+          "target": 500,
+          "operator": "gte",
+          "measurement": "Sustained viewers without degradation",
+          "source": "k6_vus_active",
+          "severity": "critical",
+          "test_scenarios": ["ramp"]
+        },
+        "websocket_connections_total": {
+          "name": "Total WebSocket Connections",
+          "unit": "count",
+          "target": 1500,
+          "operator": "gte",
+          "measurement": "3 namespaces * 500 CCU",
+          "source": "socketio_connections_total",
+          "severity": "critical",
+          "test_scenarios": ["ramp"],
+          "breakdown": {
+            "root_namespace": 500,
+            "chat_namespace": 500,
+            "streaming_namespace": 500
+          }
+        },
+        "chat_throughput_msg_per_sec": {
+          "name": "Chat Message Throughput",
+          "unit": "messages_per_second",
+          "target": 50,
+          "operator": "gte",
+          "measurement": "Sustained message processing rate",
+          "source": "redis_chat_counter",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "api_success_rate_pct": {
+          "name": "API Success Rate",
+          "unit": "percent",
+          "target": 99.0,
+          "operator": "gt",
+          "measurement": "HTTP 2xx / total requests * 100",
+          "source": "k6_http_req_failed_rate",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike", "soak"]
+        },
+        "api_latency_p95_read_ms": {
+          "name": "API Read Latency p95",
+          "unit": "milliseconds",
+          "target": 500,
+          "operator": "lt",
+          "measurement": "95th percentile of GET request duration",
+          "source": "k6_http_req_duration_p95_get",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "api_latency_p95_write_ms": {
+          "name": "API Write Latency p95",
+          "unit": "milliseconds",
+          "target": 1000,
+          "operator": "lt",
+          "measurement": "95th percentile of POST/PATCH request duration",
+          "source": "k6_http_req_duration_p95_post",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "api_latency_p99_read_ms": {
+          "name": "API Read Latency p99",
+          "unit": "milliseconds",
+          "target": 1000,
+          "operator": "lt",
+          "measurement": "99th percentile of GET request duration",
+          "source": "k6_http_req_duration_p99_get",
+          "severity": "warning",
+          "test_scenarios": ["ramp"]
+        },
+        "api_latency_p99_write_ms": {
+          "name": "API Write Latency p99",
+          "unit": "milliseconds",
+          "target": 2000,
+          "operator": "lt",
+          "measurement": "99th percentile of POST/PATCH request duration",
+          "source": "k6_http_req_duration_p99_post",
+          "severity": "warning",
+          "test_scenarios": ["ramp"]
+        }
+      }
+    },
+
+    "recovery_resilience": {
+      "description": "System recovery and fault tolerance metrics",
+      "metrics": {
+        "viewer_reconnect_time_ms": {
+          "name": "Viewer Reconnection Time After Network Failure",
+          "unit": "milliseconds",
+          "target": 5000,
+          "operator": "lt",
+          "measurement": "Time from network restore to successful reconnect",
+          "source": "k6_custom_metric_reconnect_time",
+          "severity": "critical",
+          "test_scenarios": ["recovery"]
+        },
+        "stream_recovery_time_ms": {
+          "name": "Stream Recovery After OBS Disconnect",
+          "unit": "milliseconds",
+          "target": 10000,
+          "operator": "lt",
+          "measurement": "Time from OBS reconnect to viewer playback resume",
+          "source": "k6_custom_metric_stream_recovery",
+          "severity": "critical",
+          "test_scenarios": ["recovery"]
+        },
+        "websocket_reconnect_time_ms": {
+          "name": "WebSocket Reconnection Time",
+          "unit": "milliseconds",
+          "target": 3000,
+          "operator": "lt",
+          "measurement": "Socket.IO reconnect with exponential backoff",
+          "source": "k6_ws_reconnect_duration",
+          "severity": "warning",
+          "test_scenarios": ["recovery"]
+        },
+        "viewer_reconnect_success_pct": {
+          "name": "Viewer Reconnection Success Rate",
+          "unit": "percent",
+          "target": 95.0,
+          "operator": "gt",
+          "measurement": "Successful reconnects / total disconnected viewers * 100",
+          "source": "k6_custom_rate_reconnect_success",
+          "severity": "critical",
+          "test_scenarios": ["recovery"]
+        },
+        "srs_container_restart_time_ms": {
+          "name": "SRS Container Restart Time",
+          "unit": "milliseconds",
+          "target": 30000,
+          "operator": "lt",
+          "measurement": "Time from container kill to healthy state",
+          "source": "docker_events_healthcheck",
+          "severity": "warning",
+          "test_scenarios": ["recovery"]
+        }
+      }
+    },
+
+    "infrastructure_health": {
+      "description": "Supporting service health indicators",
+      "metrics": {
+        "redis_evicted_keys": {
+          "name": "Redis Evicted Keys",
+          "unit": "count",
+          "target": 0,
+          "operator": "eq",
+          "measurement": "Keys evicted due to maxmemory policy",
+          "source": "redis_info_evicted_keys",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "redis_connected_clients": {
+          "name": "Redis Connected Clients",
+          "unit": "count",
+          "target": 200,
+          "operator": "lt",
+          "measurement": "Active Redis connections",
+          "source": "redis_info_connected_clients",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "pg_cache_hit_ratio_pct": {
+          "name": "PostgreSQL Cache Hit Ratio",
+          "unit": "percent",
+          "target": 95.0,
+          "operator": "gt",
+          "measurement": "Buffer cache hit ratio from pg_stat_database",
+          "source": "pg_stat_database_blks_hit_ratio",
+          "severity": "warning",
+          "test_scenarios": ["soak"]
+        },
+        "pg_active_connections": {
+          "name": "PostgreSQL Active Connections",
+          "unit": "count",
+          "target_pct_of_max": 80,
+          "operator": "lt",
+          "measurement": "Active connections / max_connections * 100",
+          "source": "pg_stat_activity_count",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        },
+        "pg_deadlocks": {
+          "name": "PostgreSQL Deadlocks",
+          "unit": "count",
+          "target": 0,
+          "operator": "eq",
+          "measurement": "Deadlock count from pg_stat_database",
+          "source": "pg_stat_database_deadlocks",
+          "severity": "critical",
+          "test_scenarios": ["soak"]
+        },
+        "nginx_5xx_rate_pct": {
+          "name": "Nginx 5xx Error Rate",
+          "unit": "percent",
+          "target": 1.0,
+          "operator": "lt",
+          "measurement": "5xx responses / total responses * 100",
+          "source": "nginx_access_log_status",
+          "severity": "critical",
+          "test_scenarios": ["ramp", "spike", "soak"]
+        },
+        "nginx_response_time_p95_ms": {
+          "name": "Nginx Response Time p95",
+          "unit": "milliseconds",
+          "target": 1000,
+          "operator": "lt",
+          "measurement": "95th percentile of request_time from access log",
+          "source": "nginx_access_log_rt",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "srs_connected_clients": {
+          "name": "SRS Connected Clients",
+          "unit": "count",
+          "target": 600,
+          "operator": "lt",
+          "measurement": "Total clients from SRS API",
+          "source": "srs_api_v1_clients",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "spike"]
+        },
+        "websocket_room_accuracy_pct": {
+          "name": "WebSocket Room Count Accuracy",
+          "unit": "percent",
+          "target": 95.0,
+          "operator": "gt",
+          "measurement": "abs(room_count - actual_vus) / actual_vus * 100 inverted",
+          "source": "socketio_room_size_vs_k6_vus",
+          "severity": "warning",
+          "test_scenarios": ["ramp", "soak"]
+        }
+      }
+    }
+  },
+
+  "test_scenarios": {
+    "ramp": {
+      "name": "Ramp Test",
+      "description": "Gradual ramp to 500 CCU, hold 25 min, drain",
+      "duration_minutes": 35,
+      "max_vus": 500,
+      "profile": "0→500 (5min) → hold 500 (25min) → 500→0 (5min)"
+    },
+    "spike": {
+      "name": "Spike Test",
+      "description": "Sudden burst from 50 to 500 CCU",
+      "duration_minutes": 15,
+      "max_vus": 500,
+      "profile": "hold 50 (2min) → spike 500 (30s) → hold 500 (7.5min) → drop 50 (30s) → hold 50 (4.5min)"
+    },
+    "soak": {
+      "name": "Soak Test",
+      "description": "6-hour sustained load for leak detection",
+      "duration_minutes": 360,
+      "max_vus": 300,
+      "profile": "0→300 (10min) → hold 300 (340min) → 300→0 (10min)"
+    },
+    "recovery": {
+      "name": "Recovery Test",
+      "description": "Network failure and OBS disconnect recovery",
+      "duration_minutes": 20,
+      "max_vus": 300,
+      "profile": "0→300 (5min) → network partition (10s) → OBS disconnect (5s) → SRS kill → observe"
+    }
+  },
+
+  "production_readiness": {
+    "mandatory_criteria_count": 10,
+    "advisory_criteria_count": 7,
+    "all_mandatory_must_pass": true,
+    "minimum_advisory_pass": 5,
+    "minimum_test_runs_per_scenario": 1,
+    "recommended_test_runs_per_scenario": 3
+  },
+
+  "infrastructure_specs": {
+    "production": {
+      "srs": {
+        "image": "ossrs/srs:6",
+        "max_connections": 5000,
+        "threads": 4,
+        "ecs_cpu": 2048,
+        "ecs_memory_mb": 4096,
+        "autoscale_min": 1,
+        "autoscale_max": 4,
+        "autoscale_cpu_target_pct": 70
+      },
+      "nginx": {
+        "worker_connections": 2048,
+        "api_rate_limit": "30r/s",
+        "auth_rate_limit": "5r/s",
+        "conn_limit_per_ip": 20,
+        "keepalive_timeout": 65
+      },
+      "redis": {
+        "image": "redis:7-alpine",
+        "maxmemory_mb": 256,
+        "eviction_policy": "allkeys-lru"
+      },
+      "postgresql": {
+        "image": "postgres:16-alpine"
+      }
+    }
+  }
+}

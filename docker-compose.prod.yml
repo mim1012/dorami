@@ -1,36 +1,98 @@
 # Docker Compose Production Overlay
-# 사용법: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d
+# 사용법: docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
+# Env: --env-file .env.production
+#
 # 특징:
-# - Backend, Frontend, Nginx, SRS 서비스만 포함 (postgres, redis는 base.yml에서)
-# - 모든 환경변수는 .env.production에서만 주입 (--env-file)
+# - Nginx 컨테이너가 80/443 포트 처리 (SSL termination, reverse proxy)
 # - 리소스 제한: CPU/Memory 제한
-# - 네트워크: dorami-internal (isolated, allow outbound)
-# - 볼륨: uploads_data (prod 독립)
+# - 로깅: max-size/file 지정
+# - 환경변수: 모두 필수 (:? 검증)
+# - 네트워크: dorami-internal (internal=false for outbound)
 
 version: '3.8'
 
 services:
-  # Override postgres with prod volume
   postgres:
+    image: postgres:16-alpine
+    container_name: dorami-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB required}
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: 5
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - dorami-internal
 
-  # Override redis with prod volume
   redis:
+    image: redis:7-alpine
+    container_name: dorami-redis-prod
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+      REDIS_MAXMEMORY: 512mb
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: 3
     volumes:
       - redis_data_prod:/data
+    networks:
+      - dorami-internal
 
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-backend-prod
     restart: always
     ports:
-      - '127.0.0.1:3001:3001'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - '127.0.0.1:3001:3001'  # Nginx container proxy only
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=30
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required (64+ chars)}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY required}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS required}
+      RTMP_SERVER_URL: rtmp://srs:1935/live
+      HLS_SERVER_URL: http://srs:8080/hls
+      CSRF_ENABLED: 'true'
+      DISABLE_CSRF: 'false'
+      COOKIE_SECURE: 'true'
+      ENABLE_DEV_AUTH: 'false'
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
     deploy:
       resources:
         limits:
@@ -50,13 +112,23 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-frontend-prod
     restart: always
     ports:
-      - '127.0.0.1:3000:3000'
-    depends_on:
-      - backend
+      - '127.0.0.1:3000:3000'  # Nginx container proxy only
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL required}
+      NEXT_PUBLIC_WS_URL: ${WS_URL:-}
+      NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
+      NEXT_PUBLIC_ENABLE_DEV_AUTH: 'false'
+      NEXT_PUBLIC_PREVIEW_ENABLED: 'false'
+      NEXT_PUBLIC_KAKAO_JS_KEY: ${NEXT_PUBLIC_KAKAO_JS_KEY:-}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
     deploy:
       resources:
         limits:
@@ -73,6 +145,31 @@ services:
     networks:
       - dorami-internal
 
+  srs:
+    image: ossrs/srs:6
+    container_name: dorami-srs-prod
+    restart: always
+    ports:
+      - '1935:1935'  # RTMP ingest
+      - '127.0.0.1:8080:8080'  # HTTP-FLV + HLS (Nginx container proxy)
+    volumes:
+      - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: 10
+    networks:
+      - dorami-internal
+
   nginx:
     image: nginx:alpine
     container_name: dorami-nginx-prod
@@ -82,6 +179,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/production.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/streaming-routing.conf:/etc/nginx/conf.d/streaming-routing.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
       - uploads_data:/var/www/uploads:ro
@@ -94,11 +192,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    logging:
-      driver: json-file
-      options:
-        max-size: 50m
-        max-file: 5
     networks:
       - dorami-internal
 
@@ -111,4 +204,4 @@ volumes:
 networks:
   dorami-internal:
     driver: bridge
-    internal: false
+    internal: false  # Allow outbound internet (OAuth, Sentry, etc.)

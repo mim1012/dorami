@@ -1,0 +1,103 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "Prometheus"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "id": 1,
+      "title": "SRS CPU (5m load, %) ",
+      "type": "timeseries",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container=~\".*srs.*\"}[5m])) by (container) * 100"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "id": 2,
+      "title": "Redis Memory Utilization (%)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(redis_memory_used_bytes{instance=~\".*redis.*\"}) by (instance) / sum(redis_memory_max_bytes{instance=~\".*redis.*\"}) by (instance)) * 100"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "id": 3,
+      "title": "PostgreSQL Active Connections / max_connections",
+      "type": "timeseries",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pg_stat_activity_count{state=\"active\"}) by (instance) / sum(pg_settings_max_connections) by (instance)"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "id": 4,
+      "title": "Nginx 5xx Ratio",
+      "type": "timeseries",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(nginx_http_requests_total{status=~\"5..\"}[5m])) by (instance) / clamp_min(sum(rate(nginx_http_requests_total[5m])) by (instance), 1)) * 100"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "id": 5,
+      "title": "Backend/Frontend Process CPU",
+      "type": "timeseries",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container=~\".*dorami-.*(backend|frontend).*\"}[5m])) by (container) * 100"
+        }
+      ]
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 39,
+  "title": "Dorami Streaming Operations",
+  "uid": "dorami-streaming-ops",
+  "version": 1
+}

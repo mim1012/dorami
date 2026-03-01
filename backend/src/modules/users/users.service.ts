@@ -101,7 +101,7 @@ export class UsersService {
       data: {
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
-        shippingAddress: encryptedAddress as any, // Store encrypted string as Json
+        shippingAddress: encryptedAddress as string, // Store encrypted string as Json
         profileCompletedAt: new Date(), // Mark profile as completed
       },
     });
@@ -149,12 +149,12 @@ export class UsersService {
     return {
       id: user.id,
       kakaoId: user.kakaoId,
-      email: user.email,
+      email: user.email ?? undefined,
       nickname: user.name, // Prisma schema uses 'name' field
       profileImage: undefined, // Not in current schema
       role: user.role,
-      depositorName: user.depositorName,
-      instagramId: user.instagramId,
+      depositorName: user.depositorName ?? undefined,
+      instagramId: user.instagramId ?? undefined,
       phone: user.phone ?? undefined,
       shippingAddress,
       createdAt: user.createdAt,
@@ -183,23 +183,34 @@ export class UsersService {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        shippingAddress: encryptedAddress as any,
+        shippingAddress: encryptedAddress as string,
       },
     });
 
     return this.getProfile(userId);
   }
 
-  private mapToResponseDto(user: any): UserResponseDto {
+  private mapToResponseDto(user: {
+    id: string;
+    kakaoId: string;
+    email?: string | null;
+    name: string;
+    role: string;
+    depositorName?: string | null;
+    instagramId?: string | null;
+    phone?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): UserResponseDto {
     return {
       id: user.id,
-      kakaoId: user.kakaoId,
-      email: user.email,
+      kakaoId: user.kakaoId ?? undefined,
+      email: user.email ?? undefined,
       nickname: user.name, // Prisma schema uses 'name' field
       profileImage: undefined, // Not in current schema
       role: user.role,
-      depositorName: user.depositorName,
-      instagramId: user.instagramId,
+      depositorName: user.depositorName ?? undefined,
+      instagramId: user.instagramId ?? undefined,
       phone: user.phone ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

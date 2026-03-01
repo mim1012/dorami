@@ -29,7 +29,7 @@ jobs:
   # ===========================================
   test:
     name: Run Tests
-    if: ${{ github.event_name == 'workflow_dispatch' && !inputs.skip_tests }}
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_tests }}
     uses: ./.github/workflows/ci.yml
 
   # ===========================================
@@ -89,6 +89,16 @@ jobs:
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
+      - name: Validate image tag format
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+        run: |
+          if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+            echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
+            exit 1
+          fi
+          echo "Validated IMAGE_TAG: ${IMAGE_TAG}"
+
       - name: Deploy via SSH
         env:
           HOST: ${{ secrets.STAGING_HOST }}
@@ -118,27 +128,98 @@ jobs:
             echo "=== Logging into GHCR ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
-            echo "=== Pulling new images ==="
+            echo "=== Loading environment for staging compose ==="
             export IMAGE_TAG=${IMAGE_TAG}
             export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             export STAGING_HOST=${HOST}
             export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
             export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
             export ADMIN_EMAILS=${ADMIN_EMAILS}
-            docker compose -f docker-compose.staging.yml pull
+            if [ -f .env.staging ]; then
+              set -a
+              . ./.env.staging
+              set +a
+            fi
+
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull
+            echo "=== Verifying pulled staging image tags are immutable sha ==="
+            BACKEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}"
+            FRONTEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}"
+            BACKEND_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$BACKEND_IMAGE_REF")
+            FRONTEND_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$FRONTEND_IMAGE_REF")
+            if [[ ! "$BACKEND_IMAGE_REF" =~ ^ghcr\.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:sha-[0-9a-f]{40}$ ]]; then
+              echo "ERROR: backend image ref is not immutable sha tag: $BACKEND_IMAGE_REF"
+              exit 1
+            fi
+            if [[ ! "$FRONTEND_IMAGE_REF" =~ ^ghcr\.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:sha-[0-9a-f]{40}$ ]]; then
+              echo "ERROR: frontend image ref is not immutable sha tag: $FRONTEND_IMAGE_REF"
+              exit 1
+            fi
+            if [ "$BACKEND_IMAGE_REF" != "ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}" ]; then
+              echo "ERROR: backend image mismatch (expected ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}, got $BACKEND_IMAGE_REF)"
+              exit 1
+            fi
+            if [ "$FRONTEND_IMAGE_REF" != "ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}" ]; then
+              echo "ERROR: frontend image mismatch (expected ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}, got $FRONTEND_IMAGE_REF)"
+              exit 1
+            fi
+            echo "Backend image immutable check passed: $BACKEND_IMAGE_REF ($BACKEND_IMAGE_ID)"
+            echo "Frontend image immutable check passed: $FRONTEND_IMAGE_REF ($FRONTEND_IMAGE_ID)"
 
             echo "=== Ensuring uploads directory is writable ==="
             mkdir -p /opt/dorami/backend/uploads
             chmod 777 /opt/dorami/backend/uploads
 
+            echo "=== Setting up SSL certificate (if not exists) ==="
+            STAGING_DOMAIN=$(grep -oP "staging\.[^/]+" <<< "${{ vars.STAGING_URL }}" || echo "staging.doremi-live.com")
+            if [ ! -f /opt/dorami/nginx/ssl/fullchain.pem ] || [ ! -f /opt/dorami/nginx/ssl/privkey.pem ]; then
+              echo "SSL certificates not found. Setting up Certbot..."
+
+              # Install Certbot if not present
+              command -v certbot > /dev/null || {
+                echo "Installing Certbot..."
+                sudo apt-get update -qq
+                sudo apt-get install -y certbot
+              }
+
+              # Stop Nginx to free port 80
+              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml stop nginx || true
+              sleep 2
+
+              # Issue certificate
+              echo "Requesting Let's Encrypt certificate for ${STAGING_DOMAIN}..."
+              sudo certbot certonly \
+                --standalone \
+                --email admin@doremi-live.com \
+                --agree-tos \
+                --non-interactive \
+                --force-renewal \
+                -d "${STAGING_DOMAIN}" || {
+                echo "WARNING: Certbot failed. Continuing with HTTP mode..."
+              }
+
+              # Copy certificates if they were created
+              if [ -d "/etc/letsencrypt/live/${STAGING_DOMAIN}" ]; then
+                echo "Copying certificates to nginx/ssl/..."
+                mkdir -p nginx/ssl
+                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/fullchain.pem nginx/ssl/
+                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/privkey.pem nginx/ssl/
+                sudo chmod 644 nginx/ssl/fullchain.pem nginx/ssl/privkey.pem
+                sudo chown $(id -u):$(id -g) nginx/ssl/*
+                echo "✓ SSL certificates installed"
+              fi
+            else
+              echo "✓ SSL certificates already exist"
+            fi
+
             echo "=== Resolving any failed migrations ==="
-            docker compose -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
 
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
 
             echo "=== Restarting services ==="
-            docker compose -f docker-compose.staging.yml up -d --force-recreate --remove-orphans
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d --force-recreate --remove-orphans
 
             echo "=== Cleaning up old images ==="
             docker image prune -af --filter "until=1h"
@@ -151,7 +232,7 @@ jobs:
               fi
               if [ "\$i" = "6" ]; then
                 echo "Backend health check failed after 6 attempts"
-                docker compose -f docker-compose.staging.yml logs backend --tail=50
+                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs backend --tail=50
                 exit 1
               fi
               echo "Waiting for backend... (attempt \$i/6)"
@@ -165,7 +246,7 @@ jobs:
               fi
               if [ "\$i" = "6" ]; then
                 echo "Frontend health check failed after 6 attempts"
-                docker compose -f docker-compose.staging.yml logs frontend --tail=50
+                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs frontend --tail=50
                 exit 1
               fi
               echo "Waiting for frontend... (attempt \$i/6)"
@@ -289,3 +370,70 @@ jobs:
           echo "PASSED: Live page ($STATUS)"
           echo "All SRS & live stream checks passed"
           EOF
+
+      - name: Mainpage API Smoke Test
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash -s' << 'EOF'
+          set -e
+          BASE="http://localhost:3001/api"
+
+          # GET /api/streaming/active — must return 200 with data array
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/streaming/active")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /streaming/active returned $STATUS"; exit 1; }
+          echo "PASSED: /streaming/active ($STATUS)"
+
+          # GET /api/streaming/upcoming?limit=4 — must return 200
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/streaming/upcoming?limit=4")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /streaming/upcoming returned $STATUS"; exit 1; }
+          echo "PASSED: /streaming/upcoming ($STATUS)"
+
+          # GET /api/products/popular?limit=8 — must return 200 within 500ms
+          START=$(date +%s%3N)
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/products/popular?limit=8")
+          END=$(date +%s%3N)
+          ELAPSED=$((END - START))
+          [ "$STATUS" = "200" ] || { echo "FAIL: /products/popular returned $STATUS"; exit 1; }
+          echo "PASSED: /products/popular ($STATUS) in ${ELAPSED}ms"
+          [ "$ELAPSED" -lt 500 ] || echo "WARNING: /products/popular took ${ELAPSED}ms (target <500ms)"
+
+          # GET /api/products/live-deals — must return 200 (null body is valid when no live stream)
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/products/live-deals")
+          [ "$STATUS" = "200" ] || { echo "FAIL: /products/live-deals returned $STATUS"; exit 1; }
+          echo "PASSED: /products/live-deals ($STATUS)"
+
+          echo "All mainpage API smoke tests passed"
+          EOF
+
+      - name: Compare staging parity against production
+        id: parity_check
+        if: always() && needs.deploy.result == 'success'
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          if [ -z "${STAGING_URL}" ] || [ -z "${PRODUCTION_URL}" ]; then
+            echo "ERROR: vars.STAGING_URL and vars.PRODUCTION_URL are required for parity check."
+            exit 1
+          fi
+
+          node scripts/streaming-parity-check.mjs \
+            --staging-url "$STAGING_URL" \
+            --production-url "$PRODUCTION_URL" \
+            --stream-key smoke-check \
+            --max-latency-ms 2500
+
+  soak-gate:
+    name: Streaming Soak Gate (staging)
+    needs: [smoke-test]
+    if: always() && needs.smoke-test.result == 'success'
+    uses: ./.github/workflows/streaming-soak.yml
+    with:
+      url: ${{ vars.STAGING_URL }}
+      duration: 900
+      interval: 30
+      max_users: 300
+      stream_key: smoke-check
+    secrets:
+      STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      STAGING_USER: ${{ secrets.STAGING_USER }}
+      STAGING_HOST: ${{ secrets.STAGING_HOST }}

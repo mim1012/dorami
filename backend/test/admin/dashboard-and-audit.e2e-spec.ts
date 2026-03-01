@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
@@ -9,6 +10,8 @@ import { TransformInterceptor } from '../../src/common/interceptors/transform.in
 describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let adminAccessToken: string;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -21,6 +24,25 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
+    jwtService = app.get<JwtService>(JwtService);
+
+    const adminUser =
+      (await prisma.user.findFirst({ where: { role: 'ADMIN', email: { not: null } } })) ||
+      (await prisma.user.create({
+        data: {
+          kakaoId: 'kakao-dashboard-admin',
+          name: 'Dashboard Admin',
+          email: 'admin-dashboard-e2e@example.com',
+          role: 'ADMIN',
+        },
+      }));
+
+    const tokenPayload = {
+      sub: adminUser.id,
+      email: adminUser.email ?? 'admin-dashboard-e2e@example.com',
+      role: adminUser.role,
+    };
+    adminAccessToken = jwtService.sign(tokenPayload);
 
     // Create admin user and get token (assuming auth is set up)
     // adminToken = 'test-admin-token';
@@ -29,6 +51,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
   afterAll(async () => {
     await app.close();
   });
+
+  const getOrderUserEmail = (user: { id: string; email: string | null }) =>
+    user.email ?? `${user.id}@example.com`;
+
+  const unwrapData = <T>(body: unknown): T => {
+    if (body && typeof body === 'object' && 'data' in (body as Record<string, unknown>)) {
+      return (body as Record<string, unknown>).data as T;
+    }
+    return body as T;
+  };
 
   beforeEach(async () => {
     // Clean up test data
@@ -61,7 +93,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-1',
             userId: testUser.id,
-            userEmail: testUser.email,
+            userEmail: getOrderUserEmail(testUser),
             depositorName: 'Test Depositor 1',
             shippingAddress: {
               street: '123 Test St',
@@ -82,7 +114,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
           {
             id: 'order-2',
             userId: testUser.id,
-            userEmail: testUser.email,
+            userEmail: getOrderUserEmail(testUser),
             depositorName: 'Test Depositor 2',
             shippingAddress: {
               street: '456 Test Ave',
@@ -116,18 +148,27 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
       const response = await request(app.getHttpServer())
         .get('/admin/dashboard/stats')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         // .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body).toBeDefined();
-      expect(response.body.orders).toBeDefined();
-      expect(response.body.revenue).toBeDefined();
-      expect(response.body.pendingPayments).toBeDefined();
-      expect(response.body.activeLiveStreams).toBeDefined();
-      expect(response.body.topProducts).toBeDefined();
+      const payload = unwrapData<{
+        orders: any;
+        revenue: any;
+        pendingPayments: any;
+        activeLiveStreams: any;
+        topProducts: any;
+      }>(response.body);
 
-      expect(response.body.pendingPayments.value).toBe(1);
-      expect(response.body.activeLiveStreams.value).toBe(1);
+      expect(payload).toBeDefined();
+      expect(payload.orders).toBeDefined();
+      expect(payload.revenue).toBeDefined();
+      expect(payload.pendingPayments).toBeDefined();
+      expect(payload.activeLiveStreams).toBeDefined();
+      expect(payload.topProducts).toBeDefined();
+
+      expect(payload.pendingPayments.value).toBe(1);
+      expect(payload.activeLiveStreams.value).toBe(1);
     });
 
     it('should calculate trends correctly', async () => {
@@ -154,7 +195,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         data: Array.from({ length: 3 }, (_, i) => ({
           id: `order-last-${i}`,
           userId: testUser.id,
-          userEmail: testUser.email,
+          userEmail: getOrderUserEmail(testUser),
           depositorName: `Depositor ${i}`,
           shippingAddress: {
             street: `${i} Test St`,
@@ -179,7 +220,7 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         data: {
           id: 'order-prev',
           userId: testUser.id,
-          userEmail: testUser.email,
+          userEmail: getOrderUserEmail(testUser),
           depositorName: 'Previous Depositor',
           shippingAddress: {
             street: 'Prev Test St',
@@ -199,10 +240,14 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         },
       });
 
-      const response = await request(app.getHttpServer()).get('/admin/dashboard/stats').expect(200);
+      const response = await request(app.getHttpServer())
+        .get('/admin/dashboard/stats')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
 
-      expect(response.body.orders.trendUp).toBe(true);
-      expect(response.body.revenue.trendUp).toBe(true);
+      const trendPayload = unwrapData<{ orders: any; revenue: any }>(response.body);
+      expect(trendPayload.orders.trendUp).toBe(true);
+      expect(trendPayload.revenue.trendUp).toBe(true);
     });
   });
 
@@ -239,12 +284,16 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
         ],
       });
 
-      const response = await request(app.getHttpServer()).get('/admin/audit-logs').expect(200);
+      const response = await request(app.getHttpServer())
+        .get('/admin/audit-logs')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .expect(200);
 
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.length).toBeGreaterThanOrEqual(2);
-      expect(response.body.meta).toBeDefined();
-      expect(response.body.meta.total).toBeGreaterThanOrEqual(2);
+      const payload = unwrapData<{ data: any[]; meta: any }>(response.body);
+      expect(payload.data).toBeDefined();
+      expect(payload.data.length).toBeGreaterThanOrEqual(2);
+      expect(payload.meta).toBeDefined();
+      expect(payload.meta.total).toBeGreaterThanOrEqual(2);
     });
 
     it('should filter audit logs by action type', async () => {
@@ -287,10 +336,12 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
       const response = await request(app.getHttpServer())
         .get('/admin/audit-logs?action=CONFIRM_PAYMENT')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.every((log: any) => log.action === 'CONFIRM_PAYMENT')).toBe(true);
+      const payload = unwrapData<{ data: any[] }>(response.body);
+      expect(payload.data).toBeDefined();
+      expect(payload.data.every((log: any) => log.action === 'CONFIRM_PAYMENT')).toBe(true);
     });
 
     it('should filter audit logs by date range', async () => {
@@ -332,11 +383,13 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
       const response = await request(app.getHttpServer())
         .get('/admin/audit-logs?from=2024-01-10&to=2024-01-20')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      expect(response.body.data).toBeDefined();
+      const payload = unwrapData<{ data: any[] }>(response.body);
+      expect(payload.data).toBeDefined();
       expect(
-        response.body.data.every(
+        payload.data.every(
           (log: any) =>
             new Date(log.timestamp) >= new Date('2024-01-10') &&
             new Date(log.timestamp) <= new Date('2024-01-20'),
@@ -369,17 +422,21 @@ describe('Admin Dashboard and Audit Log (Epic 12) - E2E', () => {
 
       const page1 = await request(app.getHttpServer())
         .get('/admin/audit-logs?page=1&limit=50')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      expect(page1.body.data.length).toBeLessThanOrEqual(50);
-      expect(page1.body.meta.page).toBe(1);
-      expect(page1.body.meta.totalPages).toBeGreaterThanOrEqual(2);
+      const page1Payload = unwrapData<{ data: any[]; meta: any }>(page1.body);
+      expect(page1Payload.data.length).toBeLessThanOrEqual(50);
+      expect(page1Payload.meta.page).toBe(1);
+      expect(page1Payload.meta.totalPages).toBeGreaterThanOrEqual(2);
 
       const page2 = await request(app.getHttpServer())
         .get('/admin/audit-logs?page=2&limit=50')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      expect(page2.body.meta.page).toBe(2);
+      const page2Payload = unwrapData<{ meta: any }>(page2.body);
+      expect(page2Payload.meta.page).toBe(2);
     });
   });
 });

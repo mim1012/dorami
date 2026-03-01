@@ -55,7 +55,7 @@ export class PointsEventsListener {
 
       // Calculate points: floor(orderTotal * rate / 100)
       const orderTotal = Number(order.total);
-      const earnedPoints = Math.floor(orderTotal * config.pointEarningRate / 100);
+      const earnedPoints = Math.floor((orderTotal * config.pointEarningRate) / 100);
 
       if (earnedPoints <= 0) {
         return;
@@ -95,7 +95,7 @@ export class PointsEventsListener {
     } catch (error) {
       this.logger.error(
         `Failed to process points earning for order ${payload.orderId}`,
-        error.stack,
+        (error as Error).stack,
       );
     }
   }
@@ -122,9 +122,7 @@ export class PointsEventsListener {
         `Refund for cancelled order ${payload.orderId}`,
       );
 
-      this.logger.log(
-        `Refunded ${order.pointsUsed} points for cancelled order ${payload.orderId}`,
-      );
+      this.logger.log(`Refunded ${order.pointsUsed} points for cancelled order ${payload.orderId}`);
 
       this.eventEmitter.emit(
         'points:refunded',
@@ -133,7 +131,7 @@ export class PointsEventsListener {
     } catch (error) {
       this.logger.error(
         `Failed to refund points for cancelled order ${payload.orderId}`,
-        error.stack,
+        (error as Error).stack,
       );
     }
   }

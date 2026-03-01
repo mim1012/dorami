@@ -6,6 +6,7 @@ import {
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join, dirname } from 'path';
@@ -40,10 +41,33 @@ function hasValidImageMagicBytes(buf: Buffer): boolean {
   });
 }
 
+@ApiTags('Upload')
+@ApiBearerAuth()
 @Controller('upload')
 @UseGuards(JwtAuthGuard) // All upload endpoints require authentication
 export class UploadController {
   @Post('image')
+  @ApiOperation({
+    summary: '이미지 업로드',
+    description: '이미지 파일을 업로드합니다. JPEG, PNG, GIF, WebP 형식만 허용 (최대 5MB).',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: 201,
+    description: '업로드 성공',
+    schema: {
+      example: {
+        url: '/uploads/uuid.jpg',
+        filename: 'uuid.jpg',
+        size: 102400,
+        mimetype: 'image/jpeg',
+        uploadedBy: 'user-id',
+        uploadedAt: '2024-01-01T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: '잘못된 파일 형식 또는 파일 없음' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

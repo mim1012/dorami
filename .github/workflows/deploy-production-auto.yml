@@ -1,13 +1,3 @@
-# Auto Deploy to Production
-# Triggered on every push to main branch
-# Flow: CI tests → Build images → Deploy to production server
-#
-# Required GitHub Secrets (Settings → Secrets → Actions):
-#   PRODUCTION_SSH_KEY  - SSH private key base64 encoded:
-#                         Git Bash: base64 -w 0 dorami-prod-key.pem
-#   PRODUCTION_HOST     - Server IP (e.g. 15.165.66.23)
-#   PRODUCTION_USER     - SSH user (e.g. ubuntu)
-
 name: Auto Deploy to Production
 
 on:
@@ -28,16 +18,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ===========================================
-  # 1. CI Tests
-  # ===========================================
   ci:
     name: CI Tests
     uses: ./.github/workflows/ci.yml
 
-  # ===========================================
-  # 2. Build & Push Docker Images to GHCR
-  # ===========================================
   build:
     name: Build Images
     needs: [ci]
@@ -46,16 +30,115 @@ jobs:
       contents: read
       packages: write
 
-  # ===========================================
-  # 3. Deploy to Production Server
-  # ===========================================
-  deploy:
-    name: Deploy to Production
+  parity_gate:
+    name: Parity Gate (metadata required)
     needs: [build]
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://www.doremi-live.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate parity inputs
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          if [ -z "${STAGING_URL}" ] || [ -z "${PRODUCTION_URL}" ]; then
+            echo "ERROR: vars.STAGING_URL and vars.PRODUCTION_URL must be set."
+            exit 1
+          fi
+          if [ -z "${STAGING_HOST}" ] || [ -z "${STAGING_USER}" ] || [ -z "${PRODUCTION_HOST}" ] || [ -z "${PRODUCTION_USER}" ]; then
+            echo "ERROR: STAGING_HOST/USER and PRODUCTION_HOST/USER are required."
+            exit 1
+          fi
+          if [ -z "${STAGING_SSH_KEY}" ] || [ -z "${PRODUCTION_SSH_KEY}" ]; then
+            echo "ERROR: STAGING_SSH_KEY and PRODUCTION_SSH_KEY are required for metadata parity."
+            exit 1
+          fi
+
+      - name: Prepare SSH key files
+        id: ssh_keys
+        env:
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          write_ssh_key() {
+            local source="$1"
+            local out_path="$2"
+
+            if [ -z "${source}" ]; then
+              echo "Missing SSH key input."
+              return 1
+            fi
+
+            if echo "${source}" | grep -q "BEGIN"; then
+              printf '%s\n' "${source}" > "${out_path}"
+            else
+              printf '%s' "${source}" | base64 -d > "${out_path}" 2>/dev/null || {
+                echo "ERROR: ${out_path} is not valid PEM or base64 key."
+                return 1
+              }
+            fi
+            chmod 600 "${out_path}"
+            ssh-keygen -y -f "${out_path}" >/dev/null 2>&1 || {
+              echo "ERROR: invalid ssh key: ${out_path}"
+              return 1
+            }
+          }
+
+          STAGING_KEY_FILE="${RUNNER_TEMP}/staging_ssh_key"
+          PROD_KEY_FILE="${RUNNER_TEMP}/prod_ssh_key"
+
+          write_ssh_key "${STAGING_SSH_KEY}" "${STAGING_KEY_FILE}"
+          write_ssh_key "${PRODUCTION_SSH_KEY}" "${PROD_KEY_FILE}"
+
+          echo "staging_key=${STAGING_KEY_FILE}" >> "$GITHUB_OUTPUT"
+          echo "production_key=${PROD_KEY_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify parity & metadata fingerprint
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          STAGING_KEY_FILE: ${{ steps.ssh_keys.outputs.staging_key }}
+          PROD_KEY_FILE: ${{ steps.ssh_keys.outputs.production_key }}
+        run: |
+          node scripts/streaming-parity-check.mjs \
+            --staging-url "${STAGING_URL}" \
+            --production-url "${PRODUCTION_URL}" \
+            --stream-key smoke-check \
+            --max-latency-ms 2500 \
+            --min-score 90 \
+            --collect-metadata true \
+            --require-metadata true \
+            --staging-ssh-host "${STAGING_HOST}" \
+            --staging-ssh-user "${STAGING_USER}" \
+            --staging-ssh-key "${STAGING_KEY_FILE}" \
+            --production-ssh-host "${PRODUCTION_HOST}" \
+            --production-ssh-user "${PRODUCTION_USER}" \
+            --production-ssh-key "${PROD_KEY_FILE}" \
+            --staging-compose-base docker-compose.base.yml \
+            --staging-compose-overlay docker-compose.staging.yml \
+            --production-compose-base docker-compose.base.yml \
+            --production-compose-overlay docker-compose.prod.yml \
+            --staging-compose-env /opt/dorami/.env.staging \
+            --production-compose-env /opt/dorami/.env.production \
+            --staging-nginx-include nginx/streaming-routing.conf \
+            --production-nginx-include nginx/streaming-routing.conf
+
+  deploy:
+    name: Deploy Production (Blue/Green + Soak)
+    needs: [build, parity_gate]
+    if: ${{ needs.build.result == 'success' && needs.parity_gate.result == 'success' }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -67,7 +150,7 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           mkdir -p ~/.ssh
-          # Auto-detect: raw PEM contains "BEGIN", base64 does not
+          echo "---"
           if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
             printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           else
@@ -76,100 +159,173 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          echo "--- Key diagnostics (no secret exposed) ---"
-          echo "Lines: $(wc -l < ~/.ssh/id_rsa)"
-          echo "First line: $(head -1 ~/.ssh/id_rsa)"
-          echo "Last line: $(tail -1 ~/.ssh/id_rsa)"
-          echo "---"
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null && echo "✅ SSH key OK" || { echo "❌ SSH key invalid"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/id_rsa >/dev/null && echo "✅ SSH key OK" || {
+            echo "❌ SSH key invalid"
+            exit 1
+          }
 
-      - name: Sync compose & infra files to server
+      - name: Validate image tag format
         env:
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-          SSH_USER: ${{ secrets.PRODUCTION_USER }}
-        run: |
-          ssh $SSH_USER@$HOST 'mkdir -p /opt/dorami/infrastructure/docker'
-          scp docker-compose.prod.yml $SSH_USER@$HOST:/opt/dorami/docker-compose.prod.yml
-          scp -r infrastructure/docker/srs $SSH_USER@$HOST:/opt/dorami/infrastructure/docker/
-
-      - name: Pull images and restart services
-        env:
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-          SSH_USER: ${{ secrets.PRODUCTION_USER }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+            echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
+            exit 1
+          fi
+          echo "Validated IMAGE_TAG: ${IMAGE_TAG}"
+
+      - name: Prepare deploy credentials
+        id: prep
+        run: |
+          {
+            echo "host=${{ secrets.PRODUCTION_HOST }}"
+            echo "user=${{ secrets.PRODUCTION_USER }}"
+            echo "repo_owner=${{ github.repository_owner }}"
+            echo "image_tag=${{ needs.build.outputs.image_tag }}"
+            echo "canary_duration=900"
+            echo "canary_interval=30"
+            echo "canary_users=300"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Sync infra files
+        env:
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+        run: |
+          ssh "$USER@$HOST" 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker /opt/dorami/monitoring/grafana/provisioning/dashboards /opt/dorami/monitoring/grafana/provisioning/datasources /opt/dorami/monitoring/prometheus/rules'
+
+          scp docker-compose.base.yml docker-compose.prod.yml docker-compose.prod-blue-green.yml docker-compose.observability.yml \
+            nginx/production.conf nginx/production-canary.conf nginx/streaming-routing.conf nginx/streaming-routing.blue-green.template.conf \
+            $USER@$HOST:/opt/dorami/
+
+          scp -r infrastructure/docker/srs \
+            $USER@$HOST:/opt/dorami/infrastructure/docker/
+
+          scp monitoring/prometheus.yml $USER@$HOST:/opt/dorami/monitoring/prometheus.yml
+
+          scp -r monitoring/grafana \
+            $USER@$HOST:/opt/dorami/monitoring/
+
+          scp -r monitoring/prometheus \
+            $USER@$HOST:/opt/dorami/monitoring/
+
+      - name: Ensure production env and repository owner
+        env:
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+          IMAGE_TAG: ${{ steps.prep.outputs.image_tag }}
+          REPO_OWNER: ${{ steps.prep.outputs.repo_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
         run: |
-          ssh $SSH_USER@$HOST bash << ENDSSH
+          ssh "$USER@$HOST" bash << ENDSSH
           set -euo pipefail
           cd /opt/dorami
 
-          echo "========================================"
-          echo "Deploying image: ${IMAGE_TAG}"
-          echo "========================================"
+          if [ ! -f .env.production ]; then
+            echo "ERROR: /opt/dorami/.env.production not found. Use deploy-staging-like provisioning first."
+            exit 1
+          fi
 
-          # Update environment variables in .env.production
-          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production \
-            || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
-          sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production \
-            || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
-          sed -i "s|^KAKAO_JS_KEY=.*|KAKAO_JS_KEY=${KAKAO_JS_KEY}|" .env.production \
-            || echo "KAKAO_JS_KEY=${KAKAO_JS_KEY}" >> .env.production
+          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
+          sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
 
-          # Login to GHCR
+          if [ -n "${KAKAO_JS_KEY}" ]; then
+            sed -i "s|^KAKAO_JS_KEY=.*|KAKAO_JS_KEY=${KAKAO_JS_KEY}|" .env.production || echo "KAKAO_JS_KEY=${KAKAO_JS_KEY}" >> .env.production
+          fi
+          echo "Environment updated for IMAGE_TAG=${IMAGE_TAG}"
+          ENDSSH
+
+      - name: Sync green/blue deployment script
+        env:
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+        run: |
+          scp scripts/streaming-blue-green-deploy.sh "$USER@$HOST:/tmp/streaming-blue-green-deploy.sh"
+          ssh "$USER@$HOST" "chmod +x /tmp/streaming-blue-green-deploy.sh"
+
+      - name: Run production blue/green + soak gate
+        id: bluegreen
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ steps.prep.outputs.image_tag }}
+          REPO_OWNER: ${{ steps.prep.outputs.repo_owner }}
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+          SOAK_DURATION: ${{ steps.prep.outputs.canary_duration }}
+          SOAK_INTERVAL: ${{ steps.prep.outputs.canary_interval }}
+          SOAK_USERS: ${{ steps.prep.outputs.canary_users }}
+          PROD_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          KEY_FILE="${RUNNER_TEMP}/dorami_prod_ssh_key"
+          if printf '%s' "$PROD_SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$PROD_SSH_KEY" > "$KEY_FILE"
+          else
+            printf '%s' "$PROD_SSH_KEY" | base64 -d > "$KEY_FILE" 2>/dev/null
+          fi
+          chmod 600 "$KEY_FILE"
+
+          ssh-keygen -y -f "$KEY_FILE" >/dev/null || {
+            echo "ERROR: invalid production ssh key"
+            exit 1
+          }
+
           echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
 
-          # Export env vars so docker compose can resolve required variables
-          set -a; source .env.production; set +a
+          node scripts/streaming-blue-green-deploy.sh \
+            --image-tag "${IMAGE_TAG}" \
+            --host "${HOST}" \
+            --user "${USER}" \
+            --ssh-key "$KEY_FILE" \
+            --workdir /opt/dorami \
+            --compose-base docker-compose.base.yml \
+            --compose-overlay docker-compose.prod-blue-green.yml \
+            --canary-url "http://${HOST}:13080" \
+            --canary-port 13080 \
+            --soak-duration "${SOAK_DURATION}" \
+            --soak-interval "${SOAK_INTERVAL}" \
+            --soak-max-users "${SOAK_USERS}" \
+            --soak-stream-key smoke-check
 
-          # Pull new images
-          echo "=== Pulling images ==="
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
+      - name: Deploy observability stack
+        env:
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+        run: |
+          ssh "$USER@$HOST" bash << ENDSSH
+          set -euo pipefail
+          cd /opt/dorami
+          docker compose -f docker-compose.observability.yml up -d
+          docker compose -f docker-compose.observability.yml ps
+          ENDSSH
 
-          # Restart backend and frontend (backend runs prisma migrate on startup)
-          echo "=== Restarting backend ==="
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
-            up -d --no-deps --force-recreate backend
+      - name: Production health check + active slot
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          HOST: ${{ steps.prep.outputs.host }}
+          USER: ${{ steps.prep.outputs.user }}
+        run: |
+          set -e
+          if [ -z "${PRODUCTION_URL}" ]; then
+            echo "ERROR: vars.PRODUCTION_URL is required."
+            exit 1
+          fi
 
-          # Wait for backend to be healthy
-          echo "=== Waiting for backend health ==="
-          for i in \$(seq 1 18); do
-            status=\$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo unknown)
-            if [ "\$status" = "healthy" ]; then
-              echo "Backend healthy!"
+          for i in 1 2 3 4 5 6; do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "${PRODUCTION_URL}/api/health/live" || echo 000)"
+            if [ "$status" = "200" ]; then
+              echo "backend health ok"
               break
             fi
-            if [ "\$i" = "18" ]; then
-              echo "ERROR: Backend not healthy after 3 minutes"
-              docker logs dorami-backend-prod --tail 40
-              exit 1
-            fi
-            echo "  waiting... \$i/18 (status: \$status)"
+            echo "health retry ${i}/6 (${status})"
             sleep 10
           done
 
-          echo "=== Restarting frontend ==="
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production \
-            up -d --no-deps --force-recreate frontend
+          if [ "${status:-000}" != "200" ]; then
+            echo "ERROR: health check failed after retries"
+            exit 1
+          fi
 
-          echo "=== Final status ==="
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
-
-          echo "========================================"
-          echo "Deployment complete!"
-          echo "========================================"
-          ENDSSH
-
-      - name: Verify - Backend API health
-        env:
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-          SSH_USER: ${{ secrets.PRODUCTION_USER }}
-        run: |
-          ssh $SSH_USER@$HOST \
-            'curl -sf http://127.0.0.1:3001/api/health/live && echo "Backend API OK" || (echo "Backend API failed"; exit 1)'
-
-      - name: Verify - Public site
-        run: |
-          curl -sf -o /dev/null -w "HTTP %{http_code}" https://www.doremi-live.com \
-            && echo " — Site OK" || echo " — Site check failed (non-fatal)"
+          echo "Active slot (if exists):"
+          ssh "$USER@$HOST" "cat /opt/dorami/.dorami-active-slot || true"
+          echo "Deployment verification done."

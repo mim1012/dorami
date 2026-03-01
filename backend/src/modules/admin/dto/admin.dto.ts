@@ -4,6 +4,7 @@ import {
   Min,
   Max,
   IsString,
+  IsObject,
   IsEnum,
   IsArray,
   IsNumber,
@@ -77,88 +78,101 @@ export class GetUsersQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   status?: string[];
 }
 
 export class UserListItemDto {
-  id: string;
-  email: string;
-  name: string;
-  phone: string | null;
-  instagramId: string | null;
-  createdAt: Date;
-  lastLoginAt: Date | null;
-  status: string;
-  role: string;
-  totalOrders: number;
-  totalPurchaseAmount: number;
+  id!: string;
+  email!: string;
+  name!: string;
+  phone!: string | null;
+  instagramId!: string | null;
+  shippingAddressSummary?: string | null;
+  createdAt!: string;
+  lastLoginAt!: string | null;
+  lastPurchaseAt?: string | null;
+  status!: string;
+  role!: string;
+  totalOrders!: number;
+  totalPurchaseAmount!: string;
 }
 
 export class UserListResponseDto {
-  users: UserListItemDto[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  users!: UserListItemDto[];
+  total!: number;
+  page!: number;
+  limit!: number;
+  totalPages!: number;
 }
 
 // Dashboard Stats DTOs
 export class StatItemDto {
-  value: number;
-  formatted: string;
-  trend: string;
-  trendUp: boolean;
+  value!: number;
+  formatted!: string;
+  trend!: string;
+  trendUp!: boolean;
 }
 
 export class TopProductDto {
-  productId: string;
-  productName: string;
-  totalSold: number;
+  productId!: string;
+  productName!: string;
+  totalSold!: number;
+}
+
+export class OptionSalesDto {
+  option!: string;
+  sales!: number;
 }
 
 export class DailyRevenueDto {
-  date: string;
-  revenue: number;
-  orderCount: number;
+  date!: string;
+  revenue!: number;
+  orderCount!: number;
 }
 
 export class DashboardStatsDto {
-  revenue: StatItemDto;
-  viewers: StatItemDto;
-  orders: StatItemDto;
-  messages: StatItemDto;
+  revenue!: StatItemDto;
+  viewers!: StatItemDto;
+  orders!: StatItemDto;
+  messages!: StatItemDto;
   // Epic 12 Story 12.1: Additional dashboard metrics
-  pendingPayments: { value: number; formatted: string };
-  activeLiveStreams: { value: number; formatted: string };
-  topProducts: TopProductDto[];
-  dailyRevenue: DailyRevenueDto[];
+  pendingPayments!: { value: number; formatted: string };
+  activeLiveStreams!: { value: number; formatted: string };
+  topProducts!: TopProductDto[];
+  optionSales?: OptionSalesDto[];
+  dailyRevenue!: DailyRevenueDto[];
 }
 
 // Live Status DTOs
 export class LiveStatusDto {
-  isLive: boolean;
-  streamId: string | null;
-  streamKey: string | null;
-  title: string | null;
-  duration: string | null; // HH:MM:SS format
-  viewerCount: number;
-  thumbnailUrl: string | null;
-  startedAt: Date | null;
+  isLive!: boolean;
+  streamId!: string | null;
+  streamKey!: string | null;
+  title!: string | null;
+  duration!: string | null; // HH:MM:SS format
+  viewerCount!: number;
+  thumbnailUrl!: string | null;
+  startedAt!: string | null;
 }
 
 // Recent Activities DTOs
 export class ActivityLogDto {
-  id: string;
-  type: string;
-  message: string;
-  timestamp: Date;
-  metadata?: Record<string, any>;
+  id!: string;
+  type!: string;
+  message!: string;
+  timestamp!: string;
+  metadata?: Record<string, unknown>;
 }
 
 export class RecentActivitiesDto {
-  activities: ActivityLogDto[];
-  total: number;
+  activities!: ActivityLogDto[];
+  total!: number;
 }
 
 // Notice Configuration DTOs
@@ -179,9 +193,9 @@ export class UpdateNoticeDto {
 }
 
 export class NoticeDto {
-  text: string | null;
-  fontSize: number;
-  fontFamily: string;
+  text!: string | null;
+  fontSize!: number;
+  fontFamily!: string;
 }
 
 // Order Management DTOs
@@ -201,7 +215,7 @@ export class GetOrdersQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsEnum(['createdAt', 'paidAt', 'total', 'status'])
+  @IsEnum(['createdAt', 'paidAt', 'total', 'status', 'id'])
   sortBy?: string = 'createdAt';
 
   @IsOptional()
@@ -227,21 +241,36 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   orderStatus?: string[];
 
   // Payment status filter (array)
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   paymentStatus?: string[];
 
   // Shipping status filter (array)
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   shippingStatus?: string[];
 
   // Amount range filter
@@ -257,26 +286,30 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @IsString()
   streamKey?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
 
 export class OrderListItemDto {
-  id: string;
-  userId: string;
-  userEmail: string;
-  depositorName: string;
-  instagramId: string;
-  status: string;
-  paymentStatus: string;
-  shippingStatus: string;
-  subtotal: number;
-  shippingFee: number;
-  total: number;
-  itemCount: number;
-  createdAt: Date;
-  paidAt: Date | null;
-  shippedAt: Date | null;
-  deliveredAt: Date | null;
-  streamKey: string | null;
+  id!: string;
+  userId!: string;
+  userEmail!: string;
+  depositorName!: string;
+  instagramId!: string;
+  status!: string;
+  paymentStatus!: string;
+  shippingStatus!: string;
+  subtotal!: string;
+  shippingFee!: string;
+  total!: string;
+  itemCount!: number;
+  createdAt!: string;
+  paidAt!: string | null;
+  shippedAt!: string | null;
+  deliveredAt!: string | null;
+  streamKey!: string | null;
   items?: Array<{
     productName: string;
     quantity: number;
@@ -286,50 +319,52 @@ export class OrderListItemDto {
 }
 
 export class OrderListResponseDto {
-  orders: OrderListItemDto[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  orders!: OrderListItemDto[];
+  total!: number;
+  page!: number;
+  limit!: number;
+  totalPages!: number;
 }
 
 // User Detail DTOs
 export class ShippingAddressDto {
-  fullName: string;
-  address1: string;
+  fullName!: string;
+  address1!: string;
   address2?: string;
-  city: string;
-  state: string;
-  zip: string;
-  phone: string;
+  city!: string;
+  state!: string;
+  zip!: string;
+  phone!: string;
 }
 
 export class UserStatisticsDto {
-  totalOrders: number;
-  totalPurchaseAmount: number;
-  averageOrderValue: number;
-  orderFrequency: number; // orders per month
+  totalOrders!: number;
+  totalPurchaseAmount!: string;
+  averageOrderValue!: number;
+  orderFrequency!: number; // orders per month
 }
 
 export class UserDetailDto {
-  id: string;
-  email: string;
-  name: string;
-  instagramId: string | null;
-  depositorName: string | null;
-  shippingAddress: ShippingAddressDto | null;
-  createdAt: Date;
-  lastLoginAt: Date | null;
-  status: string;
-  role: string;
-  suspendedAt: Date | null;
-  statistics: UserStatisticsDto;
+  id!: string;
+  email!: string;
+  name!: string;
+  instagramId!: string | null;
+  depositorName!: string | null;
+  shippingAddress!: ShippingAddressDto | null;
+  createdAt!: string;
+  lastLoginAt!: string | null;
+  status!: string;
+  role!: string;
+  suspendedAt!: string | null;
+  statistics!: UserStatisticsDto;
 }
 
 export class UpdateUserStatusDto {
   @IsString()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'])
-  status: string;
+  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'], {
+    message: 'status must be one of ACTIVE, INACTIVE, SUSPENDED',
+  })
+  status!: string;
 
   @IsOptional()
   @IsString()
@@ -409,22 +444,43 @@ export class UpdateShippingMessagesDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
-  preparing: string;
+  preparing!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
-  shipped: string;
+  shipped!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
-  inTransit: string;
+  inTransit!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(500)
-  delivered: string;
+  delivered!: string;
+}
+
+// Home featured products configuration DTO
+export class UpdateHomeFeaturedProductsDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
+}
+
+// Marketing campaigns configuration DTO
+export class UpdateMarketingCampaignsDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
+}
+
+// Payment providers configuration DTO
+export class UpdatePaymentProvidersDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
 }
 
 // Notification Template DTO
@@ -443,14 +499,20 @@ export class UpdateNotificationTemplateDto {
 
 export class UpdateOrderStatusDto {
   @IsString()
-  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
-  status: string;
+  @IsEnum([
+    'PENDING_PAYMENT',
+    'PAYMENT_CONFIRMED',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED',
+  ])
+  status!: string;
 }
 
 export class UpdateOrderShippingStatusDto {
   @IsString()
   @IsEnum(['PENDING', 'SHIPPED', 'DELIVERED'])
-  shippingStatus: string;
+  shippingStatus!: string;
 
   @IsOptional()
   @IsString()
@@ -472,3 +534,4 @@ export interface BulkShippingNotificationResult {
     error?: string;
   }[];
 }
+

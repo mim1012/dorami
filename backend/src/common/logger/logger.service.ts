@@ -8,7 +8,7 @@ export class LoggerService implements NestLoggerService {
 
   constructor() {
     this.logger = winston.createLogger({
-      level: process.env.LOG_LEVEL || 'info',
+      level: process.env.LOG_LEVEL ?? 'info',
       format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         winston.format.errors({ stack: true }),
@@ -21,7 +21,10 @@ export class LoggerService implements NestLoggerService {
           format: winston.format.combine(
             winston.format.colorize(),
             winston.format.printf(({ timestamp, level, message, context, ...metadata }) => {
-              let msg = `${timestamp} [${level}] ${context ? `[${context}]` : ''} ${message}`;
+              const ts = String(timestamp);
+              const ctx = typeof context === 'string' ? context : '';
+              const msg_text = String(message);
+              let msg = `${ts} [${level}] ${ctx ? `[${ctx}]` : ''} ${msg_text}`;
               if (Object.keys(metadata).length > 0) {
                 msg += ` ${JSON.stringify(metadata)}`;
               }
@@ -37,23 +40,23 @@ export class LoggerService implements NestLoggerService {
   }
 
   log(message: string, context?: string) {
-    this.logger.info(message, { context: context || this.context });
+    this.logger.info(message, { context: context ?? this.context });
   }
 
   error(message: string, trace?: string, context?: string) {
-    this.logger.error(message, { trace, context: context || this.context });
+    this.logger.error(message, { trace, context: context ?? this.context });
   }
 
   warn(message: string, context?: string) {
-    this.logger.warn(message, { context: context || this.context });
+    this.logger.warn(message, { context: context ?? this.context });
   }
 
   debug(message: string, context?: string) {
-    this.logger.debug(message, { context: context || this.context });
+    this.logger.debug(message, { context: context ?? this.context });
   }
 
   verbose(message: string, context?: string) {
-    this.logger.verbose(message, { context: context || this.context });
+    this.logger.verbose(message, { context: context ?? this.context });
   }
 
   setContext(context: string) {

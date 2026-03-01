@@ -43,17 +43,17 @@ export class GetPointHistoryQueryDto {
 
 export class AdjustPointsDto {
   @IsIn(['add', 'subtract'])
-  type: 'add' | 'subtract';
+  type!: 'add' | 'subtract';
 
   @IsNumber()
   @Min(1)
   @Type(() => Number)
-  amount: number;
+  amount!: number;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(10)
-  reason: string;
+  reason!: string;
 }
 
 export class UpdatePointsConfigDto {
@@ -94,19 +94,19 @@ export class UpdatePointsConfigDto {
 }
 
 export class PointBalanceResponseDto {
-  currentBalance: number;
-  lifetimeEarned: number;
-  lifetimeUsed: number;
-  lifetimeExpired: number;
+  currentBalance!: number;
+  lifetimeEarned!: number;
+  lifetimeUsed!: number;
+  lifetimeExpired!: number;
 }
 
 export class PointTransactionResponseDto {
-  id: string;
-  transactionType: PointTransactionType;
-  amount: number;
-  balanceAfter: number;
+  id!: string;
+  transactionType!: PointTransactionType;
+  amount!: number;
+  balanceAfter!: number;
   orderId?: string;
   reason?: string;
   expiresAt?: Date;
-  createdAt: Date;
+  createdAt!: Date;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCart, cartKeys } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
@@ -20,6 +20,7 @@ interface PointsConfig {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: cartData } = useCart();
   const queryClient = useQueryClient();
   const items = cartData?.items ?? [];
@@ -93,9 +94,9 @@ export default function CheckoutPage() {
   const finalTotal = orderTotal - effectivePointsUsed;
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -111,7 +112,8 @@ export default function CheckoutPage() {
 
   const handleSubmitOrder = async () => {
     if (!user) {
-      router.push('/login?reason=session_expired');
+      const safePath = pathname.startsWith('/') ? pathname : '/';
+      router.push(`/login?reason=session_expired&returnTo=${encodeURIComponent(safePath)}`);
       return;
     }
 

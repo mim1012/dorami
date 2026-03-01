@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request } from 'express';
@@ -31,14 +25,14 @@ const VERY_SLOW_REQUEST_THRESHOLD_MS = 3000;
 export class PerformanceInterceptor implements NestInterceptor {
   private readonly logger = new Logger('Performance');
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse();
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request = context.switchToHttp().getRequest<Request & { user?: { id: string } }>();
+    const response = context.switchToHttp().getResponse<{ statusCode: number }>();
     const startTime = Date.now();
 
     const { method, url, headers } = request;
     const userAgent = headers['user-agent'];
-    const userId = (request as any).user?.id;
+    const userId = request.user?.id;
 
     return next.handle().pipe(
       tap({
@@ -70,14 +64,12 @@ export class PerformanceInterceptor implements NestInterceptor {
         },
         error: (error) => {
           const duration = Date.now() - startTime;
-          this.logger.error(
-            `Request failed: ${method} ${url} - ${duration}ms - ${error.message}`,
-          );
+          this.logger.error(`Request failed: ${method} ${url} - ${duration}ms - ${error.message}`);
 
           this.storeMetrics({
             path: url,
             method,
-            statusCode: error.status || 500,
+            statusCode: (error as { status?: number }).status ?? 500,
             duration,
             timestamp: new Date(),
             userAgent,
@@ -121,9 +113,7 @@ export function getPerformanceStats(): {
   const totalRequests = metricsStore.length;
   const totalDuration = metricsStore.reduce((sum, m) => sum + m.duration, 0);
   const averageDuration = Math.round(totalDuration / totalRequests);
-  const slowRequests = metricsStore.filter(
-    (m) => m.duration >= SLOW_REQUEST_THRESHOLD_MS,
-  ).length;
+  const slowRequests = metricsStore.filter((m) => m.duration >= SLOW_REQUEST_THRESHOLD_MS).length;
   const errorRequests = metricsStore.filter((m) => m.statusCode >= 400).length;
   const errorRate = Math.round((errorRequests / totalRequests) * 100);
 
@@ -131,7 +121,7 @@ export function getPerformanceStats(): {
   const endpointMap = new Map<string, { count: number; totalDuration: number }>();
   metricsStore.forEach((m) => {
     const key = `${m.method} ${m.path.split('?')[0]}`; // Remove query params
-    const existing = endpointMap.get(key) || { count: 0, totalDuration: 0 };
+    const existing = endpointMap.get(key) ?? { count: 0, totalDuration: 0 };
     endpointMap.set(key, {
       count: existing.count + 1,
       totalDuration: existing.totalDuration + m.duration,

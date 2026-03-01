@@ -11,9 +11,9 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     private authService: AuthService,
   ) {
     super({
-      clientID: configService.get('KAKAO_CLIENT_ID'),
-      clientSecret: configService.get('KAKAO_CLIENT_SECRET'),
-      callbackURL: configService.get('KAKAO_CALLBACK_URL'),
+      clientID: configService.get('KAKAO_CLIENT_ID') as string,
+      clientSecret: configService.get('KAKAO_CLIENT_SECRET') as string,
+      callbackURL: configService.get('KAKAO_CALLBACK_URL') as string,
     });
   }
 
@@ -21,14 +21,14 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-    done: any,
+    done: (err: null, user: unknown) => void,
   ) {
     const { id, username, _json } = profile;
 
     const user = await this.authService.validateKakaoUser({
       kakaoId: String(id),
       email: _json.kakao_account?.email,
-      nickname: username || _json.properties?.nickname || 'User',
+      nickname: username ?? _json.properties?.nickname ?? 'User',
       profileImage: _json.properties?.profile_image,
     });
 

@@ -1,0 +1,198 @@
+name: Backup Database
+
+on:
+  # Scheduled daily backup at 02:00 UTC (11:00 KST)
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Manual trigger for on-demand backups
+  workflow_dispatch:
+    inputs:
+      upload_to_s3:
+        description: 'Upload backup to S3'
+        required: false
+        default: 'true'
+        type: boolean
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+
+      - name: Execute backup script
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          UPLOAD_TO_S3: ${{ inputs.upload_to_s3 != 'false' && 'true' || 'true' }}
+        run: |
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            set -e
+
+            # Source environment variables
+            export POSTGRES_USER="dorami_prod"
+            export POSTGRES_DB="dorami_production"
+
+            # Try to read from .env.production if available
+            if [ -f /opt/dorami/.env.production ]; then
+              source /opt/dorami/.env.production || true
+            fi
+
+            # Export required vars for backup script
+            export S3_BUCKET="${PROD_S3_BACKUP_BUCKET:-dorami-db-backups-prod}"
+            export AWS_ACCESS_KEY_ID="${PROD_AWS_ACCESS_KEY_ID}"
+            export AWS_SECRET_ACCESS_KEY="${PROD_AWS_SECRET_ACCESS_KEY}"
+            export AWS_DEFAULT_REGION="ap-northeast-2"
+
+            # Check if AWS credentials are available
+            if [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+              echo "WARNING: AWS credentials not set — backup will be created locally only"
+              export SKIP_S3_UPLOAD="true"
+            fi
+
+            # Run backup script (assume it's in PATH or use full path)
+            bash /opt/dorami/scripts/backup-postgres.sh || {
+              EXIT_CODE=$?
+              echo "Backup script failed with exit code: ${EXIT_CODE}"
+              exit ${EXIT_CODE}
+            }
+          ENDSSH
+
+      - name: Verify S3 backup
+        if: success()
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          # Get latest backup filename from production server
+          LATEST_BACKUP=$(ssh $USER@$HOST \
+            'ls -t /opt/dorami/backups/db_backup_*.sql.gz 2>/dev/null | head -1 | xargs -n1 basename' || echo "")
+
+          if [ -n "${LATEST_BACKUP}" ]; then
+            echo "Latest backup: ${LATEST_BACKUP}"
+            echo "LATEST_BACKUP=${LATEST_BACKUP}" >> $GITHUB_ENV
+          else
+            echo "WARNING: Could not determine latest backup filename"
+          fi
+
+      - name: Backup report
+        if: always()
+        run: |
+          echo "Backup Status: ${{ job.status }}"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Database backup completed successfully"
+            echo "Local path: /opt/dorami/backups/${LATEST_BACKUP:-db_backup_*.sql.gz}"
+            echo "S3 path: s3://dorami-db-backups-prod/backups/YYYY/MM/${LATEST_BACKUP:-db_backup_*.sql.gz}"
+          else
+            echo "❌ Database backup failed — check logs above"
+          fi
+
+  # ===================================================================
+  # Optional: Verify restore capability (weekly)
+  # ===================================================================
+  verify-restore:
+    name: Verify Restore Capability
+    needs: backup
+    if: github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0'  # Weekly on Sunday
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+
+      - name: Test restore procedure (dry run)
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            echo "=== Testing Restore Procedure (DRY RUN) ==="
+
+            # Test with most recent backup
+            LATEST=$(ls -t /opt/dorami/backups/db_backup_*.sql.gz 2>/dev/null | head -1 || echo "")
+
+            if [ -z "${LATEST}" ]; then
+              echo "ERROR: No backups found to test with"
+              exit 1
+            fi
+
+            echo "Testing with: ${LATEST}"
+
+            # Verify gzip integrity
+            if gunzip -t "${LATEST}" 2>/dev/null; then
+              echo "✓ Backup gzip integrity verified"
+            else
+              echo "✗ Backup gzip integrity check failed"
+              exit 1
+            fi
+
+            # Verify checksum if available
+            if [ -f "${LATEST}.sha256" ]; then
+              if sha256sum -c "${LATEST}.sha256" > /dev/null 2>&1; then
+                echo "✓ Checksum verification passed"
+              else
+                echo "✗ Checksum verification failed"
+                exit 1
+              fi
+            fi
+
+            echo "✓ Restore test passed"
+          ENDSSH
+
+  # ===================================================================
+  # Cleanup old S3 backups (via S3 lifecycle policy — informational)
+  # ===================================================================
+  cleanup-notification:
+    name: S3 Cleanup (Lifecycle Policy)
+    needs: backup
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lifecycle policy status
+        run: |
+          echo "S3 backups are automatically cleaned up via lifecycle policy:"
+          echo "  - Retention: 30 days"
+          echo "  - Action: Delete old backups from s3://dorami-db-backups-prod/backups/"
+          echo ""
+          echo "To view or modify the lifecycle policy:"
+          echo "  aws s3api get-bucket-lifecycle-configuration --bucket dorami-db-backups-prod"

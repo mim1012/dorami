@@ -4,11 +4,11 @@ import { NoticeCategory } from '@prisma/client';
 export class CreateNoticeDto {
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @IsString()
   @IsNotEmpty()
-  content: string;
+  content!: string;
 
   @IsBoolean()
   @IsOptional()

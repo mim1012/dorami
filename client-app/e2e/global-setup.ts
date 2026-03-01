@@ -1,10 +1,111 @@
 import { chromium, request } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:3001';
 const COOKIE_DOMAIN = new URL(BASE_URL).hostname;
+const PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH;
+
+function fileExists(candidate: string): boolean {
+  try {
+    return fs.existsSync(candidate);
+  } catch {
+    return false;
+  }
+}
+
+function listCandidatesForBrowserDir(dirPath: string): string[] {
+  return [
+    path.join(dirPath, 'chrome.exe'),
+    path.join(dirPath, 'chrome-win', 'chrome.exe'),
+    path.join(dirPath, 'chrome-win64', 'chrome.exe'),
+    path.join(dirPath, 'chrome-headless-shell', 'chrome-headless-shell.exe'),
+    path.join(dirPath, 'chrome-headless-shell-win64', 'chrome-headless-shell.exe'),
+  ];
+}
+
+function findChromiumExecutableFromPlaywrightDir(playwrightDir: string): string[] {
+  try {
+    if (!fs.statSync(playwrightDir).isDirectory()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+
+  const folderCandidates = fs
+    .readdirSync(playwrightDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => name.toLowerCase().startsWith('chromium'))
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => path.join(playwrightDir, name))
+    .flatMap((dir) => listCandidatesForBrowserDir(dir));
+
+  return folderCandidates.filter(fileExists);
+}
+
+function getChromeFallbackCandidates(): string[] {
+  if (os.platform() !== 'win32') {
+    return [];
+  }
+
+  const programFiles = process.env.ProgramFiles;
+  const programFilesX86 = process.env['ProgramFiles(x86)'];
+  return [
+    ...(programFiles ? [path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe')] : []),
+    ...(programFilesX86
+      ? [path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe')]
+      : []),
+    ...(programFiles ? [path.join(programFiles, 'Google', 'Chrome Beta', 'Application', 'chrome.exe')] : []),
+    ...(programFilesX86
+      ? [path.join(programFilesX86, 'Google', 'Chrome Beta', 'Application', 'chrome.exe')]
+      : []),
+    ...(programFiles ? [path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe')] : []),
+  ].filter(fileExists);
+}
+
+function resolvePlayableChromiumPaths(): Array<string | undefined> {
+  const candidates: Array<string> = [];
+
+  if (PLAYWRIGHT_BROWSERS_PATH) {
+    const explicit = PLAYWRIGHT_BROWSERS_PATH;
+
+    // 특정 환경(파이썬 자동화 작업공간 등)에서 주입되는 임시 경로는 제외한다.
+    const allowlistedRoots = ['ms-playwright', '.cache\\ms-playwright', '.cache/ms-playwright'];
+    const isWhitelisted = allowlistedRoots.some((root) => explicit.includes(root));
+
+    if (isWhitelisted && fileExists(explicit)) {
+      if (explicit.toLowerCase().endsWith('.exe')) {
+        candidates.push(explicit);
+      } else {
+        candidates.push(...findChromiumExecutableFromPlaywrightDir(explicit));
+      }
+    }
+    delete process.env.PLAYWRIGHT_BROWSERS_PATH;
+  }
+
+  const home = os.homedir();
+  const browserRoots: string[] = [
+    path.join(home, 'AppData', 'Local', 'ms-playwright'),
+    path.join(home, '.cache', 'ms-playwright'),
+    path.join(home, '.cache', 'ms-playwright', 'chromium'),
+  ];
+  browserRoots.push(path.join(process.cwd(), 'node_modules', 'playwright-core', '.local-browsers'));
+  browserRoots.push(path.join(process.cwd(), 'node_modules', 'playwright', '.local-browsers'));
+
+  for (const root of browserRoots) {
+    candidates.push(...findChromiumExecutableFromPlaywrightDir(root));
+  }
+
+  candidates.push(...getChromeFallbackCandidates());
+
+  // 마지막 폴백: Playwright 기본 탐색(실패 시 내부에서 사용 경로를 선택)
+  const unique = new Set(candidates.filter((candidate): candidate is string => !!candidate));
+  return [...unique, undefined];
+}
 
 export const AUTH_DIR = path.join(__dirname, '.auth');
 export const USER_STATE = path.join(AUTH_DIR, 'user.json');
@@ -178,9 +279,29 @@ async function authenticate(
 }
 
 async function globalSetup() {
+  const executablePaths = resolvePlayableChromiumPaths();
+
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
-  const browser = await chromium.launch();
+  let lastError: unknown;
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
+
+  for (const executablePath of executablePaths) {
+    const launchOptions = {
+      args: ['--no-sandbox'],
+      ...(executablePath ? { executablePath } : {}),
+    };
+    try {
+      browser = await chromium.launch(launchOptions);
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!browser) {
+    throw lastError instanceof Error ? lastError : new Error('Playwright browser launch failed');
+  }
   await authenticate(browser, 'USER', USER_STATE);
   await authenticate(browser, 'ADMIN', ADMIN_STATE);
   await browser.close();

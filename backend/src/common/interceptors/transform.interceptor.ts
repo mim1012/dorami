@@ -21,7 +21,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, Response<T> |
     ]);
 
     if (skip) {
-      return next.handle();
+      return next.handle() as Observable<T>;
     }
 
     return next.handle().pipe(

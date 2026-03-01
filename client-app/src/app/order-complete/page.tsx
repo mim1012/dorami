@@ -71,9 +71,9 @@ function OrderCompleteContent() {
   }, [orderId, router]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
   };

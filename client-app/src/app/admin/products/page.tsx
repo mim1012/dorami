@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
+import { productKeys } from '@/lib/hooks/queries/use-products';
+import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import {
   Plus,
   Edit,
@@ -74,6 +77,15 @@ function minutesToHours(minutes: number): number {
   }
   return Math.max(MIN_TIMER_HOURS, Math.ceil(minutes / MINUTES_PER_HOUR));
 }
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
 
 // --- Sortable Row Component ---
 function SortableRow({
@@ -150,14 +162,17 @@ function SortableRow({
             <div className="flex gap-2 mt-1">
               {product.colorOptions.length > 0 && (
                 <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
-                  {product.colorOptions.length} 색상
+                  색상: {product.colorOptions.join(', ')}
                 </span>
               )}
               {product.sizeOptions.length > 0 && (
                 <span className="text-xs bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded">
-                  {product.sizeOptions.length} 사이즈
+                  사이즈: {product.sizeOptions.join(', ')}
                 </span>
               )}
+              <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                재고: {product.stock}개
+              </span>
               {product.timerEnabled && (
                 <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
                   <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" />{' '}
@@ -167,9 +182,6 @@ function SortableRow({
             </div>
           </div>
         </div>
-      </td>
-      <td className="px-4 py-4 text-center">
-        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{product.streamKey}</code>
       </td>
       <td className="px-4 py-4 text-right">
         <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
@@ -183,6 +195,14 @@ function SortableRow({
         <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
         </Body>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <Body className="text-primary-text">
+          {product.discountRate != null ? `${product.discountRate}%` : '-'}
+        </Body>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <Body className="text-primary-text text-sm">{formatDate(product.createdAt)}</Body>
       </td>
       <td className="px-4 py-4 text-center">
         <span
@@ -199,6 +219,7 @@ function SortableRow({
             title="수정"
           >
             <Edit className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">수정</span>
           </button>
           <button
             onClick={() => handleDuplicate(product.id)}
@@ -206,6 +227,7 @@ function SortableRow({
             title="복제"
           >
             <Copy className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">복제</span>
           </button>
           {product.status === 'AVAILABLE' && (
             <button
@@ -214,6 +236,7 @@ function SortableRow({
               title="품절 처리"
             >
               <CheckCircle className="w-4 h-4" />
+              <span className="ml-1 hidden sm:inline">품절</span>
             </button>
           )}
           <button
@@ -222,6 +245,7 @@ function SortableRow({
             title="삭제"
           >
             <Trash2 className="w-4 h-4" />
+            <span className="ml-1 hidden sm:inline">삭제</span>
           </button>
         </div>
       </td>
@@ -232,6 +256,7 @@ function SortableRow({
 // --- Main Page Component ---
 export default function AdminProductsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const confirmAction = useConfirm();
 
@@ -253,6 +278,7 @@ export default function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<ProductFormErrors>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -334,9 +360,9 @@ export default function AdminProductsPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -345,6 +371,7 @@ export default function AdminProductsPage() {
   const handleDuplicate = async (productId: string) => {
     try {
       await apiClient.post(`/products/${productId}/duplicate`, {});
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 복제되었습니다!', 'success');
     } catch (err: any) {
@@ -408,6 +435,7 @@ export default function AdminProductsPage() {
         ids: Array.from(selectedIds),
         status,
       });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       showToast(`${selectedIds.size}개 상품이 "${label}"으로 변경되었습니다.`, 'success');
       setSelectedIds(new Set());
       fetchProducts();
@@ -501,6 +529,7 @@ export default function AdminProductsPage() {
     setSelectedFile(null);
     setGalleryFiles([]);
     setEditingProduct(null);
+    setFormErrors({});
     setIsModalOpen(false);
   };
 
@@ -551,6 +580,13 @@ export default function AdminProductsPage() {
   // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors = validateProductForm(formData);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
     setIsSubmitting(true);
 
     try {
@@ -631,6 +667,7 @@ export default function AdminProductsPage() {
         });
       }
 
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       handleCloseModal();
       showToast(editingProduct ? '상품이 수정되었습니다!' : '상품이 등록되었습니다!', 'success');
@@ -653,6 +690,7 @@ export default function AdminProductsPage() {
 
     try {
       await apiClient.patch(`/products/${productId}/sold-out`, {});
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 품절 처리되었습니다.', 'success');
     } catch (err: any) {
@@ -700,6 +738,7 @@ export default function AdminProductsPage() {
       } else {
         showToast(`${deleted}개 상품이 삭제되었습니다.`, 'success');
       }
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       setSelectedIds(new Set());
       fetchProducts();
     } catch (err: any) {
@@ -721,6 +760,7 @@ export default function AdminProductsPage() {
 
     try {
       await apiClient.delete(`/products/${productId}`);
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       fetchProducts();
       showToast('상품이 삭제되었습니다.', 'success');
     } catch (err: any) {
@@ -751,9 +791,9 @@ export default function AdminProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
+          <h1 className="text-3xl font-bold text-primary-text mb-2">상품관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-3">
@@ -797,7 +837,7 @@ export default function AdminProductsPage() {
 
       {/* Search & Filter (Feature 5) */}
       <div className="bg-content-bg border border-gray-200 rounded-card p-4 space-y-3">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-text" />
             <input
@@ -811,7 +851,7 @@ export default function AdminProductsPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as '' | 'AVAILABLE' | 'SOLD_OUT')}
-            className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hot-pink/30 focus:border-hot-pink"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hot-pink/30 focus:border-hot-pink"
           >
             <option value="">전체 상태</option>
             <option value="AVAILABLE">판매중</option>
@@ -884,10 +924,7 @@ export default function AdminProductsPage() {
                       />
                     </th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
-                      상품명
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      Stream Key
+                      상품 정보
                     </th>
                     <th className="px-4 py-4 text-right text-sm font-semibold text-secondary-text">
                       가격
@@ -896,10 +933,16 @@ export default function AdminProductsPage() {
                       재고
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                      할인율
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                      등록일
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       상태
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      관리
+                      액션
                     </th>
                   </tr>
                 </thead>
@@ -960,11 +1003,12 @@ export default function AdminProductsPage() {
             placeholder="예: 프리미엄 무선 이어폰"
             required
             fullWidth
+            error={formErrors.name}
           />
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격 ($)"
+              label="가격"
               name="price"
               type="number"
               value={formData.price}
@@ -972,6 +1016,7 @@ export default function AdminProductsPage() {
               placeholder="29000"
               required
               fullWidth
+              error={formErrors.price}
             />
             <Input
               label="재고"
@@ -982,6 +1027,7 @@ export default function AdminProductsPage() {
               placeholder="50"
               required
               fullWidth
+              error={formErrors.stock}
             />
           </div>
 
@@ -996,15 +1042,17 @@ export default function AdminProductsPage() {
               min="0"
               max="100"
               fullWidth
+              error={formErrors.discountRate}
             />
             <Input
-              label="정가 (할인 전 가격 $)"
+              label="정가(할인 전 가격)"
               name="originalPrice"
               type="number"
               value={formData.originalPrice}
               onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
               placeholder="예: 35"
               fullWidth
+              error={formErrors.originalPrice}
             />
           </div>
 
@@ -1179,7 +1227,7 @@ export default function AdminProductsPage() {
             </p>
           </div>
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
             <Button
               type="button"
               variant="outline"

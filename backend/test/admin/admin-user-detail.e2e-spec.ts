@@ -106,11 +106,7 @@ describe('Admin User Detail (E2E)', () => {
     await prismaService.user.deleteMany({
       where: {
         id: {
-          in: [
-            'admin-user-detail-test',
-            'regular-user-detail-test',
-            'target-user-test',
-          ],
+          in: ['admin-user-detail-test', 'regular-user-detail-test', 'target-user-test'],
         },
       },
     });
@@ -173,9 +169,7 @@ describe('Admin User Detail (E2E)', () => {
     });
 
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get(`/api/admin/users/${testTargetUser.id}`)
-        .expect(401);
+      await request(app.getHttpServer()).get(`/api/admin/users/${testTargetUser.id}`).expect(401);
     });
 
     it('should return 404 for non-existent user', async () => {
@@ -272,7 +266,11 @@ describe('Admin User Detail (E2E)', () => {
         .send({ status: 'INVALID_STATUS' })
         .expect(400);
 
-      expect(response.body.message).toContain('status');
+      const message = response.body?.message;
+      const text =
+        typeof message === 'string' ? message : Array.isArray(message) ? message.join(' ') : '';
+
+      expect(text).toContain('status');
     });
   });
 });

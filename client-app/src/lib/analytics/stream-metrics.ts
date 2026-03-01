@@ -102,22 +102,34 @@ function resolveSeverity(metrics: StreamMetrics): 'info' | 'warning' | 'error' {
   return 'info';
 }
 
-async function dispatchToSentry(metrics: StreamMetrics): Promise<void> {
+function getGlobalSentry(): any {
+  if (typeof window === 'undefined') {
+    const globalAny = globalThis as any;
+    return globalAny?.Sentry;
+  }
+
+  return (window as any).Sentry;
+}
+
+function dispatchToSentry(metrics: StreamMetrics): void {
   const severity = resolveSeverity(metrics);
   const label = `[stream-metrics] ${metrics.connectionState} | key=${metrics.streamKey}`;
 
   try {
-    const Sentry = await import('@sentry/nextjs');
+    const sentry = getGlobalSentry();
 
-    // Breadcrumb so the Sentry timeline shows the event chain
-    Sentry.addBreadcrumb({
-      category: 'stream.metrics',
-      message: label,
-      level: severity,
-      data: metrics.metrics,
-    });
+    if (sentry?.addBreadcrumb && sentry?.captureMessage) {
+      sentry.addBreadcrumb({
+        category: 'stream.metrics',
+        message: label,
+        level: severity,
+        data: metrics.metrics,
+      });
 
-    Sentry.captureMessage(label, severity);
+      sentry.captureMessage(label, severity);
+    } else if (process.env.NODE_ENV !== 'production') {
+      console.debug(`[stream-metrics][${severity}]`, metrics);
+    }
   } catch {
     // @sentry/nextjs not installed — fall back to console in non-production
     if (process.env.NODE_ENV !== 'production') {
@@ -155,7 +167,7 @@ export async function sendStreamMetrics(metrics: StreamMetrics): Promise<void> {
 
     // Flush the full queue (includes the item we just enqueued)
     const pending = drainQueue();
-    await Promise.all(pending.map(dispatchToSentry));
+    pending.forEach(dispatchToSentry);
   } catch (error) {
     console.warn('[stream-metrics] Failed to send metrics:', error);
   }

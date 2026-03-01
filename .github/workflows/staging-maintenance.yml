@@ -85,19 +85,19 @@ jobs:
         run: |
           case "$COMMAND" in
             status)
-              CMD="docker compose -f docker-compose.staging.yml ps"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml ps"
               ;;
             logs-backend)
-              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 backend"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs --tail=200 backend"
               ;;
             logs-frontend)
-              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 frontend"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs --tail=200 frontend"
               ;;
             logs-srs)
-              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 srs"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs --tail=200 srs"
               ;;
             logs-nginx)
-              CMD="docker compose -f docker-compose.staging.yml logs --tail=200 nginx"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs --tail=200 nginx"
               ;;
             load-test-live)
               CMD="__RUN_LOAD_TEST_LIVE__"
@@ -106,16 +106,16 @@ jobs:
               CMD="__RUN_NGINX_HEALTH__"
               ;;
             restart)
-              CMD="docker compose -f docker-compose.staging.yml restart"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml restart"
               ;;
             restart-backend)
-              CMD="docker compose -f docker-compose.staging.yml restart backend"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml restart backend"
               ;;
             restart-frontend)
-              CMD="docker compose -f docker-compose.staging.yml restart frontend"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml restart frontend"
               ;;
             db-migrate)
-              CMD="docker compose -f docker-compose.staging.yml exec -T postgres psql -U dorami -d live_commerce -c 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;'"
+              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml exec -T postgres psql -U dorami -d live_commerce -c 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;'"
               ;;
             disk-usage)
               CMD="df -h / && docker system df"
@@ -187,7 +187,7 @@ jobs:
               cd /opt/dorami
 
               echo "=== docker compose ps (nginx) ==="
-              docker compose -f docker-compose.staging.yml ps nginx || true
+              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml ps nginx || true
 
               echo "=== docker inspect (state/health) ==="
               docker inspect dorami-nginx-1 --format 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}'
@@ -196,7 +196,7 @@ jobs:
               docker inspect dorami-nginx-1 --format '{{range .State.Health.Log}}{{.Start}} exit={{.ExitCode}} output={{printf "%q" .Output}}{{println}}{{end}}' | tail -n 10 || true
 
               echo "=== nginx container logs (tail 120) ==="
-              docker compose -f docker-compose.staging.yml logs --tail=120 nginx || true
+              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs --tail=120 nginx || true
 
               echo "=== inside nginx container ==="
               docker exec dorami-nginx-1 sh -lc '

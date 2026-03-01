@@ -10,6 +10,7 @@ import {
   Clock,
   TrendingUp,
   Play,
+  KeyRound,
   StopCircle,
   Plus,
   X,
@@ -19,9 +20,18 @@ import {
   Upload,
   Trash2,
   Pencil,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
+import {
+  createReStreamTarget,
+  getReStreamTargets,
+  deleteReStreamTarget,
+  type ReStreamTarget,
+  type ReStreamPlatform,
+} from '@/lib/api/restream';
 
 interface LiveStream {
   id: string;
@@ -29,6 +39,7 @@ interface LiveStream {
   userId: string;
   title: string;
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
+  scheduledAt?: string | null;
   startedAt: string | null;
   endedAt: string | null;
   totalDuration: number | null;
@@ -67,6 +78,7 @@ interface GeneratedStreamKey {
   title: string;
   rtmpUrl: string;
   hlsUrl: string;
+  rtmpPort?: number;
   scheduledAt: string | null;
   thumbnailUrl: string | null;
   expiresAt: string;
@@ -87,6 +99,7 @@ export default function BroadcastsPage() {
 
   // Stream key generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
   const [newStreamTitle, setNewStreamTitle] = useState('');
   const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
   const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
@@ -96,6 +109,31 @@ export default function BroadcastsPage() {
   const [newStreamFreeShipping, setNewStreamFreeShipping] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Step 3: Restream targets state
+  const [restreamTargets, setRestreamTargets] = useState<ReStreamTarget[]>([]);
+  const [isLoadingRestream, setIsLoadingRestream] = useState(false);
+  const [restreamError, setRestreamError] = useState<string | null>(null);
+  const [newRestreamPlatform, setNewRestreamPlatform] = useState<ReStreamPlatform>('YOUTUBE');
+  const [newRestreamName, setNewRestreamName] = useState('');
+  const [newRestreamRtmpUrl, setNewRestreamRtmpUrl] = useState('rtmp://a.rtmp.youtube.com/live2/');
+  const [newRestreamKey, setNewRestreamKey] = useState('');
+  const [newRestreamMuteAudio, setNewRestreamMuteAudio] = useState(false);
+  const [isAddingRestream, setIsAddingRestream] = useState(false);
+
+  const PLATFORM_RTMP_URLS: Record<ReStreamPlatform, string> = {
+    YOUTUBE: 'rtmp://a.rtmp.youtube.com/live2/',
+    INSTAGRAM: 'rtmps://live-upload.instagram.com:443/rtmp/',
+    TIKTOK: 'rtmp://push.rtmp.tiktok.com/live/',
+    CUSTOM: '',
+  };
+
+  const PLATFORM_LABELS: Record<ReStreamPlatform, string> = {
+    YOUTUBE: 'YouTube',
+    INSTAGRAM: 'Instagram',
+    TIKTOK: 'TikTok',
+    CUSTOM: 'Custom',
+  };
 
   // Edit stream modal state
   const [selectedStreamForEdit, setSelectedStreamForEdit] = useState<LiveStream | null>(null);
@@ -186,6 +224,15 @@ export default function BroadcastsPage() {
     });
   };
 
+  const formatDateTimeInput = (dateString: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  };
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '-';
     const hours = Math.floor(seconds / 3600);
@@ -228,6 +275,15 @@ export default function BroadcastsPage() {
 
   const [generateError, setGenerateError] = useState<string | null>(null);
 
+  const getRtmpUrlWithPort = (url: string) => {
+    const match = url.match(/^(rtmp:\/\/[^/]+)(\/.*)?$/);
+    if (!match) return url;
+    const [, host, path] = match;
+    const hasPort = /:\d+$/.test(host);
+    if (hasPort) return url;
+    return `${host}:1935${path || ''}`;
+  };
+
   const handleGenerateStreamKey = async () => {
     if (!newStreamTitle.trim()) return;
 
@@ -244,11 +300,72 @@ export default function BroadcastsPage() {
       setNewStreamTitle('');
       setNewStreamScheduledAt('');
       setNewStreamThumbnailUrl('');
+      setModalStep(2);
     } catch (err: any) {
       const message = err.message || '스트림 키 발급에 실패했습니다.';
       setGenerateError(message);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const loadRestreamTargets = async () => {
+    setIsLoadingRestream(true);
+    setRestreamError(null);
+    try {
+      const data = await getReStreamTargets();
+      setRestreamTargets(data);
+    } catch (err: any) {
+      setRestreamError(err.message || '동시송출 대상을 불러올 수 없습니다.');
+    } finally {
+      setIsLoadingRestream(false);
+    }
+  };
+
+  const handleRestreamPlatformChange = (platform: ReStreamPlatform) => {
+    setNewRestreamPlatform(platform);
+    const url = PLATFORM_RTMP_URLS[platform];
+    if (url) setNewRestreamRtmpUrl(url);
+    if (platform === 'INSTAGRAM') setNewRestreamMuteAudio(true);
+  };
+
+  const handleAddRestreamTarget = async () => {
+    if (!newRestreamName.trim() || !newRestreamRtmpUrl.trim() || !newRestreamKey.trim()) {
+      setRestreamError('필수 정보를 입력해주세요.');
+      return;
+    }
+
+    setIsAddingRestream(true);
+    setRestreamError(null);
+    try {
+      const newTarget = await createReStreamTarget({
+        platform: newRestreamPlatform,
+        name: newRestreamName.trim(),
+        rtmpUrl: newRestreamRtmpUrl.trim(),
+        streamKey: newRestreamKey.trim(),
+        enabled: true,
+        muteAudio: newRestreamMuteAudio,
+      });
+      setRestreamTargets((prev) => [...prev, newTarget]);
+      setNewRestreamName('');
+      setNewRestreamKey('');
+      setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+      setNewRestreamPlatform('YOUTUBE');
+      setNewRestreamMuteAudio(false);
+    } catch (err: any) {
+      setRestreamError(err.message || '동시송출 대상 추가에 실패했습니다.');
+    } finally {
+      setIsAddingRestream(false);
+    }
+  };
+
+  const handleDeleteRestreamTarget = async (id: string) => {
+    if (!confirm('이 동시 송출 대상을 삭제하시겠습니까?')) return;
+    try {
+      await deleteReStreamTarget(id);
+      setRestreamTargets((prev) => prev.filter((t) => t.id !== id));
+    } catch (err: any) {
+      setRestreamError(err.message || '삭제에 실패했습니다.');
     }
   };
 
@@ -312,6 +429,41 @@ export default function BroadcastsPage() {
     setNewStreamThumbnailUrl('');
     setNewStreamFreeShipping(false);
     setGenerateError(null);
+    setModalStep(1);
+    setRestreamTargets([]);
+    setNewRestreamName('');
+    setNewRestreamKey('');
+    setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+    setNewRestreamPlatform('YOUTUBE');
+    setNewRestreamMuteAudio(false);
+    setRestreamError(null);
+  };
+
+  const handleOpenGenerateModal = (stream?: LiveStream) => {
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailPreview(null);
+    setGeneratedStream(null);
+    setGenerateError(null);
+    setModalStep(1);
+    setRestreamTargets([]);
+    setNewRestreamName('');
+    setNewRestreamKey('');
+    setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+    setNewRestreamPlatform('YOUTUBE');
+    setNewRestreamMuteAudio(false);
+    setRestreamError(null);
+    if (stream) {
+      setNewStreamTitle(stream.title || '');
+      setNewStreamScheduledAt(formatDateTimeInput(stream.scheduledAt || null));
+      setNewStreamThumbnailUrl(stream.thumbnailUrl || '');
+      setNewStreamFreeShipping(stream.freeShippingEnabled ?? false);
+    } else {
+      setNewStreamTitle('');
+      setNewStreamScheduledAt('');
+      setNewStreamThumbnailUrl('');
+      setNewStreamFreeShipping(false);
+    }
+    setShowGenerateModal(true);
   };
 
   const handleOpenEditModal = (stream: LiveStream) => {
@@ -402,10 +554,10 @@ export default function BroadcastsPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="space-y-6 md:space-y-8 min-w-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold text-primary-text mb-2">
             방송 관리 <span className="text-hot-pink">Broadcasts</span>
           </h1>
@@ -413,12 +565,22 @@ export default function BroadcastsPage() {
             실시간 방송 현황 및 기록을 관리하세요.
           </p>
         </div>
-        <button
-          onClick={() => setShowGenerateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
-        >
-          <Plus className="w-5 h-5" />새 방송 시작
-        </button>
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0 min-w-0">
+          <button
+            onClick={() => handleOpenGenerateModal()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors shrink-0 whitespace-nowrap"
+          >
+            <KeyRound className="w-5 h-5" />
+            방송 키 발급
+          </button>
+          <button
+            onClick={() => handleOpenGenerateModal()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-hot-pink/30 text-hot-pink rounded-lg font-medium hover:bg-hot-pink/5 transition-colors shrink-0 whitespace-nowrap"
+          >
+            <Play className="w-5 h-5" />
+            방송 설정
+          </button>
+        </div>
       </div>
 
       {/* Live Status Cards */}
@@ -475,8 +637,8 @@ export default function BroadcastsPage() {
             현재 라이브 방송
           </h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-hot-pink transition-colors">
-              <div className="flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-hot-pink transition-colors">
+              <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-primary-text mb-1">
                   {liveStatus.title || '라이브 방송'}
                 </h3>
@@ -484,7 +646,7 @@ export default function BroadcastsPage() {
                   <p className="text-sm text-secondary-text">방송 시간: {liveStatus.duration}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 sm:justify-end shrink-0">
                 <div className="text-right">
                   <div className="flex items-center gap-1.5 text-info">
                     <Eye className="w-4 h-4" />
@@ -540,31 +702,31 @@ export default function BroadcastsPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[920px] text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       제목
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       Stream Key
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       상태
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       시작 시간
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       종료 시간
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       방송 시간
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       최대 시청자
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
                       작업
                     </th>
                   </tr>
@@ -572,19 +734,17 @@ export default function BroadcastsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {streams.map((stream) => (
                     <tr key={stream.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-primary-text">{stream.title}</div>
+                      <td className="px-3 py-4 whitespace-nowrap max-w-[220px]">
+                        <div className="truncate">{stream.title}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm text-secondary-text font-mono truncate max-w-[120px]">
-                            {stream.streamKey.slice(0, 8)}...
+                          <span className="text-sm text-secondary-text font-mono truncate max-w-[140px]">
+                            {stream.streamKey}
                           </span>
                           <button
-                            onClick={() =>
-                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
-                            }
-                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
+                            onClick={() => handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)}
+                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0 whitespace-nowrap"
                             title="스트림 키 복사"
                           >
                             {copiedField === `key-${stream.id}` ? (
@@ -595,40 +755,49 @@ export default function BroadcastsPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         {getStatusBadge(stream.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-secondary-text">
                           {formatDate(stream.startedAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-secondary-text">
                           {formatDate(stream.endedAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-secondary-text">
                           {formatDuration(stream.totalDuration)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-sm text-info">
                           <Eye className="w-4 h-4" />
                           {stream.peakViewers}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {stream.status === 'PENDING' && (
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
-                            onClick={() => handleOpenEditModal(stream)}
-                            className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                            onClick={() => handleOpenGenerateModal(stream)}
+                            className="px-3 py-1.5 bg-hot-pink text-white rounded-lg hover:bg-hot-pink/90 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
                           >
-                            <Pencil className="w-4 h-4" />
-                            편집
+                            <KeyRound className="w-4 h-4" />
+                            방송 키 발급
                           </button>
-                        )}
+                          {stream.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleOpenEditModal(stream)}
+                              className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                            >
+                              <Pencil className="w-4 h-4" />
+                              편집
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -664,14 +833,22 @@ export default function BroadcastsPage() {
         )}
       </div>
 
-      {/* Generate Stream Key Modal */}
+      {/* Generate Stream Key Modal - 3 Steps */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header with step indicator */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-primary-text">
-                {generatedStream ? '방송 설정 정보' : '새 방송 시작'}
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold text-primary-text mb-2">
+                  {modalStep === 1 && '방송 시작하기'}
+                  {modalStep === 2 && '스트림 키 발급 완료'}
+                  {modalStep === 3 && '동시송출 설정'}
+                </h2>
+                <p className="text-xs text-secondary-text">
+                  Step {modalStep}/3
+                </p>
+              </div>
               <button
                 onClick={handleCloseModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -681,7 +858,8 @@ export default function BroadcastsPage() {
             </div>
 
             <div className="p-6">
-              {!generatedStream ? (
+              {/* Step 1: Broadcast Info */}
+              {modalStep === 1 && (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
@@ -696,12 +874,12 @@ export default function BroadcastsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-primary-text mb-2">
-                      예정 방송 시간{' '}
-                      <span className="text-secondary-text text-xs">
-                        (선택 · KST 한국 시간 기준)
-                      </span>
-                    </label>
+                      <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 예정일{' '}
+                        <span className="text-secondary-text text-xs">
+                          (선택 · KST 한국 시간 기준)
+                        </span>
+                      </label>
                     <input
                       type="datetime-local"
                       value={newStreamScheduledAt}
@@ -777,15 +955,26 @@ export default function BroadcastsPage() {
                       <p className="text-error text-sm">{generateError}</p>
                     </div>
                   )}
-                  <button
-                    onClick={handleGenerateStreamKey}
-                    disabled={!newStreamTitle.trim() || isGenerating || isUploadingThumbnail}
-                    className="w-full py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isGenerating ? '발급 중...' : '스트림 키 발급'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleGenerateStreamKey}
+                      disabled={!newStreamTitle.trim() || isGenerating || isUploadingThumbnail}
+                      className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isGenerating ? '발급 중...' : '발급하기'}
+                    </button>
+                  </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Step 2: Stream Key Result */}
+              {modalStep === 2 && generatedStream && (
                 <div className="space-y-6">
                   <div className="p-4 bg-success/10 border border-success rounded-lg">
                     <p className="text-success font-medium">스트림 키가 발급되었습니다!</p>
@@ -805,18 +994,39 @@ export default function BroadcastsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      RTMP 서버 URL
+                      방송 예정일
+                    </label>
+                    <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-primary-text">
+                      {generatedStream.scheduledAt ? formatDate(generatedStream.scheduledAt) : '미설정'}
+                    </div>
+                  </div>
+
+                  {generatedStream.thumbnailUrl ? (
+                    <div>
+                      <label className="block text-sm font-medium text-primary-text mb-2">
+                        방송 썸네일
+                      </label>
+                      <div className="w-full rounded-lg border border-gray-200 overflow-hidden">
+                        <img
+                          src={generatedStream.thumbnailUrl}
+                          alt="생성된 방송 썸네일"
+                          className="w-full h-44 object-cover"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      RTMP 스트림 URL (포트 1935)
                     </label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
-                        {generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, '')}
+                        {getRtmpUrlWithPort(generatedStream.rtmpUrl)}
                       </div>
                       <button
                         onClick={() =>
-                          handleCopyToClipboard(
-                            generatedStream.rtmpUrl.replace(`/${generatedStream.streamKey}`, ''),
-                            'rtmpUrl',
-                          )
+                          handleCopyToClipboard(getRtmpUrlWithPort(generatedStream.rtmpUrl), 'rtmpUrl')
                         }
                         className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="복사"
@@ -888,13 +1098,167 @@ export default function BroadcastsPage() {
                       onClick={handleCloseModal}
                       className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
                     >
-                      닫기
+                      완료
                     </button>
                     <button
-                      onClick={() => setGeneratedStream(null)}
+                      onClick={() => {
+                        loadRestreamTargets();
+                        setModalStep(3);
+                      }}
                       className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
                     >
-                      새 키 발급
+                      동시송출 설정 →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Restream Targets */}
+              {modalStep === 3 && (
+                <div className="space-y-4">
+                  {restreamError && (
+                    <div className="flex items-center gap-2 p-3 bg-error/10 border border-error rounded-lg text-sm text-error">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {restreamError}
+                      <button onClick={() => setRestreamError(null)} className="ml-auto">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Existing targets */}
+                  {isLoadingRestream ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin text-secondary-text" />
+                    </div>
+                  ) : restreamTargets.length > 0 ? (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-primary-text">등록된 대상</label>
+                      {restreamTargets.map((target) => (
+                        <div
+                          key={target.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-primary-text">{target.name}</p>
+                            <p className="text-xs text-secondary-text">{PLATFORM_LABELS[target.platform]}</p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteRestreamTarget(target.id)}
+                            className="p-1.5 text-secondary-text hover:text-error rounded transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Add new target form */}
+                  <div className="border-t pt-4">
+                    <label className="block text-sm font-medium text-primary-text mb-3">
+                      새 대상 추가
+                    </label>
+
+                    {/* Platform selection */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-2">플랫폼</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {Object.entries(PLATFORM_LABELS).map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() =>
+                              handleRestreamPlatformChange(key as ReStreamPlatform)
+                            }
+                            className={`px-2 py-2 rounded text-xs font-medium border transition-colors ${
+                              newRestreamPlatform === key
+                                ? 'border-hot-pink bg-hot-pink/10 text-hot-pink'
+                                : 'border-gray-200 text-secondary-text hover:border-gray-300'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Name */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        이름
+                      </label>
+                      <input
+                        type="text"
+                        value={newRestreamName}
+                        onChange={(e) => setNewRestreamName(e.target.value)}
+                        placeholder="예: YouTube 채널"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* RTMP URL */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        RTMP URL
+                      </label>
+                      <input
+                        type="text"
+                        value={newRestreamRtmpUrl}
+                        onChange={(e) => setNewRestreamRtmpUrl(e.target.value)}
+                        placeholder="rtmp://..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* Stream Key */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        스트림 키
+                      </label>
+                      <input
+                        type="password"
+                        value={newRestreamKey}
+                        onChange={(e) => setNewRestreamKey(e.target.value)}
+                        placeholder="스트림 키 입력"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* Mute Audio */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setNewRestreamMuteAudio(!newRestreamMuteAudio)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          newRestreamMuteAudio ? 'bg-orange-500' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                            newRestreamMuteAudio ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs text-primary-text">오디오 음소거</span>
+                    </div>
+
+                    <button
+                      onClick={handleAddRestreamTarget}
+                      disabled={!newRestreamName.trim() || !newRestreamKey.trim() || isAddingRestream}
+                      className="w-full py-2 bg-hot-pink text-white rounded-lg font-medium text-sm hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isAddingRestream ? '추가 중...' : '추가'}
+                    </button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <button
+                      onClick={handleCloseModal}
+                      className="w-full py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
+                    >
+                      완료
                     </button>
                   </div>
                 </div>

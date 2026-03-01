@@ -159,7 +159,7 @@ describe('PointsExpirationService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined);
+      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined as any);
       jest.spyOn(prismaService.pointTransaction, 'updateMany').mockResolvedValue({ count: 1 });
 
       await service.processExpirations();
@@ -217,7 +217,7 @@ describe('PointsExpirationService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined);
+      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined as any);
 
       await service.processExpirations();
 
@@ -337,7 +337,7 @@ describe('PointsExpirationService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined);
+      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined as any);
       jest.spyOn(prismaService.pointTransaction, 'updateMany').mockResolvedValue({ count: 2 });
 
       await service.processExpirations();
@@ -424,7 +424,7 @@ describe('PointsExpirationService', () => {
       jest
         .spyOn(pointsService, 'deductPoints')
         .mockRejectedValueOnce(new Error('Deduction failed'))
-        .mockResolvedValueOnce(undefined);
+        .mockResolvedValueOnce({ newBalance: 0 });
       jest.spyOn(prismaService.pointTransaction, 'updateMany').mockResolvedValue({ count: 1 });
 
       await service.processExpirations();
@@ -501,7 +501,7 @@ describe('PointsExpirationService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined);
+      jest.spyOn(pointsService, 'deductPoints').mockResolvedValue(undefined as any);
       jest.spyOn(prismaService.pointTransaction, 'updateMany').mockResolvedValue({ count: 1 });
 
       await service.processExpirations();

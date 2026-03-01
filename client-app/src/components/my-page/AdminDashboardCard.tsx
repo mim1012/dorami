@@ -1,11 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { Body, Heading2 } from '@/components/common/Typography';
+import { useAuthStore } from '@/lib/store/auth';
 
 export function AdminDashboardCard() {
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const { isAuthenticated, user } = useAuthStore.getState();
+    setIsAdmin(isAuthenticated && user?.role === 'ADMIN');
+  }, []);
+
+  if (!isAdmin) return null;
 
   return (
     <div className="bg-content-bg shadow-sm rounded-button p-6 mb-6 border-2 border-hot-pink">

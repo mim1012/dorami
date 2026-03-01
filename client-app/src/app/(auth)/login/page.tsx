@@ -6,10 +6,35 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Body } from '@/components/common/Typography';
 import Image from 'next/image';
 
+const POST_LOGIN_RETURN_KEY = 'dorami_post_login_return_to';
+
+function sanitizeReturnPath(raw: string | null): string {
+  if (!raw) return '/';
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (!decoded.startsWith('/')) return '/';
+    if (decoded.startsWith('//')) return '/';
+    return decoded;
+  } catch {
+    return '/';
+  }
+}
+
+function getReturnToFromSearchParams(searchParams: URLSearchParams): string {
+  return sanitizeReturnPath(searchParams.get('returnTo') || searchParams.get('redirect'));
+}
+
+function consumeStoredReturnTo(): string | null {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(POST_LOGIN_RETURN_KEY);
+  window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
+  return sanitizeReturnPath(stored);
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading, refreshProfile } = useAuth();
+  const { isAuthenticated, isLoading, refreshProfile, user } = useAuth();
 
   const error = searchParams.get('error');
   const reason = searchParams.get('reason');
@@ -18,12 +43,36 @@ function LoginContent() {
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
   const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(false);
+  const [returnTo, setReturnTo] = useState('/');
+  const hasExplicitReturnTo = searchParams.has('returnTo') || searchParams.has('redirect');
 
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (hasExplicitReturnTo) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
+      }
+      setReturnTo(getReturnToFromSearchParams(searchParams));
+      return;
+    }
+
+    setReturnTo(consumeStoredReturnTo() || '/');
+  }, [searchParams, hasExplicitReturnTo]);
+
+  useEffect(() => {
+    if (!user || !isAuthenticated || isLoading) return;
+
+    const needsProfile = !user.instagramId || !user.depositorName;
+    const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
+    const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
+
+    if (needsProfile) {
+      router.push('/profile/register');
+    } else if (safeTarget) {
+      router.push(safeTarget);
+    } else {
       router.push('/');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [hasExplicitReturnTo, isAuthenticated, isLoading, returnTo, router, searchParams, user]);
 
   useEffect(() => {
     // 런타임에 체크 (docker-entrypoint.sh가 플레이스홀더를 치환한 후 실행됨)
@@ -32,7 +81,11 @@ function LoginContent() {
   }, []);
 
   const handleKakaoLogin = () => {
-    window.location.href = '/api/auth/kakao';
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(POST_LOGIN_RETURN_KEY, returnTo);
+    }
+    const callback = `/api/auth/kakao`;
+    window.location.href = callback;
   };
 
   const handleDevLogin = async () => {
@@ -55,6 +108,24 @@ function LoginContent() {
       // Refresh auth state and redirect based on profile completion
       await refreshProfile();
       const userData = data.data?.user;
+      if (returnTo) {
+        if (userData?.role === 'ADMIN') {
+          router.push(returnTo);
+          return;
+        }
+
+        const safeReturnTo =
+          userData?.role === 'USER' && returnTo.startsWith('/admin') ? '/' : returnTo;
+
+        if (userData && (!userData.instagramId || !userData.depositorName)) {
+          router.push('/profile/register');
+          return;
+        }
+
+        router.push(safeReturnTo);
+        return;
+      }
+
       if (userData?.role === 'ADMIN') {
         router.push('/admin');
       } else if (userData && (!userData.instagramId || !userData.depositorName)) {
