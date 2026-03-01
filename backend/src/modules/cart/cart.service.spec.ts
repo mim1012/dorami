@@ -297,20 +297,27 @@ describe('CartService', () => {
   });
 
   describe('updateCartItem', () => {
-    it('should update cart item quantity', async () => {
+    it('should update cart item quantity and refresh timer', async () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
-      jest
-        .spyOn(prismaService.cart, 'aggregate')
-        .mockResolvedValue({ _sum: { quantity: 1 } } as any);
-      jest.spyOn(prismaService.cart, 'update').mockResolvedValue({
-        ...mockCartItem,
-        quantity: 3,
-      } as any);
+
+      const updatedItem = { ...mockCartItem, quantity: 3 };
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+            update: jest.fn().mockResolvedValue(updatedItem),
+          },
+        };
+        return callback(tx);
+      });
 
       const result = await service.updateCartItem('user-1', 'cart-1', { quantity: 3 });
 
       expect(result.quantity).toBe(3);
+      // Timer should be refreshed since product.timerEnabled is true
+      expect(result.expiresAt).toBeDefined();
+      expect(prismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when cart item not found', async () => {
@@ -324,9 +331,17 @@ describe('CartService', () => {
     it('should throw BadRequestException when insufficient stock for update', async () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
-      jest
-        .spyOn(prismaService.cart, 'aggregate')
-        .mockResolvedValue({ _sum: { quantity: 5 } } as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            // reserved=5, current item qty=1, so availableStock = 10-5+1=6, requesting 10 => throw
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 5 } }),
+            update: jest.fn(),
+          },
+        };
+        return callback(tx);
+      });
 
       await expect(service.updateCartItem('user-1', 'cart-1', { quantity: 10 })).rejects.toThrow(
         BadRequestException,
