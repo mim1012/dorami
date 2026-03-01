@@ -1509,22 +1509,22 @@ export class AdminService {
       status: order.status,
       paymentStatus: order.paymentStatus,
       shippingStatus: order.shippingStatus,
-      subtotal: Number(order.subtotal),
-      shippingFee: Number(order.shippingFee),
-      total: Number(order.total),
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-      paidAt: order.paidAt,
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
+      subtotal: String(order.subtotal),
+      shippingFee: String(order.shippingFee),
+      total: String(order.total),
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString(),
+      paidAt: order.paidAt?.toISOString() ?? null,
+      shippedAt: order.shippedAt?.toISOString() ?? null,
+      deliveredAt: order.deliveredAt?.toISOString() ?? null,
       items: order.orderItems.map((item) => ({
         id: item.id,
         productId: item.productId,
         productName: item.productName,
         productImage: item.Product?.imageUrl,
         quantity: item.quantity,
-        price: Number(item.price),
-        shippingFee: Number(item.shippingFee),
+        price: String(item.price),
+        shippingFee: String(item.shippingFee),
         color: item.color,
         size: item.size,
       })),
@@ -1590,7 +1590,7 @@ export class AdminService {
           orderId: updatedOrder.id,
           paymentStatus: updatedOrder.paymentStatus,
           status: updatedOrder.status,
-          paidAt: updatedOrder.paidAt,
+          paidAt: updatedOrder.paidAt?.toISOString() ?? null,
         },
       };
     });
@@ -1729,8 +1729,8 @@ export class AdminService {
         status: updated.status,
         shippingStatus: updated.shippingStatus,
         trackingNumber: updated.trackingNumber,
-        shippedAt: updated.shippedAt,
-        deliveredAt: updated.deliveredAt,
+        shippedAt: updated.shippedAt?.toISOString() ?? null,
+        deliveredAt: updated.deliveredAt?.toISOString() ?? null,
       },
     };
   }
@@ -1969,7 +1969,7 @@ export class AdminService {
       data: {
         id: updatedUser.id,
         status: updatedUser.status,
-        suspendedAt: updatedUser.suspendedAt,
+        suspendedAt: updatedUser.suspendedAt?.toISOString() ?? null,
       },
     };
   }
