@@ -259,9 +259,9 @@ describe('CartService', () => {
 
       expect(result.itemCount).toBe(1);
       expect(result.items).toHaveLength(1);
-      expect(result.subtotal).toBe(29000);
-      expect(result.totalShippingFee).toBe(10);
-      expect(result.grandTotal).toBe(29010);
+      expect(result.subtotal).toBe('29000');
+      expect(result.totalShippingFee).toBe('10');
+      expect(result.grandTotal).toBe('29010');
     });
 
     it('should return empty cart when no active items', async () => {
@@ -271,7 +271,7 @@ describe('CartService', () => {
 
       expect(result.itemCount).toBe(0);
       expect(result.items).toHaveLength(0);
-      expect(result.grandTotal).toBe(0);
+      expect(result.grandTotal).toBe('0');
     });
 
     it('should calculate correct totals for multiple items', async () => {
@@ -290,9 +290,9 @@ describe('CartService', () => {
       const result = await service.getCart('user-1');
 
       expect(result.itemCount).toBe(2);
-      expect(result.subtotal).toBe(29000 + 100000); // 29000*1 + 50000*2
-      expect(result.totalShippingFee).toBe(10);
-      expect(result.grandTotal).toBe(129010);
+      expect(result.subtotal).toBe('129000'); // 29000*1 + 50000*2
+      expect(result.totalShippingFee).toBe('10');
+      expect(result.grandTotal).toBe('129010');
     });
   });
 
