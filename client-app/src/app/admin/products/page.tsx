@@ -20,7 +20,6 @@ import {
   X,
   CheckCircle,
   Timer,
-  Copy,
   GripVertical,
   Search,
 } from 'lucide-react';
@@ -96,7 +95,6 @@ function SortableRow({
   getStatusBadge,
   handleOpenModal,
   handleMarkAsSoldOut,
-  handleDuplicate,
   handleDelete,
 }: {
   product: Product;
@@ -106,7 +104,6 @@ function SortableRow({
   getStatusBadge: (status: string) => { text: string; color: string };
   handleOpenModal: (product?: Product) => void;
   handleMarkAsSoldOut: (id: string) => void;
-  handleDuplicate: (id: string) => void;
   handleDelete: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -220,14 +217,6 @@ function SortableRow({
           >
             <Edit className="w-4 h-4" />
             <span className="ml-1 hidden sm:inline">수정</span>
-          </button>
-          <button
-            onClick={() => handleDuplicate(product.id)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-info"
-            title="복제"
-          >
-            <Copy className="w-4 h-4" />
-            <span className="ml-1 hidden sm:inline">복제</span>
           </button>
           {product.status === 'AVAILABLE' && (
             <button
@@ -365,19 +354,6 @@ export default function AdminProductsPage() {
       currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
-  };
-
-  // --- Feature 1: Duplicate ---
-  const handleDuplicate = async (productId: string) => {
-    try {
-      await apiClient.post(`/products/${productId}/duplicate`, {});
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      fetchProducts();
-      showToast('상품이 복제되었습니다!', 'success');
-    } catch (err: any) {
-      console.error('Failed to duplicate product:', err);
-      showToast(`상품 복제에 실패했습니다: ${err.message}`, 'error');
-    }
   };
 
   // --- Feature 2: DnD Reorder ---
@@ -782,7 +758,7 @@ export default function AdminProductsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center py-24">
         <Body className="text-secondary-text">상품 목록을 불러오는 중...</Body>
       </div>
     );
@@ -961,7 +937,6 @@ export default function AdminProductsPage() {
                         getStatusBadge={getStatusBadge}
                         handleOpenModal={handleOpenModal}
                         handleMarkAsSoldOut={handleMarkAsSoldOut}
-                        handleDuplicate={handleDuplicate}
                         handleDelete={handleDelete}
                       />
                     ))}
