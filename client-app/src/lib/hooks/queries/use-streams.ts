@@ -2,13 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import type { StreamStatus } from '@live-commerce/shared-types';
+import type { StreamStatus as SharedStreamStatus } from '@live-commerce/shared-types';
 
 export interface LiveStream {
   id: string;
   streamKey: string;
   title?: string;
-  status: StreamStatus;
+  status: SharedStreamStatus;
   startedAt?: string;
   endedAt?: string;
   expiresAt: string;
@@ -22,6 +22,13 @@ export interface LiveStream {
     stock: number;
     imageUrl?: string;
   }>;
+}
+
+export interface StreamStatusResponse {
+  status: string;
+  viewerCount: number;
+  startedAt?: string;
+  title: string;
 }
 
 // Query Keys
@@ -60,12 +67,12 @@ export function useUpcomingStreams(limit = 3) {
   });
 }
 
-// Fetch single stream by stream key
+// Fetch single stream status by stream key
 export function useStream(streamKey: string) {
   return useQuery({
     queryKey: streamKeys.detail(streamKey),
     queryFn: async () => {
-      const response = await apiClient.get<LiveStream>(`/streaming/${streamKey}`);
+      const response = await apiClient.get<StreamStatusResponse>(`/streaming/key/${streamKey}/status`);
       return response.data;
     },
     enabled: !!streamKey,

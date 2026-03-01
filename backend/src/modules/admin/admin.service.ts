@@ -23,6 +23,9 @@ import {
   ShippingAddressDto,
   UserStatisticsDto,
   UpdateSystemSettingsDto,
+  UpdateHomeFeaturedProductsDto,
+  UpdateMarketingCampaignsDto,
+  UpdatePaymentProvidersDto,
 } from './dto/admin.dto';
 
 import { UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
@@ -40,6 +43,7 @@ interface OrderWhereClause {
   status?: { in: OrderStatus[] };
   paymentStatus?: { in: PaymentStatus[] };
   shippingStatus?: { in: ShippingStatus[] };
+  userId?: string;
   total?: { gte?: number; lte?: number };
   orderItems?: Record<string, unknown>;
 }
@@ -61,6 +65,51 @@ interface AuditLogWhereClause {
   action?: string;
 }
 
+type AdminConfigItem = Record<string, unknown>;
+type AdminConfigItems = AdminConfigItem[];
+
+type ConfigSection = 'homeFeaturedProducts' | 'marketingCampaigns' | 'paymentProviders';
+
+const CONFIG_KEYS_BY_SECTION: Record<ConfigSection, string> = {
+  homeFeaturedProducts: 'homeFeaturedProducts',
+  marketingCampaigns: 'marketingCampaigns',
+  paymentProviders: 'paymentProviders',
+};
+
+const CONFIG_DEFAULTS: Record<ConfigSection, AdminConfigItem> = {
+  homeFeaturedProducts: {
+    productName: '',
+    originalPrice: 0,
+    livePrice: 0,
+    host: '패션 라이브',
+    stock: 0,
+    sold: 0,
+    isVisible: true,
+    imageUrl: '',
+    description: '',
+  },
+  marketingCampaigns: {
+    title: '',
+    description: '',
+    status: 'active',
+    channel: 'Instagram',
+    campaignType: '이벤트',
+    targetProduct: '',
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date().toISOString().slice(0, 10),
+    discountType: '퍼센트',
+    discountValue: 0,
+  },
+  paymentProviders: {
+    provider: 'Stripe',
+    accountName: '',
+    accountId: '',
+    currency: 'USD',
+    status: 'active',
+    note: '',
+  },
+};
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -73,6 +122,158 @@ export class AdminService {
     private alimtalkService: AlimtalkService,
     private redisService: RedisService,
   ) {}
+
+  private getSystemConfigDefaults(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id: 'system',
+      noticeText: null,
+      noticeFontSize: 14,
+      noticeFontFamily: 'Pretendard',
+      ...overrides,
+    };
+  }
+
+  private async getSystemConfigOrCreate() {
+    const config = await this.prisma.systemConfig.findFirst({
+      where: { id: 'system' },
+    });
+
+    if (config) {
+      return config;
+    }
+
+    return this.prisma.systemConfig.create({
+      data: this.getSystemConfigDefaults(),
+    });
+  }
+
+  private resolveConfigItemId(value: unknown, fallback: string): string {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return String(value);
+    }
+    return fallback;
+  }
+
+  private normalizeConfigItems(raw: unknown, section: ConfigSection, itemDefaults: AdminConfigItem) {
+    if (!Array.isArray(raw)) {
+      return [] as AdminConfigItems;
+    }
+
+    return raw.map((item, index) => {
+      const base =
+        item && typeof item === 'object' && !Array.isArray(item) ? (item as AdminConfigItem) : {};
+      const id = this.resolveConfigItemId(base.id, `${section}-${index + 1}`);
+      return {
+        ...itemDefaults,
+        ...base,
+        id,
+      };
+    });
+  }
+
+  private async updateConfigSection(section: ConfigSection, items: AdminConfigItems, itemDefaults: AdminConfigItem) {
+    const normalizedItems = this.normalizeConfigItems(items, section, itemDefaults);
+    const updateData: Record<string, AdminConfigItems> = {};
+    const createData: Record<string, AdminConfigItems | unknown> = this.getSystemConfigDefaults();
+
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: (() => {
+        updateData[CONFIG_KEYS_BY_SECTION[section]] = normalizedItems;
+        return updateData as unknown as Record<string, AdminConfigItems>;
+      })(),
+      create: (() => {
+        createData[CONFIG_KEYS_BY_SECTION[section]] = normalizedItems;
+        return createData as unknown as Record<string, unknown>;
+      })(),
+    });
+
+    return this.normalizeConfigItems(
+      (config as unknown as Record<string, unknown>)[CONFIG_KEYS_BY_SECTION[section]],
+      section,
+      itemDefaults,
+    );
+  }
+
+  private parseShippingAddress(addressValue: unknown): Record<string, unknown> | null {
+    if (!addressValue) {
+      return null;
+    }
+
+    if (typeof addressValue === 'string') {
+      try {
+        const decrypted = this.encryptionService.decryptAddress(addressValue);
+        return decrypted as unknown as Record<string, unknown>;
+      } catch {
+        try {
+          const parsed = JSON.parse(addressValue);
+          return parsed as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      }
+    }
+
+    if (typeof addressValue === 'object' && !Array.isArray(addressValue)) {
+      return addressValue as Record<string, unknown>;
+    }
+
+    return null;
+  }
+
+  private normalizeShippingAddress(addressValue: unknown): ShippingAddressDto | null {
+    const value = this.parseShippingAddress(addressValue);
+    if (!value) {
+      return null;
+    }
+
+    const toText = (entry: unknown): string => (typeof entry === 'string' ? entry.trim() : '');
+
+    const fullName = toText(value.fullName) || toText(value.name);
+    const address1 = toText(value.address1) || toText(value.street);
+    const address2 = toText(value.address2);
+    const city = toText(value.city) || toText(value.town);
+    const state = toText(value.state) || toText(value.region);
+    const zip = toText(value.zip) || toText(value.zipCode) || toText(value.postalCode);
+    const phone = toText(value.phone);
+
+    if (!fullName && !address1 && !address2 && !city && !state && !zip && !phone) {
+      return null;
+    }
+
+    return {
+      fullName,
+      address1,
+      address2: address2 || undefined,
+      city,
+      state,
+      zip,
+      phone,
+    } as ShippingAddressDto;
+  }
+
+  private formatShippingAddressSummary(addressValue: unknown): string {
+    const normalized = this.normalizeShippingAddress(addressValue);
+    if (!normalized) {
+      return '-';
+    }
+
+    const lines = [
+      normalized.fullName || normalized.address1,
+      normalized.address2,
+      [normalized.city, normalized.state, normalized.zip].filter(Boolean).join(' ').trim(),
+    ]
+      .map((line) => String(line).trim())
+      .filter(Boolean);
+
+    return lines.length > 0 ? lines.join(' / ') : '-';
+  }
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
     const { sortOrder, search, dateFrom, dateTo, status } = query;
@@ -131,6 +332,7 @@ export class AdminService {
           name: true,
           phone: true,
           instagramId: true,
+          shippingAddress: true,
           createdAt: true,
           lastLoginAt: true,
           status: true,
@@ -146,6 +348,7 @@ export class AdminService {
       where: { userId: { in: userIds }, paymentStatus: 'CONFIRMED' },
       _count: { id: true },
       _sum: { total: true },
+      _max: { createdAt: true },
     });
     const statsMap = new Map(orderStats.map((s) => [s.userId, s]));
 
@@ -156,12 +359,14 @@ export class AdminService {
       name: user.name,
       phone: user.phone,
       instagramId: user.instagramId,
-      createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt,
+      shippingAddressSummary: this.formatShippingAddressSummary(user.shippingAddress),
+      createdAt: user.createdAt.toISOString(),
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       status: user.status,
       role: user.role,
       totalOrders: statsMap.get(user.id)?._count.id ?? 0,
-      totalPurchaseAmount: Number(statsMap.get(user.id)?._sum.total ?? 0),
+      totalPurchaseAmount: String(statsMap.get(user.id)?._sum.total ?? 0),
+      lastPurchaseAt: statsMap.get(user.id)?._max.createdAt?.toISOString() ?? null,
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -184,6 +389,7 @@ export class AdminService {
       orderStatus,
       paymentStatus,
       shippingStatus,
+      userId,
       minAmount,
       maxAmount,
       streamKey,
@@ -196,6 +402,13 @@ export class AdminService {
 
     // Build where clause for filters
     const where: OrderWhereClause = {};
+    const allowedOrderStatuses: OrderStatus[] = [
+      'PENDING_PAYMENT',
+      'PAYMENT_CONFIRMED',
+      'SHIPPED',
+      'DELIVERED',
+      'CANCELLED',
+    ];
 
     // Search filter (order ID, user email, depositor name, instagram ID)
     if (search) {
@@ -224,7 +437,13 @@ export class AdminService {
 
     // Order status filter
     if (orderStatus && orderStatus.length > 0) {
-      where.status = { in: orderStatus as OrderStatus[] };
+      where.status = {
+        in: orderStatus.filter((status) =>
+          allowedOrderStatuses.includes(status as OrderStatus),
+        ) as OrderStatus[],
+      };
+    } else {
+      where.status = { in: allowedOrderStatuses };
     }
 
     // Payment status filter
@@ -235,6 +454,10 @@ export class AdminService {
     // Shipping status filter
     if (shippingStatus && shippingStatus.length > 0) {
       where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
+    }
+
+    if (userId) {
+      where.userId = userId;
     }
 
     // Amount range filter
@@ -300,14 +523,14 @@ export class AdminService {
       status: order.status,
       paymentStatus: order.paymentStatus,
       shippingStatus: order.shippingStatus,
-      subtotal: Number(order.subtotal),
-      shippingFee: Number(order.shippingFee),
-      total: Number(order.total),
+      subtotal: String(order.subtotal),
+      shippingFee: String(order.shippingFee),
+      total: String(order.total),
       itemCount: order.orderItems.length,
-      createdAt: order.createdAt,
-      paidAt: order.paidAt,
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
+      createdAt: order.createdAt.toISOString(),
+      paidAt: order.paidAt?.toISOString() ?? null,
+      shippedAt: order.shippedAt?.toISOString() ?? null,
+      deliveredAt: order.deliveredAt?.toISOString() ?? null,
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
       items: order.orderItems.map((item) => ({
         productName: item.productName,
@@ -339,11 +562,19 @@ export class AdminService {
       orderStatus,
       paymentStatus,
       shippingStatus,
+      userId,
       minAmount,
       maxAmount,
       streamKey,
     } = query;
     const sortBy = query.sortBy ?? 'createdAt';
+    const allowedOrderStatuses: OrderStatus[] = [
+      'PENDING_PAYMENT',
+      'PAYMENT_CONFIRMED',
+      'SHIPPED',
+      'DELIVERED',
+      'CANCELLED',
+    ];
 
     const where: OrderWhereClause = {};
 
@@ -369,13 +600,28 @@ export class AdminService {
     }
 
     if (orderStatus && orderStatus.length > 0) {
-      where.status = { in: orderStatus as OrderStatus[] };
+      const filteredOrderStatus = orderStatus.filter((status) =>
+        allowedOrderStatuses.includes(status as OrderStatus),
+      );
+
+      where.status = {
+        in:
+          filteredOrderStatus.length > 0
+            ? (filteredOrderStatus as OrderStatus[])
+            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+      };
+    } else {
+      where.status = { in: allowedOrderStatuses };
     }
     if (paymentStatus && paymentStatus.length > 0) {
       where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
     }
     if (shippingStatus && shippingStatus.length > 0) {
       where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
+    }
+
+    if (userId) {
+      where.userId = userId;
     }
     if (minAmount !== undefined || maxAmount !== undefined) {
       where.total = {};
@@ -473,11 +719,19 @@ export class AdminService {
       orderStatus,
       paymentStatus,
       shippingStatus,
+      userId,
       minAmount,
       maxAmount,
       streamKey,
     } = query;
     const sortBy = query.sortBy ?? 'createdAt';
+    const allowedOrderStatuses: OrderStatus[] = [
+      'PENDING_PAYMENT',
+      'PAYMENT_CONFIRMED',
+      'SHIPPED',
+      'DELIVERED',
+      'CANCELLED',
+    ];
 
     const where: OrderWhereClause = {};
 
@@ -501,13 +755,28 @@ export class AdminService {
       }
     }
     if (orderStatus && orderStatus.length > 0) {
-      where.status = { in: orderStatus as OrderStatus[] };
+      const filteredOrderStatus = orderStatus.filter((status) =>
+        allowedOrderStatuses.includes(status as OrderStatus),
+      );
+
+      where.status = {
+        in:
+          filteredOrderStatus.length > 0
+            ? (filteredOrderStatus as OrderStatus[])
+            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+      };
+    } else {
+      where.status = { in: allowedOrderStatuses };
     }
     if (paymentStatus && paymentStatus.length > 0) {
       where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
     }
     if (shippingStatus && shippingStatus.length > 0) {
       where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
+    }
+
+    if (userId) {
+      where.userId = userId;
     }
     if (minAmount !== undefined || maxAmount !== undefined) {
       where.total = {};
@@ -587,16 +856,7 @@ export class AdminService {
     orders.forEach((order) => {
       // 배송지 정보 추출
       let shippingAddressStr = '-';
-      if (order.shippingAddress) {
-        try {
-          const addr = order.shippingAddress as Record<string, string>;
-          shippingAddressStr =
-            `${addr.street ?? ''} ${addr.city ?? ''} ${addr.state ?? ''} ${addr.postalCode ?? ''}`.trim() ||
-            '-';
-        } catch {
-          shippingAddressStr = '-';
-        }
-      }
+      shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
 
       const phone = order.user.phone ?? '-';
       const baseRow = {
@@ -694,29 +954,30 @@ export class AdminService {
       pendingPayments,
       activeLiveStreams,
       topProducts,
+      optionSales,
       last7DaysMessages,
       previous7DaysMessages,
       last7DaysConfirmedOrders,
     ] = await Promise.all([
       this.prisma.order.count({
-        where: { createdAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
+        where: { paidAt: { gte: last7DaysStart }, paymentStatus: 'CONFIRMED' },
       }),
       this.prisma.order.count({
         where: {
-          createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+          paidAt: { gte: previous7DaysStart, lt: last7DaysStart },
           paymentStatus: 'CONFIRMED',
         },
       }),
       this.prisma.order.aggregate({
         where: {
-          createdAt: { gte: last7DaysStart },
+          paidAt: { gte: last7DaysStart },
           paymentStatus: 'CONFIRMED',
         },
         _sum: { total: true },
       }),
       this.prisma.order.aggregate({
         where: {
-          createdAt: { gte: previous7DaysStart, lt: last7DaysStart },
+          paidAt: { gte: previous7DaysStart, lt: last7DaysStart },
           paymentStatus: 'CONFIRMED',
         },
         _sum: { total: true },
@@ -733,6 +994,13 @@ export class AdminService {
         _sum: { quantity: true },
         orderBy: { _sum: { quantity: 'desc' } },
         take: 5,
+      }),
+      this.prisma.orderItem.groupBy({
+        by: ['productName', 'color', 'size'],
+        where: { productId: { not: null }, order: { paymentStatus: 'CONFIRMED' } },
+        _sum: { quantity: true },
+        orderBy: { _sum: { quantity: 'desc' } },
+        take: 8,
       }),
       this.prisma.chatMessage.count({
         where: {
@@ -790,7 +1058,7 @@ export class AdminService {
     return {
       revenue: {
         value: revenueLast7Days,
-        formatted: `$${this.formatNumber(revenueLast7Days)}`,
+        formatted: this.formatCurrency(revenueLast7Days),
         trend: revenueTrend.formatted,
         trendUp: revenueTrend.isUp,
       },
@@ -813,6 +1081,23 @@ export class AdminService {
         productName: p.productName,
         totalSold: p._sum.quantity ?? 0,
       })),
+      optionSales: optionSales.map((item) => {
+        const parts: string[] = [];
+        if (item.productName) {
+          parts.push(item.productName);
+        }
+        if (item.color) {
+          parts.push(item.color);
+        }
+        if (item.size) {
+          parts.push(item.size);
+        }
+
+        return {
+          option: parts.length > 0 ? parts.join(' / ') : '옵션 미지정',
+          sales: item._sum.quantity ?? 0,
+        };
+      }),
       messages: {
         value: last7DaysMessages,
         formatted: this.formatNumber(last7DaysMessages),
@@ -841,7 +1126,7 @@ export class AdminService {
       id: log.id,
       type: log.action,
       message: this.formatActivityMessage(log.action, log.entity),
-      timestamp: log.createdAt,
+      timestamp: log.createdAt.toISOString(),
       metadata: log.changes as Record<string, unknown>,
     }));
 
@@ -868,6 +1153,14 @@ export class AdminService {
 
   private formatNumber(num: number): string {
     return num.toLocaleString('en-US');
+  }
+
+  private formatCurrency(num: number): string {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+      maximumFractionDigits: 0,
+    }).format(num);
   }
 
   private formatActivityMessage(action: string, entity: string): string {
@@ -1118,6 +1411,57 @@ export class AdminService {
     return config.shippingMessages as Record<string, string>;
   }
 
+  async getHomeFeaturedProducts() {
+    const config = await this.getSystemConfigOrCreate();
+    return this.normalizeConfigItems(
+      config.homeFeaturedProducts,
+      'homeFeaturedProducts',
+      CONFIG_DEFAULTS.homeFeaturedProducts,
+    );
+  }
+
+  async updateHomeFeaturedProducts(dto: UpdateHomeFeaturedProductsDto) {
+    return this.updateConfigSection(
+      'homeFeaturedProducts',
+      dto.items,
+      CONFIG_DEFAULTS.homeFeaturedProducts,
+    );
+  }
+
+  async getMarketingCampaigns() {
+    const config = await this.getSystemConfigOrCreate();
+    return this.normalizeConfigItems(
+      config.marketingCampaigns,
+      'marketingCampaigns',
+      CONFIG_DEFAULTS.marketingCampaigns,
+    );
+  }
+
+  async updateMarketingCampaigns(dto: UpdateMarketingCampaignsDto) {
+    return this.updateConfigSection(
+      'marketingCampaigns',
+      dto.items,
+      CONFIG_DEFAULTS.marketingCampaigns,
+    );
+  }
+
+  async getPaymentProviders() {
+    const config = await this.getSystemConfigOrCreate();
+    return this.normalizeConfigItems(
+      config.paymentProviders,
+      'paymentProviders',
+      CONFIG_DEFAULTS.paymentProviders,
+    );
+  }
+
+  async updatePaymentProviders(dto: UpdatePaymentProvidersDto) {
+    return this.updateConfigSection(
+      'paymentProviders',
+      dto.items,
+      CONFIG_DEFAULTS.paymentProviders,
+    );
+  }
+
   /**
    * Epic 8 Story 8.4: Get order detail (admin only)
    */
@@ -1153,21 +1497,7 @@ export class AdminService {
       throw new NotFoundException('Order not found');
     }
 
-    // Decrypt shipping address
-    let shippingAddress: ShippingAddressDto | null = null;
-    if (order.user.shippingAddress) {
-      try {
-        shippingAddress = this.encryptionService.decryptAddress(
-          order.user.shippingAddress as string,
-        );
-      } catch (error) {
-        this.logger.error(
-          'Failed to decrypt shipping address',
-          error instanceof Error ? error.stack : String(error),
-        );
-        shippingAddress = null;
-      }
-    }
+    const shippingAddress = this.normalizeShippingAddress(order.user.shippingAddress);
 
     return {
       id: order.id,
@@ -1177,7 +1507,6 @@ export class AdminService {
       instagramId: order.instagramId,
       shippingAddress,
       status: order.status,
-      paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
       shippingStatus: order.shippingStatus,
       subtotal: Number(order.subtotal),
@@ -1280,24 +1609,49 @@ export class AdminService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.status === 'CANCELLED') {
+    if (
+      !['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(
+        status,
+      )
+    ) {
+      throw new BadRequestException('지원하지 않는 주문 상태입니다');
+    }
+
+    if (order.status === 'CANCELLED' && status !== 'CANCELLED') {
       throw new BadRequestException('취소된 주문의 상태는 변경할 수 없습니다');
     }
 
     const data: Record<string, unknown> = { status };
 
     // Sync related fields based on status
-    if (status === 'SHIPPED') {
-      data.shippingStatus = 'SHIPPED';
-      data.shippedAt = order.shippedAt ?? new Date();
-    } else if (status === 'DELIVERED') {
-      data.shippingStatus = 'DELIVERED';
-      data.deliveredAt = order.deliveredAt ?? new Date();
+    if (status === 'PENDING_PAYMENT') {
+      data.status = 'PENDING_PAYMENT';
+      data.paymentStatus = 'PENDING';
+      data.paidAt = null;
+      data.shippingStatus = 'PENDING';
+      data.shippedAt = null;
+      data.deliveredAt = null;
     } else if (status === 'PAYMENT_CONFIRMED') {
       data.paymentStatus = 'CONFIRMED';
       data.paidAt = order.paidAt ?? new Date();
+      data.shippingStatus = order.shippingStatus === 'DELIVERED' ? 'DELIVERED' : 'PENDING';
+    } else if (status === 'SHIPPED') {
+      data.status = 'SHIPPED';
+      data.paymentStatus = 'CONFIRMED';
+      data.paidAt = order.paidAt ?? new Date();
+      data.shippingStatus = 'SHIPPED';
+      data.shippedAt = order.shippedAt ?? new Date();
+    } else if (status === 'DELIVERED') {
+      data.status = 'DELIVERED';
+      data.paymentStatus = 'CONFIRMED';
+      data.paidAt = order.paidAt ?? new Date();
+      data.shippingStatus = 'DELIVERED';
+      data.shippedAt = order.shippedAt ?? order.paidAt ?? new Date();
+      data.deliveredAt = order.deliveredAt ?? new Date();
     } else if (status === 'CANCELLED') {
       data.paymentStatus = 'FAILED';
+      data.paidAt = order.paidAt;
+      data.shippingStatus = order.shippingStatus === 'DELIVERED' ? 'DELIVERED' : 'SHIPPED';
 
       // Restore stock for each order item
       for (const item of order.orderItems) {
@@ -1526,20 +1880,7 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    // Decrypt shipping address if exists
-    let shippingAddress: ShippingAddressDto | null = null;
-    if (user.shippingAddress) {
-      try {
-        shippingAddress = this.encryptionService.decryptAddress(user.shippingAddress as string);
-      } catch (error) {
-        this.logger.error(
-          'Failed to decrypt shipping address',
-          error instanceof Error ? error.stack : String(error),
-        );
-        // Return null if decryption fails
-        shippingAddress = null;
-      }
-    }
+    const shippingAddress = this.normalizeShippingAddress(user.shippingAddress);
 
     const userOrders = await this.prisma.order.findMany({
       where: { userId, paymentStatus: 'CONFIRMED' },
@@ -1567,11 +1908,11 @@ export class AdminService {
       instagramId: user.instagramId,
       depositorName: user.depositorName,
       shippingAddress,
-      createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt.toISOString(),
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       status: user.status,
       role: user.role,
-      suspendedAt: user.suspendedAt,
+      suspendedAt: user.suspendedAt?.toISOString() ?? null,
       statistics,
     };
   }
@@ -1672,103 +2013,6 @@ export class AdminService {
     return {
       success: true,
       data: updated,
-    };
-  }
-
-  /**
-   * Generate settlement report with daily aggregation
-   */
-  async getSettlementReport(fromDate: string, toDate: string) {
-    // Validate date parameters
-    if (!fromDate || !toDate) {
-      throw new BadRequestException('fromDate and toDate are required');
-    }
-
-    // Parse dates as UTC to avoid timezone issues
-    const from = new Date(fromDate + 'T00:00:00.000Z');
-    const to = new Date(toDate + 'T23:59:59.999Z');
-
-    // Check if dates are valid
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
-      throw new BadRequestException('Invalid date format. Please use YYYY-MM-DD format');
-    }
-
-    // Get all confirmed payment orders in date range
-    const orders = await this.prisma.order.findMany({
-      where: {
-        paymentStatus: 'CONFIRMED',
-        paidAt: {
-          gte: from,
-          lte: to,
-        },
-      },
-      select: {
-        id: true,
-        userId: true,
-        userEmail: true,
-        instagramId: true,
-        total: true,
-        shippingFee: true,
-        createdAt: true,
-        paidAt: true,
-      },
-      orderBy: {
-        paidAt: 'desc',
-      },
-    });
-
-    // Calculate summary
-    const summary = {
-      totalOrders: orders.length,
-      totalRevenue: orders.reduce((sum, order) => sum + Number(order.total), 0),
-      avgOrderValue:
-        orders.length > 0
-          ? orders.reduce((sum, order) => sum + Number(order.total), 0) / orders.length
-          : 0,
-      totalShippingFee: orders.reduce((sum, order) => sum + Number(order.shippingFee), 0),
-    };
-
-    // Daily aggregation for chart
-    const dailyRevenue = new Map<string, { date: string; revenue: number; orderCount: number }>();
-
-    orders.forEach((order) => {
-      if (!order.paidAt) {
-        return;
-      }
-      const dateKey = order.paidAt.toISOString().split('T')[0]; // YYYY-MM-DD
-
-      if (!dailyRevenue.has(dateKey)) {
-        dailyRevenue.set(dateKey, {
-          date: dateKey,
-          revenue: 0,
-          orderCount: 0,
-        });
-      }
-
-      const day = dailyRevenue.get(dateKey)!;
-      day.revenue += Number(order.total);
-      day.orderCount += 1;
-    });
-
-    // Convert map to sorted array
-    const dailyData = Array.from(dailyRevenue.values()).sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
-
-    return {
-      summary,
-      orders: orders.map((order) => ({
-        orderId: order.id,
-        orderDate: order.createdAt.toISOString(),
-        customerId: order.instagramId ?? order.userEmail,
-        total: Number(order.total),
-        paidAt: order.paidAt ? order.paidAt.toISOString() : '',
-      })),
-      dailyRevenue: dailyData,
-      dateRange: {
-        from: fromDate,
-        to: toDate,
-      },
     };
   }
 

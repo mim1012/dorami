@@ -56,7 +56,7 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <main id="main-content">{children}</main>
+                <div id="main-content">{children}</div>
               </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>

@@ -1,0 +1,204 @@
+# prometheus-config.yml
+# Prometheus scrape configuration for Dorami Live Commerce
+#
+# Usage:
+#   docker run -d \
+#     -p 9090:9090 \
+#     -v $(pwd)/prometheus-config.yml:/etc/prometheus/prometheus.yml \
+#     prom/prometheus
+#
+# Or add to docker-compose.yml:
+#   prometheus:
+#     image: prom/prometheus:latest
+#     ports:
+#       - "9090:9090"
+#     volumes:
+#       - ./infrastructure/monitoring/prometheus-config.yml:/etc/prometheus/prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    project: "dorami"
+    env: "staging"
+
+# ============================================================================
+# Alerting rules
+# ============================================================================
+rule_files:
+  - "alert-rules.yml"
+
+# ============================================================================
+# Alertmanager (optional)
+# ============================================================================
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ["alertmanager:9093"]
+
+# ============================================================================
+# Scrape configurations
+# ============================================================================
+scrape_configs:
+
+  # --------------------------------------------------------------------------
+  # Node exporter — host-level CPU, memory, disk, network metrics
+  # Add node-exporter to docker-compose to enable:
+  #   node-exporter:
+  #     image: prom/node-exporter:latest
+  #     ports:
+  #       - "9100:9100"
+  #     volumes:
+  #       - /proc:/host/proc:ro
+  #       - /sys:/host/sys:ro
+  #     command:
+  #       - '--path.procfs=/host/proc'
+  #       - '--path.sysfs=/host/sys'
+  # --------------------------------------------------------------------------
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "host"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "dorami-host"
+
+  # --------------------------------------------------------------------------
+  # cAdvisor — Docker container metrics (CPU, memory, network per container)
+  # Add cadvisor to docker-compose to enable:
+  #   cadvisor:
+  #     image: gcr.io/cadvisor/cadvisor:latest
+  #     ports:
+  #       - "8081:8080"
+  #     volumes:
+  #       - /:/rootfs:ro
+  #       - /var/run:/var/run:ro
+  #       - /sys:/sys:ro
+  #       - /var/lib/docker/:/var/lib/docker:ro
+  # --------------------------------------------------------------------------
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          service: "docker"
+    metric_relabel_configs:
+      # Keep only Dorami-related containers
+      - source_labels: [container_label_com_docker_compose_project]
+        regex: "dorami.*"
+        action: keep
+      # Drop high-cardinality metrics we don't need
+      - source_labels: [__name__]
+        regex: "container_tasks_state|container_memory_failures_total"
+        action: drop
+
+  # --------------------------------------------------------------------------
+  # Nginx Prometheus Exporter
+  # Requires nginx stub_status module enabled:
+  #   location /nginx_status {
+  #     stub_status on;
+  #     allow 127.0.0.1;
+  #     deny all;
+  #   }
+  #
+  # Add to docker-compose:
+  #   nginx-exporter:
+  #     image: nginx/nginx-prometheus-exporter:latest
+  #     command: -nginx.scrape-uri=http://nginx:80/nginx_status
+  #     ports:
+  #       - "9113:9113"
+  # --------------------------------------------------------------------------
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+        labels:
+          service: "nginx"
+
+  # --------------------------------------------------------------------------
+  # Backend NestJS — custom metrics endpoint (if added)
+  # Requires adding prom-client to backend:
+  #   npm install prom-client
+  # And exposing GET /api/metrics endpoint with Prometheus format
+  # --------------------------------------------------------------------------
+  - job_name: "backend"
+    metrics_path: "/api/metrics"
+    static_configs:
+      - targets: ["backend:3001"]
+        labels:
+          service: "nestjs-backend"
+    # Only scrape if metrics endpoint exists
+    honor_labels: true
+
+  # --------------------------------------------------------------------------
+  # Redis Exporter
+  # Add to docker-compose:
+  #   redis-exporter:
+  #     image: oliver006/redis_exporter:latest
+  #     environment:
+  #       REDIS_ADDR: "redis://redis:6379"
+  #     ports:
+  #       - "9121:9121"
+  # --------------------------------------------------------------------------
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          service: "redis"
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL Exporter
+  # Add to docker-compose:
+  #   postgres-exporter:
+  #     image: prometheuscommunity/postgres-exporter:latest
+  #     environment:
+  #       DATA_SOURCE_NAME: "postgresql://livecommerce:changeme@postgres:5432/livecommerce?sslmode=disable"
+  #     ports:
+  #       - "9187:9187"
+  # --------------------------------------------------------------------------
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels:
+          service: "postgresql"
+
+  # --------------------------------------------------------------------------
+  # SRS (Simple Realtime Server) — custom HTTP API
+  # SRS exposes stats at: http://srs:1985/api/v1/
+  # Use blackbox-exporter or a custom exporter for SRS
+  # --------------------------------------------------------------------------
+  - job_name: "srs-api"
+    metrics_path: "/api/v1/summaries"
+    static_configs:
+      - targets: ["srs:1985"]
+        labels:
+          service: "srs-streaming"
+    # SRS returns JSON, not Prometheus format — use json_exporter or scrape manually
+    # This entry is a placeholder; see srs-metrics.sh for log-based collection
+
+  # --------------------------------------------------------------------------
+  # Blackbox exporter — HTTP probe for endpoint health
+  # Add to docker-compose:
+  #   blackbox:
+  #     image: prom/blackbox-exporter:latest
+  #     ports:
+  #       - "9115:9115"
+  # --------------------------------------------------------------------------
+  - job_name: "blackbox-http"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - "http://backend:3001/api/health/live"
+          - "http://backend:3001/api/health/ready"
+          - "http://frontend:3000/"
+          - "http://nginx:80/health"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "blackbox:9115"

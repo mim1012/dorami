@@ -1,0 +1,111 @@
+Entity,Field,Prisma Type,DTO Type,Shared-Types (Frontend) Type,Mismatch Type,Severity,Details,Fix Required
+User,name,String!,string,string,None,✓,All match,No
+User,email,String? (unique),string?,string,NULLABILITY,Medium,Prisma allows NULL but shared-types marks as required in most contexts,Update shared-types User interface to email?: string
+User,kakaoId,String! (unique),kakaoId!,kakaoId,None,✓,All match,No
+User,role,Role enum (USER|ADMIN),UserRole enum (BUYER|SELLER|ADMIN),Role enum (USER|ADMIN),ENUM_VALUES,HIGH,DTO has BUYER|SELLER but Prisma/shared-types only have USER|ADMIN - DTO is out of sync,Remove BUYER/SELLER from UserRole enum in user.dto.ts
+User,status,UserStatus enum (ACTIVE|INACTIVE|SUSPENDED),string (enum validation),UserStatus enum (ACTIVE|INACTIVE|SUSPENDED),TYPE,Medium,DTO uses generic string instead of proper enum type,Add UserStatus enum import to user.dto.ts
+User,phone,String?,string?,string,None,✓,All allow null,No
+User,instagramId,String? (unique),string?,string?,None,✓,All allow null,No
+User,shippingAddress,Json?,{fullName; address1; address2?; city; state; zip; phone}?,ShippingAddress?,TYPE,Medium,Prisma stores as JSON but DTOs/shared-types have strict interface,Add proper JSON schema validation or use strict interface serialization
+User,depositorName,String?,string?,string?,None,✓,All allow null,No
+User,profileCompletedAt,DateTime?,Date,string,TYPE,Medium,Prisma uses DateTime but DTO returns Date object while shared-types expects ISO string,Standardize on ISO 8601 string format across all layers
+User,suspendedAt,DateTime?,Date,string,TYPE,Medium,Prisma uses DateTime but DTO returns Date object while shared-types expects ISO string,Standardize on ISO 8601 string format across all layers
+User,suspensionReason,String?,string?,undefined,MISMATCH,Low,Prisma has field but shared-types User interface doesn't include it,Add suspensionReason field to shared-types User interface
+User,lastLoginAt,DateTime?,Date,string?,TYPE,Medium,Prisma uses DateTime but DTO returns Date object while shared-types expects ISO string,Standardize on ISO 8601 string format across all layers
+User,createdAt,DateTime! (default now),Date,string,TYPE,HIGH,Prisma DateTime vs DTO/frontend Date vs shared-types string,Enforce ISO 8601 string serialization in all responses
+User,updatedAt,DateTime! (updatedAt),Date,string,TYPE,HIGH,Prisma DateTime vs DTO/frontend Date vs shared-types string,Enforce ISO 8601 string serialization in all responses
+Product,quantity,Int,stock: number,stock: number,FIELD_NAME,Medium,Prisma column is 'quantity' but DTOs/frontend use 'stock' field name,Consistent field naming - use 'stock' everywhere or update Prisma
+Product,price,Decimal(10,2),number,number,TYPE,LOW,Decimal in Prisma but handled as number in DTO (potential precision loss),Use Decimal library for price fields or document number usage
+Product,shippingFee,Decimal(10,2) default 0,number (deprecated),number,TYPE,Low,Marked deprecated in DTO but still in Prisma schema,Remove from DTOs or update Prisma schema
+Product,images,String[] (default []),string[],string[],None,✓,All match,No
+Product,colorOptions,String[],string[],string[],None,✓,All match,No
+Product,sizeOptions,String[],string[],string[],None,✓,All match,No
+Product,status,ProductStatus (AVAILABLE|SOLD_OUT),ProductStatus enum,ProductStatus enum,None,✓,All match,No
+Product,timerDuration,Int default 10,number,number,None,✓,All match,No
+Product,timerEnabled,Boolean default false,boolean,boolean,None,✓,All match,No
+Product,isNew,Boolean default false,boolean,boolean,None,✓,All match,No
+Product,discountRate,Decimal(5,2)?,number?,number?,None,✓,All match,No
+Product,originalPrice,Decimal(10,2)?,number?,number?,None,✓,All match,No
+Product,imageUrl,String?,string?,string?,None,✓,All match,No
+Product,freeShippingMessage,String?,string?,string?,None,✓,All match,No
+Product,streamKey,String? (FK),string?,string,NULLABILITY,Medium,Prisma allows NULL (products not tied to stream) but shared-types marks as required,Update shared-types Product interface: streamKey?: string
+Product,createdAt,DateTime! (default now),Date,string,TYPE,HIGH,Inconsistent date serialization,Enforce ISO 8601 string format
+Product,updatedAt,DateTime! (updatedAt),Date,string,TYPE,HIGH,Inconsistent date serialization,Enforce ISO 8601 string format
+Cart,price,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma stores as Decimal but DTO returns number while shared-types expects string for Decimal safety,Return prices as string in CartItemResponseDto and update DTO
+Cart,shippingFee,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma stores as Decimal but DTO returns number while shared-types expects string for Decimal safety,Return shippingFee as string in CartItemResponseDto
+Cart,quantity,Int,number,number,None,✓,All match,No
+Cart,timerEnabled,Boolean,boolean,boolean,None,✓,All match,No
+Cart,expiresAt,DateTime?,string?,string?,None,✓,All allow null and string ISO format,No
+Cart,status,CartStatus (ACTIVE|EXPIRED|COMPLETED),CartStatus enum,CartStatus enum,None,✓,All match,No
+Cart,color,String?,string?,string?,None,✓,All allow null,No
+Cart,size,String?,string?,string?,None,✓,All allow null,No
+Cart,createdAt,DateTime! (default now),string,string,SERIALIZATION,Low,DTO correctly returns string but Prisma DateTime should be serialized,Verify response serialization in service layer
+Cart,updatedAt,DateTime! (updatedAt),string,string,SERIALIZATION,Low,DTO correctly returns string but Prisma DateTime should be serialized,Verify response serialization in service layer
+Order,id,String! (custom ORD-YYYYMMDD-XXXXX),string,string,None,✓,All match format,No
+Order,subtotal,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return subtotal as string in OrderResponseDto
+Order,shippingFee,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return shippingFee as string in OrderResponseDto
+Order,total,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return total as string in OrderResponseDto
+Order,paymentMethod,PaymentMethod enum (BANK_TRANSFER),PaymentMethod enum,PaymentMethod enum,None,✓,All match,No
+Order,paymentStatus,PaymentStatus enum,PaymentStatus enum,PaymentStatus enum,None,✓,All match,No
+Order,shippingStatus,ShippingStatus enum,ShippingStatus enum,ShippingStatus enum,None,✓,All match,No
+Order,status,OrderStatus enum,OrderStatus enum,OrderStatus enum,None,✓,All match,No
+Order,paidAt,DateTime?,Date,string?,TYPE,Medium,Prisma DateTime vs DTO Date vs shared-types string?,Standardize to ISO string
+Order,shippedAt,DateTime?,Date,string?,TYPE,Medium,Prisma DateTime vs DTO Date vs shared-types string?,Standardize to ISO string
+Order,deliveredAt,DateTime?,Date,string?,TYPE,Medium,Prisma DateTime vs DTO Date vs shared-types string?,Standardize to ISO string
+Order,createdAt,DateTime! (default now),Date,string,TYPE,HIGH,Inconsistent date serialization,Enforce ISO 8601 string format
+Order,updatedAt,DateTime! (updatedAt),Date,string,TYPE,HIGH,Inconsistent date serialization,Enforce ISO 8601 string format
+Order,depositorName,String!,string,string,None,✓,All match,No
+Order,shippingAddress,Json!,N/A in DTO response,ShippingAddress,TYPE,Medium,Prisma JSON vs DTO/frontend interface mismatch,Add shippingAddress to OrderResponseDto
+Order,trackingNumber,String?,string?,undefined,FIELD_MISSING,Low,Prisma has field but shared-types Order interface doesn't include it,Add trackingNumber?: string to shared-types Order interface
+OrderItem,price,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string,Return price as string in OrderItem interface
+OrderItem,shippingFee,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string,Return shippingFee as string in OrderItem interface
+OrderItem,quantity,Int,number,number,None,✓,All match,No
+OrderItem,color,String?,string?,string?,None,✓,All allow null,No
+OrderItem,size,String?,string?,string?,None,✓,All allow null,No
+Reservation,quantity,Int,number,number,None,✓,All match,No
+Reservation,reservationNumber,Int,number,number,None,✓,All match,No
+Reservation,status,ReservationStatus (WAITING|PROMOTED|COMPLETED|CANCELLED|EXPIRED),ReservationStatus enum,ReservationStatus enum,None,✓,All match,No
+Reservation,expiresAt,DateTime?,string?,string?,None,✓,All allow null and string format,No
+Reservation,promotedAt,DateTime?,undefined,string?,FIELD_MISSING,Low,Prisma has field but DTOs don't include it,Add promotedAt?: Date to ReservationResponseDto or relevant DTO
+PointBalance,currentBalance,Int default 0,number,number,None,✓,All match,No
+PointBalance,lifetimeEarned,Int default 0,number,number,None,✓,All match,No
+PointBalance,lifetimeUsed,Int default 0,number,number,None,✓,All match,No
+PointBalance,lifetimeExpired,Int default 0,number,number,None,✓,All match,No
+PointTransaction,amount,Int,number,number,None,✓,All match,No
+PointTransaction,balanceAfter,Int,number,number,None,✓,All match,No
+PointTransaction,transactionType,PointTransactionType enum,PointTransactionType enum,PointTransactionType enum,None,✓,All match,No
+PointTransaction,createdAt,DateTime! (default now),string,string,SERIALIZATION,Low,Should be ISO string,Verify serialization
+Settlement,totalSales,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return as string
+Settlement,commission,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return as string
+Settlement,settlementAmount,Decimal(10,2),number,string (Decimal safe),TYPE,HIGH,Prisma Decimal vs DTO number vs shared-types string - inconsistent for financial data,Return as string
+Settlement,status,SettlementStatus (PENDING|APPROVED|PAID),SettlementStatus enum,SettlementStatus enum,None,✓,All match,No
+Settlement,createdAt,DateTime! (default now),Date,string,TYPE,Medium,Inconsistent date serialization,Enforce ISO string
+Settlement,updatedAt,DateTime! (updatedAt),Date,string,TYPE,Medium,Inconsistent date serialization,Enforce ISO string
+ChatMessage,timestamp,DateTime! (default now),Date,string,TYPE,Medium,Prisma DateTime vs DTO Date vs shared-types string,Standardize to ISO string
+ChatMessage,isDeleted,Boolean default false,boolean,boolean,None,✓,All match,No
+ChatMessage,content,String (Text type),string,string,None,✓,All match,No
+ChatMessage,userId,String? (FK),string?,string,NULLABILITY,Low,Prisma allows NULL (anonymous messages) but shared-types marks required,Update ChatMessage interface: userId?: string
+LiveStream,title,String default 'Live Stream',string,undefined,FIELD_MISSING,Low,Prisma has field but shared-types LiveStream doesn't include title,Add title: string to shared-types LiveStream
+LiveStream,description,String? (Text type),string?,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add description?: string to shared-types
+LiveStream,startedAt,DateTime?,string?,string?,None,✓,All allow null and string,No
+LiveStream,endedAt,DateTime?,string?,string?,None,✓,All allow null and string,No
+LiveStream,expiresAt,DateTime!,string,string,SERIALIZATION,Low,All should be ISO string,Verify serialization
+LiveStream,createdAt,DateTime! (default now),Date,string,TYPE,Medium,Inconsistent date serialization,Enforce ISO string
+LiveStream,peakViewers,Int default 0,number,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add peakViewers: number to shared-types
+LiveStream,thumbnailUrl,String?,string?,string?,None,✓,All allow null,No
+LiveStream,freeShippingEnabled,Boolean default false,boolean,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add freeShippingEnabled: boolean to shared-types
+SystemConfig,noticeText,String? (Text type),string?,undefined,FIELD_MISSING,Low,Not in shared-types SystemConfig interface,Update SystemConfig type definition
+SystemConfig,shippingMessages,Json?,Record<string; unknown>?,undefined,TYPE,Medium,Prisma JSON vs DTO generic object,Define strict interface for shipping messages
+SystemConfig,homeFeaturedProducts,Json?,Record<string; unknown>[],undefined,TYPE,Medium,Prisma JSON vs DTO array of objects,Define strict interface for featured products
+SystemConfig,marketingCampaigns,Json?,Record<string; unknown>[],undefined,TYPE,Medium,Prisma JSON vs DTO array of objects,Define strict interface for marketing campaigns
+SystemConfig,paymentProviders,Json?,Record<string; unknown>[],undefined,TYPE,Medium,Prisma JSON vs DTO array of objects,Define strict interface for payment providers
+SystemConfig,defaultCartTimerMinutes,Int default 10,number,undefined,FIELD_MISSING,Low,Prisma has field but shared-types SystemConfig doesn't,Update SystemConfig interface
+SystemConfig,defaultShippingFee,Decimal(10,2) default 10,number,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't,Update SystemConfig interface
+SystemConfig,caShippingFee,Decimal(10,2) default 8,number,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't,Update SystemConfig interface
+SystemConfig,pointsEnabled,Boolean default false,boolean,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't,Update SystemConfig interface
+AuditLog,changes,Json!,object,object with before/after,TYPE,Low,Prisma JSON vs DTO object - should enforce structure,Define strict interface for changes field
+NotificationSubscription,p256dh,String (Text type),string,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add to NotificationSubscription type
+NotificationSubscription,auth,String (Text type),string,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add to NotificationSubscription type
+ReStreamTarget,rtmpUrl,String,string,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add rtmpUrl to ReStreamTarget type
+ReStreamTarget,streamKey,String,string,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't include it,Add streamKey to ReStreamTarget type
+ReStreamTarget,muteAudio,Boolean default false,boolean,undefined,FIELD_MISSING,Low,Prisma has field but shared-types doesn't,Add muteAudio to ReStreamTarget type

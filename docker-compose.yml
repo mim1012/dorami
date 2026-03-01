@@ -19,6 +19,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - live-commerce-network
 
   # Redis Cache & Pub/Sub
   redis:
@@ -35,6 +37,38 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - live-commerce-network
+
+  # NestJS Backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: live-commerce-backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/live_commerce
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key-12345-change-in-production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAKAO_CLIENT_ID: dev-kakao-client-id
+      KAKAO_CLIENT_SECRET: dev-kakao-client-secret
+      KAKAO_CALLBACK_URL: http://localhost:3000/auth/callback
+      PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      CSRF_ENABLED: "false"
+      ADMIN_EMAILS: admin@dorami.shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - live-commerce-network
 
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
@@ -46,11 +80,15 @@ services:
       - '8080:8080'  # HTTP-FLV + HLS
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - live-commerce-network
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  default:
+  live-commerce-network:
     name: live-commerce-network

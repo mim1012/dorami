@@ -52,6 +52,17 @@ export class UpdateStreamDto {
   @IsOptional()
   expiresAt?: string; // ISO 8601 format
 
+  @IsDateString()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return value;
+  })
+  scheduledAt?: string | null;
+
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
@@ -64,7 +75,7 @@ export class UpdateStreamDto {
 export class StreamStatusDto {
   status!: string;
   viewerCount!: number;
-  startedAt?: Date;
+  startedAt?: string;
   title!: string;
 }
 
@@ -100,11 +111,16 @@ export class StreamHistoryItemDto {
   title!: string;
   userId!: string;
   userName!: string;
-  startedAt!: Date | null;
-  endedAt!: Date | null;
+  scheduledAt!: string | null;
+  startedAt!: string | null;
+  endedAt!: string | null;
   totalDuration!: number | null;
   peakViewers!: number;
   status!: string;
+  freeShippingEnabled!: boolean;
+  rtmpUrl?: string;
+  hlsUrl?: string;
+  rtmpPort?: number;
 }
 
 export class StreamHistoryResponseDto {
@@ -124,15 +140,16 @@ export class StreamingSessionResponseDto {
   status!: string;
   rtmpUrl!: string;
   hlsUrl!: string;
+  rtmpPort!: number;
   viewerCount?: number;
   peakViewers?: number;
-  startedAt?: Date;
-  endedAt?: Date;
+  startedAt?: string;
+  endedAt?: string;
   totalDuration?: number;
-  scheduledAt?: Date | null;
+  scheduledAt?: string | null;
   thumbnailUrl?: string | null;
-  expiresAt!: Date;
-  createdAt!: Date;
+  expiresAt!: string;
+  createdAt!: string;
 }
 
 export class ActiveStreamResponseDto {
@@ -151,7 +168,7 @@ export class UpcomingStreamResponseDto {
   streamKey!: string;
   title!: string;
   description?: string | null;
-  scheduledTime!: string | null;
+  scheduledAt!: string | null;
   thumbnailUrl!: string | null;
   isLive!: boolean;
   streamer!: { id: string; name: string };

@@ -127,6 +127,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+#main-content:has(.admin-layout) {
+  overflow-x: auto;
+}
+
 /* Selection Color */
 ::selection {
   background-color: var(--hot-pink);
@@ -459,6 +463,10 @@ body {
     max-width: none;
     border: none;
     box-shadow: none;
+  }
+
+  #main-content:has(.admin-layout) {
+    overflow-x: auto;
   }
 }
 

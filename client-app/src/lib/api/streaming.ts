@@ -5,8 +5,7 @@ export interface LiveStream {
   streamKey?: string;
   title: string;
   description?: string;
-  scheduledTime: string;
-  scheduledStartTime?: string;
+  scheduledAt?: string | null;
   thumbnailUrl?: string | null;
   isLive: boolean;
   status?: string;

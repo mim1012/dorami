@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
+import { OrderStatus } from '@live-commerce/shared-types';
 import { Button } from '@/components/common/Button';
-import { Input } from '@/components/common/Input';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
@@ -26,7 +26,6 @@ interface OrderItem {
   productImage?: string;
   quantity: number;
   price: number;
-  shippingFee: number;
   color?: string;
   size?: string;
 }
@@ -38,8 +37,7 @@ interface OrderDetail {
   depositorName: string;
   instagramId: string;
   shippingAddress: ShippingAddress | null;
-  status: string;
-  paymentMethod: string;
+  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   paymentStatus: string;
   shippingStatus: string;
   subtotal: number;
@@ -60,18 +58,18 @@ interface OrderDetail {
   };
 }
 
-const ORDER_STATUS_OPTIONS = [
-  { value: 'PENDING_PAYMENT', label: '입금 대기' },
-  { value: 'PAYMENT_CONFIRMED', label: '결제 완료' },
-  { value: 'SHIPPED', label: '배송중' },
-  { value: 'DELIVERED', label: '배송 완료' },
-  { value: 'CANCELLED', label: '취소' },
-];
+const ORDER_STATUS_LABELS: Record<OrderDetail['status'], string> = {
+  PENDING_PAYMENT: '입금 대기',
+  PAYMENT_CONFIRMED: '입금 완료',
+  SHIPPED: '배송중',
+  DELIVERED: '배송 완료',
+  CANCELLED: '취소',
+};
 
-const SHIPPING_STATUS_OPTIONS = [
-  { value: 'PENDING', label: '대기' },
-  { value: 'SHIPPED', label: '배송중' },
-  { value: 'DELIVERED', label: '배송 완료' },
+const ORDER_STATUS_UPDATE_OPTIONS = [
+  { value: 'PENDING_PAYMENT', label: '입금 대기' },
+  { value: 'PAYMENT_CONFIRMED', label: '입금 완료' },
+  { value: 'CANCELLED', label: '취소' },
 ];
 
 export default function AdminOrderDetailPage() {
@@ -85,11 +83,6 @@ export default function AdminOrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [trackingNumber, setTrackingNumber] = useState('');
-
-  useEffect(() => {
-    fetchOrderDetail();
-  }, [orderId]);
 
   const fetchOrderDetail = async () => {
     setIsLoading(true);
@@ -105,10 +98,15 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  const handleOrderStatusChange = async (newStatus: string) => {
+  useEffect(() => {
+    fetchOrderDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
+
+  const handleOrderStatusChange = async (newStatus: OrderDetail['status']) => {
     if (!order || newStatus === order.status) return;
 
-    const statusLabel = ORDER_STATUS_OPTIONS.find((o) => o.value === newStatus)?.label || newStatus;
+    const statusLabel = ORDER_STATUS_LABELS[newStatus] || newStatus;
     const confirmed = await confirm({
       title: '주문 상태 변경',
       message: `주문번호: ${order.id}\n상태를 "${statusLabel}"(으)로 변경하시겠습니까?`,
@@ -130,63 +128,6 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  const handleShippingStatusChange = async (newStatus: string) => {
-    if (!order || newStatus === order.shippingStatus) return;
-
-    const statusLabel =
-      SHIPPING_STATUS_OPTIONS.find((o) => o.value === newStatus)?.label || newStatus;
-
-    const confirmed = await confirm({
-      title: '배송 상태 변경',
-      message: `주문번호: ${order.id}\n배송 상태를 "${statusLabel}"(으)로 변경하시겠습니까?${
-        newStatus === 'SHIPPED' && trackingNumber ? `\n운송장 번호: ${trackingNumber}` : ''
-      }`,
-      confirmText: '변경',
-      variant: 'info',
-    });
-
-    if (!confirmed) return;
-
-    setIsUpdating(true);
-    try {
-      const body: any = { shippingStatus: newStatus };
-      if (newStatus === 'SHIPPED' && trackingNumber) {
-        body.trackingNumber = trackingNumber;
-      }
-      await apiClient.patch(`/admin/orders/${orderId}/shipping-status`, body);
-      showToast(`배송 상태가 "${statusLabel}"(으)로 변경되었습니다`, 'success');
-      await fetchOrderDetail();
-    } catch (err: any) {
-      showToast(err.response?.data?.message || '배송 상태 변경에 실패했습니다', 'error');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleConfirmPayment = async () => {
-    if (!order) return;
-
-    const confirmed = await confirm({
-      title: '입금 확인',
-      message: `주문번호: ${order.id}\n금액: ${formatCurrency(order.total)}\n입금자명: ${order.depositorName}\n\n입금을 확인하시겠습니까?`,
-      confirmText: '확인',
-      variant: 'info',
-    });
-
-    if (!confirmed) return;
-
-    setIsUpdating(true);
-    try {
-      await apiClient.patch(`/admin/orders/${orderId}/confirm-payment`);
-      showToast('입금이 확인되었습니다', 'success');
-      await fetchOrderDetail();
-    } catch (err: any) {
-      showToast(err.response?.data?.message || '입금 확인에 실패했습니다', 'error');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -199,35 +140,31 @@ export default function AdminOrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
-  const getStatusColor = (status: string, type: 'order' | 'payment' | 'shipping') => {
-    const colors: Record<string, Record<string, string>> = {
-      order: {
-        PENDING_PAYMENT: 'bg-warning/10 text-warning border-warning',
-        PAYMENT_CONFIRMED: 'bg-success/10 text-success border-success',
-        SHIPPED: 'bg-info/10 text-info border-info',
-        DELIVERED: 'bg-success/10 text-success border-success',
-        CANCELLED: 'bg-error/10 text-error border-error',
-      },
-      payment: {
-        PENDING: 'bg-warning/10 text-warning border-warning',
-        CONFIRMED: 'bg-success/10 text-success border-success',
-        FAILED: 'bg-error/10 text-error border-error',
-      },
-      shipping: {
-        PENDING: 'bg-secondary-text/10 text-secondary-text border-secondary-text',
-        SHIPPED: 'bg-info/10 text-info border-info',
-        DELIVERED: 'bg-success/10 text-success border-success',
-      },
+  const getOrderStatusBadge = (status: string) => {
+    const colors: Record<OrderDetail['status'], string> = {
+      PENDING_PAYMENT: 'bg-warning/10 text-warning border-warning',
+      PAYMENT_CONFIRMED: 'bg-success/10 text-success border-success',
+      SHIPPED: 'bg-info/10 text-info border-info',
+      DELIVERED: 'bg-success/10 text-success border-success',
+      CANCELLED: 'bg-error/10 text-error border-error',
     };
+    const labels = ORDER_STATUS_LABELS;
+
     return (
-      colors[type]?.[status] || 'bg-secondary-text/10 text-secondary-text border-secondary-text'
+      <span
+        className={`px-3 py-2 rounded-button border text-sm font-medium ${
+          colors[status as OrderStatus] || 'bg-secondary-text/10 text-secondary-text border-secondary-text'
+        }`}
+      >
+        {labels[status as OrderStatus] || status}
+      </span>
     );
   };
 
@@ -252,7 +189,6 @@ export default function AdminOrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <Display className="text-hot-pink mb-2">주문 상세</Display>
@@ -263,83 +199,41 @@ export default function AdminOrderDetailPage() {
         </Button>
       </div>
 
-      {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Order Status */}
         <div className="bg-content-bg rounded-button p-6">
           <Body className="text-secondary-text text-caption mb-2">주문 상태</Body>
           <select
             value={order.status}
-            onChange={(e) => handleOrderStatusChange(e.target.value)}
-            disabled={isUpdating}
+            onChange={(e) => handleOrderStatusChange(e.target.value as OrderDetail['status'])}
+            disabled={isUpdating || !ORDER_STATUS_UPDATE_OPTIONS.some((option) => option.value === order.status)}
             className="w-full px-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink bg-white"
           >
-            {ORDER_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {ORDER_STATUS_UPDATE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
+          {!ORDER_STATUS_UPDATE_OPTIONS.some((option) => option.value === order.status) && (
+            <p className="mt-3 text-xs text-secondary-text">
+              배송 상태는 배송 탭에서 배송 완료 처리 후 자동 반영됩니다.
+            </p>
+          )}
+          <div className="mt-3">{getOrderStatusBadge(order.status)}</div>
         </div>
 
-        {/* Payment Status */}
         <div className="bg-content-bg rounded-button p-6">
           <Body className="text-secondary-text text-caption mb-2">결제 상태</Body>
-          <div className="flex items-center gap-3">
-            <span
-              className={`px-3 py-2 rounded-button border text-sm font-medium ${getStatusColor(order.paymentStatus, 'payment')}`}
-            >
-              {order.paymentStatus === 'PENDING'
-                ? '입금 대기'
-                : order.paymentStatus === 'CONFIRMED'
-                  ? '결제 확인'
-                  : '결제 실패'}
-            </span>
-            {order.paymentStatus === 'PENDING' && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleConfirmPayment}
-                disabled={isUpdating}
-                className="bg-success hover:bg-success/80 border-success"
-              >
-                입금 확인
-              </Button>
-            )}
-          </div>
+          <Body>{order.paymentStatus === 'CONFIRMED' ? '결제 완료' : '미확정'}</Body>
         </div>
 
-        {/* Shipping Status */}
         <div className="bg-content-bg rounded-button p-6">
           <Body className="text-secondary-text text-caption mb-2">배송 상태</Body>
-          <select
-            value={order.shippingStatus}
-            onChange={(e) => handleShippingStatusChange(e.target.value)}
-            disabled={isUpdating}
-            className="w-full px-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink bg-white"
-          >
-            {SHIPPING_STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {order.shippingStatus === 'PENDING' && (
-            <div className="mt-3">
-              <Input
-                placeholder="운송장 번호 (선택)"
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                fullWidth
-              />
-            </div>
-          )}
+          <Body>{order.shippingStatus}</Body>
         </div>
       </div>
 
-      {/* Order Info + Customer */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Info */}
         <div className="bg-content-bg rounded-button p-6">
           <Heading2 className="text-hot-pink mb-4">주문 정보</Heading2>
           <div className="space-y-3">
@@ -375,7 +269,6 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
 
-        {/* Customer Info */}
         <div className="bg-content-bg rounded-button p-6">
           <Heading2 className="text-hot-pink mb-4">고객 정보</Heading2>
           <div className="space-y-3">
@@ -404,8 +297,7 @@ export default function AdminOrderDetailPage() {
               <Body>{order.shippingAddress.address1}</Body>
               {order.shippingAddress.address2 && <Body>{order.shippingAddress.address2}</Body>}
               <Body>
-                {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-                {order.shippingAddress.zip}
+                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
               </Body>
               <Body>Tel: {order.shippingAddress.phone}</Body>
             </div>
@@ -413,7 +305,6 @@ export default function AdminOrderDetailPage() {
         </div>
       </div>
 
-      {/* Order Items */}
       <div className="bg-content-bg rounded-button p-6">
         <Heading2 className="text-hot-pink mb-4">주문 상품 ({order.items.length})</Heading2>
         <div className="space-y-4">

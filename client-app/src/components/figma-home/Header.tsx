@@ -1,9 +1,18 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ShoppingBag, Bell, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthStore } from '@/lib/store/auth';
 
 export function Header() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const { isAuthenticated, user } = useAuthStore.getState();
+    setIsAdmin(isAuthenticated && user?.role === 'ADMIN');
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
       <div className="max-w-screen-2xl mx-auto px-4 py-3 md:py-4">
@@ -33,12 +42,14 @@ export function Header() {
                 2
               </span>
             </Link>
-            <Link
-              href="/admin"
-              className="flex px-3 py-1.5 md:px-4 md:py-2 bg-gray-900 text-white text-xs md:text-sm font-semibold rounded-full hover:bg-gray-800 transition-colors"
-            >
-              관리자
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex px-3 py-1.5 md:px-4 md:py-2 bg-gray-900 text-white text-xs md:text-sm font-semibold rounded-full hover:bg-gray-800 transition-colors"
+              >
+                관리자
+              </Link>
+            )}
           </div>
         </div>
 

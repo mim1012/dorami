@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dorami Live Commerce — Monitoring Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg-card: #1a1d27;
+      --bg-card-hover: #1f2235;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --text-muted: #6b7280;
+      --accent: #FF1493;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    header .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+      margin-right: 4px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .main {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: background 0.2s;
+    }
+
+    .card:hover { background: var(--bg-card-hover); }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .card-trend {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .card-trend .up { color: var(--red); }
+    .card-trend .down { color: var(--green); }
+    .card-trend .neutral { color: var(--text-muted); }
+
+    /* Color thresholds */
+    .ok   { color: var(--green); }
+    .warn { color: var(--yellow); }
+    .crit { color: var(--red); }
+
+    /* Progress bar */
+    .progress-wrap {
+      margin-top: 10px;
+    }
+
+    .progress-bar-bg {
+      background: var(--border);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease, background 0.3s;
+    }
+
+    /* Sparkline canvas */
+    .sparkline-wrap {
+      margin-top: 12px;
+    }
+
+    canvas.sparkline {
+      width: 100%;
+      height: 48px;
+      display: block;
+    }
+
+    /* Section headers */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Log tail */
+    .log-tail {
+      background: #0a0c13;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      height: 180px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .log-line { padding: 1px 0; }
+    .log-error { color: var(--red); }
+    .log-warn  { color: var(--yellow); }
+    .log-info  { color: var(--text-muted); }
+    .log-ok    { color: var(--green); }
+
+    /* Table */
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .metrics-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .metrics-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(42, 45, 62, 0.5);
+    }
+
+    .metrics-table tr:hover td { background: var(--bg-card-hover); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .badge-green  { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-red    { background: rgba(239,68,68,0.15);  color: var(--red); }
+
+    /* Uptime counter */
+    #uptime { font-variant-numeric: tabular-nums; }
+
+    /* File input */
+    .file-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .file-input-wrap label {
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .file-input-wrap input[type="file"] { display: none; }
+
+    .refresh-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .refresh-btn:hover { background: var(--bg-card-hover); }
+
+    @media (max-width: 1024px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dorami Live Commerce — Monitoring Dashboard</h1>
+  <div class="status-bar">
+    <span><span class="live-dot"></span> Auto-refresh: <span id="refresh-countdown">5</span>s</span>
+    <span>Last update: <span id="last-update">--</span></span>
+    <span>Uptime: <span id="uptime">00:00:00</span></span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- File loader -->
+  <div class="file-input-wrap">
+    <label for="metrics-file">Load metrics JSON</label>
+    <input type="file" id="metrics-file" accept=".json" />
+    <button class="refresh-btn" onclick="window.loadFromUrl && window.loadFromUrl()">Refresh from URL</button>
+    <span style="color: var(--text-muted); font-size: 12px;">Or set <code>METRICS_URL</code> variable in script for auto-fetch</span>
+  </div>
+
+  <!-- System Overview -->
+  <div class="section-title">System Overview</div>
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-label">CPU Usage</div>
+      <div class="card-value" id="cpu-value">--</div>
+      <div class="card-trend"><span id="cpu-trend" class="neutral">--</span></div>
+      <div class="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="cpu-bar" style="width:0%"></div></div>
+      </div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="cpu-spark"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Memory Usage</div>
+      <div class="card-value" id="mem-value">--</div>
+      <div class="card-trend"><span id="mem-trend" class="neutral">--</span></div>
+      <div class="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="mem-bar" style="width:0%"></div></div>
+      </div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="mem-spark"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Network In</div>
+      <div class="card-value" id="net-in-value">--</div>
+      <div class="card-trend" id="net-in-trend" style="color:var(--text-muted)">Mbps inbound</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="net-in-spark"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Network Out</div>
+      <div class="card-value" id="net-out-value">--</div>
+      <div class="card-trend" style="color:var(--text-muted)">Mbps outbound</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="net-out-spark"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Application KPIs -->
+  <div class="section-title">Application KPIs</div>
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-label">Active Connections (Socket.IO)</div>
+      <div class="card-value ok" id="sio-connections">--</div>
+      <div class="card-trend" style="color:var(--text-muted)">concurrent WebSocket clients</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="sio-spark"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-label">HLS Segment Latency</div>
+      <div class="card-value" id="hls-latency">--</div>
+      <div class="card-trend">
+        min: <span id="hls-min">--</span> / max: <span id="hls-max">--</span>
+      </div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="hls-spark"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Error Rate</div>
+      <div class="card-value" id="error-rate">--</div>
+      <div class="card-trend"><span id="error-trend" class="neutral">errors per second</span></div>
+      <div class="progress-wrap">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="error-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Load Average (1m)</div>
+      <div class="card-value" id="load-value">--</div>
+      <div class="card-trend">5m: <span id="load-5m">--</span> / 15m: <span id="load-15m">--</span></div>
+    </div>
+  </div>
+
+  <!-- Container Table -->
+  <div class="section-title">Container Health</div>
+  <div class="card" style="margin-bottom: 24px; padding: 0; overflow: hidden;">
+    <table class="metrics-table">
+      <thead>
+        <tr>
+          <th>Container</th>
+          <th>CPU %</th>
+          <th>Memory</th>
+          <th>Mem %</th>
+          <th>Net In</th>
+          <th>Net Out</th>
+          <th>PIDs</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="container-table-body">
+        <tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 24px;">No data loaded. Import a metrics JSON file.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Charts row -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="section-title" style="border:none; margin-bottom: 8px;">CPU & Memory Trend</div>
+      <canvas id="trend-chart" width="600" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="section-title" style="border:none; margin-bottom: 8px;">Connection & Error Trend</div>
+      <canvas id="conn-chart" width="600" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="section-title">Event Log</div>
+  <div class="log-tail" id="event-log">
+    <div class="log-line log-info">[system] Dashboard initialized. Load a metrics JSON file to begin.</div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================================
+// State
+// ============================================================================
+const state = {
+  metricsHistory: [],  // Array of metric snapshots
+  startTime: Date.now(),
+  refreshInterval: 5,
+  countdownTimer: null,
+  autoRefreshTimer: null,
+  metricsUrl: null,    // Set to fetch from URL automatically
+};
+
+const history = {
+  cpu: [], mem: [], netIn: [], netOut: [],
+  sio: [], hls: [], errors: [],
+  MAX: 60,  // Keep last 60 datapoints
+};
+
+function push(arr, val) {
+  arr.push(val);
+  if (arr.length > history.MAX) arr.shift();
+}
+
+// ============================================================================
+// Utilities
+// ============================================================================
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function parseNetworkValue(val) {
+  // Docker stats returns values like "1.5MB", "230kB", "0B"
+  if (!val) return 0;
+  val = String(val).trim();
+  const num = parseFloat(val);
+  if (isNaN(num)) return 0;
+  if (val.includes('GB')) return num * 1024;
+  if (val.includes('MB')) return num;
+  if (val.includes('kB') || val.includes('KB')) return num / 1024;
+  return num / (1024 * 1024);
+}
+
+function colorClass(pct) {
+  if (pct < 50) return 'ok';
+  if (pct < 75) return 'warn';
+  return 'crit';
+}
+
+function barColor(pct) {
+  if (pct < 50) return 'var(--green)';
+  if (pct < 75) return 'var(--yellow)';
+  return 'var(--red)';
+}
+
+function log(msg, level = 'info') {
+  const el = document.getElementById('event-log');
+  const line = document.createElement('div');
+  line.className = `log-line log-${level}`;
+  const ts = new Date().toLocaleTimeString();
+  line.textContent = `[${ts}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================================
+// Sparkline renderer (pure canvas, no deps)
+// ============================================================================
+function drawSparkline(canvasId, data, color = '#FF1493') {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 48 * dpr;
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = 48;
+  const min = Math.min(...data);
+  const max = Math.max(...data) || 1;
+  const range = max - min || 1;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color + '40');
+  grad.addColorStop(1, color + '00');
+
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ============================================================================
+// Multi-line trend chart
+// ============================================================================
+function drawTrendChart(canvasId, datasets, labels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.parentElement.clientWidth * dpr;
+  canvas.height = 200 * dpr;
+  ctx.scale(dpr, dpr);
+
+  const w = canvas.parentElement.clientWidth;
+  const h = 200;
+  const pad = { top: 16, right: 16, bottom: 28, left: 40 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(42,45,62,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (ch / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(107,114,128,0.8)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    const val = Math.round(100 - (i / 4) * 100);
+    ctx.fillText(val + '%', pad.left - 4, y + 4);
+  }
+
+  // Datasets
+  const colors = ['#FF1493', '#22c55e', '#3b82f6', '#f59e0b'];
+  datasets.forEach((data, di) => {
+    if (!data || data.length < 2) return;
+    const max = 100;
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = pad.left + (i / (data.length - 1)) * cw;
+      const y = pad.top + ch - (Math.min(v, max) / max) * ch;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = colors[di % colors.length];
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // Legend
+  datasets.forEach((_, di) => {
+    const label = labels[di] || '';
+    const x = pad.left + di * 100;
+    ctx.fillStyle = colors[di % colors.length];
+    ctx.fillRect(x, h - 14, 12, 4);
+    ctx.fillStyle = 'rgba(226,232,240,0.7)';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x + 16, h - 10);
+  });
+}
+
+// ============================================================================
+// Update UI from a metrics snapshot
+// ============================================================================
+function updateUI(snapshot) {
+  const sys = snapshot.system || {};
+  const containers = snapshot.containers || [];
+
+  // CPU
+  const cpu = parseFloat(sys.cpu_used_pct) || 0;
+  push(history.cpu, cpu);
+  const cpuEl = document.getElementById('cpu-value');
+  cpuEl.textContent = cpu.toFixed(1) + '%';
+  cpuEl.className = 'card-value ' + colorClass(cpu);
+  document.getElementById('cpu-bar').style.width = cpu + '%';
+  document.getElementById('cpu-bar').style.background = barColor(cpu);
+  drawSparkline('cpu-spark', history.cpu, '#FF1493');
+
+  // Memory
+  const mem = parseFloat(sys.mem_used_pct) || 0;
+  push(history.mem, mem);
+  const memEl = document.getElementById('mem-value');
+  memEl.textContent = mem.toFixed(1) + '%';
+  memEl.className = 'card-value ' + colorClass(mem);
+  document.getElementById('mem-bar').style.width = mem + '%';
+  document.getElementById('mem-bar').style.background = barColor(mem);
+  drawSparkline('mem-spark', history.mem, '#3b82f6');
+
+  // Load average
+  document.getElementById('load-value').textContent = (sys.load1 || 0).toFixed(2);
+  document.getElementById('load-5m').textContent = (sys.load5 || 0).toFixed(2);
+  document.getElementById('load-15m').textContent = (sys.load15 || 0).toFixed(2);
+
+  // Network — aggregate across containers
+  let totalNetIn = 0, totalNetOut = 0;
+  containers.forEach(c => {
+    totalNetIn += parseNetworkValue(c.net_in);
+    totalNetOut += parseNetworkValue(c.net_out);
+  });
+  push(history.netIn, totalNetIn);
+  push(history.netOut, totalNetOut);
+  document.getElementById('net-in-value').textContent = totalNetIn.toFixed(1) + ' MB';
+  document.getElementById('net-out-value').textContent = totalNetOut.toFixed(1) + ' MB';
+  drawSparkline('net-in-spark', history.netIn, '#22c55e');
+  drawSparkline('net-out-spark', history.netOut, '#f59e0b');
+
+  // Container table
+  const tbody = document.getElementById('container-table-body');
+  if (containers.length > 0) {
+    tbody.innerHTML = containers.map(c => {
+      const cpuPct = parseFloat(c.cpu_pct) || 0;
+      const memPct = parseFloat(c.mem_pct) || 0;
+      const status = cpuPct > 80 || memPct > 85 ? 'crit' :
+                     cpuPct > 50 || memPct > 60 ? 'warn' : 'ok';
+      const badge = status === 'ok' ?
+        '<span class="badge badge-green">OK</span>' :
+        status === 'warn' ?
+        '<span class="badge badge-yellow">WARN</span>' :
+        '<span class="badge badge-red">CRIT</span>';
+      return `<tr>
+        <td style="font-weight:600">${c.name || '-'}</td>
+        <td class="${colorClass(cpuPct)}">${cpuPct.toFixed(1)}%</td>
+        <td>${c.mem_usage || '-'}</td>
+        <td class="${colorClass(memPct)}">${memPct.toFixed(1)}%</td>
+        <td>${c.net_in || '-'}</td>
+        <td>${c.net_out || '-'}</td>
+        <td>${c.pids || '-'}</td>
+        <td>${badge}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Update timestamp
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+
+  // Redraw trend charts
+  drawTrendChart('trend-chart', [history.cpu, history.mem], ['CPU %', 'Memory %']);
+  drawTrendChart('conn-chart', [history.netIn.map(v => Math.min(v * 2, 100)), history.cpu],
+    ['Net (scaled)', 'CPU %']);
+}
+
+// ============================================================================
+// Load from JSON file
+// ============================================================================
+document.getElementById('metrics-file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const records = Array.isArray(data) ? data : [data];
+      log(`Loaded ${records.length} records from ${file.name}`, 'ok');
+
+      // Feed all records into history
+      records.forEach(r => {
+        state.metricsHistory.push(r);
+        updateUI(r);
+      });
+
+      log(`Latest snapshot: t+${records[records.length - 1]?.elapsed_sec || 0}s`, 'info');
+    } catch (err) {
+      log('Error parsing JSON: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// ============================================================================
+// Auto-fetch from URL (set METRICS_URL)
+// ============================================================================
+const METRICS_URL = null; // Set to your metrics endpoint URL if available
+
+window.loadFromUrl = async function() {
+  if (!METRICS_URL) {
+    log('No METRICS_URL configured. Set METRICS_URL in the script.', 'warn');
+    return;
+  }
+  try {
+    const resp = await fetch(METRICS_URL);
+    const data = await resp.json();
+    const records = Array.isArray(data) ? data : [data];
+    if (records.length > 0) {
+      updateUI(records[records.length - 1]);
+      log(`Fetched ${records.length} records from ${METRICS_URL}`, 'ok');
+    }
+  } catch (err) {
+    log('Fetch error: ' + err.message, 'error');
+  }
+};
+
+// ============================================================================
+// Uptime counter
+// ============================================================================
+setInterval(() => {
+  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+// ============================================================================
+// Countdown timer
+// ============================================================================
+let countdown = state.refreshInterval;
+state.countdownTimer = setInterval(() => {
+  countdown--;
+  document.getElementById('refresh-countdown').textContent = countdown;
+  if (countdown <= 0) {
+    countdown = state.refreshInterval;
+    if (METRICS_URL) window.loadFromUrl();
+  }
+}, 1000);
+
+// ============================================================================
+// Initial log
+// ============================================================================
+log('Dashboard ready. Load a metrics-{timestamp}.json file from metrics-collector.sh', 'ok');
+log('Tip: Run ./run-monitoring-suite.sh to generate metrics files', 'info');
+</script>
+</body>
+</html>

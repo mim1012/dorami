@@ -475,7 +475,7 @@ export class CartService {
     items: CartItemResponseDto[],
     userId?: string,
   ): Promise<CartSummaryDto> {
-    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
     // Calculate global shipping fee
     let totalShippingFee = 0;
@@ -547,9 +547,9 @@ export class CartService {
     return {
       items,
       itemCount: items.length,
-      subtotal,
-      totalShippingFee,
-      grandTotal: subtotal + totalShippingFee,
+      subtotal: String(subtotal),
+      totalShippingFee: String(totalShippingFee),
+      grandTotal: String(subtotal + totalShippingFee),
       earliestExpiration,
     };
   }
@@ -609,18 +609,18 @@ export class CartService {
       userId: cartItem.userId,
       productId: cartItem.productId,
       productName: cartItem.productName,
-      price,
+      price: String(price),
       quantity: cartItem.quantity,
       color: cartItem.color ?? undefined,
       size: cartItem.size ?? undefined,
-      shippingFee,
+      shippingFee: String(shippingFee),
       timerEnabled: cartItem.timerEnabled,
       expiresAt: cartItem.expiresAt?.toISOString(),
       status: cartItem.status as CartStatus,
       createdAt: cartItem.createdAt.toISOString(),
       updatedAt: cartItem.updatedAt.toISOString(),
-      subtotal,
-      total,
+      subtotal: String(subtotal),
+      total: String(total),
       remainingSeconds,
     };
   }

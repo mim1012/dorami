@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
@@ -10,6 +10,7 @@ import {
   Clock,
   TrendingUp,
   Play,
+  KeyRound,
   StopCircle,
   Plus,
   X,
@@ -19,11 +20,18 @@ import {
   Upload,
   Trash2,
   Pencil,
-  Loader2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
+import {
+  createReStreamTarget,
+  getReStreamTargets,
+  deleteReStreamTarget,
+  type ReStreamTarget,
+  type ReStreamPlatform,
+} from '@/lib/api/restream';
 
 interface LiveStream {
   id: string;
@@ -31,6 +39,7 @@ interface LiveStream {
   userId: string;
   title: string;
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
+  scheduledAt?: string | null;
   startedAt: string | null;
   endedAt: string | null;
   totalDuration: number | null;
@@ -39,7 +48,10 @@ interface LiveStream {
   createdAt: string;
   thumbnailUrl: string | null;
   freeShippingEnabled: boolean;
-  user?: { name: string; email: string };
+  user?: {
+    name: string;
+    email: string;
+  };
 }
 
 interface LiveStatusResponse {
@@ -66,6 +78,7 @@ interface GeneratedStreamKey {
   title: string;
   rtmpUrl: string;
   hlsUrl: string;
+  rtmpPort?: number;
   scheduledAt: string | null;
   thumbnailUrl: string | null;
   expiresAt: string;
@@ -84,7 +97,9 @@ export default function BroadcastsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stream key generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
   const [newStreamTitle, setNewStreamTitle] = useState('');
   const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
   const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
@@ -94,8 +109,33 @@ export default function BroadcastsPage() {
   const [newStreamFreeShipping, setNewStreamFreeShipping] = useState(false);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
 
+  // Step 3: Restream targets state
+  const [restreamTargets, setRestreamTargets] = useState<ReStreamTarget[]>([]);
+  const [isLoadingRestream, setIsLoadingRestream] = useState(false);
+  const [restreamError, setRestreamError] = useState<string | null>(null);
+  const [newRestreamPlatform, setNewRestreamPlatform] = useState<ReStreamPlatform>('YOUTUBE');
+  const [newRestreamName, setNewRestreamName] = useState('');
+  const [newRestreamRtmpUrl, setNewRestreamRtmpUrl] = useState('rtmp://a.rtmp.youtube.com/live2/');
+  const [newRestreamKey, setNewRestreamKey] = useState('');
+  const [newRestreamMuteAudio, setNewRestreamMuteAudio] = useState(false);
+  const [isAddingRestream, setIsAddingRestream] = useState(false);
+
+  const PLATFORM_RTMP_URLS: Record<ReStreamPlatform, string> = {
+    YOUTUBE: 'rtmp://a.rtmp.youtube.com/live2/',
+    INSTAGRAM: 'rtmps://live-upload.instagram.com:443/rtmp/',
+    TIKTOK: 'rtmp://push.rtmp.tiktok.com/live/',
+    CUSTOM: '',
+  };
+
+  const PLATFORM_LABELS: Record<ReStreamPlatform, string> = {
+    YOUTUBE: 'YouTube',
+    INSTAGRAM: 'Instagram',
+    TIKTOK: 'TikTok',
+    CUSTOM: 'Custom',
+  };
+
+  // Edit stream modal state
   const [selectedStreamForEdit, setSelectedStreamForEdit] = useState<LiveStream | null>(null);
   const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
   const [editNewThumbnailUrl, setEditNewThumbnailUrl] = useState('');
@@ -104,64 +144,93 @@ export default function BroadcastsPage() {
   const [editFreeShipping, setEditFreeShipping] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
-  const [actionLoadingStreamId, setActionLoadingStreamId] = useState<string | null>(null);
 
+  // Featured product modal state
   const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(
     null,
   );
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user) router.push('/login');
-      else if (user.role !== 'ADMIN') router.push('/');
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'ADMIN') {
+        router.push('/');
+      }
     }
   }, [user, authLoading, router]);
 
+  // Fetch live status
   useEffect(() => {
     const fetchLiveStatus = async () => {
       if (!user || user.role !== 'ADMIN') return;
+
       try {
         const response = await apiClient.get<LiveStatusResponse>('/streaming/live-status');
         setLiveStatus(response.data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch live status:', err);
       }
     };
+
     fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 10000);
+
+    // Refresh every 10 seconds
+    const interval = setInterval(fetchLiveStatus, 10000); // 관리자는 이미 10초
     return () => clearInterval(interval);
   }, [user]);
 
+  // Fetch stream history
   useEffect(() => {
-    const fetchHistoryData = async () => {
+    const fetchHistory = async () => {
       if (!user || user.role !== 'ADMIN') return;
+
       setIsLoading(true);
       setError(null);
+
       try {
+        const params = {
+          page,
+          limit: pageSize,
+        };
+
         const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
-          params: { page, limit: pageSize },
+          params,
         });
+
         setStreams(response.data.streams);
         setTotal(response.data.total);
         setTotalPages(response.data.totalPages);
       } catch (err: any) {
-        setError(err.message || '방송 기록을 불러오지 못했습니다');
+        console.error('Failed to fetch stream history:', err);
+        setError(err.message || 'Failed to load stream history');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchHistoryData();
+
+    fetchHistory();
   }, [user, page, pageSize]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ko-KR', {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const formatDateTimeInput = (dateString: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
   };
 
   const formatDuration = (seconds: number | null) => {
@@ -172,21 +241,132 @@ export default function BroadcastsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { label: string; className: string; Icon: any }> = {
-      LIVE: { label: '방송중', className: 'bg-red-100 text-red-700 animate-pulse', Icon: Play },
-      PENDING: { label: '예정', className: 'bg-amber-100 text-amber-700', Icon: Clock },
-      OFFLINE: { label: '오프라인', className: 'bg-gray-100 text-gray-500', Icon: StopCircle },
+    const colors = {
+      LIVE: 'bg-error/10 text-error border-error animate-pulse',
+      PENDING: 'bg-warning/10 text-warning border-warning',
+      OFFLINE: 'bg-secondary-text/10 text-secondary-text border-secondary-text',
     };
-    const config = configs[status] || configs.OFFLINE;
-    const Icon = config.Icon;
+
+    const icons = {
+      LIVE: Play,
+      PENDING: Clock,
+      OFFLINE: StopCircle,
+    };
+
+    const labels: Record<string, string> = {
+      LIVE: '방송중',
+      PENDING: '대기',
+      OFFLINE: '오프라인',
+    };
+
+    const color = colors[status as keyof typeof colors] || colors.OFFLINE;
+    const Icon = icons[status as keyof typeof icons] || StopCircle;
+    const label = labels[status] || status;
+
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${config.className}`}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${color}`}
       >
         <Icon className="w-3.5 h-3.5" />
-        {config.label}
+        {label}
       </span>
     );
+  };
+
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const getRtmpUrlWithPort = (url: string) => {
+    const match = url.match(/^(rtmp:\/\/[^/]+)(\/.*)?$/);
+    if (!match) return url;
+    const [, host, path] = match;
+    const hasPort = /:\d+$/.test(host);
+    if (hasPort) return url;
+    return `${host}:1935${path || ''}`;
+  };
+
+  const handleGenerateStreamKey = async () => {
+    if (!newStreamTitle.trim()) return;
+
+    setIsGenerating(true);
+    setGenerateError(null);
+    try {
+      const body: Record<string, any> = { title: newStreamTitle.trim() };
+      if (newStreamScheduledAt)
+        body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
+      if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
+      body.freeShippingEnabled = newStreamFreeShipping;
+      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
+      setGeneratedStream(response.data);
+      setNewStreamTitle('');
+      setNewStreamScheduledAt('');
+      setNewStreamThumbnailUrl('');
+      setModalStep(2);
+    } catch (err: any) {
+      const message = err.message || '스트림 키 발급에 실패했습니다.';
+      setGenerateError(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const loadRestreamTargets = async () => {
+    setIsLoadingRestream(true);
+    setRestreamError(null);
+    try {
+      const data = await getReStreamTargets();
+      setRestreamTargets(data);
+    } catch (err: any) {
+      setRestreamError(err.message || '동시송출 대상을 불러올 수 없습니다.');
+    } finally {
+      setIsLoadingRestream(false);
+    }
+  };
+
+  const handleRestreamPlatformChange = (platform: ReStreamPlatform) => {
+    setNewRestreamPlatform(platform);
+    const url = PLATFORM_RTMP_URLS[platform];
+    if (url) setNewRestreamRtmpUrl(url);
+    if (platform === 'INSTAGRAM') setNewRestreamMuteAudio(true);
+  };
+
+  const handleAddRestreamTarget = async () => {
+    if (!newRestreamName.trim() || !newRestreamRtmpUrl.trim() || !newRestreamKey.trim()) {
+      setRestreamError('필수 정보를 입력해주세요.');
+      return;
+    }
+
+    setIsAddingRestream(true);
+    setRestreamError(null);
+    try {
+      const newTarget = await createReStreamTarget({
+        platform: newRestreamPlatform,
+        name: newRestreamName.trim(),
+        rtmpUrl: newRestreamRtmpUrl.trim(),
+        streamKey: newRestreamKey.trim(),
+        enabled: true,
+        muteAudio: newRestreamMuteAudio,
+      });
+      setRestreamTargets((prev) => [...prev, newTarget]);
+      setNewRestreamName('');
+      setNewRestreamKey('');
+      setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+      setNewRestreamPlatform('YOUTUBE');
+      setNewRestreamMuteAudio(false);
+    } catch (err: any) {
+      setRestreamError(err.message || '동시송출 대상 추가에 실패했습니다.');
+    } finally {
+      setIsAddingRestream(false);
+    }
+  };
+
+  const handleDeleteRestreamTarget = async (id: string) => {
+    if (!confirm('이 동시 송출 대상을 삭제하시겠습니까?')) return;
+    try {
+      await deleteReStreamTarget(id);
+      setRestreamTargets((prev) => prev.filter((t) => t.id !== id));
+    } catch (err: any) {
+      setRestreamError(err.message || '삭제에 실패했습니다.');
+    }
   };
 
   const handleCopyToClipboard = async (text: string, field: string) => {
@@ -194,6 +374,7 @@ export default function BroadcastsPage() {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
       } else {
+        // Fallback for HTTP / non-secure context
         const textarea = document.createElement('textarea');
         textarea.value = text;
         textarea.style.position = 'fixed';
@@ -205,7 +386,8 @@ export default function BroadcastsPage() {
       }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch {
+    } catch (err) {
+      console.error('Failed to copy:', err);
       alert('복사에 실패했습니다. 직접 선택하여 복사해주세요.');
     }
   };
@@ -213,6 +395,7 @@ export default function BroadcastsPage() {
   const handleThumbnailFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const previewUrl = URL.createObjectURL(file);
     setThumbnailPreview(previewUrl);
     setIsUploadingThumbnail(true);
@@ -246,28 +429,41 @@ export default function BroadcastsPage() {
     setNewStreamThumbnailUrl('');
     setNewStreamFreeShipping(false);
     setGenerateError(null);
+    setModalStep(1);
+    setRestreamTargets([]);
+    setNewRestreamName('');
+    setNewRestreamKey('');
+    setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+    setNewRestreamPlatform('YOUTUBE');
+    setNewRestreamMuteAudio(false);
+    setRestreamError(null);
   };
 
-  const handleGenerateStreamKey = async () => {
-    if (!newStreamTitle.trim()) return;
-    setIsGenerating(true);
+  const handleOpenGenerateModal = (stream?: LiveStream) => {
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailPreview(null);
+    setGeneratedStream(null);
     setGenerateError(null);
-    try {
-      const body: Record<string, any> = { title: newStreamTitle.trim() };
-      if (newStreamScheduledAt)
-        body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
-      if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
-      body.freeShippingEnabled = newStreamFreeShipping;
-      const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
-      setGeneratedStream(response.data);
+    setModalStep(1);
+    setRestreamTargets([]);
+    setNewRestreamName('');
+    setNewRestreamKey('');
+    setNewRestreamRtmpUrl(PLATFORM_RTMP_URLS.YOUTUBE);
+    setNewRestreamPlatform('YOUTUBE');
+    setNewRestreamMuteAudio(false);
+    setRestreamError(null);
+    if (stream) {
+      setNewStreamTitle(stream.title || '');
+      setNewStreamScheduledAt(formatDateTimeInput(stream.scheduledAt || null));
+      setNewStreamThumbnailUrl(stream.thumbnailUrl || '');
+      setNewStreamFreeShipping(stream.freeShippingEnabled ?? false);
+    } else {
       setNewStreamTitle('');
       setNewStreamScheduledAt('');
       setNewStreamThumbnailUrl('');
-    } catch (err: any) {
-      setGenerateError(err.message || '스트림 키 발급에 실패했습니다.');
-    } finally {
-      setIsGenerating(false);
+      setNewStreamFreeShipping(false);
     }
+    setShowGenerateModal(true);
   };
 
   const handleOpenEditModal = (stream: LiveStream) => {
@@ -349,184 +545,139 @@ export default function BroadcastsPage() {
     }
   };
 
-  const fetchHistory = useCallback(async () => {
-    if (!user || user.role !== 'ADMIN') return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
-        params: { page, limit: pageSize },
-      });
-      setStreams(response.data.streams);
-      setTotal(response.data.total);
-      setTotalPages(response.data.totalPages);
-    } catch (err: any) {
-      setError(err.message || '방송 기록을 불러오지 못했습니다');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, page, pageSize]);
-
-  const handleStartStream = async (streamId: string) => {
-    setActionLoadingStreamId(streamId);
-    setError(null);
-    try {
-      await apiClient.patch(`/streaming/${streamId}/go-live`);
-      await fetchHistory();
-    } catch (err: any) {
-      setError(err.message || '방송 시작에 실패했습니다.');
-    } finally {
-      setActionLoadingStreamId(null);
-    }
-  };
-
-  const handleStopStream = async (streamId: string) => {
-    setActionLoadingStreamId(streamId);
-    setError(null);
-    try {
-      await apiClient.patch(`/streaming/${streamId}/stop`);
-      await fetchHistory();
-    } catch (err: any) {
-      setError(err.message || '방송 종료에 실패했습니다.');
-    } finally {
-      setActionLoadingStreamId(null);
-    }
-  };
-
-  const handleCancelStream = async (streamId: string) => {
-    if (!confirm('이 방송을 취소하시겠습니까?')) return;
-    setActionLoadingStreamId(streamId);
-    setError(null);
-    try {
-      await apiClient.delete(`/streaming/${streamId}`);
-      await fetchHistory();
-    } catch (err: any) {
-      setError(err.message || '방송 취소에 실패했습니다.');
-    } finally {
-      setActionLoadingStreamId(null);
-    }
-  };
-
   if (authLoading || !user || user?.role !== 'ADMIN') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF4D8D] animate-spin" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-secondary-text">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:space-y-8 min-w-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Radio className="w-7 h-7 text-[#FF4D8D]" />
-            라이브 방송 관리
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary-text mb-2">
+            방송 관리 <span className="text-hot-pink">Broadcasts</span>
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            실시간 방송 현황, 동시 송출, 방송 기록을 한 화면에서 관리하세요
+          <p className="text-sm md:text-base text-secondary-text">
+            실시간 방송 현황 및 기록을 관리하세요.
           </p>
         </div>
-        <button
-          onClick={() => setShowGenerateModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF4D8D] text-white rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />새 방송 생성
-        </button>
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end md:shrink-0 min-w-0">
+          <button
+            onClick={() => handleOpenGenerateModal()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors shrink-0 whitespace-nowrap"
+          >
+            <KeyRound className="w-5 h-5" />
+            방송 키 발급
+          </button>
+          <button
+            onClick={() => handleOpenGenerateModal()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-hot-pink/30 text-hot-pink rounded-lg font-medium hover:bg-hot-pink/5 transition-colors shrink-0 whitespace-nowrap"
+          >
+            <Play className="w-5 h-5" />
+            방송 설정
+          </button>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+      {/* Live Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-content-bg border border-gray-200 rounded-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2.5 bg-red-50 rounded-lg">
-              <Radio className="w-5 h-5 text-red-500" />
+            <div className="p-3 bg-error/10 rounded-lg">
+              <Radio className="w-6 h-6 text-error" />
             </div>
-            {liveStatus?.isLive && (
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            {liveStatus && liveStatus.isLive && (
+              <div className="w-3 h-3 rounded-full bg-error animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
             )}
           </div>
-          <p className="text-2xl font-bold text-gray-900">{liveStatus?.isLive ? 1 : 0}</p>
-          <p className="text-sm text-gray-500 mt-0.5">현재 라이브 중</p>
+          <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">
+            {liveStatus?.isLive ? 1 : 0}
+          </h3>
+          <p className="text-sm text-secondary-text">현재 라이브 중</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="bg-content-bg border border-gray-200 rounded-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2.5 bg-blue-50 rounded-lg">
-              <Eye className="w-5 h-5 text-blue-500" />
+            <div className="p-3 bg-info/10 rounded-lg">
+              <Eye className="w-6 h-6 text-info" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">
+          <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">
             {(liveStatus?.viewerCount ?? 0).toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-500 mt-0.5">총 시청자</p>
+          </h3>
+          <p className="text-sm text-secondary-text">총 시청자</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="bg-content-bg border border-gray-200 rounded-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2.5 bg-green-50 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-green-500" />
+            <div className="p-3 bg-success/10 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-success" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{total}</p>
-          <p className="text-sm text-gray-500 mt-0.5">총 방송 기록</p>
+          <h3 className="text-2xl md:text-3xl font-bold text-primary-text mb-1">{total}</h3>
+          <p className="text-sm text-secondary-text">총 방송 기록</p>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-error/10 border border-error rounded-card p-4">
+          <p className="text-error text-sm">{error}</p>
         </div>
       )}
 
-      {/* Active Stream Banner */}
-      {liveStatus?.isLive && liveStatus.streamId && (
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+      {/* Active Stream */}
+      {liveStatus && liveStatus.isLive && liveStatus.streamId && (
+        <div className="bg-content-bg border border-gray-200 rounded-card p-6">
+          <h2 className="text-xl font-bold text-primary-text mb-4 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-error animate-pulse" />
             현재 라이브 방송
           </h2>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div>
-              <p className="font-semibold text-gray-800">{liveStatus.title || '라이브 방송'}</p>
-              {liveStatus.duration && (
-                <p className="text-sm text-gray-500 mt-0.5">방송 시간: {liveStatus.duration}</p>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="flex items-center gap-1.5 text-blue-600">
-                  <Eye className="w-4 h-4" />
-                  <span className="font-semibold text-sm">{liveStatus.viewerCount}</span>
-                </div>
-                <p className="text-xs text-gray-400">시청자</p>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-hot-pink transition-colors">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-primary-text mb-1">
+                  {liveStatus.title || '라이브 방송'}
+                </h3>
+                {liveStatus.duration && (
+                  <p className="text-sm text-secondary-text">방송 시간: {liveStatus.duration}</p>
+                )}
               </div>
-              {(() => {
-                const activeStream = streams.find((s) => s.id === liveStatus.streamId);
-                if (activeStream) {
-                  return (
-                    <button
-                      onClick={() => setSelectedStreamForFeatured(activeStream)}
-                      className="px-3 py-1.5 bg-pink-50 text-[#FF4D8D] rounded-lg hover:bg-pink-100 transition-colors text-sm font-medium flex items-center gap-1.5"
-                    >
-                      <Star className="w-4 h-4" />
-                      추천 상품
-                    </button>
-                  );
-                }
-                return null;
-              })()}
-              {getStatusBadge('LIVE')}
+                  <div className="flex flex-wrap items-center gap-3 sm:justify-end shrink-0">
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5 text-info">
+                    <Eye className="w-4 h-4" />
+                    <span className="font-semibold">{liveStatus.viewerCount}</span>
+                  </div>
+                  <p className="text-xs text-secondary-text">시청자</p>
+                </div>
+                {(() => {
+                  const activeStream = streams.find((s) => s.id === liveStatus.streamId);
+                  if (activeStream) {
+                    return (
+                      <button
+                        onClick={() => setSelectedStreamForFeatured(activeStream)}
+                        className="px-3 py-1.5 bg-hot-pink/10 text-hot-pink rounded-lg hover:bg-hot-pink/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                      >
+                        <Star className="w-4 h-4" />
+                        추천 상품
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
+                {getStatusBadge('LIVE')}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* ReStream Manager */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
-        <h2 className="text-base font-bold text-gray-900 mb-4">동시 송출 관리</h2>
+      <div className="bg-content-bg border border-gray-200 rounded-card p-6">
         <ReStreamManager
           liveStreamId={liveStatus?.streamId || null}
           isLive={!!liveStatus?.isLive}
@@ -534,142 +685,118 @@ export default function BroadcastsPage() {
       </div>
 
       {/* Stream History Table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900">방송 기록</h2>
-          <span className="text-sm text-gray-400">총 {total}건</span>
+      <div className="bg-content-bg border border-gray-200 rounded-card overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-primary-text">방송 기록</h2>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-7 h-7 text-[#FF4D8D] animate-spin" />
+          <div className="flex items-center justify-center py-12">
+            <p className="text-secondary-text">Loading...</p>
           </div>
         ) : streams.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Radio className="w-12 h-12 text-gray-300 mb-3" />
-            <p className="text-gray-500">방송 기록이 없습니다</p>
+          <div className="flex flex-col items-center justify-center py-12">
+            <Radio className="w-12 h-12 text-secondary-text/30 mb-3" />
+            <p className="text-secondary-text">방송 기록이 없습니다</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {[
-                      '제목',
-                      'Stream Key',
-                      '상태',
-                      '시작 시간',
-                      '종료 시간',
-                      '방송 시간',
-                      '최대 시청자',
-                      '작업',
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
-                      >
-                        {h}
-                      </th>
-                    ))}
+              <table className="w-full min-w-[920px] text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      제목
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      Stream Key
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      상태
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      시작 시간
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      종료 시간
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      방송 시간
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      최대 시청자
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
+                      작업
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {streams.map((stream) => (
-                    <tr key={stream.id} className="hover:bg-gray-50/70 transition-colors">
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-gray-800">{stream.title}</span>
+                    <tr key={stream.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-4 whitespace-nowrap max-w-[220px]">
+                        <div className="truncate">{stream.title}</div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-gray-500 font-mono">
-                            {stream.streamKey.slice(0, 8)}...
+                          <span className="text-sm text-secondary-text font-mono truncate max-w-[140px]">
+                            {stream.streamKey}
                           </span>
                           <button
-                            onClick={() =>
-                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
-                            }
-                            className="p-1 hover:bg-gray-100 rounded transition-colors"
+                            onClick={() => handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)}
+                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0 whitespace-nowrap"
+                            title="스트림 키 복사"
                           >
                             {copiedField === `key-${stream.id}` ? (
-                              <Check className="w-3.5 h-3.5 text-green-500" />
+                              <Check className="w-3.5 h-3.5 text-success" />
                             ) : (
-                              <Copy className="w-3.5 h-3.5 text-gray-400" />
+                              <Copy className="w-3.5 h-3.5 text-secondary-text" />
                             )}
                           </button>
                         </div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         {getStatusBadge(stream.status)}
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span className="text-xs text-gray-500">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="text-sm text-secondary-text">
                           {formatDate(stream.startedAt)}
-                        </span>
+                        </div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span className="text-xs text-gray-500">{formatDate(stream.endedAt)}</span>
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="text-sm text-secondary-text">
+                          {formatDate(stream.endedAt)}
+                        </div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-600">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="text-sm text-secondary-text">
                           {formatDuration(stream.totalDuration)}
-                        </span>
+                        </div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-sm text-blue-600">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-sm text-info">
                           <Eye className="w-4 h-4" />
                           {stream.peakViewers}
                         </div>
                       </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
-                            onClick={() => handleOpenEditModal(stream)}
-                            disabled={actionLoadingStreamId === stream.id}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => handleOpenGenerateModal(stream)}
+                            className="px-3 py-1.5 bg-hot-pink text-white rounded-lg hover:bg-hot-pink/90 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
-                            편집
+                            <KeyRound className="w-4 h-4" />
+                            방송 키 발급
                           </button>
-
                           {stream.status === 'PENDING' && (
                             <button
-                              onClick={() => handleStartStream(stream.id)}
-                              disabled={actionLoadingStreamId === stream.id}
-                              className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => handleOpenEditModal(stream)}
+                              className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
                             >
-                              <Play className="w-3.5 h-3.5" />
-                              시작
+                              <Pencil className="w-4 h-4" />
+                              편집
                             </button>
                           )}
-                          {stream.status === 'PENDING' && (
-                            <button
-                              onClick={() => handleCancelStream(stream.id)}
-                              disabled={actionLoadingStreamId === stream.id}
-                              className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              취소
-                            </button>
-                          )}
-                          {stream.status === 'LIVE' && (
-                            <button
-                              onClick={() => handleStopStream(stream.id)}
-                              disabled={actionLoadingStreamId === stream.id}
-                              className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <StopCircle className="w-3.5 h-3.5" />
-                              종료
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setSelectedStreamForFeatured(stream)}
-                            disabled={actionLoadingStreamId === stream.id}
-                            className="px-3 py-1.5 bg-pink-50 text-[#FF4D8D] rounded-lg hover:bg-pink-100 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Star className="w-3.5 h-3.5" />
-                            추천 상품
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -678,23 +805,24 @@ export default function BroadcastsPage() {
               </table>
             </div>
 
+            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-5 py-3.5 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  전체 {total}건 중 {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}
-                </span>
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-secondary-text">
+                  전체 {total}건 중 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     이전
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="px-3 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-primary-text bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     다음
                   </button>
@@ -705,312 +833,452 @@ export default function BroadcastsPage() {
         )}
       </div>
 
-      {/* Generate Stream Key Modal */}
+      {/* Generate Stream Key Modal - 3 Steps */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">
-                {generatedStream ? '방송 설정 정보' : '새 방송 생성'}
-              </h2>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header with step indicator */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-bold text-primary-text mb-2">
+                  {modalStep === 1 && '방송 시작하기'}
+                  {modalStep === 2 && '스트림 키 발급 완료'}
+                  {modalStep === 3 && '동시송출 설정'}
+                </h2>
+                <p className="text-xs text-secondary-text">
+                  Step {modalStep}/3
+                </p>
+              </div>
               <button
                 onClick={handleCloseModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-secondary-text" />
               </button>
             </div>
 
             <div className="p-6">
-              {!generatedStream ? (
+              {/* Step 1: Broadcast Info */}
+              {modalStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      방송 제목 <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 제목 <span className="text-error">*</span>
                     </label>
                     <input
                       type="text"
                       value={newStreamTitle}
                       onChange={(e) => setNewStreamTitle(e.target.value)}
                       placeholder="예: 오늘의 라이브 방송"
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-[#FF4D8D] transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      예약 시작 시간 (선택)
-                    </label>
+                      <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 예정일{' '}
+                        <span className="text-secondary-text text-xs">
+                          (선택 · KST 한국 시간 기준)
+                        </span>
+                      </label>
                     <input
                       type="datetime-local"
                       value={newStreamScheduledAt}
                       onChange={(e) => setNewStreamScheduledAt(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-[#FF4D8D] transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
                     />
                   </div>
-
+                  {/* 무료배송 설정 */}
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStreamFreeShipping}
+                      onChange={(e) => setNewStreamFreeShipping(e.target.checked)}
+                      className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                    />
+                    <span className="text-sm font-medium text-primary-text">
+                      이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
+                    </span>
+                  </label>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      썸네일 이미지 (선택)
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      썸네일 <span className="text-secondary-text text-xs">(선택)</span>
                     </label>
                     {thumbnailPreview ? (
-                      <div className="relative inline-block">
+                      <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
                         <img
                           src={thumbnailPreview}
                           alt="썸네일 미리보기"
-                          className="w-32 h-20 object-cover rounded-lg border border-gray-200"
+                          className="w-full h-full object-cover"
                         />
                         <button
+                          type="button"
                           onClick={handleRemoveThumbnail}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
+                        {isUploadingThumbnail && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">업로드 중...</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                        {isUploadingThumbnail ? (
-                          <Loader2 className="w-6 h-6 text-[#FF4D8D] animate-spin" />
-                        ) : (
-                          <>
-                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-500">클릭하여 이미지 업로드</span>
-                          </>
-                        )}
+                      <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink hover:bg-hot-pink/5 transition-colors">
+                        <div className="flex flex-col items-center justify-center py-6">
+                          {isUploadingThumbnail ? (
+                            <span className="text-secondary-text text-sm">업로드 중...</span>
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-secondary-text mb-2" />
+                              <span className="text-sm text-secondary-text">
+                                클릭하여 이미지 업로드
+                              </span>
+                              <span className="text-xs text-secondary-text mt-1">
+                                JPG, PNG, WEBP (최대 5MB)
+                              </span>
+                            </>
+                          )}
+                        </div>
                         <input
                           type="file"
                           accept="image/*"
-                          className="hidden"
                           onChange={handleThumbnailFileChange}
+                          className="hidden"
+                          disabled={isUploadingThumbnail}
                         />
                       </label>
                     )}
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="freeShippingNew"
-                      checked={newStreamFreeShipping}
-                      onChange={(e) => setNewStreamFreeShipping(e.target.checked)}
-                      className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor="freeShippingNew"
-                      className="text-sm text-gray-700 cursor-pointer"
-                    >
-                      이 방송 무료배송 적용
-                    </label>
-                  </div>
-
                   {generateError && (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-                      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                      <p className="text-sm text-red-700">{generateError}</p>
+                    <div className="p-3 bg-error/10 border border-error rounded-lg">
+                      <p className="text-error text-sm">{generateError}</p>
                     </div>
                   )}
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={handleGenerateStreamKey}
-                      disabled={isGenerating || !newStreamTitle.trim()}
-                      className="flex-1 py-2.5 bg-[#FF4D8D] text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isGenerating && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {isGenerating ? '생성 중...' : '스트림 키 발급'}
-                    </button>
+                  <div className="flex gap-3">
                     <button
                       onClick={handleCloseModal}
-                      className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                      className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
                     >
                       취소
                     </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-                    스트림 키가 발급되었습니다. 아래 정보를 OBS에 입력하세요.
-                  </div>
-
-                  {[
-                    { label: 'RTMP URL', value: generatedStream.rtmpUrl, field: 'rtmp' },
-                    { label: '스트림 키', value: generatedStream.streamKey, field: 'streamKey' },
-                    { label: 'HLS URL', value: generatedStream.hlsUrl, field: 'hls' },
-                  ].map(({ label, value, field }) => (
-                    <div key={field}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        {label}
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={value}
-                          readOnly
-                          className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-600"
-                        />
-                        <button
-                          onClick={() => handleCopyToClipboard(value, field)}
-                          className="p-2.5 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          {copiedField === field ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={handleCloseModal}
-                    className="w-full py-2.5 bg-[#FF4D8D] text-white rounded-lg text-sm font-medium hover:bg-pink-600 transition-colors mt-2"
-                  >
-                    확인
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Stream Modal */}
-      {selectedStreamForEdit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">방송 편집</h2>
-              <button
-                onClick={handleCloseEditModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">방송 제목</p>
-                <p className="text-base font-semibold text-gray-800">
-                  {selectedStreamForEdit.title}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  썸네일 변경
-                </label>
-                {editThumbnailPreview ? (
-                  <div className="relative inline-block">
-                    <img
-                      src={editThumbnailPreview}
-                      alt="미리보기"
-                      className="w-32 h-20 object-cover rounded-lg border border-gray-200"
-                    />
                     <button
-                      onClick={handleRemoveEditThumbnail}
-                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                      onClick={handleGenerateStreamKey}
+                      disabled={!newStreamTitle.trim() || isGenerating || isUploadingThumbnail}
+                      className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {isGenerating ? '발급 중...' : '발급하기'}
                     </button>
                   </div>
-                ) : selectedStreamForEdit.thumbnailUrl ? (
-                  <div className="space-y-2">
-                    <img
-                      src={selectedStreamForEdit.thumbnailUrl}
-                      alt="현재 썸네일"
-                      className="w-32 h-20 object-cover rounded-lg border border-gray-200"
-                    />
-                    <label className="inline-flex items-center gap-1.5 text-xs text-[#FF4D8D] cursor-pointer hover:underline">
-                      <Upload className="w-3.5 h-3.5" />
-                      변경
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleEditThumbnailFileChange}
-                      />
-                    </label>
+                </div>
+              )}
+
+              {/* Step 2: Stream Key Result */}
+              {modalStep === 2 && generatedStream && (
+                <div className="space-y-6">
+                  <div className="p-4 bg-success/10 border border-success rounded-lg">
+                    <p className="text-success font-medium">스트림 키가 발급되었습니다!</p>
+                    <p className="text-sm text-secondary-text mt-1">
+                      아래 정보를 OBS에 입력하세요.
+                    </p>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    {isUploadingEditThumbnail ? (
-                      <Loader2 className="w-5 h-5 text-[#FF4D8D] animate-spin" />
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                        <span className="text-xs text-gray-500">이미지 업로드</span>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleEditThumbnailFileChange}
-                    />
-                  </label>
-                )}
-              </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="editFreeShipping"
-                  checked={editFreeShipping}
-                  onChange={(e) => setEditFreeShipping(e.target.checked)}
-                  className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-                />
-                <label htmlFor="editFreeShipping" className="text-sm text-gray-700 cursor-pointer">
-                  무료배송 적용
-                </label>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 제목
+                    </label>
+                    <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-primary-text">
+                      {generatedStream.title}
+                    </div>
+                  </div>
 
-              {editError && (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
-                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                  <p className="text-sm text-red-700">{editError}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 예정일
+                    </label>
+                    <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-primary-text">
+                      {generatedStream.scheduledAt ? formatDate(generatedStream.scheduledAt) : '미설정'}
+                    </div>
+                  </div>
+
+                  {generatedStream.thumbnailUrl ? (
+                    <div>
+                      <label className="block text-sm font-medium text-primary-text mb-2">
+                        방송 썸네일
+                      </label>
+                      <div className="w-full rounded-lg border border-gray-200 overflow-hidden">
+                        <img
+                          src={generatedStream.thumbnailUrl}
+                          alt="생성된 방송 썸네일"
+                          className="w-full h-44 object-cover"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      RTMP 스트림 URL (포트 1935)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {getRtmpUrlWithPort(generatedStream.rtmpUrl)}
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleCopyToClipboard(getRtmpUrlWithPort(generatedStream.rtmpUrl), 'rtmpUrl')
+                        }
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'rtmpUrl' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      스트림 키
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {generatedStream.streamKey}
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleCopyToClipboard(generatedStream.streamKey, 'streamKey')
+                        }
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'streamKey' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      시청 URL (HLS)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
+                        {generatedStream.hlsUrl}
+                      </div>
+                      <button
+                        onClick={() => handleCopyToClipboard(generatedStream.hlsUrl, 'hlsUrl')}
+                        className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="복사"
+                      >
+                        {copiedField === 'hlsUrl' ? (
+                          <Check className="w-5 h-5 text-success" />
+                        ) : (
+                          <Copy className="w-5 h-5 text-secondary-text" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-warning/10 border border-warning rounded-lg">
+                    <p className="text-warning font-medium text-sm">유효 기간</p>
+                    <p className="text-sm text-secondary-text mt-1">
+                      {formatDate(generatedStream.expiresAt)}까지 유효합니다.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCloseModal}
+                      className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      완료
+                    </button>
+                    <button
+                      onClick={() => {
+                        loadRestreamTargets();
+                        setModalStep(3);
+                      }}
+                      className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
+                    >
+                      동시송출 설정 →
+                    </button>
+                  </div>
                 </div>
               )}
-              {editSuccess && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-700">{editSuccess}</p>
+
+              {/* Step 3: Restream Targets */}
+              {modalStep === 3 && (
+                <div className="space-y-4">
+                  {restreamError && (
+                    <div className="flex items-center gap-2 p-3 bg-error/10 border border-error rounded-lg text-sm text-error">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {restreamError}
+                      <button onClick={() => setRestreamError(null)} className="ml-auto">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Existing targets */}
+                  {isLoadingRestream ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin text-secondary-text" />
+                    </div>
+                  ) : restreamTargets.length > 0 ? (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-primary-text">등록된 대상</label>
+                      {restreamTargets.map((target) => (
+                        <div
+                          key={target.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-primary-text">{target.name}</p>
+                            <p className="text-xs text-secondary-text">{PLATFORM_LABELS[target.platform]}</p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteRestreamTarget(target.id)}
+                            className="p-1.5 text-secondary-text hover:text-error rounded transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {/* Add new target form */}
+                  <div className="border-t pt-4">
+                    <label className="block text-sm font-medium text-primary-text mb-3">
+                      새 대상 추가
+                    </label>
+
+                    {/* Platform selection */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-2">플랫폼</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {Object.entries(PLATFORM_LABELS).map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() =>
+                              handleRestreamPlatformChange(key as ReStreamPlatform)
+                            }
+                            className={`px-2 py-2 rounded text-xs font-medium border transition-colors ${
+                              newRestreamPlatform === key
+                                ? 'border-hot-pink bg-hot-pink/10 text-hot-pink'
+                                : 'border-gray-200 text-secondary-text hover:border-gray-300'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Name */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        이름
+                      </label>
+                      <input
+                        type="text"
+                        value={newRestreamName}
+                        onChange={(e) => setNewRestreamName(e.target.value)}
+                        placeholder="예: YouTube 채널"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* RTMP URL */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        RTMP URL
+                      </label>
+                      <input
+                        type="text"
+                        value={newRestreamRtmpUrl}
+                        onChange={(e) => setNewRestreamRtmpUrl(e.target.value)}
+                        placeholder="rtmp://..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* Stream Key */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        스트림 키
+                      </label>
+                      <input
+                        type="password"
+                        value={newRestreamKey}
+                        onChange={(e) => setNewRestreamKey(e.target.value)}
+                        placeholder="스트림 키 입력"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+                      />
+                    </div>
+
+                    {/* Mute Audio */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setNewRestreamMuteAudio(!newRestreamMuteAudio)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          newRestreamMuteAudio ? 'bg-orange-500' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                            newRestreamMuteAudio ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs text-primary-text">오디오 음소거</span>
+                    </div>
+
+                    <button
+                      onClick={handleAddRestreamTarget}
+                      disabled={!newRestreamName.trim() || !newRestreamKey.trim() || isAddingRestream}
+                      className="w-full py-2 bg-hot-pink text-white rounded-lg font-medium text-sm hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isAddingRestream ? '추가 중...' : '추가'}
+                    </button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <button
+                      onClick={handleCloseModal}
+                      className="w-full py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 transition-colors"
+                    >
+                      완료
+                    </button>
+                  </div>
                 </div>
               )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={isSavingEdit}
-                  className="flex-1 py-2.5 bg-[#FF4D8D] text-white rounded-lg text-sm font-medium hover:bg-pink-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  {isSavingEdit && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isSavingEdit ? '저장 중...' : '저장하기'}
-                </button>
-                <button
-                  onClick={handleCloseEditModal}
-                  className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-                >
-                  취소
-                </button>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Featured Product Modal */}
+      {/* Featured Product Management Modal */}
       {selectedStreamForFeatured && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">추천 상품 관리</h2>
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-primary-text">추천 상품 관리</h2>
               <button
                 onClick={() => setSelectedStreamForFeatured(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-secondary-text" />
               </button>
             </div>
             <div className="p-6">
@@ -1018,6 +1286,146 @@ export default function BroadcastsPage() {
                 streamKey={selectedStreamForFeatured.streamKey}
                 streamTitle={selectedStreamForFeatured.title}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Pending Stream Modal */}
+      {selectedStreamForEdit && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-primary-text">방송 수정</h2>
+              <button
+                onClick={handleCloseEditModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-secondary-text" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-secondary-text">
+                <span className="font-medium text-primary-text">
+                  &quot;{selectedStreamForEdit.title}&quot;
+                </span>
+              </p>
+
+              {/* 무료배송 설정 */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editFreeShipping}
+                  onChange={(e) => setEditFreeShipping(e.target.checked)}
+                  className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                />
+                <span className="text-sm font-medium text-primary-text">
+                  이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
+                </span>
+              </label>
+
+              {/* 썸네일 */}
+              <div>
+                <p className="block text-sm font-medium text-primary-text mb-2">썸네일</p>
+                {editThumbnailPreview ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
+                    <img
+                      src={editThumbnailPreview}
+                      alt="썸네일 미리보기"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveEditThumbnail}
+                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    {isUploadingEditThumbnail && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">업로드 중...</span>
+                      </div>
+                    )}
+                  </div>
+                ) : selectedStreamForEdit.thumbnailUrl ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 aspect-[16/10]">
+                    <img
+                      src={selectedStreamForEdit.thumbnailUrl}
+                      alt="현재 썸네일"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                      현재 썸네일
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink hover:bg-hot-pink/5 transition-colors">
+                    <div className="flex flex-col items-center justify-center py-6">
+                      {isUploadingEditThumbnail ? (
+                        <span className="text-secondary-text text-sm">업로드 중...</span>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-secondary-text mb-2" />
+                          <span className="text-sm text-secondary-text">
+                            클릭하여 이미지 업로드
+                          </span>
+                          <span className="text-xs text-secondary-text mt-1">
+                            JPG, PNG, WEBP (최대 5MB)
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditThumbnailFileChange}
+                      className="hidden"
+                      disabled={isUploadingEditThumbnail}
+                    />
+                  </label>
+                )}
+                {selectedStreamForEdit.thumbnailUrl && (
+                  <label className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg cursor-pointer hover:border-hot-pink/50 transition-colors text-sm text-secondary-text">
+                    <Upload className="w-4 h-4" />
+                    {editThumbnailPreview ? '다시 선택' : '변경'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditThumbnailFileChange}
+                      className="hidden"
+                      disabled={isUploadingEditThumbnail}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {editError && (
+                <div className="p-3 bg-error/10 border border-error rounded-lg">
+                  <p className="text-error text-sm">{editError}</p>
+                </div>
+              )}
+              {editSuccess && (
+                <div className="p-3 bg-success/10 border border-success rounded-lg">
+                  <p className="text-success text-sm">{editSuccess}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleCloseEditModal}
+                  className="flex-1 py-3 bg-gray-100 text-primary-text rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || isUploadingEditThumbnail}
+                  className="flex-1 py-3 bg-hot-pink text-white rounded-lg font-medium hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSavingEdit ? '저장 중...' : '저장'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
