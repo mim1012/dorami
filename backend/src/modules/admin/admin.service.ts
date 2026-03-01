@@ -534,7 +534,7 @@ export class AdminService {
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
       items: order.orderItems.map((item) => ({
         productName: item.productName,
-        price: Number(item.price),
+        price: String(item.price),
         quantity: item.quantity,
         color: item.color,
         size: item.size,
@@ -1896,7 +1896,7 @@ export class AdminService {
     const orderFrequency = totalOrders / monthsSinceRegistration;
     const statistics: UserStatisticsDto = {
       totalOrders,
-      totalPurchaseAmount,
+      totalPurchaseAmount: String(totalPurchaseAmount),
       averageOrderValue,
       orderFrequency,
     };

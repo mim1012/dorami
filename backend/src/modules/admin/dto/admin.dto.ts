@@ -339,7 +339,7 @@ export class ShippingAddressDto {
 
 export class UserStatisticsDto {
   totalOrders!: number;
-  totalPurchaseAmount!: number;
+  totalPurchaseAmount!: string;
   averageOrderValue!: number;
   orderFrequency!: number; // orders per month
 }
