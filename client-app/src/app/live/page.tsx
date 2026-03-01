@@ -9,9 +9,9 @@ import { getProductsByStreamKey, type Product } from '@/lib/api/products';
 import { StreamProductsModal } from '@/components/live/StreamProductsModal';
 
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-US', {
+  new Intl.NumberFormat('ko-KR', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'KRW',
     maximumFractionDigits: 0,
   }).format(price);
 
@@ -245,9 +245,9 @@ export default function LivePage() {
                         {stream.description}
                       </p>
                     )}
-                    {stream.scheduledStartTime && (
+                    {stream.scheduledAt && (
                       <p className="text-caption text-secondary-text">
-                        📅 {new Date(stream.scheduledStartTime).toLocaleString('ko-KR')}
+                        📅 {new Date(stream.scheduledAt).toLocaleString('ko-KR')}
                       </p>
                     )}
                   </div>

@@ -1,0 +1,185 @@
+{
+  "_note": "Sample results from a ramp scenario run (500 VUs peak, 40 minutes). Values are illustrative for documentation purposes.",
+  "run_metadata": {
+    "scenario": "ramp",
+    "stream_key": "test-stream-001",
+    "base_url": "http://localhost:8080",
+    "k6_version": "k6 v0.49.0 (go1.21.6, linux/amd64)",
+    "timestamp": "2026-02-28T02:00:00Z",
+    "duration_seconds": 2400
+  },
+  "metrics": {
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 312.45,
+        "min": 8.21,
+        "med": 187.32,
+        "p(90)": 621.44,
+        "p(95)": 987.12,
+        "p(99)": 2341.87,
+        "max": 8921.33,
+        "count": 284750
+      },
+      "thresholds": {
+        "p(99)<10000": { "ok": true }
+      }
+    },
+    "http_req_duration{type:playlist}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 43.21,
+        "min": 8.10,
+        "med": 31.45,
+        "p(90)": 89.22,
+        "p(95)": 142.67,
+        "p(99)": 287.44,
+        "max": 1243.55,
+        "count": 48500
+      },
+      "thresholds": {
+        "p(95)<3000": { "ok": true }
+      }
+    },
+    "http_req_duration{type:segment}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 334.89,
+        "min": 9.44,
+        "med": 201.11,
+        "p(90)": 678.33,
+        "p(95)": 1102.45,
+        "p(99)": 2788.90,
+        "max": 8921.33,
+        "count": 236250
+      },
+      "thresholds": {
+        "p(95)<5000": { "ok": true }
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.00087,
+        "passes": 284502,
+        "fails": 248
+      },
+      "thresholds": {
+        "rate<0.005": { "ok": true }
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 284750,
+        "rate": 118.65
+      }
+    },
+    "segment_fetch_latency": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 338.12,
+        "min": 9.44,
+        "med": 204.55,
+        "p(90)": 681.22,
+        "p(95)": 1109.78,
+        "p(99)": 2801.34,
+        "max": 8921.33,
+        "count": 236250
+      },
+      "thresholds": {
+        "p(95)<5000": { "ok": true },
+        "p(99)<8000": { "ok": true }
+      }
+    },
+    "rebuffer_events": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 12
+      },
+      "thresholds": {
+        "count<100": { "ok": true }
+      }
+    },
+    "playlist_parse_errors": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 3
+      }
+    },
+    "segment_success_rate": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.9994,
+        "passes": 236109,
+        "fails": 141
+      },
+      "thresholds": {
+        "rate>0.995": { "ok": true }
+      }
+    },
+    "active_viewers": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 0,
+        "min": 0,
+        "max": 500
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 0,
+        "min": 0,
+        "max": 500
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 500,
+        "min": 500,
+        "max": 500
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 48500,
+        "rate": 20.21
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 4812.33,
+        "min": 1022.11,
+        "med": 4201.45,
+        "p(90)": 8921.33,
+        "p(95)": 10412.67,
+        "p(99)": 14233.89,
+        "max": 31242.10
+      }
+    }
+  },
+  "thresholds_summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0
+  },
+  "text_summary": "\n┌──────────────────────────────────────────────────────┐\n│         HLS Load Test — Results Summary              │\n├──────────────────────────────────────────────────────┤\n│ HTTP Request Duration                                │\n│   p50 : 187.32ms                                     │\n│   p95 : 987.12ms                                     │\n│   p99 : 2341.87ms                                    │\n│   max : 8921.33ms                                    │\n├──────────────────────────────────────────────────────┤\n│ Segment Fetch Latency (custom)                       │\n│   p50 : 204.55ms                                     │\n│   p95 : 1109.78ms                                    │\n│   p99 : 2801.34ms                                    │\n├──────────────────────────────────────────────────────┤\n│ Reliability                                          │\n│   Error rate      : 0.09%                            │\n│   Segment success : 99.94%                           │\n│   Rebuffer events : 12                               │\n├──────────────────────────────────────────────────────┤\n│ Throughput                                           │\n│   Total requests  : 284750                           │\n│   Req/s           : 118.65/s                         │\n└──────────────────────────────────────────────────────┘\n"
+}

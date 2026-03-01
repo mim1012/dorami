@@ -4,6 +4,7 @@ import {
   Min,
   Max,
   IsString,
+  IsObject,
   IsEnum,
   IsArray,
   IsNumber,
@@ -77,7 +78,12 @@ export class GetUsersQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   status?: string[];
 }
 
@@ -87,12 +93,14 @@ export class UserListItemDto {
   name!: string;
   phone!: string | null;
   instagramId!: string | null;
-  createdAt!: Date;
-  lastLoginAt!: Date | null;
+  shippingAddressSummary?: string | null;
+  createdAt!: string;
+  lastLoginAt!: string | null;
+  lastPurchaseAt?: string | null;
   status!: string;
   role!: string;
   totalOrders!: number;
-  totalPurchaseAmount!: number;
+  totalPurchaseAmount!: string;
 }
 
 export class UserListResponseDto {
@@ -117,6 +125,11 @@ export class TopProductDto {
   totalSold!: number;
 }
 
+export class OptionSalesDto {
+  option!: string;
+  sales!: number;
+}
+
 export class DailyRevenueDto {
   date!: string;
   revenue!: number;
@@ -132,6 +145,7 @@ export class DashboardStatsDto {
   pendingPayments!: { value: number; formatted: string };
   activeLiveStreams!: { value: number; formatted: string };
   topProducts!: TopProductDto[];
+  optionSales?: OptionSalesDto[];
   dailyRevenue!: DailyRevenueDto[];
 }
 
@@ -144,7 +158,7 @@ export class LiveStatusDto {
   duration!: string | null; // HH:MM:SS format
   viewerCount!: number;
   thumbnailUrl!: string | null;
-  startedAt!: Date | null;
+  startedAt!: string | null;
 }
 
 // Recent Activities DTOs
@@ -152,7 +166,7 @@ export class ActivityLogDto {
   id!: string;
   type!: string;
   message!: string;
-  timestamp!: Date;
+  timestamp!: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -201,7 +215,7 @@ export class GetOrdersQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsEnum(['createdAt', 'paidAt', 'total', 'status'])
+  @IsEnum(['createdAt', 'paidAt', 'total', 'status', 'id'])
   sortBy?: string = 'createdAt';
 
   @IsOptional()
@@ -227,21 +241,36 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   orderStatus?: string[];
 
   // Payment status filter (array)
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   paymentStatus?: string[];
 
   // Shipping status filter (array)
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @Transform(({ value }) => {
+    if (value == null) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+    return [value];
+  })
   shippingStatus?: string[];
 
   // Amount range filter
@@ -257,6 +286,10 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @IsString()
   streamKey?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }
 
 export class OrderListItemDto {
@@ -268,14 +301,14 @@ export class OrderListItemDto {
   status!: string;
   paymentStatus!: string;
   shippingStatus!: string;
-  subtotal!: number;
-  shippingFee!: number;
-  total!: number;
+  subtotal!: string;
+  shippingFee!: string;
+  total!: string;
   itemCount!: number;
-  createdAt!: Date;
-  paidAt!: Date | null;
-  shippedAt!: Date | null;
-  deliveredAt!: Date | null;
+  createdAt!: string;
+  paidAt!: string | null;
+  shippedAt!: string | null;
+  deliveredAt!: string | null;
   streamKey!: string | null;
   items?: Array<{
     productName: string;
@@ -318,11 +351,11 @@ export class UserDetailDto {
   instagramId!: string | null;
   depositorName!: string | null;
   shippingAddress!: ShippingAddressDto | null;
-  createdAt!: Date;
-  lastLoginAt!: Date | null;
+  createdAt!: string;
+  lastLoginAt!: string | null;
   status!: string;
   role!: string;
-  suspendedAt!: Date | null;
+  suspendedAt!: string | null;
   statistics!: UserStatisticsDto;
 }
 
@@ -429,6 +462,27 @@ export class UpdateShippingMessagesDto {
   delivered!: string;
 }
 
+// Home featured products configuration DTO
+export class UpdateHomeFeaturedProductsDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
+}
+
+// Marketing campaigns configuration DTO
+export class UpdateMarketingCampaignsDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
+}
+
+// Payment providers configuration DTO
+export class UpdatePaymentProvidersDto {
+  @IsArray()
+  @IsObject({ each: true })
+  items!: Record<string, unknown>[];
+}
+
 // Notification Template DTO
 export class UpdateNotificationTemplateDto {
   @IsOptional()
@@ -445,7 +499,13 @@ export class UpdateNotificationTemplateDto {
 
 export class UpdateOrderStatusDto {
   @IsString()
-  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
+  @IsEnum([
+    'PENDING_PAYMENT',
+    'PAYMENT_CONFIRMED',
+    'SHIPPED',
+    'DELIVERED',
+    'CANCELLED',
+  ])
   status!: string;
 }
 
@@ -474,3 +534,4 @@ export interface BulkShippingNotificationResult {
     error?: string;
   }[];
 }
+

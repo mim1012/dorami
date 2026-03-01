@@ -97,8 +97,12 @@ export class StreamingController {
   @ApiOperation({ summary: '스트림 라이브 전환', description: 'PENDING → LIVE 상태로 전환합니다.' })
   @ApiParam({ name: 'id', description: '스트림 ID' })
   @ApiResponse({ status: 200, description: '라이브 전환 성공' })
-  async goLive(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
-    return this.streamingService.goLive(streamId, userId);
+  async goLive(
+    @Param('id') streamId: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.streamingService.goLive(streamId, userId, role);
   }
 
   @Patch(':id/stop')
@@ -107,8 +111,12 @@ export class StreamingController {
   @ApiOperation({ summary: '스트림 종료', description: 'LIVE → OFFLINE 상태로 전환합니다.' })
   @ApiParam({ name: 'id', description: '스트림 ID' })
   @ApiResponse({ status: 200, description: '스트림 종료 성공' })
-  async stopStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
-    await this.streamingService.stopStream(streamId, userId);
+  async stopStream(
+    @Param('id') streamId: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    await this.streamingService.stopStream(streamId, userId, role);
     return { message: 'Stream ended successfully' };
   }
 
@@ -121,9 +129,10 @@ export class StreamingController {
   async updateStream(
     @Param('id') streamId: string,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
     @Body() dto: UpdateStreamDto,
   ) {
-    return this.streamingService.updateStream(streamId, userId, dto);
+    return this.streamingService.updateStream(streamId, userId, dto, role);
   }
 
   @Delete(':id')
@@ -133,8 +142,12 @@ export class StreamingController {
   @ApiOperation({ summary: '스트림 취소 (PENDING 상태만)' })
   @ApiParam({ name: 'id', description: '스트림 ID' })
   @ApiResponse({ status: 204, description: '스트림 취소 성공' })
-  async cancelStream(@Param('id') streamId: string, @CurrentUser('userId') userId: string) {
-    await this.streamingService.cancelStream(streamId, userId);
+  async cancelStream(
+    @Param('id') streamId: string,
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    await this.streamingService.cancelStream(streamId, userId, role);
   }
 
   @Public()

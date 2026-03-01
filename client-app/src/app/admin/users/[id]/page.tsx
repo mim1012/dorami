@@ -28,6 +28,24 @@ interface UserStatistics {
   orderFrequency: number;
 }
 
+interface UserOrderItem {
+  id: string;
+  createdAt: string;
+  total: number;
+  itemCount: number;
+  status: string;
+  paymentStatus: string;
+  shippingStatus: string;
+}
+
+interface UserOrderListResponse {
+  orders: UserOrderItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 interface UserDetail {
   id: string;
   email: string;
@@ -57,6 +75,7 @@ export default function AdminUserDetailPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
+  const [userOrders, setUserOrders] = useState<UserOrderItem[]>([]);
   const { data: pointBalance, refetch: refetchPoints } = usePointBalance(userId);
 
   useEffect(() => {
@@ -68,9 +87,22 @@ export default function AdminUserDetailPage() {
     setError(null);
 
     try {
-      const response = await apiClient.get<UserDetail>(`/admin/users/${userId}`);
-      setUser(response.data);
-      setSelectedStatus(response.data.status);
+      const [userResponse, orderResponse] = await Promise.all([
+        apiClient.get<UserDetail>(`/admin/users/${userId}`),
+        apiClient.get<UserOrderListResponse>('/admin/orders', {
+          params: {
+            page: 1,
+            limit: 5,
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+            userId: userId,
+          },
+        }),
+      ]);
+
+      setUser(userResponse.data);
+      setSelectedStatus(userResponse.data.status);
+      setUserOrders(orderResponse.data.orders || []);
     } catch (err: any) {
       console.error('Failed to fetch user detail:', err);
       setError(err.response?.data?.message || '회원 정보를 불러오는데 실패했습니다');
@@ -132,11 +164,41 @@ export default function AdminUserDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const getOrderStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      PENDING_PAYMENT: '입금 대기',
+      PAYMENT_CONFIRMED: '결제 완료',
+      SHIPPED: '배송중',
+      DELIVERED: '배송 완료',
+      CANCELLED: '취소',
+    };
+    return labels[status] || status;
+  };
+
+  const getPaymentStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      PENDING: '입금 대기',
+      CONFIRMED: '입금 완료',
+      FAILED: '입금 실패',
+      REFUNDED: '환불',
+    };
+    return labels[status] || status;
+  };
+
+  const getShippingStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      PENDING: '준비중',
+      SHIPPED: '배송중',
+      DELIVERED: '배송 완료',
+    };
+    return labels[status] || status;
   };
 
   const getStatusLabel = (status: string) => {
@@ -364,10 +426,50 @@ export default function AdminUserDetailPage() {
         )}
       </div>
 
-      {/* Order History Placeholder */}
+      {/* Order History */}
       <div className="bg-content-bg rounded-button p-6">
         <Heading2 className="text-hot-pink mb-4">주문 내역</Heading2>
-        <Body className="text-secondary-text">주문 내역은 추후 제공 예정입니다</Body>
+        {userOrders.length > 0 ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-6 gap-2 text-secondary-text text-sm pb-2 border-b border-gray-200">
+              <span className="font-medium">주문번호</span>
+              <span className="font-medium">주문일시</span>
+              <span className="font-medium">상태</span>
+              <span className="font-medium">결제상태</span>
+              <span className="font-medium">배송상태</span>
+              <span className="font-medium">금액</span>
+            </div>
+
+            {userOrders.map((order) => (
+              <button
+                key={order.id}
+                type="button"
+                className="w-full grid grid-cols-6 gap-2 text-sm py-3 border-b border-gray-100 hover:bg-gray-50 rounded-button px-2 text-left"
+                onClick={() => router.push(`/admin/orders/${order.id}`)}
+              >
+                <span className="font-mono text-xs md:text-sm">{order.id}</span>
+                <span>{formatDate(order.createdAt)}</span>
+                <span>{getOrderStatusLabel(order.status)}</span>
+                <span>{getPaymentStatusLabel(order.paymentStatus)}</span>
+                <span>{getShippingStatusLabel(order.shippingStatus)}</span>
+                <span className="font-medium">{formatCurrency(order.total)}</span>
+              </button>
+            ))}
+
+            {user?.statistics.totalOrders > 5 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto mt-2"
+                onClick={() => router.push(`/admin/orders?userId=${user?.id}`)}
+              >
+                주문관리에서 전체 내역 보기
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Body className="text-secondary-text">주문 내역이 없습니다.</Body>
+        )}
       </div>
 
       {/* Point Adjustment Modal */}
@@ -424,3 +526,4 @@ export default function AdminUserDetailPage() {
     </div>
   );
 }
+

@@ -53,7 +53,7 @@ interface LiveStream {
   viewerCount?: number;
   peakViewers?: number;
   startedAt?: string | null;
-  scheduledTime?: string | null;
+  scheduledAt?: string | null;
   totalRevenue?: number;
 }
 
@@ -66,6 +66,12 @@ interface OrderItem {
   total: number;
   itemCount: number;
   createdAt: string;
+  items?: {
+    productName: string;
+    quantity: number;
+    color?: string | null;
+    size?: string | null;
+  }[];
 }
 
 // --- Status helpers ---
@@ -82,30 +88,6 @@ const streamStatusLabels: Record<string, string> = {
   OFFLINE: '종료',
 };
 
-const paymentStatusColors: Record<string, string> = {
-  CONFIRMED: 'bg-green-100 text-green-700',
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  FAILED: 'bg-red-100 text-red-700',
-  REFUNDED: 'bg-gray-100 text-gray-700',
-};
-
-const paymentStatusLabels: Record<string, string> = {
-  CONFIRMED: '결제완료',
-  PENDING: '대기중',
-  FAILED: '실패',
-  REFUNDED: '환불',
-};
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  return `${Math.floor(hours / 24)}일 전`;
-}
-
 function formatKRW(value: number): string {
   return new Intl.NumberFormat('ko-KR', {
     style: 'currency',
@@ -113,6 +95,32 @@ function formatKRW(value: number): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+const formatOrderProductNames = (items: OrderItem['items'] | undefined, fallbackItemCount: number) => {
+  if (!items || items.length === 0) {
+    return `상품 ${fallbackItemCount}개`;
+  }
+
+  return items.map((item) => item.productName).filter(Boolean).join(', ');
+};
+
+const formatOrderOptions = (items: OrderItem['items'] | undefined) => {
+  if (!items || items.length === 0) {
+    return '-';
+  }
+
+  return items
+    .map((item) => {
+      const options = [item.color, item.size].filter(Boolean).join(' / ');
+      const quantityText = item.quantity > 1 ? ` (${item.quantity}개)` : '';
+      return `${options || '-'}${quantityText}`;
+    })
+    .join(' · ');
+};
+
+const getOrderInstagramId = (order: OrderItem): string => {
+  return order.instagramId || order.depositorName || '-';
+};
 
 function streamDuration(startedAt: string | null | undefined): string {
   if (!startedAt) return '';
@@ -349,8 +357,8 @@ export default function AdminDashboardPage() {
                           </>
                         ) : (
                           <span>
-                            {stream.scheduledTime
-                              ? new Date(stream.scheduledTime).toLocaleString('ko-KR', {
+                            {stream.scheduledAt
+                              ? new Date(stream.scheduledAt).toLocaleString('ko-KR', {
                                   month: 'numeric',
                                   day: 'numeric',
                                   hour: '2-digit',
@@ -395,38 +403,37 @@ export default function AdminDashboardPage() {
             {recentOrders.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6">최근 주문이 없습니다</p>
             ) : (
-              <div className="space-y-3 md:space-y-4">
-                {recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="pb-3 md:pb-4 border-b border-gray-100 last:border-0 last:pb-0"
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 text-xs md:text-sm truncate">
-                          {order.id}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-600">
-                          {order.depositorName || order.instagramId || '-'}
-                        </p>
-                      </div>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
-                          paymentStatusColors[order.paymentStatus] ?? 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {paymentStatusLabels[order.paymentStatus] ?? order.paymentStatus}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-1">상품 {order.itemCount}개</p>
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm md:text-base text-gray-900">
-                        {formatKRW(order.total)}
-                      </p>
-                      <p className="text-xs text-gray-400">{timeAgo(order.createdAt)}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 border-b border-gray-100">
+                      <th className="px-3 py-2 text-left font-semibold">상품명</th>
+                      <th className="px-3 py-2 text-left font-semibold">옵션</th>
+                      <th className="px-3 py-2 text-left font-semibold">인스타아이디</th>
+                      <th className="px-3 py-2 text-right font-semibold">금액</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {recentOrders.map((order) => (
+                      <tr key={order.id} className="text-gray-900">
+                        <td className="px-3 py-2 align-top">
+                          <p className="break-keep text-gray-900 font-medium">
+                            {formatOrderProductNames(order.items, order.itemCount)}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2 align-top text-gray-700">
+                          {formatOrderOptions(order.items)}
+                        </td>
+                        <td className="px-3 py-2 align-top text-gray-600">
+                          {getOrderInstagramId(order)}
+                        </td>
+                        <td className="px-3 py-2 align-top text-right font-semibold text-gray-900">
+                          {formatKRW(order.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

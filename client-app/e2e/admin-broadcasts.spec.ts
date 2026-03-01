@@ -20,7 +20,7 @@ test.describe('Admin Broadcasts Page', () => {
    */
   async function waitForPageLoad(page: import('@playwright/test').Page) {
     const retryBtn = page.getByRole('button', { name: '다시 시도' });
-    const newBroadcastBtn = page.getByRole('button', { name: /새 방송 시작/ });
+    const newBroadcastBtn = page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ });
 
     await Promise.race([
       retryBtn.waitFor({ timeout: 45000 }).catch(() => {}),
@@ -51,7 +51,7 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 정상 로드 시
-    await expect(page.getByRole('button', { name: /새 방송 시작/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first()).toBeVisible();
 
     // 라이브 현황 카드
     await expect(page.getByText('현재 라이브 중')).toBeVisible();
@@ -75,11 +75,11 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 모달 열기
-    await page.getByRole('button', { name: /새 방송 시작/ }).click();
+    await page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first().click();
 
     // 모달 내용 확인
     await expect(page.getByPlaceholder('예: 오늘의 라이브 방송')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: '스트림 키 발급' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /발급하기|스트림 키 발급/ })).toBeVisible();
 
     console.log('Stream key modal opened');
   });
@@ -95,9 +95,9 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 모달 열기 → 제목 입력 → 발급
-    await page.getByRole('button', { name: /새 방송 시작/ }).click();
+    await page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first().click();
     await page.getByPlaceholder('예: 오늘의 라이브 방송').fill('E2E 테스트 방송');
-    await page.getByRole('button', { name: '스트림 키 발급' }).click();
+    await page.getByRole('button', { name: /발급하기|스트림 키 발급/ }).click();
 
     // 결과 확인
     const success = page.getByText('스트림 키가 발급되었습니다!');
@@ -109,7 +109,7 @@ test.describe('Admin Broadcasts Page', () => {
     ]);
 
     if (await success.isVisible()) {
-      await expect(page.getByText('RTMP 서버 URL')).toBeVisible();
+      await expect(page.getByText(/RTMP(?: 스트림)? URL/)).toBeVisible();
       await expect(page.getByText('유효 기간')).toBeVisible();
       console.log('Stream key generated successfully');
     } else {
@@ -117,3 +117,4 @@ test.describe('Admin Broadcasts Page', () => {
     }
   });
 });
+

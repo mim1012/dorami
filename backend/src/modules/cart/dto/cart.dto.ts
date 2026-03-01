@@ -51,8 +51,8 @@ export class CartItemResponseDto {
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt' })
   productName!: string;
 
-  @ApiProperty({ description: 'Price per item', example: 29000 })
-  price!: number;
+  @ApiProperty({ description: 'Price per item', example: '29000.00' })
+  price!: string;
 
   @ApiProperty({ description: 'Quantity', example: 1 })
   quantity!: number;
@@ -63,8 +63,8 @@ export class CartItemResponseDto {
   @ApiPropertyOptional({ description: 'Selected size', example: 'L' })
   size?: string;
 
-  @ApiProperty({ description: 'Shipping fee', example: 3000 })
-  shippingFee!: number;
+  @ApiProperty({ description: 'Shipping fee', example: '3000.00' })
+  shippingFee!: string;
 
   @ApiProperty({ description: 'Timer enabled', example: true })
   timerEnabled!: boolean;
@@ -85,11 +85,11 @@ export class CartItemResponseDto {
   updatedAt!: string;
 
   // Computed fields
-  @ApiProperty({ description: 'Subtotal (price × quantity)', example: 29000 })
-  subtotal!: number;
+  @ApiProperty({ description: 'Subtotal (price × quantity)', example: '29000.00' })
+  subtotal!: string;
 
-  @ApiProperty({ description: 'Total (subtotal + shippingFee)', example: 32000 })
-  total!: number;
+  @ApiProperty({ description: 'Total (subtotal + shippingFee)', example: '32000.00' })
+  total!: string;
 
   @ApiPropertyOptional({ description: 'Remaining time in seconds', example: 600 })
   remainingSeconds?: number;
@@ -102,14 +102,14 @@ export class CartSummaryDto {
   @ApiProperty({ description: 'Total number of items', example: 3 })
   itemCount!: number;
 
-  @ApiProperty({ description: 'Subtotal (sum of all item subtotals)', example: 87000 })
-  subtotal!: number;
+  @ApiProperty({ description: 'Subtotal (sum of all item subtotals)', example: '87000.00' })
+  subtotal!: string;
 
-  @ApiProperty({ description: 'Total shipping fee', example: 3000 })
-  totalShippingFee!: number;
+  @ApiProperty({ description: 'Total shipping fee', example: '3000.00' })
+  totalShippingFee!: string;
 
-  @ApiProperty({ description: 'Grand total', example: 90000 })
-  grandTotal!: number;
+  @ApiProperty({ description: 'Grand total', example: '90000.00' })
+  grandTotal!: string;
 
   @ApiPropertyOptional({
     description: 'Earliest expiration time among items',

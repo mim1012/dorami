@@ -21,6 +21,14 @@ import { randomBytes } from 'crypto';
 export class StreamingService {
   private readonly logger = new Logger(StreamingService.name);
   private readonly pendingStreamDoneTimers = new Map<string, NodeJS.Timeout>();
+  private getStreamOwnershipWhere(streamId: string, userId: string, userRole?: string) {
+    return userRole === 'ADMIN'
+      ? { id: streamId }
+      : {
+          id: streamId,
+          userId,
+        };
+  }
 
   constructor(
     private prisma: PrismaService,
@@ -157,9 +165,13 @@ export class StreamingService {
     streamId: string,
     userId: string,
     dto: UpdateStreamDto,
+    userRole?: string,
   ): Promise<StreamingSessionResponseDto> {
     const session = await this.prisma.liveStream.findFirst({
-      where: { id: streamId, userId },
+      where: {
+        id: streamId,
+        ...(userRole !== 'ADMIN' ? { userId } : {}),
+      },
     });
 
     if (!session) {
@@ -169,6 +181,7 @@ export class StreamingService {
     const data: {
       title?: string;
       expiresAt?: Date;
+      scheduledAt?: Date | null;
       thumbnailUrl?: string | null;
       freeShippingEnabled?: boolean;
     } = {};
@@ -177,6 +190,9 @@ export class StreamingService {
     }
     if (dto.expiresAt !== undefined) {
       data.expiresAt = new Date(dto.expiresAt);
+    }
+    if (dto.scheduledAt !== undefined) {
+      data.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
     }
     if (dto.thumbnailUrl !== undefined) {
       data.thumbnailUrl = dto.thumbnailUrl || null;
@@ -193,9 +209,9 @@ export class StreamingService {
     return this.mapToResponseDto(updated);
   }
 
-  async cancelStream(streamId: string, userId: string): Promise<void> {
+  async cancelStream(streamId: string, userId: string, userRole?: string): Promise<void> {
     const session = await this.prisma.liveStream.findFirst({
-      where: { id: streamId, userId },
+      where: this.getStreamOwnershipWhere(streamId, userId, userRole),
     });
 
     if (!session) {
@@ -222,12 +238,13 @@ export class StreamingService {
     this.logger.log(`Stream ${streamId} cancelled by user ${userId}`);
   }
 
-  async goLive(streamId: string, userId: string): Promise<StreamingSessionResponseDto> {
+  async goLive(
+    streamId: string,
+    userId: string,
+    userRole?: string,
+  ): Promise<StreamingSessionResponseDto> {
     const session = await this.prisma.liveStream.findFirst({
-      where: {
-        id: streamId,
-        userId,
-      },
+      where: this.getStreamOwnershipWhere(streamId, userId, userRole),
     });
 
     if (!session) {
@@ -269,12 +286,9 @@ export class StreamingService {
     return this.mapToResponseDto(updatedSession);
   }
 
-  async stopStream(streamId: string, userId: string): Promise<void> {
+  async stopStream(streamId: string, userId: string, userRole?: string): Promise<void> {
     const session = await this.prisma.liveStream.findFirst({
-      where: {
-        id: streamId,
-        userId,
-      },
+      where: this.getStreamOwnershipWhere(streamId, userId, userRole),
     });
 
     if (!session) {
@@ -477,7 +491,7 @@ export class StreamingService {
     return {
       status,
       viewerCount,
-      startedAt,
+      startedAt: startedAt?.toISOString(),
       title,
     };
   }
@@ -524,18 +538,26 @@ export class StreamingService {
       },
     });
 
-    const streamDtos: StreamHistoryItemDto[] = streams.map((stream) => ({
-      id: stream.id,
-      streamKey: stream.streamKey,
-      title: stream.title,
-      userId: stream.userId,
-      userName: stream.user.name,
-      startedAt: stream.startedAt,
-      endedAt: stream.endedAt,
-      totalDuration: stream.totalDuration,
-      peakViewers: stream.peakViewers,
-      status: stream.status,
-    }));
+    const streamDtos: StreamHistoryItemDto[] = streams.map((stream) => {
+      const connectionInfo = this.mapToResponseDto(stream);
+      return {
+        id: stream.id,
+        streamKey: stream.streamKey,
+        title: stream.title,
+        userId: stream.userId,
+        userName: stream.user.name,
+        freeShippingEnabled: stream.freeShippingEnabled,
+        scheduledAt: stream.scheduledAt?.toISOString() ?? null,
+        startedAt: stream.startedAt?.toISOString() ?? null,
+        endedAt: stream.endedAt?.toISOString() ?? null,
+        totalDuration: stream.totalDuration,
+        peakViewers: stream.peakViewers,
+        status: stream.status,
+        rtmpUrl: connectionInfo.rtmpUrl,
+        hlsUrl: connectionInfo.hlsUrl,
+        rtmpPort: connectionInfo.rtmpPort,
+      };
+    });
 
     const totalPages = Math.ceil(total / limit);
 
@@ -633,8 +655,8 @@ export class StreamingService {
       title: liveStream.title,
       duration,
       viewerCount,
-      thumbnailUrl: null, // TODO: Implement thumbnail generation
-      startedAt: liveStream.startedAt,
+      thumbnailUrl: liveStream.thumbnailUrl ?? null,
+      startedAt: liveStream.startedAt?.toISOString() ?? null,
     };
   }
 
@@ -937,6 +959,8 @@ export class StreamingService {
     const hlsBase = this.configService.get<string>('HLS_SERVER_URL') ?? 'http://localhost:8080/hls';
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
+    const rtmpPortMatch = rtmpUrl.match(/rtmp:\/\/[^:/]+:(\d+)\//);
+    const rtmpPort = rtmpPortMatch?.[1] ? parseInt(rtmpPortMatch[1], 10) : 1935;
 
     return {
       id: session.id,
@@ -947,12 +971,13 @@ export class StreamingService {
       status: session.status,
       rtmpUrl,
       hlsUrl,
-      startedAt: session.startedAt ?? undefined,
-      endedAt: session.endedAt ?? undefined,
-      scheduledAt: session.scheduledAt ?? null,
+      rtmpPort,
+      startedAt: session.startedAt?.toISOString() ?? undefined,
+      endedAt: session.endedAt?.toISOString() ?? undefined,
+      scheduledAt: session.scheduledAt?.toISOString() ?? null,
       thumbnailUrl: session.thumbnailUrl ?? null,
-      expiresAt: session.expiresAt,
-      createdAt: session.createdAt,
+      expiresAt: session.expiresAt.toISOString(),
+      createdAt: session.createdAt.toISOString(),
     };
   }
 }

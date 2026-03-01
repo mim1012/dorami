@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED_PATHS = [
-  '/admin',
-  '/live/',
-  '/cart',
-  '/checkout',
-  '/orders',
-  '/alerts',
-  '/my-page',
-];
+const PROTECTED_PATHS = ['/admin', '/live/', '/cart', '/checkout', '/orders', '/alerts', '/my-page'];
 const ADMIN_PATHS = ['/admin'];
 
 /**

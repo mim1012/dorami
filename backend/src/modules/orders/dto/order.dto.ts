@@ -33,10 +33,10 @@ export class CreateOrderDto {
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
 
-  @ApiProperty({ description: '라이브 스트림 ID', example: 'clx5678efgh' })
+  @ApiPropertyOptional({ description: '라이브 스트림 ID', example: 'clx5678efgh' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  streamId!: string;
+  streamId?: string;
 
   @ApiPropertyOptional({ description: '사용할 포인트', example: 1000, minimum: 0 })
   @IsOptional()
@@ -78,14 +78,14 @@ export class OrderResponseDto {
   })
   status!: OrderStatus;
 
-  @ApiProperty({ description: '소계 (원)', example: 29000 })
-  subtotal!: number;
+  @ApiProperty({ description: '소계 (원)', example: '29000.00' })
+  subtotal!: string;
 
-  @ApiProperty({ description: '배송비 (원)', example: 3000 })
-  shippingFee!: number;
+  @ApiProperty({ description: '배송비 (원)', example: '3000.00' })
+  shippingFee!: string;
 
-  @ApiProperty({ description: '합계 (원)', example: 32000 })
-  total!: number;
+  @ApiProperty({ description: '합계 (원)', example: '32000.00' })
+  total!: string;
 
   @ApiProperty({ description: '적립 포인트', example: 290 })
   pointsEarned!: number;
@@ -99,11 +99,11 @@ export class OrderResponseDto {
   @ApiProperty({ description: '배송 상태', enum: ShippingStatus, example: ShippingStatus.PENDING })
   shippingStatus!: ShippingStatus;
 
-  @ApiProperty({ description: '주문 생성일' })
-  createdAt!: Date;
+  @ApiProperty({ description: '주문 생성일', example: '2024-01-15T10:30:00.000Z' })
+  createdAt!: string;
 
-  @ApiProperty({ description: '주문 수정일' })
-  updatedAt!: Date;
+  @ApiProperty({ description: '주문 수정일', example: '2024-01-15T10:30:00.000Z' })
+  updatedAt!: string;
 
   @ApiProperty({ description: '주문 항목 목록' })
   items!: {
@@ -111,7 +111,7 @@ export class OrderResponseDto {
     productId: string;
     productName: string;
     quantity: number;
-    price: number;
-    shippingFee: number;
+    price: string;
+    shippingFee: string;
   }[];
 }

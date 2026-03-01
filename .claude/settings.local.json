@@ -146,7 +146,9 @@
       "Bash(__NEW_LINE_4bb06c85731f5ed1__ echo:*)",
       "Bash(scp:*)",
       "mcp__plugin_oh-my-claudecode_t__state_list_active",
-      "WebFetch(domain:track-pair-22731471.figma.site)"
+      "WebFetch(domain:track-pair-22731471.figma.site)",
+      "mcp__plugin_oh-my-claudecode_t__notepad_write_working",
+      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics_directory"
     ]
   },
   "teammateMode": "tmux"

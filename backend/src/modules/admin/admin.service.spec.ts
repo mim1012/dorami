@@ -295,6 +295,9 @@ describe('AdminService', () => {
         instagramId: '@user_one',
         createdAt: expect.any(Date),
         lastLoginAt: expect.any(Date),
+        lastPurchaseAt: null,
+        phone: undefined,
+        shippingAddressSummary: '-',
         status: 'ACTIVE',
         role: 'USER',
         totalOrders: 0,
@@ -375,6 +378,85 @@ describe('AdminService', () => {
       const result = await service.getUserDetail(userId);
 
       expect(result.shippingAddress).toBeNull();
+    });
+  });
+
+  describe('getOrderDetail', () => {
+    const orderId = 'ORD-20260131-00001';
+    const mockOrder = {
+      id: orderId,
+      userId: 'user-123',
+      userEmail: 'user@example.com',
+      depositorName: 'Test Depositor',
+      instagramId: '@test',
+      status: 'PAYMENT_CONFIRMED',
+      paymentStatus: 'CONFIRMED',
+      shippingStatus: 'PENDING',
+      subtotal: 3000,
+      shippingFee: 500,
+      total: 3500,
+      createdAt: new Date('2026-01-15'),
+      updatedAt: new Date('2026-01-15'),
+      paidAt: new Date('2026-01-15'),
+      shippedAt: null,
+      deliveredAt: null,
+      orderItems: [
+        {
+          id: 'item-1',
+          productId: 'prod-1',
+          productName: 'Test Product',
+          price: 3000,
+          shippingFee: 500,
+          quantity: 1,
+          color: null,
+          size: null,
+          Product: {
+            id: 'prod-1',
+            name: 'Test Product',
+            imageUrl: 'https://example.com/image.png',
+          },
+        },
+      ],
+      user: {
+        id: 'user-123',
+        email: 'user@example.com',
+        name: 'Test User',
+        instagramId: '@test',
+        depositorName: 'Test Depositor',
+        shippingAddress: JSON.stringify({
+          name: 'Legacy Name',
+          street: '789 Legacy Rd',
+          city: 'Seoul',
+          region: 'KR',
+          zipCode: '12345',
+          phone: '010-1234-5678',
+        }),
+      },
+    };
+
+    it('should return order detail with normalized shipping address from legacy fields', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
+      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
+        throw new Error('not encrypted');
+      });
+
+      const result = await service.getOrderDetail(orderId);
+
+      expect(result.shippingAddress).toEqual({
+        fullName: 'Legacy Name',
+        address1: '789 Legacy Rd',
+        address2: undefined,
+        city: 'Seoul',
+        state: 'KR',
+        zip: '12345',
+        phone: '010-1234-5678',
+      });
+    });
+
+    it('should throw NotFoundException when order does not exist', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.getOrderDetail(orderId)).rejects.toThrow(NotFoundException);
     });
   });
 

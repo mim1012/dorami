@@ -33,6 +33,9 @@ import {
   UpdateOrderShippingStatusDto,
   UpdateSystemSettingsDto,
   UpdateShippingMessagesDto,
+  UpdateHomeFeaturedProductsDto,
+  UpdateMarketingCampaignsDto,
+  UpdatePaymentProvidersDto,
   UpdateNotificationTemplateDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
@@ -121,6 +124,48 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '메시지 템플릿 업데이트 성공' })
   async updateShippingMessages(@Body() dto: UpdateShippingMessagesDto) {
     return this.adminService.updateShippingMessages(dto as unknown as Record<string, string>);
+  }
+
+  @Get('config/home-featured-products')
+  @ApiOperation({ summary: '홈 특가 상품 설정 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '홈 특가 상품 목록' })
+  async getHomeFeaturedProducts() {
+    return this.adminService.getHomeFeaturedProducts();
+  }
+
+  @Put('config/home-featured-products')
+  @ApiOperation({ summary: '홈 특가 상품 설정 저장 (관리자)' })
+  @ApiResponse({ status: 200, description: '홈 특가 상품 목록 저장 완료' })
+  async updateHomeFeaturedProducts(@Body() dto: UpdateHomeFeaturedProductsDto) {
+    return this.adminService.updateHomeFeaturedProducts(dto);
+  }
+
+  @Get('config/marketing-campaigns')
+  @ApiOperation({ summary: '마케팅 캠페인 설정 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '마케팅 캠페인 목록' })
+  async getMarketingCampaigns() {
+    return this.adminService.getMarketingCampaigns();
+  }
+
+  @Put('config/marketing-campaigns')
+  @ApiOperation({ summary: '마케팅 캠페인 설정 저장 (관리자)' })
+  @ApiResponse({ status: 200, description: '마케팅 캠페인 목록 저장 완료' })
+  async updateMarketingCampaigns(@Body() dto: UpdateMarketingCampaignsDto) {
+    return this.adminService.updateMarketingCampaigns(dto);
+  }
+
+  @Get('config/payment-providers')
+  @ApiOperation({ summary: '해외 결제 수단 설정 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '해외 결제 수단 목록' })
+  async getPaymentProviders() {
+    return this.adminService.getPaymentProviders();
+  }
+
+  @Put('config/payment-providers')
+  @ApiOperation({ summary: '해외 결제 수단 설정 저장 (관리자)' })
+  @ApiResponse({ status: 200, description: '해외 결제 수단 목록 저장 완료' })
+  async updatePaymentProviders(@Body() dto: UpdatePaymentProvidersDto) {
+    return this.adminService.updatePaymentProviders(dto);
   }
 
   @Get('orders/export')
@@ -234,15 +279,6 @@ export class AdminController {
     @Body() dto: UpdateNotificationTemplateDto,
   ) {
     return this.adminService.updateNotificationTemplate(id, dto.template, dto.kakaoTemplateCode);
-  }
-
-  @Get('settlement')
-  @ApiOperation({ summary: '정산 보고서 조회 (관리자)' })
-  @ApiQuery({ name: 'from', description: '시작일 (YYYY-MM-DD)', example: '2024-01-01' })
-  @ApiQuery({ name: 'to', description: '종료일 (YYYY-MM-DD)', example: '2024-01-31' })
-  @ApiResponse({ status: 200, description: '정산 보고서 데이터' })
-  async getSettlementReport(@Query('from') from: string, @Query('to') to: string) {
-    return this.adminService.getSettlementReport(from, to);
   }
 
   @Post('orders/bulk-notify')
