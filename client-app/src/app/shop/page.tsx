@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { ProductCard } from '@/components/home/ProductCard';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { SearchBar } from '@/components/common/SearchBar';
-import { getProducts, getLiveDeals, getStoreProducts } from '@/lib/api/products';
+import { getProducts, getStoreProducts } from '@/lib/api/products';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
 import { useRouter } from 'next/navigation';
