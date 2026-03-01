@@ -44,14 +44,16 @@ export function useAuth() {
   }, [fetchProfile]);
 
   const handleLogout = async () => {
+    // Clear client state first — prevents ProtectedRoute from rendering
+    // the "확인 중" interstitial while the API call is in flight
+    logout();
     try {
       await apiClient.post('/auth/logout');
-      logout();
-      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
-      logout();
+      // State already cleared; navigation proceeds regardless
     }
+    window.location.href = '/login';
   };
 
   const needsProfileCompletion = user && (!user.instagramId || !user.depositorName);

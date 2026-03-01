@@ -96,12 +96,18 @@ function formatKRW(value: number): string {
   }).format(value);
 }
 
-const formatOrderProductNames = (items: OrderItem['items'] | undefined, fallbackItemCount: number) => {
+const formatOrderProductNames = (
+  items: OrderItem['items'] | undefined,
+  fallbackItemCount: number,
+) => {
   if (!items || items.length === 0) {
     return `상품 ${fallbackItemCount}개`;
   }
 
-  return items.map((item) => item.productName).filter(Boolean).join(', ');
+  return items
+    .map((item) => item.productName)
+    .filter(Boolean)
+    .join(', ');
 };
 
 const formatOrderOptions = (items: OrderItem['items'] | undefined) => {
@@ -193,18 +199,16 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 w-48 bg-gray-200 rounded" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 h-64 bg-gray-200 rounded-xl" />
-            <div className="h-64 bg-gray-200 rounded-xl" />
-          </div>
+      <div className="animate-pulse space-y-6">
+        <div className="h-8 w-48 bg-gray-200 rounded" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 h-64 bg-gray-200 rounded-xl" />
+          <div className="h-64 bg-gray-200 rounded-xl" />
         </div>
       </div>
     );
@@ -212,10 +216,8 @@ export default function AdminDashboardPage() {
 
   if (error && !stats) {
     return (
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <p className="text-red-700 text-sm">{error}</p>
       </div>
     );
   }
@@ -260,7 +262,7 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div>
       {/* Page Header */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">대시보드</h1>

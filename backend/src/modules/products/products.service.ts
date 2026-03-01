@@ -81,7 +81,7 @@ export class ProductsService {
         timerEnabled: createDto.timerEnabled || false,
         timerDuration: createDto.timerDuration || 10,
         imageUrl: createDto.imageUrl,
-        images: createDto.images || [],
+        images: this.sanitizeImages(createDto.images),
         isNew: createDto.isNew || false,
         discountRate:
           createDto.discountRate !== null && createDto.discountRate !== undefined
@@ -211,7 +211,7 @@ export class ProductsService {
       updateData.imageUrl = updateDto.imageUrl;
     }
     if (updateDto.images !== undefined) {
-      updateData.images = updateDto.images;
+      updateData.images = this.sanitizeImages(updateDto.images);
     }
     if (updateDto.status !== undefined) {
       updateData.status = updateDto.status as PrismaProductStatus;
@@ -640,6 +640,25 @@ export class ProductsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Deduplicate and trim image URLs, returning an empty array for undefined input.
+   */
+  private sanitizeImages(images: string[] | undefined): string[] {
+    if (!images || images.length === 0) {
+      return [];
+    }
+    const seen = new Set<string>();
+    return images
+      .map((url) => url.trim())
+      .filter((url) => {
+        if (!url || seen.has(url)) {
+          return false;
+        }
+        seen.add(url);
+        return true;
+      });
   }
 
   /**

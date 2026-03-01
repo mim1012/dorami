@@ -279,11 +279,13 @@ function AdminUsersContent() {
 
 export default function AdminUsersPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Body>불러오는 중...</Body>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <Body>불러오는 중...</Body>
+        </div>
+      }
+    >
       <AdminUsersContent />
     </Suspense>
   );

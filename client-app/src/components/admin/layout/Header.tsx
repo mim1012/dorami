@@ -28,8 +28,8 @@ export default function Header() {
   const displayInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-[240px] h-16 bg-white border-b border-gray-200 z-30">
-      <div className="h-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="fixed top-0 right-0 left-0 lg:left-[240px] h-16 bg-white border-b border-gray-200 z-30 overflow-hidden">
+      <div className="h-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
         {/* Search Bar */}
         <div className="flex-1 min-w-0 max-w-full sm:max-w-md">
           <div className="relative">
@@ -43,7 +43,7 @@ export default function Header() {
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {/* Live Indicator */}
           {isLiveActive && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full">
