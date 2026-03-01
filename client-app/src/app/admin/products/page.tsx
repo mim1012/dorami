@@ -49,8 +49,6 @@ import type { Product as BaseProduct } from '@/lib/types';
 interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
-  category?: string;
-  soldCount?: number;
 }
 
 interface ProductFormData {
@@ -164,14 +162,17 @@ function SortableRow({
             <div className="flex gap-2 mt-1">
               {product.colorOptions.length > 0 && (
                 <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
-                  {product.colorOptions.length} 색상
+                  색상: {product.colorOptions.join(', ')}
                 </span>
               )}
               {product.sizeOptions.length > 0 && (
                 <span className="text-xs bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded">
-                  {product.sizeOptions.length} 사이즈
+                  사이즈: {product.sizeOptions.join(', ')}
                 </span>
               )}
+              <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                재고: {product.stock}개
+              </span>
               {product.timerEnabled && (
                 <span className="text-xs bg-hot-pink/20 text-hot-pink px-2 py-0.5 rounded">
                   <Timer className="w-4 h-4 inline-block mr-1" aria-hidden="true" />{' '}
@@ -181,9 +182,6 @@ function SortableRow({
             </div>
           </div>
         </div>
-      </td>
-      <td className="px-4 py-4 text-center">
-        <span className="text-sm text-primary-text">{product.category || '-'}</span>
       </td>
       <td className="px-4 py-4 text-right">
         <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
@@ -200,14 +198,7 @@ function SortableRow({
       </td>
       <td className="px-4 py-4 text-center">
         <Body className="text-primary-text">
-          {product.soldCount != null ? `${product.soldCount}개` : '-'}
-        </Body>
-      </td>
-      <td className="px-4 py-4 text-center">
-        <Body className="text-primary-text">
-          {product.discountRate != null && product.discountRate !== ''
-            ? `${product.discountRate}%`
-            : '-'}
+          {product.discountRate != null ? `${product.discountRate}%` : '-'}
         </Body>
       </td>
       <td className="px-4 py-4 text-center">
@@ -802,7 +793,7 @@ export default function AdminProductsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
+          <h1 className="text-3xl font-bold text-primary-text mb-2">상품관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-3">
@@ -935,17 +926,11 @@ export default function AdminProductsPage() {
                     <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
                       상품 정보
                     </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      카테고리
-                    </th>
                     <th className="px-4 py-4 text-right text-sm font-semibold text-secondary-text">
                       가격
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       재고
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      판매량
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       할인율
@@ -1023,7 +1008,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격 ($)"
+              label="가격"
               name="price"
               type="number"
               value={formData.price}
@@ -1060,7 +1045,7 @@ export default function AdminProductsPage() {
               error={formErrors.discountRate}
             />
             <Input
-              label="정가 (할인 전 가격 $)"
+              label="정가(할인 전 가격)"
               name="originalPrice"
               type="number"
               value={formData.originalPrice}

@@ -345,6 +345,11 @@ model SystemConfig {
   // Shipping Messages Configuration
   shippingMessages Json? @map("shipping_messages") // JSON: {preparing, shipped, inTransit, delivered}
 
+  // Marketing, featured products, and payment provider configuration (Admin CMS-like)
+  homeFeaturedProducts Json? @map("home_featured_products")
+  marketingCampaigns Json? @map("marketing_campaigns")
+  paymentProviders Json? @map("payment_providers")
+
   // General Settings
   defaultCartTimerMinutes  Int     @default(10) @map("default_cart_timer_minutes")
   defaultShippingFee       Decimal @default(10) @db.Decimal(10, 2) @map("default_shipping_fee")
