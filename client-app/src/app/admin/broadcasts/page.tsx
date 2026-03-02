@@ -400,7 +400,7 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      const response = await apiClient.post<{ url: string }>('/upload/thumbnail', formData);
       setNewStreamThumbnailUrl(response.data.url);
     } catch (err: any) {
       setThumbnailPreview(null);
@@ -492,7 +492,7 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      const response = await apiClient.post<{ url: string }>('/upload/thumbnail', formData);
       setEditNewThumbnailUrl(response.data.url);
     } catch (err: any) {
       setEditThumbnailPreview(null);

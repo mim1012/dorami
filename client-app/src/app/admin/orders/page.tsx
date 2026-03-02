@@ -75,6 +75,7 @@ function AdminOrdersContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get('limit') || '20', 10));
@@ -229,6 +230,8 @@ function AdminOrdersContent() {
   };
 
   const handleExportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       const params: Record<string, string> = {
         sortBy,
@@ -255,7 +258,7 @@ function AdminOrdersContent() {
       const a = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       a.href = url;
-      a.download = `orders_${date}.xlsx`;
+      a.download = `order_export_${date}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -264,6 +267,8 @@ function AdminOrdersContent() {
     } catch (err: any) {
       console.error('Failed to export orders:', err);
       showToast('엑셀 내보내기에 실패했습니다.', 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -387,10 +392,29 @@ function AdminOrdersContent() {
         <Button
           variant="outline"
           onClick={handleExportCsv}
+          disabled={isExporting}
           className="w-full sm:w-auto flex items-center justify-center gap-2"
         >
-          <Download className="w-4 h-4" />
-          주문 내역 다운로드
+          {isExporting ? (
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+              />
+            </svg>
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          {isExporting ? '내보내는 중...' : '엑셀 내보내기'}
         </Button>
       </div>
 

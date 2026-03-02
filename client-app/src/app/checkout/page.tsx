@@ -74,8 +74,9 @@ export default function CheckoutPage() {
     loadZelleSettings();
   }, []);
 
-  const orderSubtotal = cartData?.subtotal ?? 0;
-  const shippingFee = cartData?.totalShippingFee ?? 0;
+  // Convert string totals from backend to numbers (backend returns Decimal as string)
+  const orderSubtotal = cartData?.subtotal ? parseFloat(cartData.subtotal) : 0;
+  const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig

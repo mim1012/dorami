@@ -1,17 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { X, Timer, Package } from 'lucide-react';
+import { X, Timer, Minus, Plus, Check } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Product, ProductStatus } from '@/lib/types/product';
 import { formatPrice } from '@/lib/utils/price';
+import { ImageGallery } from './ImageGallery';
 
 interface ProductDetailModalProps {
   product: Product;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (productId: string, selectedColor?: string, selectedSize?: string) => Promise<void>;
+  onAddToCart: (
+    productId: string,
+    quantity: number,
+    selectedColor?: string,
+    selectedSize?: string,
+  ) => Promise<void>;
+  onBuyNow?: (
+    productId: string,
+    quantity: number,
+    selectedColor?: string,
+    selectedSize?: string,
+  ) => Promise<void>;
 }
 
 export default function ProductDetailModal({
@@ -19,6 +30,7 @@ export default function ProductDetailModal({
   isOpen,
   onClose,
   onAddToCart,
+  onBuyNow,
 }: ProductDetailModalProps) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
     product.colorOptions.length > 0 ? product.colorOptions[0] : undefined,
@@ -26,19 +38,38 @@ export default function ProductDetailModal({
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizeOptions.length > 0 ? product.sizeOptions[0] : undefined,
   );
+  const [quantity, setQuantity] = useState(1);
+  const [addedToCart, setAddedToCart] = useState(false);
 
-  // 버그 1: product.id가 바뀔 때 color/size 초기화
+  // Reset state when modal opens
   useEffect(() => {
-    setSelectedColor(product.colorOptions?.[0] ?? undefined);
-    setSelectedSize(product.sizeOptions?.[0] ?? undefined);
-  }, [product.id]);
+    if (isOpen) {
+      setSelectedColor(product.colorOptions?.[0] ?? undefined);
+      setSelectedSize(product.sizeOptions?.[0] ?? undefined);
+      setQuantity(1);
+      setAddedToCart(false);
+    }
+  }, [isOpen, product.id]);
 
   if (!isOpen) return null;
 
-  // 버그 2: onAddToCart가 async이므로 await 후 onClose 호출
+  const maxQuantity = Math.min(product.stock || 10, 10);
+  const totalPrice = product.price * quantity;
+
   const handleAddToCart = async () => {
-    await onAddToCart(product.id, selectedColor, selectedSize);
-    onClose();
+    await onAddToCart(product.id, quantity, selectedColor, selectedSize);
+    setAddedToCart(true);
+    setTimeout(() => {
+      setAddedToCart(false);
+      onClose();
+    }, 1500);
+  };
+
+  const handleBuyNow = async () => {
+    if (onBuyNow) {
+      await onBuyNow(product.id, quantity, selectedColor, selectedSize);
+      onClose();
+    }
   };
 
   return (
@@ -59,22 +90,17 @@ export default function ProductDetailModal({
           </button>
         </div>
 
-        {/* Product Image */}
-        <div className="relative w-full aspect-square bg-primary-black">
-          {product.imageUrl ? (
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              className="object-cover"
-              unoptimized={product.imageUrl.startsWith('/uploads/')}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-12 h-12 opacity-20 text-secondary-text" />
-            </div>
-          )}
-        </div>
+        {/* Product Image Gallery */}
+        <ImageGallery
+          images={
+            product.images && product.images.length > 0
+              ? product.images
+              : product.imageUrl
+                ? [product.imageUrl]
+                : []
+          }
+          productName={product.name}
+        />
 
         {/* Product Info */}
         <div className="p-6 space-y-6">
@@ -187,23 +213,82 @@ export default function ProductDetailModal({
             </div>
           )}
 
-          {/* Add to Cart Button */}
-          <button
-            onClick={handleAddToCart}
-            disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
-            className={`
-              w-full py-4 rounded-button font-bold text-body transition-colors
-              ${
-                product.status === ProductStatus.SOLD_OUT || product.stock === 0
-                  ? 'bg-content-bg text-secondary-text cursor-not-allowed'
-                  : 'bg-hot-pink text-white hover:bg-hot-pink-dark'
-              }
-            `}
-          >
-            {product.status === ProductStatus.SOLD_OUT || product.stock === 0
-              ? '품절'
-              : '장바구니에 담기'}
-          </button>
+          {/* Quantity Selector */}
+          <div className="border-t border-border-color pt-6">
+            <Caption className="text-secondary-text mb-3">수량</Caption>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                className="w-10 h-10 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+              >
+                <Minus className="w-4 h-4 text-primary-text" />
+              </button>
+              <span className="text-lg font-bold text-primary-text w-12 text-center">
+                {quantity}
+              </span>
+              <button
+                onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                disabled={quantity >= maxQuantity}
+                className="w-10 h-10 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+              >
+                <Plus className="w-4 h-4 text-primary-text" />
+              </button>
+            </div>
+          </div>
+
+          {/* Total Price */}
+          <div className="bg-content-bg rounded-lg p-4 border border-border-color">
+            <div className="flex items-center justify-between">
+              <Caption className="text-secondary-text">총 금액</Caption>
+              <span className="text-2xl font-bold text-hot-pink">{formatPrice(totalPrice)}</span>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleAddToCart}
+              disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
+              className={`
+                w-full py-4 rounded-button font-bold text-body transition-all flex items-center justify-center gap-2
+                ${
+                  addedToCart
+                    ? 'bg-success text-white'
+                    : product.status === ProductStatus.SOLD_OUT || product.stock === 0
+                      ? 'bg-content-bg text-secondary-text cursor-not-allowed'
+                      : 'bg-hot-pink text-white hover:bg-hot-pink-dark active:scale-95'
+                }
+              `}
+            >
+              {addedToCart ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>장바구니에 담았습니다!</span>
+                </>
+              ) : product.status === ProductStatus.SOLD_OUT || product.stock === 0 ? (
+                '품절'
+              ) : (
+                '장바구니에 담기'
+              )}
+            </button>
+            {onBuyNow && (
+              <button
+                onClick={handleBuyNow}
+                disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
+                className={`
+                  w-full py-4 rounded-button font-bold text-body transition-colors
+                  ${
+                    product.status === ProductStatus.SOLD_OUT || product.stock === 0
+                      ? 'bg-content-bg text-secondary-text cursor-not-allowed'
+                      : 'bg-border-color text-primary-text hover:bg-secondary-text/20'
+                  }
+                `}
+              >
+                바로 구매
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

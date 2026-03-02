@@ -30,6 +30,7 @@ interface ProductResponse {
   originalPrice?: number;
   discountRate?: number;
   imageUrl?: string;
+  images?: string[];
   stock: number;
   status: ProductStatus;
   isNew?: boolean;
@@ -77,6 +78,13 @@ export async function getMainPageData(): Promise<MainPageData> {
   // store products: 지난 상품 (OFFLINE 라이브)
   const storeList = storeRes.data?.data ?? [];
 
+  console.log('[getMainPageData] API results:', {
+    activeCount: activeStreams.length,
+    popularCount: popularList.length,
+    storeCount: storeList.length,
+    liveDealsCount: liveDealsData?.products?.length ?? 0,
+  });
+
   return {
     currentLive: currentLive
       ? {
@@ -115,6 +123,7 @@ export async function getMainPageData(): Promise<MainPageData> {
       originalPrice: p.originalPrice ?? null,
       discountRate: p.discountRate ?? null,
       imageUrl: p.imageUrl ?? null,
+      images: p.images ?? [],
       isNew: p.isNew ?? false,
       soldCount: p.soldCount ?? 0,
     })),
@@ -125,6 +134,7 @@ export async function getMainPageData(): Promise<MainPageData> {
       originalPrice: p.originalPrice ?? null,
       discountRate: p.discountRate ?? null,
       imageUrl: p.imageUrl ?? null,
+      images: p.images ?? [],
       isNew: p.isNew ?? false,
       stock: p.stock ?? 0,
       status: p.status,
@@ -150,6 +160,7 @@ export async function getPopularProducts(
       originalPrice: p.originalPrice ?? null,
       discountRate: p.discountRate ?? null,
       imageUrl: p.imageUrl ?? null,
+      images: p.images ?? [],
       isNew: p.isNew ?? false,
       soldCount: p.soldCount ?? 0,
     })),

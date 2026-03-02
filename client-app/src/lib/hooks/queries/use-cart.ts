@@ -28,9 +28,9 @@ export interface CartItem {
 export interface CartSummary {
   items: CartItem[];
   itemCount: number;
-  subtotal: number;
-  totalShippingFee: number;
-  grandTotal: number;
+  subtotal: string; // From backend as string, needs parseFloat()
+  totalShippingFee: string; // From backend as string, needs parseFloat()
+  grandTotal: string; // From backend as string, needs parseFloat()
   earliestExpiration?: string;
 }
 
@@ -79,12 +79,13 @@ export function useUpdateCartItem() {
         if (!old) return old;
         const items = old.items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
         const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const shippingFee = parseFloat(old.totalShippingFee);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-          subtotal,
-          grandTotal: subtotal + old.totalShippingFee,
+          subtotal: String(subtotal),
+          grandTotal: String(subtotal + shippingFee),
         };
       });
 
@@ -118,12 +119,13 @@ export function useRemoveCartItem() {
         if (!old) return old;
         const items = old.items.filter((item) => item.id !== itemId);
         const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const shippingFee = parseFloat(old.totalShippingFee);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-          subtotal,
-          grandTotal: subtotal + old.totalShippingFee,
+          subtotal: String(subtotal),
+          grandTotal: String(subtotal + shippingFee),
         };
       });
 
@@ -159,9 +161,9 @@ export function useClearCart() {
           ...old,
           items: [],
           itemCount: 0,
-          subtotal: 0,
-          totalShippingFee: 0,
-          grandTotal: 0,
+          subtotal: '0',
+          totalShippingFee: '0',
+          grandTotal: '0',
           earliestExpiration: undefined,
         };
       });

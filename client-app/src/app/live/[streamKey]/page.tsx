@@ -512,6 +512,7 @@ export default function LiveStreamPage() {
 
   const handleAddToCart = async (
     productId: string,
+    quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
   ) => {
@@ -529,7 +530,7 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
-        quantity: 1,
+        quantity,
         color: selectedColor,
         size: selectedSize,
       });

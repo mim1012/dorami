@@ -312,12 +312,13 @@ export default function LivePreviewPage() {
 
   const handleAddToCart = async (
     productId: string,
+    quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
   ) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-    setCartCount((prev) => prev + 1);
+    setCartCount((prev) => prev + quantity);
     const activity: CartActivity = {
       id: `ca-me-${Date.now()}`,
       userName: '나',
@@ -376,9 +377,9 @@ export default function LivePreviewPage() {
       return {
         items: updatedItems,
         itemCount: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-        subtotal: grandTotal,
-        totalShippingFee: 0,
-        grandTotal,
+        subtotal: String(grandTotal),
+        totalShippingFee: '0',
+        grandTotal: String(grandTotal),
       };
     });
   };
@@ -948,9 +949,9 @@ export default function LivePreviewPage() {
           queryClient.setQueryData<CartSummary>(cartKeys.summary(), {
             items: [],
             itemCount: 0,
-            subtotal: 0,
-            totalShippingFee: 0,
-            grandTotal: 0,
+            subtotal: '0',
+            totalShippingFee: '0',
+            grandTotal: '0',
           });
         }}
         onShare={handleShare}
