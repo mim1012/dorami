@@ -82,9 +82,9 @@ export default function ProductDetailModal({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-content-bg rounded-t-[24px] lg:rounded-[24px] max-h-[90vh] overflow-y-auto flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-content-bg border-b border-border-color p-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-content-bg border-b border-border-color p-4 flex items-center justify-between flex-shrink-0">
           <Heading2 className="text-primary-text">상품 상세</Heading2>
           <button
             onClick={onClose}
@@ -95,17 +95,19 @@ export default function ProductDetailModal({
         </div>
 
         {/* Product Image Gallery */}
-        <ImageGallery
-          images={
-            product.images && product.images.length > 0
-              ? product.images
-              : product.imageUrl
-                ? [product.imageUrl]
-                : []
-          }
-          productName={product.name}
-          aspectRatio="aspect-auto"
-        />
+        <div className="w-full flex-shrink-0">
+          <ImageGallery
+            images={
+              product.images && product.images.length > 0
+                ? product.images
+                : product.imageUrl
+                  ? [product.imageUrl]
+                  : []
+            }
+            productName={product.name}
+            aspectRatio="aspect-auto"
+          />
+        </div>
 
         {/* Product Info */}
         <div className="p-6 space-y-6">
