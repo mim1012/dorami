@@ -33,7 +33,7 @@ test.describe('Admin User Deactivation', () => {
     // ── Step 1: 테스트 대상 사용자 ID 조회 ─────────────────────────────────────
     await gotoWithRetry(page, '/admin/users');
 
-    const searchInput = page.locator('input[placeholder*="이름, 이메일"]');
+    const searchInput = page.locator('input[placeholder*="인스타그램 ID"]');
     await expect(searchInput).toBeVisible({ timeout: 15000 });
     await searchInput.fill('buyer@test.com');
     await page.waitForTimeout(1000); // debounce 대기
