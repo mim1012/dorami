@@ -558,6 +558,11 @@ jobs:
           done
           ${db_ready} || { echo "ERROR: Database not ready"; exit 1; }
 
+          # 6.5. Run database migrations (CRITICAL: must run before backend)
+          echo "=== Running database migrations ==="
+          $COMPOSE_CMD run --rm -T backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
+          echo "Migrations completed successfully"
+
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
           $COMPOSE_CMD up -d --no-deps --force-recreate backend
