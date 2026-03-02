@@ -35,6 +35,8 @@ interface ProductResponse {
   status: ProductStatus;
   isNew?: boolean;
   soldCount?: number;
+  colorOptions?: string[];
+  sizeOptions?: string[];
 }
 
 interface PopularProductsResponse {
@@ -126,6 +128,8 @@ export async function getMainPageData(): Promise<MainPageData> {
       images: p.images ?? [],
       isNew: p.isNew ?? false,
       soldCount: p.soldCount ?? 0,
+      colorOptions: p.colorOptions,
+      sizeOptions: p.sizeOptions,
     })),
     storeProducts: storeList.map((p) => ({
       id: p.id,
@@ -138,6 +142,8 @@ export async function getMainPageData(): Promise<MainPageData> {
       isNew: p.isNew ?? false,
       stock: p.stock ?? 0,
       status: p.status,
+      colorOptions: p.colorOptions,
+      sizeOptions: p.sizeOptions,
     })),
   };
 }
@@ -163,6 +169,8 @@ export async function getPopularProducts(
       images: p.images ?? [],
       isNew: p.isNew ?? false,
       soldCount: p.soldCount ?? 0,
+      colorOptions: p.colorOptions,
+      sizeOptions: p.sizeOptions,
     })),
     meta: { page: meta.page, limit: meta.limit, total: meta.total },
   };
