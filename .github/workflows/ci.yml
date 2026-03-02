@@ -1,6 +1,12 @@
 # Continuous Integration Workflow
-# Runs on all pull requests and pushes to main/develop
+# Runs on all pull requests to main/develop
 # Tests, lints, and builds both backend and frontend
+#
+# [재현성 보장 정책]
+# - 모든 의존성은 package-lock.json 기반 npm ci로 설치 (결정적 빌드)
+# - GitHub Actions는 특정 커밋 SHA로 고정 (floating @master/@latest 금지)
+# - E2E 테스트 실패 시 CI 전체 실패 처리 (continue-on-error 금지)
+# - develop/main 브랜치 직접 push 금지 (브랜치 보호 규칙으로 강제)
 
 name: CI
 
@@ -28,8 +34,8 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: filter
         with:
           filters: |
@@ -43,6 +49,7 @@ jobs:
               - 'packages/shared-types/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'client-app/package-lock.json'
             infra:
               - 'docker-compose*.yml'
               - '**/Dockerfile'
@@ -87,15 +94,16 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js with Cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
+      # [재현성] npm ci는 package-lock.json을 기반으로 결정적 설치를 보장
       - name: Install dependencies
         run: npm ci
 
@@ -124,8 +132,9 @@ jobs:
           JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
           PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
+      # [재현성] E2E 테스트 실패 시 CI 전체 실패 처리
+      # continue-on-error를 제거하여 E2E 실패가 배포를 막도록 강제
       - name: E2E Tests
-        continue-on-error: true
         run: npm run test:e2e
         env:
           NODE_ENV: test
@@ -134,6 +143,16 @@ jobs:
           REDIS_PORT: 6379
           JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
           PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+      # [재현성] 스킵된 테스트 수를 리포팅하여 기술 부채 가시화
+      - name: Report Skipped Tests
+        if: always()
+        run: |
+          SKIPPED=$(grep -rn "test\.skip\|it\.skip\|describe\.skip\|xit\|xdescribe" ../client-app/e2e/ 2>/dev/null | wc -l || echo 0)
+          echo "::notice title=Skipped E2E Tests::현재 스킵된 E2E 테스트 수: ${SKIPPED}개. 점진적으로 활성화하여 테스트 커버리지를 높이세요."
+          if [ "$SKIPPED" -gt 50 ]; then
+            echo "::warning title=Too Many Skipped Tests::스킵된 테스트가 50개를 초과합니다 (${SKIPPED}개). 테스트 부채를 해소하세요."
+          fi
 
       - name: Build
         run: npm run build
@@ -146,33 +165,33 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client-app
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      # 캐시 설정 추가
       - name: Setup Node.js with Cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          # [재현성] client-app은 npm workspace로 관리되므로 루트 package-lock.json에 포함됨
+          cache-dependency-path: 'package-lock.json'
 
-      # client-app에는 package-lock.json이 없으므로 npm install 사용
+      # [재현성] 루트 package-lock.json 기반 npm ci로 결정적 설치
+      # client-app은 npm workspace로 관리되므로 루트에서 npm ci 실행
       - name: Install dependencies
-        run: npm install
+        run: npm ci --ignore-scripts
 
       # 린트와 타입 체크를 병렬로 실행
       - name: Lint & Type Check
+        working-directory: client-app
         run: |
           npm run lint &
           npx tsc --noEmit &
           wait
 
       - name: Build
+        working-directory: client-app
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api
@@ -197,11 +216,11 @@ jobs:
             dockerfile: ./client-app/Dockerfile
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
 
       - name: Build ${{ matrix.service }} Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -213,14 +232,15 @@ jobs:
   # ===========================================
   # Security Scan
   # ===========================================
+  # [재현성] trivy-action 버전을 @master에서 특정 버전으로 고정
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Trivy vulnerability scanner (Backend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@18f2505d82aa5191a9a5d9b7bc1f7b9f8e7b5e0a # v0.29.0
         with:
           scan-type: 'fs'
           scan-ref: './backend'
@@ -228,7 +248,7 @@ jobs:
           exit-code: '0'
 
       - name: Run Trivy vulnerability scanner (Frontend)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@18f2505d82aa5191a9a5d9b7bc1f7b9f8e7b5e0a # v0.29.0
         with:
           scan-type: 'fs'
           scan-ref: './client-app'
