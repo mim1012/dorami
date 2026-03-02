@@ -157,12 +157,12 @@ function SortableRow({
           <div>
             <Body className="text-primary-text font-semibold">{product.name}</Body>
             <div className="flex gap-2 mt-1">
-              {product.colorOptions.length > 0 && (
+              {Array.isArray(product.colorOptions) && product.colorOptions.length > 0 && (
                 <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
                   색상: {product.colorOptions.join(', ')}
                 </span>
               )}
-              {product.sizeOptions.length > 0 && (
+              {Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0 && (
                 <span className="text-xs bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded">
                   사이즈: {product.sizeOptions.join(', ')}
                 </span>
