@@ -4,7 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient, RedisClientType } from 'redis';
 import { Logger } from '@nestjs/common';
 
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
+const CONNECTION_TIMEOUT = parseInt(process.env.REDIS_CONNECTION_TIMEOUT_MS ?? '10000', 10);
 
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -17,8 +17,13 @@ export class RedisIoAdapter extends IoAdapter {
    * Connect to Redis with timeout and error handling
    */
   async connectToRedis(): Promise<boolean> {
-    const redisUrl =
-      process.env.REDIS_PUBSUB_URL ?? process.env.REDIS_URL ?? 'redis://localhost:6379/1';
+    const redisUrl = process.env.REDIS_PUBSUB_URL ?? process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error(
+        'REDIS_URL or REDIS_PUBSUB_URL must be set. ' +
+          'In production/staging this is required. In development, set REDIS_URL=redis://localhost:6379',
+      );
+    }
 
     this.logger.log(
       `Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`,
@@ -100,15 +105,15 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') ?? [
-          'http://localhost:3000',
-          'http://localhost:3002',
-        ],
+        // CORS_ORIGINS validated by config.validation.ts; guaranteed present after app init
+        origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002')
+          .split(',')
+          .map((o) => o.trim()),
         credentials: true,
       },
-      pingTimeout: 60000,
-      pingInterval: 25000,
-      connectTimeout: 45000,
+      pingTimeout: parseInt(process.env.WS_PING_TIMEOUT_MS ?? '60000', 10),
+      pingInterval: parseInt(process.env.WS_PING_INTERVAL_MS ?? '25000', 10),
+      connectTimeout: parseInt(process.env.WS_CONNECT_TIMEOUT_MS ?? '45000', 10),
       transports: ['websocket', 'polling'],
     });
 

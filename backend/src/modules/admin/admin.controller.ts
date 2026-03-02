@@ -442,7 +442,7 @@ export class AdminController {
     // SSRF guard: only allow requests to known internal hosts
     let srsStreams = 0;
     try {
-      const srsHost = process.env.SRS_API_URL || 'http://localhost:1985';
+      const srsHost = process.env.SRS_API_URL!;
       const parsedSrsUrl = new URL(srsHost);
       const allowedSrsHosts = new Set(['localhost', '127.0.0.1', 'srs', '::1']);
       if (allowedSrsHosts.has(parsedSrsUrl.hostname)) {

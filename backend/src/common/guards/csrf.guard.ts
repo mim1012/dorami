@@ -118,7 +118,7 @@ export class CsrfGuard implements CanActivate {
         httpOnly: false, // Must be readable by JavaScript
         secure: isHttps,
         sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        maxAge: parseInt(process.env.CSRF_MAX_AGE_HOURS ?? '24', 10) * 60 * 60 * 1000,
         path: '/',
       });
     }

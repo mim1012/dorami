@@ -28,7 +28,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       transactionOptions: {
         isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
         maxWait: 5000, // Max time to wait for transaction start (ms)
-        timeout: 10000, // Max transaction execution time (ms)
+        timeout: parseInt(process.env.PRISMA_TRANSACTION_TIMEOUT_MS ?? '10000', 10),
       },
     });
   }

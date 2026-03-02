@@ -154,7 +154,9 @@ async function bootstrap() {
   }
 
   // CORS Configuration - Whitelist based
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+  // CORS_ORIGINS is validated by config.validation.ts: required in production/staging,
+  // defaults to localhost in development. No inline fallback needed here.
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002')
     .split(',')
     .map((origin) => origin.trim());
 
@@ -197,7 +199,13 @@ async function bootstrap() {
 
   // Attach Redis adapter to Socket.IO
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
-  const pubClient = createClient({ url: process.env.REDIS_URL ?? 'redis://localhost:6379' });
+  // REDIS_URL is validated by config.validation.ts: required in production/staging,
+  // defaults to redis://localhost:6379 in development. Guard here for adapter safety.
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error('REDIS_URL must be set (config validation should have caught this)');
+  }
+  const pubClient = createClient({ url: redisUrl });
   const subClient = pubClient.duplicate();
 
   await Promise.all([pubClient.connect(), subClient.connect()]);

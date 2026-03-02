@@ -7,6 +7,7 @@ import { sendStreamMetrics, buildStreamMetrics } from '@/lib/analytics/stream-me
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 import LiveBadge from './LiveBadge';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
@@ -547,12 +548,8 @@ export default function VideoPlayer({
   };
 
   const connectWebSocket = () => {
-    const wsUrl =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
-
     const streamingConfig = RECONNECT_CONFIG.streaming;
-    const socket = io(`${wsUrl}/streaming`, {
+    const socket = io(`${SOCKET_URL}/streaming`, {
       transports: ['websocket'],
       withCredentials: true,
       reconnection: true,

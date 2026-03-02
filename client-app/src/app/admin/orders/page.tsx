@@ -115,7 +115,17 @@ function AdminOrdersContent() {
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
 
     router.push(`/admin/orders?${params.toString()}`, { scroll: false });
-  }, [page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, orderStatusFilter, router]);
+  }, [
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    debouncedSearch,
+    dateFrom,
+    dateTo,
+    orderStatusFilter,
+    router,
+  ]);
 
   const fetchOrders = async () => {
     if (!user || user.role !== 'ADMIN') return;
@@ -271,7 +281,10 @@ function AdminOrdersContent() {
 
   const collectProductNames = (items?: OrderItem[]) => {
     if (!items || items.length === 0) return '-';
-    return items.map((item) => item.productName).filter(Boolean).join(', ');
+    return items
+      .map((item) => item.productName)
+      .filter(Boolean)
+      .join(', ');
   };
 
   const collectUnique = (items: OrderListItem['items'], key: 'color' | 'size') => {
@@ -300,7 +313,9 @@ function AdminOrdersContent() {
       key: 'color',
       label: '색상',
       sortable: false,
-      render: (order) => <span className="text-caption">{collectUnique(order.items, 'color')}</span>,
+      render: (order) => (
+        <span className="text-caption">{collectUnique(order.items, 'color')}</span>
+      ),
     },
     {
       key: 'size',
@@ -366,7 +381,7 @@ function AdminOrdersContent() {
     <div className="space-y-6">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Display className="text-hot-pink mb-2">주문관리</Display>
+          <Display className="text-hot-pink mb-2">주문 관리</Display>
           <Body className="text-secondary-text">주문 내역을 조회하고 상태를 바로 변경합니다</Body>
         </div>
         <Button
@@ -468,7 +483,9 @@ function AdminOrdersContent() {
             onSort={handleSort}
             onRowClick={(order) => router.push(`/admin/orders/${order.id}`)}
             emptyMessage="필터 조건에 맞는 주문이 없습니다"
-            getRowClassName={(order) => (order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : '')}
+            getRowClassName={(order) =>
+              order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : ''
+            }
           />
           <Pagination
             currentPage={page}
@@ -480,7 +497,6 @@ function AdminOrdersContent() {
           />
         </>
       )}
-
     </div>
   );
 }

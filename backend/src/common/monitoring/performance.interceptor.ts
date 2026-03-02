@@ -17,9 +17,12 @@ interface PerformanceMetrics {
 const metricsStore: PerformanceMetrics[] = [];
 const MAX_METRICS = 1000;
 
-// Thresholds for slow request warnings
-const SLOW_REQUEST_THRESHOLD_MS = 1000;
-const VERY_SLOW_REQUEST_THRESHOLD_MS = 3000;
+// Thresholds for slow request warnings (configurable via env vars)
+const SLOW_REQUEST_THRESHOLD_MS = parseInt(process.env.SLOW_REQUEST_THRESHOLD_MS ?? '1000', 10);
+const VERY_SLOW_REQUEST_THRESHOLD_MS = parseInt(
+  process.env.VERY_SLOW_REQUEST_THRESHOLD_MS ?? '3000',
+  10,
+);
 
 @Injectable()
 export class PerformanceInterceptor implements NestInterceptor {

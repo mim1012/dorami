@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -299,13 +300,9 @@ export default function LiveStreamPage() {
     fetchFeatured();
     fetchAllProducts();
 
-    const ws = io(
-      process.env.NEXT_PUBLIC_WS_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
-      {
-        withCredentials: true,
-      },
-    );
+    const ws = io(SOCKET_URL, {
+      withCredentials: true,
+    });
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
