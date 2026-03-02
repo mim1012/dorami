@@ -84,7 +84,7 @@ export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLive
                       <ImageWithFallback
                         src={show.thumbnailUrl ?? PLACEHOLDER_IMAGE}
                         alt={show.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
                       />
 
                       <div className="absolute top-2 right-2">

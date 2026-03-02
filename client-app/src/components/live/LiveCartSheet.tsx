@@ -59,7 +59,7 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
   useModalBehavior({ isOpen, onClose });
 
   const items = cartData?.items?.filter((item) => item.status === 'ACTIVE') ?? [];
-  const grandTotal = cartData?.grandTotal ?? 0;
+  const grandTotal = cartData?.grandTotal ? parseFloat(cartData.grandTotal) : 0;
 
   const timerItems = items.filter((item) => item.timerEnabled && item.expiresAt);
   const earliestExpiresAt =
@@ -159,9 +159,9 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
           <div className="flex justify-between text-xs text-white/40 mb-4">
             <span>배송비</span>
             <span>
-              {(cartData?.totalShippingFee ?? 0) === 0
+              {parseFloat(cartData?.totalShippingFee ?? '0') === 0
                 ? '무료'
-                : formatPrice(cartData?.totalShippingFee ?? 0)}
+                : formatPrice(parseFloat(cartData?.totalShippingFee ?? '0'))}
             </span>
           </div>
           <button

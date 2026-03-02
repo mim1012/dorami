@@ -26,8 +26,13 @@ type ActionPayload = {
 interface ProductDetailModalProps {
   product: Product;
   onClose: () => void;
-  onAddToCart?: (payload: ActionPayload) => void;
-  onBuyNow?: (payload: ActionPayload) => void;
+  onAddToCart?: (
+    productId: string,
+    quantity: number,
+    color?: string,
+    size?: string,
+  ) => Promise<void>;
+  onBuyNow?: (productId: string, quantity: number, color?: string, size?: string) => Promise<void>;
 }
 
 export function ProductDetailModal({
@@ -97,21 +102,23 @@ export function ProductDetailModal({
   const handlePurchase = () => {
     if (!isSelectionValid()) return;
 
-    onBuyNow?.({
+    onBuyNow?.(
+      product.id,
       quantity,
-      ...(hasSizeOptions ? { size: selectedSize } : {}),
-      ...(hasColorOptions ? { color: selectedColor } : {}),
-    });
+      hasSizeOptions ? selectedSize : undefined,
+      hasColorOptions ? selectedColor : undefined,
+    );
   };
 
   const handleAddToCart = () => {
     if (!isSelectionValid()) return;
 
-    onAddToCart?.({
+    onAddToCart?.(
+      product.id,
       quantity,
-      ...(hasSizeOptions ? { size: selectedSize } : {}),
-      ...(hasColorOptions ? { color: selectedColor } : {}),
-    });
+      hasColorOptions ? selectedColor : undefined,
+      hasSizeOptions ? selectedSize : undefined,
+    );
   };
 
   const goPrevImage = (e: React.MouseEvent | React.TouchEvent) => {

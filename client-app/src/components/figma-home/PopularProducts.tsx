@@ -8,7 +8,9 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailModal } from './ProductDetailModal';
 import { ViewAllModal } from './ViewAllModal';
 import { useAuthStore } from '@/lib/store/auth';
-import { useToast } from '@/components/common/Toast';
+import { apiClient } from '@/lib/api/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 
 type HomeProduct = {
   id: string;
@@ -17,6 +19,7 @@ type HomeProduct = {
   originalPrice: number;
   discountRate?: number;
   image: string;
+  images?: string[];
   colorOptions?: string[];
   sizeOptions?: string[];
 };
@@ -114,6 +117,7 @@ function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomePr
     originalPrice: product.originalPrice ?? product.price,
     discountRate: product.discountRate ?? 0,
     image: product.imageUrl ?? PLACEHOLDER_IMAGE,
+    images: product.images && product.images.length > 0 ? product.images : undefined,
   };
 }
 
@@ -131,6 +135,132 @@ type ModalSelectionPayload = {
   color?: string;
 };
 
+function ProductCard({
+  product,
+  showFallbackTag,
+  onClick,
+}: {
+  product: HomeProduct;
+  showFallbackTag: boolean;
+  onClick: () => void;
+}) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Build the effective image list: prefer images[] array, fall back to single image
+  const imageList = product.images && product.images.length > 0 ? product.images : [product.image];
+  const hasMultiple = imageList.length > 1;
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i === 0 ? imageList.length - 1 : i - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i === imageList.length - 1 ? 0 : i + 1));
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
+      className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left cursor-pointer"
+    >
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+        <ImageWithFallback
+          src={imageList[currentImageIndex]}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+
+        {/* Discount badge */}
+        <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
+          <span className="text-xs font-bold">{product.discountRate ?? 0}%</span>
+        </div>
+
+        {/* Prev / Next arrows — only when multiple images */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors z-10 opacity-0 group-hover:opacity-100"
+              aria-label="이전 이미지"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors z-10 opacity-0 group-hover:opacity-100"
+              aria-label="다음 이미지"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              {imageList.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(idx);
+                  }}
+                  className={`rounded-full transition-all duration-200 ${
+                    idx === currentImageIndex
+                      ? 'bg-[#FF4D8D] w-3.5 h-1.5'
+                      : 'bg-white/60 w-1.5 h-1.5'
+                  }`}
+                  aria-label={`이미지 ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="p-3 md:p-4">
+        <div className="mb-2">
+          <span className="text-xs text-[#B084CC] font-medium">라이브</span>
+        </div>
+        <h4 className="font-semibold text-sm md:text-base text-gray-900 mb-2 line-clamp-2">
+          {product.name}
+        </h4>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-base md:text-lg font-bold text-gray-900">
+            ₩{product.price.toLocaleString()}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 line-through">
+          ₩{product.originalPrice.toLocaleString()}
+        </span>
+        {showFallbackTag && (
+          <span className="text-[10px] text-[#FF6BA0] block mt-1">샘플 데이터</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PopularProducts({
   featuredProducts: apiFeaturedProducts,
   pastProducts: apiPastProducts,
@@ -139,7 +269,7 @@ export function PopularProducts({
 }: PopularProductsProps) {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedProduct, setSelectedProduct] = useState<HomeProduct | null>(null);
   const [showViewAll, setShowViewAll] = useState<'featured' | 'past' | null>(null);
 
@@ -158,10 +288,7 @@ export function PopularProducts({
     options?: ModalSelectionPayload,
   ) => {
     if (!isAuthenticated) {
-      showToast('로그인 후 이용해주세요', 'error', {
-        label: '로그인',
-        onClick: () => router.push('/login'),
-      });
+      router.push('/login');
       return;
     }
 
@@ -184,54 +311,21 @@ export function PopularProducts({
     router.push(`/products/${product.id}${queryString ? `?${queryString}` : ''}`);
   };
 
-  const renderProductGrid = (gridProducts: HomeProduct[], sectionType: 'featured' | 'past') => (
+  const renderProductGrid = (gridProducts: HomeProduct[]) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
       {gridProducts.map((product) => (
-        <button
+        <ProductCard
           key={product.id}
-          type="button"
+          product={product}
+          showFallbackTag={showFallbackTag}
           onClick={() => {
             if (!isAuthenticated) {
-              showToast('로그인 후 이용해주세요', 'error', {
-                label: '로그인',
-                onClick: () => router.push('/login'),
-              });
+              router.push('/login');
               return;
             }
             setSelectedProduct(product);
           }}
-          className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left"
-        >
-          <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-            <ImageWithFallback
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-            <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
-              <span className="text-xs font-bold">{product.discountRate ?? 0}%</span>
-            </div>
-          </div>
-          <div className="p-3 md:p-4">
-            <div className="mb-2">
-              <span className="text-xs text-[#B084CC] font-medium">라이브</span>
-            </div>
-            <h4 className="font-semibold text-sm md:text-base text-gray-900 mb-2 line-clamp-2">
-              {product.name}
-            </h4>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base md:text-lg font-bold text-gray-900">
-                ₩{product.price.toLocaleString()}
-              </span>
-            </div>
-            <span className="text-xs text-gray-400 line-through">
-              ₩{product.originalPrice.toLocaleString()}
-            </span>
-            {showFallbackTag && (
-              <span className="text-[10px] text-[#FF6BA0] block mt-1">샘플 데이터</span>
-            )}
-          </div>
-        </button>
+        />
       ))}
     </div>
   );
@@ -263,7 +357,7 @@ export function PopularProducts({
           </p>
         )}
 
-        {renderProductGrid(featuredProducts, 'featured')}
+        {renderProductGrid(featuredProducts)}
       </div>
 
       {/* Past Products Section */}
@@ -286,7 +380,7 @@ export function PopularProducts({
             <p className="text-base text-gray-600">이전 라이브의 추가 상품들</p>
           </div>
 
-          {renderProductGrid(pastProducts, 'past')}
+          {renderProductGrid(pastProducts)}
         </div>
       )}
 
@@ -294,13 +388,34 @@ export function PopularProducts({
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={(payload) => {
-            goToProductDetail(selectedProduct, 'cart', payload);
-            setSelectedProduct(null);
+          onAddToCart={async (productId, quantity, color, size) => {
+            try {
+              await apiClient.post('/cart', {
+                productId,
+                quantity,
+                ...(color ? { color } : {}),
+                ...(size ? { size } : {}),
+              });
+              await queryClient.invalidateQueries({ queryKey: cartKeys.all });
+            } catch (error: any) {
+              console.error('Add to cart error:', error);
+              alert(error.response?.data?.message || '장바구니 추가 실패');
+            }
           }}
-          onBuyNow={(payload) => {
-            goToProductDetail(selectedProduct, 'buy', payload);
-            setSelectedProduct(null);
+          onBuyNow={async (productId, quantity, color, size) => {
+            try {
+              await apiClient.post('/cart', {
+                productId,
+                quantity,
+                ...(color ? { color } : {}),
+                ...(size ? { size } : {}),
+              });
+              await queryClient.invalidateQueries({ queryKey: cartKeys.all });
+              router.push('/cart');
+            } catch (error: any) {
+              console.error('Buy now error:', error);
+              alert(error.response?.data?.message || '구매 진행 실패');
+            }
           }}
         />
       )}
