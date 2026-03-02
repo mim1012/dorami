@@ -2,6 +2,7 @@
 
 import { Clock, Calendar, Bell, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { UpcomingLiveDto } from '@live-commerce/shared-types';
 
@@ -31,6 +32,37 @@ function formatLiveSchedule(isoDate: string) {
   });
 
   return { dayLabel, timeLabel };
+}
+
+function CountdownBadge({ scheduledAt }: { scheduledAt: string }) {
+  const [countdown, setCountdown] = useState('');
+
+  useEffect(() => {
+    const update = () => {
+      // ISO 문자열이 UTC인지 확인하고 Date 객체로 변환
+      // Date.now()는 현재 UTC 시간을 밀리초로 반환 (로컬시간과 무관하게)
+      const now = Date.now(); // UTC milliseconds since epoch
+      const scheduledDate = new Date(scheduledAt); // Parse ISO string (always UTC)
+      const target = scheduledDate.getTime(); // UTC milliseconds since epoch
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setCountdown('곧 시작');
+        return;
+      }
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setCountdown(
+        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
+      );
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [scheduledAt]);
+
+  return <span className="text-white font-bold text-base">{countdown || '--:--:--'}</span>;
 }
 
 export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLivesProps) {
@@ -107,7 +139,7 @@ export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLive
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3">
                         <div className="flex items-center gap-1.5">
                           <Clock className="w-4 h-4 text-white" />
-                          <span className="text-white font-bold text-base">{timeLabel}</span>
+                          <CountdownBadge scheduledAt={show.scheduledAt} />
                         </div>
                       </div>
                     </div>
