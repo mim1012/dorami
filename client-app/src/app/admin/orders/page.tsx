@@ -382,7 +382,7 @@ function AdminOrdersContent() {
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Display className="text-hot-pink mb-2">주문 관리</Display>
-          <Body className="text-secondary-text">주문 내역을 조회하고 상태를 바로 변경합니다</Body>
+          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
         <Button
           variant="outline"
