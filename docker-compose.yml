@@ -4,7 +4,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: live-commerce-postgres
+    container_name: dorami-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
@@ -20,12 +20,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - live-commerce-network
+      - dorami-internal
 
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: live-commerce-redis
+    container_name: dorami-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -38,14 +38,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - live-commerce-network
+      - dorami-internal
 
   # NestJS Backend
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: live-commerce-backend
+    container_name: dorami-backend
     restart: unless-stopped
     ports:
       - '3001:3001'
@@ -68,12 +68,12 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - live-commerce-network
+      - dorami-internal
 
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
     image: ossrs/srs:6
-    container_name: live-commerce-srs
+    container_name: dorami-srs
     restart: unless-stopped
     ports:
       - '1935:1935'  # RTMP
@@ -83,12 +83,14 @@ services:
     depends_on:
       - backend
     networks:
-      - live-commerce-network
+      - dorami-internal
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  live-commerce-network:
-    name: live-commerce-network
+  dorami-internal:
+    driver: bridge
+    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
+    # the correct network name (<projectname>_dorami-internal)

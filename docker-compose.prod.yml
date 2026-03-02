@@ -20,6 +20,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB required}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -45,6 +50,11 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
       REDIS_MAXMEMORY: 512mb
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -93,6 +103,11 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       APP_VERSION: ${APP_VERSION:-1.0.0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -197,11 +212,18 @@ services:
 
 volumes:
   postgres_data_prod:
+    external: true
+    name: dorami_postgres_data  # CRITICAL: 139명 사용자 데이터
   redis_data_prod:
+    external: true
+    name: dorami_redis_data_prod
   uploads_data:
-    driver: local
+    external: true
+    name: dorami_uploads_data
 
 networks:
   dorami-internal:
+    external: true
+    name: dorami_dorami-internal  # Match existing network name on production host
     driver: bridge
     internal: false  # Allow outbound internet (OAuth, Sentry, etc.)
