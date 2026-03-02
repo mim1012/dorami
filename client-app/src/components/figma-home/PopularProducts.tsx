@@ -118,6 +118,8 @@ function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomePr
     discountRate: product.discountRate ?? 0,
     image: product.imageUrl ?? PLACEHOLDER_IMAGE,
     images: product.images && product.images.length > 0 ? product.images : undefined,
+    colorOptions: product.colorOptions,
+    sizeOptions: product.sizeOptions,
   };
 }
 
