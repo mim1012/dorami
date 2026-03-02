@@ -172,7 +172,11 @@ describe('ProductsService', () => {
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            liveStream: { status: 'OFFLINE' },
+            OR: expect.arrayContaining([
+              expect.objectContaining({ streamKey: null }),
+              expect.objectContaining({ streamKey: '' }),
+              expect.objectContaining({ liveStream: { status: 'OFFLINE' } }),
+            ]),
             status: 'AVAILABLE',
           }),
           skip: 0,
