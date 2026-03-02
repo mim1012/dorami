@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { ReconnectionCircuitBreaker } from '@/lib/socket/circuit-breaker';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 export function useChatConnection(streamKey: string) {
   const [isConnected, setIsConnected] = useState(false);
@@ -24,11 +25,8 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // WebSocket connection - connect to /chat namespace
-    const baseUrl =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    const socket = io(`${baseUrl}/chat`, {
+    const socket = io(`${SOCKET_URL}/chat`, {
       transports: ['websocket'],
       withCredentials: true,
       auth: token ? { token } : undefined,

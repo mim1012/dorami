@@ -148,7 +148,9 @@
       "mcp__plugin_oh-my-claudecode_t__state_list_active",
       "WebFetch(domain:track-pair-22731471.figma.site)",
       "mcp__plugin_oh-my-claudecode_t__notepad_write_working",
-      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics_directory"
+      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics_directory",
+      "mcp__plugin_oh-my-claudecode_t__notepad_write_priority",
+      "mcp__plugin_oh-my-claudecode_t__state_get_status"
     ]
   },
   "teammateMode": "tmux"

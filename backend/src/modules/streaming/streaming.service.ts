@@ -953,10 +953,10 @@ export class StreamingService {
     expiresAt: Date;
     createdAt: Date;
   }): StreamingSessionResponseDto {
-    const rtmpBase = (
-      this.configService.get<string>('RTMP_SERVER_URL') ?? 'rtmp://localhost:1935/live'
-    ).replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
-    const hlsBase = this.configService.get<string>('HLS_SERVER_URL') ?? 'http://localhost:8080/hls';
+    const rtmpBase = this.configService
+      .get<string>('RTMP_SERVER_URL')!
+      .replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
+    const hlsBase = this.configService.get<string>('HLS_SERVER_URL')!;
     const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
     const rtmpPortMatch = rtmpUrl.match(/rtmp:\/\/[^:/]+:(\d+)\//);

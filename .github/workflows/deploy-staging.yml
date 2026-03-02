@@ -55,6 +55,14 @@ jobs:
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
+    env:
+      # Centralized staging service URLs — avoids scattering raw localhost strings
+      # throughout shell steps. These are correct for SSH-context health checks
+      # (commands run ON the staging host via SSH, so localhost resolves there).
+      STAGING_BACKEND_URL: http://localhost:3001
+      STAGING_FRONTEND_URL: http://localhost:3000
+      STAGING_SRS_API_URL: http://localhost:1985
+      STAGING_NGINX_URL: http://localhost
 
     steps:
       - name: Checkout
@@ -226,7 +234,7 @@ jobs:
 
             echo "=== Checking service health ==="
             for i in 1 2 3 4 5 6; do
-              if curl -sf http://localhost:3001/api/health/live > /dev/null 2>&1; then
+              if curl -sf ${STAGING_BACKEND_URL}/api/health/live > /dev/null 2>&1; then
                 echo "Backend healthy!"
                 break
               fi
@@ -240,7 +248,7 @@ jobs:
             done
 
             for i in 1 2 3 4 5 6; do
-              if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              if curl -sf ${STAGING_FRONTEND_URL} > /dev/null 2>&1; then
                 echo "Frontend healthy!"
                 break
               fi
@@ -278,6 +286,11 @@ jobs:
     if: always() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      STAGING_BACKEND_URL: http://localhost:3001
+      STAGING_FRONTEND_URL: http://localhost:3000
+      STAGING_SRS_API_URL: http://localhost:1985
+      STAGING_NGINX_URL: http://localhost
 
     steps:
       - name: Setup SSH
@@ -312,33 +325,35 @@ jobs:
       - name: Health Check - Backend
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            'curl -sf -o /dev/null -w "%{http_code}" http://localhost:3001/api/health/live'
+            "curl -sf -o /dev/null -w '%{http_code}' ${{ env.STAGING_BACKEND_URL }}/api/health/live"
           echo "Backend health check passed"
 
       - name: Health Check - Frontend
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            'curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000'
+            "curl -sf -o /dev/null -w '%{http_code}' ${{ env.STAGING_FRONTEND_URL }}"
           echo "Frontend health check passed"
 
       - name: API Response Test
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            'curl -s http://localhost:3001/api/health/live'
+            "curl -s ${{ env.STAGING_BACKEND_URL }}/api/health/live"
 
       - name: Upload Smoke Test
+        env:
+          STAGING_BACKEND_URL: ${{ env.STAGING_BACKEND_URL }}
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash -s' << 'EOF'
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} BACKEND_URL="$STAGING_BACKEND_URL" 'bash -s' << 'EOF'
           set -e
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > /tmp/smoke.png
           # Dev login → JWT cookie
-          curl -sf -X POST http://localhost:3001/api/auth/dev-login \
+          curl -sf -X POST "${BACKEND_URL}/api/auth/dev-login" \
             -H "Content-Type: application/json" \
             -d '{"email":"smoke@test.local","name":"Smoke"}' \
             -c /tmp/smoke-cookies.txt -o /dev/null
           # Upload test image
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-            -X POST http://localhost:3001/api/upload/image \
+            -X POST "${BACKEND_URL}/api/upload/image" \
             -b /tmp/smoke-cookies.txt \
             -F "file=@/tmp/smoke.png;type=image/png")
           rm -f /tmp/smoke.png /tmp/smoke-cookies.txt
@@ -347,35 +362,41 @@ jobs:
           EOF
 
       - name: SRS & Live Stream Health Check
+        env:
+          STAGING_SRS_API_URL: ${{ env.STAGING_SRS_API_URL }}
+          STAGING_NGINX_URL: ${{ env.STAGING_NGINX_URL }}
+          STAGING_FRONTEND_URL: ${{ env.STAGING_FRONTEND_URL }}
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash -s' << 'EOF'
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} SRS_API_URL="$STAGING_SRS_API_URL" NGINX_URL="$STAGING_NGINX_URL" FRONTEND_URL="$STAGING_FRONTEND_URL" 'bash -s' << 'EOF'
           set -e
           # SRS HTTP API (port 1985)
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:1985/api/v1/versions 2>/dev/null || echo "000")
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${SRS_API_URL}/api/v1/versions" 2>/dev/null || echo "000")
           [ "$STATUS" = "200" ] || { echo "FAIL: SRS API returned $STATUS (expected 200)"; exit 1; }
           echo "PASSED: SRS API ($STATUS)"
           # RTMP port 1935
           nc -zw3 localhost 1935 && echo "PASSED: RTMP port 1935" || { echo "FAIL: RTMP port 1935 unreachable"; exit 1; }
           # nginx → SRS HTTP-FLV routing (non-streaming → 404/200, never 502)
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/live/live/smoke-check.flv 2>/dev/null || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${NGINX_URL}/live/live/smoke-check.flv" 2>/dev/null || echo "000")
           [ "$STATUS" != "502" ] && [ "$STATUS" != "000" ] || { echo "FAIL: HTTP-FLV routing broken ($STATUS)"; exit 1; }
           echo "PASSED: HTTP-FLV route ($STATUS)"
           # nginx → SRS HLS routing
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/hls/smoke-check.m3u8 2>/dev/null || echo "000")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${NGINX_URL}/hls/smoke-check.m3u8" 2>/dev/null || echo "000")
           [ "$STATUS" != "502" ] && [ "$STATUS" != "000" ] || { echo "FAIL: HLS routing broken ($STATUS)"; exit 1; }
           echo "PASSED: HLS route ($STATUS)"
           # Live page
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/live 2>/dev/null || echo "000")
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${FRONTEND_URL}/live" 2>/dev/null || echo "000")
           [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ] || { echo "FAIL: Live page returned $STATUS"; exit 1; }
           echo "PASSED: Live page ($STATUS)"
           echo "All SRS & live stream checks passed"
           EOF
 
       - name: Mainpage API Smoke Test
+        env:
+          STAGING_BACKEND_URL: ${{ env.STAGING_BACKEND_URL }}
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash -s' << 'EOF'
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} BACKEND_URL="$STAGING_BACKEND_URL" 'bash -s' << 'EOF'
           set -e
-          BASE="http://localhost:3001/api"
+          BASE="${BACKEND_URL}/api"
 
           # GET /api/streaming/active — must return 200 with data array
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/streaming/active")

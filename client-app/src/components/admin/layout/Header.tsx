@@ -28,8 +28,17 @@ export default function Header() {
   const displayInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-[240px] h-16 bg-white border-b border-gray-200 z-30 overflow-hidden">
-      <div className="h-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
+    <header
+      className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-40 overflow-hidden"
+      style={{
+        // Ensure header spans full width but respects sidebar on large screens
+        // The lg:ml-[240px] on parent flex container positions content flow
+        // This header stays visually fixed at top regardless
+        left: 0,
+        right: 0,
+      }}
+    >
+      <div className="h-full px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 min-w-0 max-w-full lg:ml-[240px]">
         {/* Search Bar */}
         <div className="flex-1 min-w-0 max-w-full sm:max-w-md">
           <div className="relative">

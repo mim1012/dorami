@@ -1,9 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { RECONNECT_CONFIG } from './reconnect-config';
-
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+import { SOCKET_URL } from '../config/socket-url';
 
 export class SocketClient {
   private socket: Socket | null = null;
