@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsInt, Min, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+  IsInt,
+  Min,
+  IsBoolean,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export enum StreamingStatus {
@@ -10,7 +18,7 @@ export enum StreamingStatus {
 export class StartStreamDto {
   @IsDateString()
   @IsNotEmpty()
-  expiresAt: string; // ISO 8601 format
+  expiresAt!: string; // ISO 8601 format
 
   @IsString()
   @IsOptional()
@@ -44,6 +52,17 @@ export class UpdateStreamDto {
   @IsOptional()
   expiresAt?: string; // ISO 8601 format
 
+  @IsDateString()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return value;
+  })
+  scheduledAt?: string | null;
+
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
@@ -54,10 +73,10 @@ export class UpdateStreamDto {
 }
 
 export class StreamStatusDto {
-  status: string;
-  viewerCount: number;
-  startedAt?: Date;
-  title: string;
+  status!: string;
+  viewerCount!: number;
+  startedAt?: string;
+  title!: string;
 }
 
 export class StreamHistoryQueryDto {
@@ -87,43 +106,72 @@ export class StreamHistoryQueryDto {
 }
 
 export class StreamHistoryItemDto {
-  id: string;
-  streamKey: string;
-  title: string;
-  userId: string;
-  userName: string;
-  startedAt: Date | null;
-  endedAt: Date | null;
-  totalDuration: number | null;
-  peakViewers: number;
-  status: string;
+  id!: string;
+  streamKey!: string;
+  title!: string;
+  userId!: string;
+  userName!: string;
+  scheduledAt!: string | null;
+  startedAt!: string | null;
+  endedAt!: string | null;
+  totalDuration!: number | null;
+  peakViewers!: number;
+  status!: string;
+  freeShippingEnabled!: boolean;
+  rtmpUrl?: string;
+  hlsUrl?: string;
+  rtmpPort?: number;
 }
 
 export class StreamHistoryResponseDto {
-  streams: StreamHistoryItemDto[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  streams!: StreamHistoryItemDto[];
+  total!: number;
+  page!: number;
+  limit!: number;
+  totalPages!: number;
 }
 
 export class StreamingSessionResponseDto {
-  id: string;
-  userId: string;
-  streamKey: string;
-  title: string;
-  status: string;
-  rtmpUrl: string;
-  hlsUrl: string;
+  id!: string;
+  userId!: string;
+  streamKey!: string;
+  title!: string;
+  description?: string | null;
+  status!: string;
+  rtmpUrl!: string;
+  hlsUrl!: string;
+  rtmpPort!: number;
   viewerCount?: number;
   peakViewers?: number;
-  startedAt?: Date;
-  endedAt?: Date;
+  startedAt?: string;
+  endedAt?: string;
   totalDuration?: number;
-  scheduledAt?: Date | null;
+  scheduledAt?: string | null;
   thumbnailUrl?: string | null;
-  expiresAt: Date;
-  createdAt: Date;
+  expiresAt!: string;
+  createdAt!: string;
+}
+
+export class ActiveStreamResponseDto {
+  id!: string;
+  streamKey!: string;
+  title!: string;
+  description?: string | null;
+  viewerCount!: number;
+  thumbnailUrl!: string | null;
+  startedAt!: string | null;
+  host!: { id: string; name: string };
+}
+
+export class UpcomingStreamResponseDto {
+  id!: string;
+  streamKey!: string;
+  title!: string;
+  description?: string | null;
+  scheduledAt!: string | null;
+  thumbnailUrl!: string | null;
+  isLive!: boolean;
+  streamer!: { id: string; name: string };
 }
 
 // SRS on_publish / on_unpublish callback DTO
@@ -131,11 +179,11 @@ export class StreamingSessionResponseDto {
 export class SrsCallbackDto {
   @IsString()
   @IsNotEmpty()
-  action: string; // "on_publish" | "on_unpublish"
+  action!: string; // "on_publish" | "on_unpublish"
 
   @IsString()
   @IsNotEmpty()
-  stream: string; // = streamKey
+  stream!: string; // = streamKey
 
   @IsString()
   @IsOptional()
@@ -212,7 +260,7 @@ export class RtmpCallbackDto {
 
   @IsString()
   @IsNotEmpty()
-  name: string; // stream key
+  name!: string; // stream key
 
   @IsString()
   @IsOptional()

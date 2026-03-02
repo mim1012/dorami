@@ -4,7 +4,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: live-commerce-postgres
+    container_name: dorami-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
@@ -19,11 +19,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dorami-internal
 
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: live-commerce-redis
+    container_name: dorami-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -35,22 +37,62 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dorami-internal
+
+  # NestJS Backend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: dorami-backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/live_commerce
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key-12345-change-in-production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAKAO_CLIENT_ID: dev-kakao-client-id
+      KAKAO_CLIENT_SECRET: dev-kakao-client-secret
+      KAKAO_CALLBACK_URL: http://localhost:3000/auth/callback
+      PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      CSRF_ENABLED: "false"
+      ADMIN_EMAILS: admin@dorami.shop
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - dorami-internal
 
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
     image: ossrs/srs:6
-    container_name: live-commerce-srs
+    container_name: dorami-srs
     restart: unless-stopped
     ports:
       - '1935:1935'  # RTMP
       - '8080:8080'  # HTTP-FLV + HLS
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - dorami-internal
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  default:
-    name: live-commerce-network
+  dorami-internal:
+    driver: bridge
+    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
+    # the correct network name (<projectname>_dorami-internal)

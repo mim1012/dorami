@@ -43,7 +43,7 @@ const RATE_LIMIT_WINDOW_MS = 5000;
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
 
@@ -73,7 +73,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         },
       });
     } catch (error) {
-      this.logger.error(`Connection failed: ${error.message}`);
+      this.logger.error(`Connection failed: ${(error as Error).message}`);
       client.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -183,7 +183,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     // Rate limiting: max RATE_LIMIT_MAX messages per RATE_LIMIT_WINDOW_MS
     const userId = client.user.userId;
     const now = Date.now();
-    const times = this.messageTimes.get(userId) || [];
+    const times = this.messageTimes.get(userId) ?? [];
     const recentTimes = times.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
     if (recentTimes.length >= RATE_LIMIT_MAX) {
       client.emit('error', {

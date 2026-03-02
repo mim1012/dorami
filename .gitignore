@@ -78,6 +78,10 @@ screenshots/
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# OMC (oh-my-claudecode) tool state
+.omc/
+.claude/worktrees/
+
 # Temporary
 test_output.txt
 temp/

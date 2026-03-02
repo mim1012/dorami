@@ -66,5 +66,10 @@ export function useAddToCart() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
+    onError: (error: any) => {
+      // Error will be handled by the component using this hook
+      // The component can access error via the mutation.error property
+      console.error('Add to cart error:', error);
+    },
   });
 }

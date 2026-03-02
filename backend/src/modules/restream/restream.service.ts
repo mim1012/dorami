@@ -177,7 +177,7 @@ export class ReStreamService implements OnModuleDestroy {
     restartCount = 0,
   ) {
     const rtmpInternalUrl =
-      this.configService.get<string>('RTMP_INTERNAL_URL') || 'rtmp://srs:1935/live';
+      this.configService.get<string>('RTMP_INTERNAL_URL') ?? 'rtmp://srs:1935/live';
 
     const inputUrl = `${rtmpInternalUrl}/${streamKey}`;
     const outputUrl = `${target.rtmpUrl}${target.streamKey}`;

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { ReconnectionCircuitBreaker } from '@/lib/socket/circuit-breaker';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 // ── Stock store ──
 interface StockState {
@@ -57,9 +58,6 @@ export const useStockStore = create<StockState>((set) => ({
 }));
 
 // ── WebSocket hook for real-time stock updates ──
-const WS_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
 /**
  * useProductStock
@@ -98,7 +96,7 @@ export function useProductStock(streamKey?: string) {
     // Don't create duplicate connections
     if (socketRef.current?.connected) return;
 
-    const socket = io(WS_URL, {
+    const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,

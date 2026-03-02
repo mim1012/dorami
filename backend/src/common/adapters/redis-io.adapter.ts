@@ -4,7 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient, RedisClientType } from 'redis';
 import { Logger } from '@nestjs/common';
 
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
+const CONNECTION_TIMEOUT = parseInt(process.env.REDIS_CONNECTION_TIMEOUT_MS ?? '10000', 10);
 
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -17,9 +17,17 @@ export class RedisIoAdapter extends IoAdapter {
    * Connect to Redis with timeout and error handling
    */
   async connectToRedis(): Promise<boolean> {
-    const redisUrl = process.env.REDIS_PUBSUB_URL || process.env.REDIS_URL || 'redis://localhost:6379/1';
+    const redisUrl = process.env.REDIS_PUBSUB_URL ?? process.env.REDIS_URL;
+    if (!redisUrl) {
+      throw new Error(
+        'REDIS_URL or REDIS_PUBSUB_URL must be set. ' +
+          'In production/staging this is required. In development, set REDIS_URL=redis://localhost:6379',
+      );
+    }
 
-    this.logger.log(`Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`);
+    this.logger.log(
+      `Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`,
+    );
 
     try {
       this.pubClient = createClient({
@@ -39,11 +47,11 @@ export class RedisIoAdapter extends IoAdapter {
       this.subClient = this.pubClient.duplicate() as RedisClientType;
 
       // Add error handlers
-      this.pubClient.on('error', (err) => {
+      this.pubClient.on('error', (err: Error) => {
         this.logger.error(`Redis pub client error: ${err.message}`);
       });
 
-      this.subClient.on('error', (err) => {
+      this.subClient.on('error', (err: Error) => {
         this.logger.error(`Redis sub client error: ${err.message}`);
       });
 
@@ -51,7 +59,9 @@ export class RedisIoAdapter extends IoAdapter {
       await Promise.race([
         Promise.all([this.pubClient.connect(), this.subClient.connect()]),
         new Promise((_, reject) =>
-          setTimeout(() => { reject(new Error('Redis connection timeout')); }, CONNECTION_TIMEOUT),
+          setTimeout(() => {
+            reject(new Error('Redis connection timeout'));
+          }, CONNECTION_TIMEOUT),
         ),
       ]);
 
@@ -91,19 +101,19 @@ export class RedisIoAdapter extends IoAdapter {
     this.isConnected = false;
   }
 
-  createIOServer(port: number, options?: ServerOptions): any {
+  createIOServer(port: number, options?: ServerOptions): ReturnType<IoAdapter['createIOServer']> {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') || [
-          'http://localhost:3000',
-          'http://localhost:3002',
-        ],
+        // CORS_ORIGINS validated by config.validation.ts; guaranteed present after app init
+        origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002')
+          .split(',')
+          .map((o) => o.trim()),
         credentials: true,
       },
-      pingTimeout: 60000,
-      pingInterval: 25000,
-      connectTimeout: 45000,
+      pingTimeout: parseInt(process.env.WS_PING_TIMEOUT_MS ?? '60000', 10),
+      pingInterval: parseInt(process.env.WS_PING_INTERVAL_MS ?? '25000', 10),
+      connectTimeout: parseInt(process.env.WS_CONNECT_TIMEOUT_MS ?? '45000', 10),
       transports: ['websocket', 'polling'],
     });
 

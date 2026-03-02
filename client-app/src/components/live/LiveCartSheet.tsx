@@ -59,11 +59,26 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
   useModalBehavior({ isOpen, onClose });
 
   const items = cartData?.items?.filter((item) => item.status === 'ACTIVE') ?? [];
-  const grandTotal = cartData?.grandTotal ?? 0;
+  const grandTotal = cartData?.grandTotal ? parseFloat(cartData.grandTotal) : 0;
 
   const timerItems = items.filter((item) => item.timerEnabled && item.expiresAt);
   const earliestExpiresAt =
     timerItems.length > 0 ? timerItems.map((item) => item.expiresAt!).sort()[0] : null;
+
+  // Compute total timer duration (seconds) from the item whose expiresAt is earliest.
+  // Falls back to remainingSeconds if available, otherwise uses 600s (10 min) as a safe default.
+  const timerDurationSeconds = (() => {
+    if (timerItems.length === 0) return 600;
+    const earliest = timerItems.find((item) => item.expiresAt === earliestExpiresAt);
+    if (earliest?.remainingSeconds != null && earliest.remainingSeconds > 0) {
+      // remainingSeconds is time left; we need total duration.
+      // Best proxy: use the item with the largest remainingSeconds among timer items
+      // (they were all refreshed together on add/update).
+      const maxRemaining = Math.max(...timerItems.map((i) => i.remainingSeconds ?? 0));
+      return maxRemaining > 0 ? maxRemaining : 600;
+    }
+    return 600;
+  })();
 
   const [localRemaining, setLocalRemaining] = useState(0);
   useEffect(() => {
@@ -80,7 +95,8 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
     return () => clearInterval(id);
   }, [earliestExpiresAt]);
 
-  const progressPercent = localRemaining > 0 ? Math.min(100, (localRemaining / 600) * 100) : 0;
+  const progressPercent =
+    localRemaining > 0 ? Math.min(100, (localRemaining / timerDurationSeconds) * 100) : 0;
 
   if (!isOpen) return null;
 
@@ -143,9 +159,9 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
           <div className="flex justify-between text-xs text-white/40 mb-4">
             <span>배송비</span>
             <span>
-              {(cartData?.totalShippingFee ?? 0) === 0
+              {parseFloat(cartData?.totalShippingFee ?? '0') === 0
                 ? '무료'
-                : formatPrice(cartData?.totalShippingFee ?? 0)}
+                : formatPrice(parseFloat(cartData?.totalShippingFee ?? '0'))}
             </span>
           </div>
           <button

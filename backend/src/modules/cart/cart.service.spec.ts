@@ -259,9 +259,9 @@ describe('CartService', () => {
 
       expect(result.itemCount).toBe(1);
       expect(result.items).toHaveLength(1);
-      expect(result.subtotal).toBe(29000);
-      expect(result.totalShippingFee).toBe(10);
-      expect(result.grandTotal).toBe(29010);
+      expect(result.subtotal).toBe('29000');
+      expect(result.totalShippingFee).toBe('10');
+      expect(result.grandTotal).toBe('29010');
     });
 
     it('should return empty cart when no active items', async () => {
@@ -271,7 +271,7 @@ describe('CartService', () => {
 
       expect(result.itemCount).toBe(0);
       expect(result.items).toHaveLength(0);
-      expect(result.grandTotal).toBe(0);
+      expect(result.grandTotal).toBe('0');
     });
 
     it('should calculate correct totals for multiple items', async () => {
@@ -290,27 +290,34 @@ describe('CartService', () => {
       const result = await service.getCart('user-1');
 
       expect(result.itemCount).toBe(2);
-      expect(result.subtotal).toBe(29000 + 100000); // 29000*1 + 50000*2
-      expect(result.totalShippingFee).toBe(10);
-      expect(result.grandTotal).toBe(129010);
+      expect(result.subtotal).toBe('129000'); // 29000*1 + 50000*2
+      expect(result.totalShippingFee).toBe('10');
+      expect(result.grandTotal).toBe('129010');
     });
   });
 
   describe('updateCartItem', () => {
-    it('should update cart item quantity', async () => {
+    it('should update cart item quantity and refresh timer', async () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
-      jest
-        .spyOn(prismaService.cart, 'aggregate')
-        .mockResolvedValue({ _sum: { quantity: 1 } } as any);
-      jest.spyOn(prismaService.cart, 'update').mockResolvedValue({
-        ...mockCartItem,
-        quantity: 3,
-      } as any);
+
+      const updatedItem = { ...mockCartItem, quantity: 3 };
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+            update: jest.fn().mockResolvedValue(updatedItem),
+          },
+        };
+        return callback(tx);
+      });
 
       const result = await service.updateCartItem('user-1', 'cart-1', { quantity: 3 });
 
       expect(result.quantity).toBe(3);
+      // Timer should be refreshed since product.timerEnabled is true
+      expect(result.expiresAt).toBeDefined();
+      expect(prismaService.$transaction).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when cart item not found', async () => {
@@ -324,9 +331,17 @@ describe('CartService', () => {
     it('should throw BadRequestException when insufficient stock for update', async () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
-      jest
-        .spyOn(prismaService.cart, 'aggregate')
-        .mockResolvedValue({ _sum: { quantity: 5 } } as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          cart: {
+            // reserved=5, current item qty=1, so availableStock = 10-5+1=6, requesting 10 => throw
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 5 } }),
+            update: jest.fn(),
+          },
+        };
+        return callback(tx);
+      });
 
       await expect(service.updateCartItem('user-1', 'cart-1', { quantity: 10 })).rejects.toThrow(
         BadRequestException,

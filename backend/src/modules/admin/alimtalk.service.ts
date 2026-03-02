@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface AlimtalkMessage {
@@ -17,7 +18,10 @@ interface AlimtalkMessage {
 export class AlimtalkService {
   private readonly logger = new Logger(AlimtalkService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async sendAlimtalk(messages: AlimtalkMessage[]): Promise<void> {
     const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
@@ -56,7 +60,11 @@ export class AlimtalkService {
         })),
       };
 
-      const response = await fetch('https://api.solapi.com/messages/v4/send-many', {
+      const solapiApiUrl = this.configService.get<string>(
+        'SOLAPI_API_URL',
+        'https://api.solapi.com/messages/v4/send-many',
+      );
+      const response = await fetch(solapiApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

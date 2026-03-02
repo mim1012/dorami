@@ -3,11 +3,11 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class SendMessageDto {
   @IsString()
   @IsNotEmpty()
-  streamId: string;
+  streamId!: string;
 
   @IsString()
   @IsNotEmpty()
-  message: string;
+  message!: string;
 
   @IsString()
   @IsOptional()
@@ -17,11 +17,11 @@ export class SendMessageDto {
 export class JoinRoomDto {
   @IsString()
   @IsNotEmpty()
-  streamId: string;
+  streamId!: string;
 }
 
 export class DeleteMessageDto {
   @IsString()
   @IsNotEmpty()
-  messageId: string;
+  messageId!: string;
 }

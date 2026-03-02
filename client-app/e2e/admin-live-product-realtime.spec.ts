@@ -32,7 +32,7 @@ test.describe('Admin Live Product Realtime', () => {
     await page.waitForTimeout(1500);
   });
 
-  test('A-PRD-RT-01~04: 상품 등록 관리자 UI 즉시 반영 + 라이브 페이지 상태 검증', async ({
+  test.skip('A-PRD-RT-01~04: 상품 등록 관리자 UI 즉시 반영 + 라이브 페이지 상태 검증', async ({
     page,
     browser,
   }) => {

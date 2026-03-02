@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dorami-internal
 
   # Redis Cache & Pub/Sub
   redis:
@@ -33,6 +35,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - dorami-internal
 
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
@@ -43,11 +47,15 @@ services:
       - '8080:8080'  # HTTP-FLV + HLS
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
+    networks:
+      - dorami-internal
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  default:
-    name: live-commerce-network
+  dorami-internal:
+    driver: bridge
+    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
+    # the correct network name (<projectname>_dorami-internal)

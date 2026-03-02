@@ -486,6 +486,104 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('images handling', () => {
+    const baseStream = { id: 'stream-1', streamKey: 'stream-key' };
+    const baseProduct = (images: string[]) => ({
+      id: 'prod-1',
+      streamKey: 'stream-key',
+      name: 'Test',
+      price: { toString: () => '10000' },
+      quantity: 10,
+      status: 'AVAILABLE',
+      colorOptions: [],
+      sizeOptions: [],
+      shippingFee: { toString: () => '0' },
+      freeShippingMessage: null,
+      timerEnabled: false,
+      timerDuration: 10,
+      imageUrl: null,
+      images,
+      isNew: false,
+      discountRate: null,
+      originalPrice: null,
+      sortOrder: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    it('should deduplicate image URLs on create', async () => {
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(baseStream as any);
+      (prisma.product.create as jest.Mock).mockImplementation(async ({ data }: any) =>
+        baseProduct(data.images),
+      );
+
+      const result = await service.create({
+        streamKey: 'stream-key',
+        name: 'Test',
+        price: 10000,
+        stock: 10,
+        images: [
+          'https://example.com/a.jpg',
+          'https://example.com/a.jpg',
+          'https://example.com/b.jpg',
+        ],
+      });
+
+      expect(result.images).toEqual(['https://example.com/a.jpg', 'https://example.com/b.jpg']);
+    });
+
+    it('should trim whitespace from image URLs on create', async () => {
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(baseStream as any);
+      (prisma.product.create as jest.Mock).mockImplementation(async ({ data }: any) =>
+        baseProduct(data.images),
+      );
+
+      const result = await service.create({
+        streamKey: 'stream-key',
+        name: 'Test',
+        price: 10000,
+        stock: 10,
+        images: ['  https://example.com/a.jpg  ', 'https://example.com/b.jpg'],
+      });
+
+      expect(result.images).toEqual(['https://example.com/a.jpg', 'https://example.com/b.jpg']);
+    });
+
+    it('should return empty array when images is undefined on create', async () => {
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(baseStream as any);
+      (prisma.product.create as jest.Mock).mockImplementation(async ({ data }: any) =>
+        baseProduct(data.images),
+      );
+
+      const result = await service.create({
+        streamKey: 'stream-key',
+        name: 'Test',
+        price: 10000,
+        stock: 10,
+      });
+
+      expect(result.images).toEqual([]);
+    });
+
+    it('should deduplicate image URLs on update', async () => {
+      const mockProduct = baseProduct([]);
+      jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
+      (prisma.product.update as jest.Mock).mockImplementation(async ({ data }: any) =>
+        baseProduct(data.images),
+      );
+
+      const result = await service.update('prod-1', {
+        images: [
+          'https://example.com/x.jpg',
+          'https://example.com/x.jpg',
+          'https://example.com/y.jpg',
+        ],
+      });
+
+      expect(result.images).toEqual(['https://example.com/x.jpg', 'https://example.com/y.jpg']);
+    });
+  });
+
   describe('getFeaturedProducts', () => {
     it('should return featured products with default limit', async () => {
       jest.spyOn(prisma.product, 'findMany').mockResolvedValue([]);

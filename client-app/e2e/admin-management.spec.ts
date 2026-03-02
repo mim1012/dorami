@@ -84,7 +84,7 @@ test.describe('Admin Dashboard Navigation', () => {
       { path: '/admin/orders', name: 'Orders' },
       { path: '/admin/users', name: 'Users' },
       { path: '/admin/broadcasts', name: 'Broadcasts' },
-      { path: '/admin/settlement', name: 'Settlement' },
+      // Settlement page redirects to dashboard (not yet implemented)
       { path: '/admin/settings', name: 'Settings' },
     ];
 

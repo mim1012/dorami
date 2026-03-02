@@ -1,0 +1,229 @@
+name: Streaming Soak Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Target URL"
+        type: string
+      duration:
+        description: "Soak duration in seconds"
+        type: number
+        default: 3600
+      interval:
+        description: "Snapshot interval in seconds"
+        type: number
+        default: 30
+      max_users:
+        description: "Max websocket clients"
+        type: number
+        default: 300
+      stream_key:
+        description: "Streaming key used for /hls and /live checks"
+        type: string
+        default: smoke-check
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_call:
+    inputs:
+      url:
+        description: "Target URL"
+        required: false
+        type: string
+      duration:
+        description: "Soak duration in seconds"
+        required: false
+        type: number
+        default: 3600
+      interval:
+        description: "Snapshot interval in seconds"
+        required: false
+        type: number
+        default: 30
+      max_users:
+        description: "Max websocket clients"
+        required: false
+        type: number
+        default: 300
+      stream_key:
+        description: "Streaming key used for /hls and /live checks"
+        required: false
+        type: string
+        default: smoke-check
+      ssh_host:
+        required: false
+        type: string
+      compose_base:
+        required: false
+        type: string
+        default: docker-compose.base.yml
+      compose_overlay:
+        required: false
+        type: string
+        default: docker-compose.staging.yml
+      remote_workdir:
+        required: false
+        type: string
+        default: /opt/dorami
+      ssh_key:
+        required: false
+        type: string
+      ssh_user:
+        required: false
+        type: string
+      canary_port:
+        required: false
+        type: string
+        default: "13080"
+    secrets:
+      STAGING_SSH_KEY:
+        required: false
+      STAGING_USER:
+        required: false
+      STAGING_HOST:
+        required: false
+    outputs:
+      status:
+        description: "Streaming soak final status"
+        value: ${{ jobs.soot.outputs.status }}
+      critical:
+        description: "Streaming soak critical count"
+        value: ${{ jobs.soot.outputs.critical }}
+      warning:
+        description: "Streaming soak warning count"
+        value: ${{ jobs.soot.outputs.warning }}
+
+jobs:
+  soot:
+    name: Soak Check
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.run.outputs.status }}
+      critical: ${{ steps.run.outputs.critical }}
+      warning: ${{ steps.run.outputs.warning }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup SSH Key
+        if: ${{ inputs.ssh_host != '' || vars.STAGING_HOST != '' }}
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          if [ -n "${SSH_KEY}" ]; then
+            SSH_KEY_FILE="${RUNNER_TEMP}/staging_ssh_key"
+            if echo "${SSH_KEY}" | grep -q "BEGIN"; then
+              printf '%s\n' "${SSH_KEY}" > "${SSH_KEY_FILE}"
+            else
+              printf '%s' "${SSH_KEY}" | base64 -d > "${SSH_KEY_FILE}" 2>/dev/null || true
+            fi
+            chmod 600 "${SSH_KEY_FILE}"
+            echo "STAGING_SSH_KEY_FILE=${SSH_KEY_FILE}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Start RTMP test stream on staging (via SSH)
+        env:
+          SSH_HOST: ${{ inputs.ssh_host || secrets.STAGING_HOST || vars.STAGING_HOST }}
+          SSH_USER: ${{ inputs.ssh_user || secrets.STAGING_USER }}
+          STREAM_KEY: ${{ inputs.stream_key || 'smoke-check' }}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+          [ -n "${STAGING_SSH_KEY_FILE}" ] && SSH_OPTS="${SSH_OPTS} -i ${STAGING_SSH_KEY_FILE}"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "
+            nohup ffmpeg -re \
+              -f lavfi -i 'testsrc2=size=1280x720:rate=30' \
+              -f lavfi -i 'sine=frequency=440:sample_rate=44100' \
+              -vcodec libx264 -preset ultrafast -tune zerolatency \
+              -b:v 1500k -maxrate 1500k -bufsize 3000k \
+              -g 60 -keyint_min 60 \
+              -acodec aac -b:a 128k \
+              -f flv rtmp://localhost:1935/live/${STREAM_KEY} \
+              -loglevel warning \
+              > /tmp/ffmpeg-soak.log 2>&1 &
+            echo \$! > /tmp/ffmpeg-soak.pid && echo 'ffmpeg started'
+          "
+          sleep 15
+
+      - name: Run streaming soak gate
+        id: run
+        env:
+          URL: ${{ inputs.url || vars.STAGING_URL }}
+          DURATION: ${{ inputs.duration || 3600 }}
+          INTERVAL: ${{ inputs.interval || 30 }}
+          STREAM_KEY: ${{ inputs.stream_key || 'smoke-check' }}
+          MAX_USERS: ${{ inputs.max_users || 300 }}
+          SSH_HOST: ${{ inputs.ssh_host || secrets.STAGING_HOST || vars.STAGING_HOST }}
+          SSH_USER: ${{ inputs.ssh_user || secrets.STAGING_USER }}
+          SSH_KEY_FILE: ${{ env.STAGING_SSH_KEY_FILE }}
+          COMPOSE_BASE: ${{ inputs.compose_base || 'docker-compose.base.yml' }}
+          COMPOSE_OVERLAY: ${{ inputs.compose_overlay || 'docker-compose.staging.yml' }}
+          REMOTE_WORKDIR: ${{ inputs.remote_workdir || '/opt/dorami' }}
+          CANARY_PORT: ${{ inputs.canary_port || 13080 }}
+        run: |
+          set -o pipefail
+          if [ -z "${URL}" ]; then
+            echo "URL is required."
+            exit 1
+          fi
+
+          CMD=(
+            node scripts/streaming-soak-check.mjs
+            --url "${URL}"
+            --duration "${DURATION}"
+            --interval "${INTERVAL}"
+            --stream-key "${STREAM_KEY}"
+            --max-users "${MAX_USERS}"
+            --ssh-host "${SSH_HOST}"
+            --ssh-user "${SSH_USER}"
+            --ssh-key "${SSH_KEY_FILE}"
+            --compose-base "${COMPOSE_BASE}"
+            --compose-overlay "${COMPOSE_OVERLAY}"
+            --ssh-workdir "${REMOTE_WORKDIR}"
+          )
+
+          echo "Running soak check..."
+          OUTPUT_FILE="$(mktemp)"
+          if "${CMD[@]}" | tee "${OUTPUT_FILE}"; then
+            STATUS="PASS"
+          else
+            STATUS="FAIL"
+          fi
+
+          JSON_START=$(grep -n "RESULT_JSON_START" "${OUTPUT_FILE}" | tail -1 | cut -d: -f1)
+          JSON_END=$(grep -n "RESULT_JSON_END" "${OUTPUT_FILE}" | tail -1 | cut -d: -f1)
+          if [ -n "${JSON_START}" ] && [ -n "${JSON_END}" ] && [ "${JSON_END}" -gt "${JSON_START}" ]; then
+            JSON_PAYLOAD=$(sed -n "$((JSON_START+1)),$((JSON_END-1))p" "${OUTPUT_FILE}")
+            CRITICAL=$(printf "%s\n" "${JSON_PAYLOAD}" | node -e "const fs=require('node:fs');const text=fs.readFileSync(0,'utf8');const obj=JSON.parse(text);console.log(obj.critical||0)")
+            WARNING=$(printf "%s\n" "${JSON_PAYLOAD}" | node -e "const fs=require('node:fs');const text=fs.readFileSync(0,'utf8');const obj=JSON.parse(text);console.log(obj.warning||0)")
+          else
+            CRITICAL=0
+            WARNING=0
+          fi
+
+          echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+          echo "critical=${CRITICAL}" >> "$GITHUB_OUTPUT"
+          echo "warning=${WARNING}" >> "$GITHUB_OUTPUT"
+          echo "soak-status=${STATUS}"
+
+          rm -f "${OUTPUT_FILE}"
+          if [ "${STATUS}" != "PASS" ]; then
+            exit 1
+          fi
+
+      - name: Stop RTMP test stream on staging
+        if: always()
+        env:
+          SSH_HOST: ${{ inputs.ssh_host || secrets.STAGING_HOST || vars.STAGING_HOST }}
+          SSH_USER: ${{ inputs.ssh_user || secrets.STAGING_USER }}
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no"
+          [ -n "${STAGING_SSH_KEY_FILE}" ] && SSH_OPTS="${SSH_OPTS} -i ${STAGING_SSH_KEY_FILE}"
+          ssh ${SSH_OPTS} "${SSH_USER}@${SSH_HOST}" "
+            [ -f /tmp/ffmpeg-soak.pid ] && kill \$(cat /tmp/ffmpeg-soak.pid) 2>/dev/null || true
+            rm -f /tmp/ffmpeg-soak.pid && echo 'ffmpeg stopped'
+          " || true
