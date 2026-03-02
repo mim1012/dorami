@@ -49,8 +49,11 @@ export interface PopularProductDto {
   originalPrice: number | null;
   discountRate: number | null;
   imageUrl: string | null;
+  images: string[];
   isNew: boolean;
   soldCount: number;
+  colorOptions?: string[];
+  sizeOptions?: string[];
 }
 
 export interface StoreProductDto {
@@ -60,9 +63,12 @@ export interface StoreProductDto {
   originalPrice: number | null;
   discountRate: number | null;
   imageUrl: string | null;
+  images: string[];
   isNew: boolean;
   stock: number;
   status: ProductStatus;
+  colorOptions?: string[];
+  sizeOptions?: string[];
 }
 
 export interface MainPageData {
