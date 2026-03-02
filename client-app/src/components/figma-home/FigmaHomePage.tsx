@@ -10,7 +10,8 @@ import { useMainPageData } from '@/lib/hooks/queries/use-mainpage';
 export function FigmaHomePage() {
   const { data, isLoading, isError } = useMainPageData();
   const upcomingLives = data?.upcomingLives ?? [];
-  const popularProducts = data?.popularProducts ?? [];
+  const featuredProducts = data?.popularProducts ?? [];
+  const pastProducts = data?.storeProducts ?? [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,7 +25,12 @@ export function FigmaHomePage() {
           <UpcomingLives upcomingLives={upcomingLives} isLoading={isLoading} />
         </section>
         <section>
-          <PopularProducts products={popularProducts} isLoading={isLoading} isError={isError} />
+          <PopularProducts
+            featuredProducts={featuredProducts}
+            pastProducts={pastProducts}
+            isLoading={isLoading}
+            isError={isError}
+          />
         </section>
       </main>
 

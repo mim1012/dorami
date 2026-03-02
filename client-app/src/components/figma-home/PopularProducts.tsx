@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Play } from 'lucide-react';
-import type { PopularProductDto } from '@live-commerce/shared-types';
+import type { PopularProductDto, StoreProductDto } from '@live-commerce/shared-types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailModal } from './ProductDetailModal';
 import { ViewAllModal } from './ViewAllModal';
@@ -22,7 +22,8 @@ type HomeProduct = {
 };
 
 type PopularProductsProps = {
-  products?: PopularProductDto[];
+  featuredProducts?: PopularProductDto[];
+  pastProducts?: StoreProductDto[];
   isLoading?: boolean;
   isError?: boolean;
 };
@@ -105,7 +106,7 @@ const FALLBACK_PRODUCTS: HomeProduct[] = [
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=80';
 
-function mapPopularProduct(product: PopularProductDto): HomeProduct {
+function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomeProduct {
   return {
     id: product.id,
     name: product.name,
@@ -116,7 +117,7 @@ function mapPopularProduct(product: PopularProductDto): HomeProduct {
   };
 }
 
-function getDisplayProducts(apiProducts?: PopularProductDto[]) {
+function getDisplayProducts(apiProducts?: (PopularProductDto | StoreProductDto)[]): HomeProduct[] {
   if (apiProducts && apiProducts.length > 0) {
     return apiProducts.map(mapPopularProduct);
   }
@@ -131,7 +132,8 @@ type ModalSelectionPayload = {
 };
 
 export function PopularProducts({
-  products: apiProducts,
+  featuredProducts: apiFeaturedProducts,
+  pastProducts: apiPastProducts,
   isLoading = false,
   isError = false,
 }: PopularProductsProps) {
@@ -141,14 +143,14 @@ export function PopularProducts({
   const [selectedProduct, setSelectedProduct] = useState<HomeProduct | null>(null);
   const [showViewAll, setShowViewAll] = useState<'featured' | 'past' | null>(null);
 
-  const products = getDisplayProducts(apiProducts);
-  const isUsingFallback = products === FALLBACK_PRODUCTS;
+  // Map API products to display format
+  const featuredProducts = getDisplayProducts(apiFeaturedProducts);
+  const pastProducts = getDisplayProducts(apiPastProducts);
+
+  const isUsingFallback =
+    featuredProducts === FALLBACK_PRODUCTS || pastProducts === FALLBACK_PRODUCTS;
   const showFallbackTag = isUsingFallback && !isLoading;
   const showLoadingMessage = isLoading && isError;
-
-  // Split products: featured (first 4) and past (remaining)
-  const featuredProducts = products.slice(0, 4);
-  const pastProducts = products.slice(4);
 
   const goToProductDetail = (
     product: HomeProduct,
