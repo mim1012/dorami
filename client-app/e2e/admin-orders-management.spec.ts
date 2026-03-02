@@ -41,7 +41,16 @@ test.describe('Admin Orders Page Display', () => {
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
 
     // 테이블 헤더 컬럼 확인
-    const columns = ['주문번호', '고객', '입금자명', '주문 상태', '합계', '주문일', '작업'];
+    const columns = [
+      '주문번호',
+      '상품명',
+      '색상',
+      '사이즈',
+      '인스타 ID',
+      '주문일시',
+      '결제일시',
+      '상태',
+    ];
     for (const col of columns) {
       await expect(page.locator('th').getByText(col, { exact: true })).toBeVisible();
     }
