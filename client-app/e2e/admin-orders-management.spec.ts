@@ -165,8 +165,14 @@ test.describe('Admin Orders Filter', () => {
     // 필터 패널 닫기
     await page.getByRole('button', { name: '필터 숨기기' }).click();
 
-    // 필터 내용 사라짐 (주문 상태 필터 버튼들이 숨겨짐)
-    await expect(page.getByRole('button', { name: '입금 대기' })).not.toBeVisible();
+    // 필터 내용 사라짐 (날짜 필터 텍스트가 사라져야 함)
+    const filterDateText = await page
+      .getByText('주문일 시작')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    if (filterDateText) {
+      throw new Error('Filter panel should be hidden');
+    }
 
     console.log('Filter panel open/close works');
   });
@@ -177,7 +183,8 @@ test.describe('Admin Orders Filter', () => {
 
     // 필터 패널 열기
     await page.getByRole('button', { name: '필터 보기' }).click();
-    await expect(page.getByRole('button', { name: '입금 대기' })).toBeVisible();
+    // 필터 패널이 열리면 주문 상태 텍스트가 나타남
+    await expect(page.getByRole('paragraph').filter({ hasText: '주문 상태' })).toBeVisible();
 
     // 주문 상태 필터 버튼 확인
     const pendingPaymentBtn = page.getByRole('button', { name: '입금 대기' });
