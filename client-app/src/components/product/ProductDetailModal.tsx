@@ -33,10 +33,14 @@ export default function ProductDetailModal({
   onBuyNow,
 }: ProductDetailModalProps) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    product.colorOptions.length > 0 ? product.colorOptions[0] : undefined,
+    Array.isArray(product.colorOptions) && product.colorOptions.length > 0
+      ? product.colorOptions[0]
+      : undefined,
   );
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    product.sizeOptions.length > 0 ? product.sizeOptions[0] : undefined,
+    Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0
+      ? product.sizeOptions[0]
+      : undefined,
   );
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);

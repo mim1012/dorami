@@ -684,8 +684,8 @@ export class ProductsService {
       name: product.name,
       price: parseFloat(product.price.toString()),
       stock: product.quantity, // Map quantity to stock
-      colorOptions: product.colorOptions,
-      sizeOptions: product.sizeOptions,
+      colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
+      sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
       shippingFee: parseFloat(product.shippingFee.toString()),
       freeShippingMessage: product.freeShippingMessage ?? undefined,
       timerEnabled: product.timerEnabled,
