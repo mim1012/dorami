@@ -34,8 +34,11 @@ export function LiveCountdownBanner({
     if (!liveStartTime || isLive) return;
 
     const updateCountdown = () => {
-      const now = new Date().getTime();
-      const target = new Date(liveStartTime).getTime();
+      // ISO 문자열이 UTC인지 확인하고 Date 객체로 변환
+      // Date.now()는 현재 UTC 시간을 밀리초로 반환 (로컬시간과 무관하게)
+      const now = Date.now(); // UTC milliseconds since epoch
+      const startDate = new Date(liveStartTime); // Parse ISO string (always UTC)
+      const target = startDate.getTime(); // UTC milliseconds since epoch
       const difference = target - now;
 
       if (difference <= 0) {
