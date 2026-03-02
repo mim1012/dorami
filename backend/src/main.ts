@@ -156,7 +156,9 @@ async function bootstrap() {
   // CORS Configuration - Whitelist based
   // CORS_ORIGINS is validated by config.validation.ts: required in production/staging,
   // defaults to localhost in development. No inline fallback needed here.
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002')
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002,http://localhost:3003'
+  )
     .split(',')
     .map((origin) => origin.trim());
 
