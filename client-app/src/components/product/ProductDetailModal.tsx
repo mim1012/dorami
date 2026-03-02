@@ -95,7 +95,7 @@ export default function ProductDetailModal({
         </div>
 
         {/* Product Image Gallery */}
-        <div className="max-h-64">
+        <div className="max-h-96">
           <ImageGallery
             images={
               product.images && product.images.length > 0
