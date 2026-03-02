@@ -18,10 +18,10 @@ test.describe('Admin Users List Filters', () => {
 
     // 헤더
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('등록된 회원을 조회하고 관리합니다')).toBeVisible();
+    await expect(page.getByText('인스타 아이디 기준으로 사용자를 조회합니다')).toBeVisible();
 
     // 검색 입력
-    await expect(page.getByPlaceholder('이름, 이메일 또는 인스타그램 ID로 검색...')).toBeVisible();
+    await expect(page.getByPlaceholder('인스타그램 ID 또는 카카오톡 이메일 검색...')).toBeVisible();
 
     // 필터 보기 버튼
     await expect(page.getByRole('button', { name: '필터 보기' })).toBeVisible();

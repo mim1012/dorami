@@ -114,7 +114,7 @@ test.describe('Admin User Deactivation', () => {
     await page.waitForTimeout(1000);
 
     // 검색으로 해당 사용자 필터링
-    const listSearchInput = page.locator('input[placeholder*="이름, 이메일"]');
+    const listSearchInput = page.locator('input[placeholder*="인스타그램 ID 또는 카카오톡"]');
     await expect(listSearchInput).toBeVisible({ timeout: 10000 });
     await listSearchInput.fill('buyer@test.com');
     await page.waitForTimeout(1000); // debounce
