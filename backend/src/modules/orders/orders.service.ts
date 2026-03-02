@@ -291,7 +291,6 @@ export class OrdersService {
       }
 
       return {
-        productId: item.productId,
         productName: product.name,
         quantity: item.quantity,
         price: product.price,
@@ -609,10 +608,21 @@ export class OrdersService {
 
   /**
    * Cron job: Check for expired orders and auto-cancel them
-   * Runs every minute
+   * DISABLED: Orders should not auto-cancel based on ORDER_EXPIRATION_MINUTES
+   * Users need time to make bank transfers (no strict time limit)
+   * Manual cancellation via admin or user is preferred
+   *
+   * TODO: Consider implementing order expiration only after:
+   * - Much longer timeout (24+ hours)
+   * - Or after explicit user timeout (user doesn't make payment for X days)
+   * - Not based on 10-minute cart timer which is inappropriate for orders
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async cancelExpiredOrders() {
+    // INTENTIONALLY DISABLED - See comment above
+    return;
+
+    /* ORIGINAL CODE (DISABLED):
     try {
       const now = new Date();
       const expirationTime = new Date(now.getTime() - this.orderExpirationMinutes * 60 * 1000);
@@ -668,6 +678,7 @@ export class OrdersService {
     } catch (error) {
       this.logger.error('Failed to cancel expired orders', (error as Error).stack);
     }
+    */
   }
 
   /**
