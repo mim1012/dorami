@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -19,7 +20,8 @@ import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
-import { useCart } from '@/lib/hooks/queries/use-cart';
+import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
+import { productKeys } from '@/lib/hooks/queries/use-products';
 import { useChatConnection } from '@/hooks/useChatConnection';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/chat/types';
@@ -45,6 +47,7 @@ import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuthStore } from '@/lib/store/auth';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -67,6 +70,7 @@ interface FeaturedProduct {
 export default function LiveStreamPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const streamKey = params.streamKey as string;
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
@@ -82,6 +86,7 @@ export default function LiveStreamPage() {
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const { data: cartData } = useCart();
+  const queryClient = useQueryClient();
   const [cartActivities, setCartActivities] = useState<
     Array<{ id: string; userName: string; productName: string; timestamp: string }>
   >([]);
@@ -108,6 +113,14 @@ export default function LiveStreamPage() {
   const previousStreamStatusRef = useRef<StreamStatus['status'] | null>(null);
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+
+  // ── Auth guard: redirect unauthenticated users to login ───────────────────
+  useEffect(() => {
+    if (!isAuthenticated && !isAuthLoading && !pathname.startsWith('/login')) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, pathname, router]);
 
   // ── FSM ────────────────────────────────────────────────────────────────────
   const { snapshot, stream, dispatch } = useLiveLayoutMachine();
@@ -260,6 +273,18 @@ export default function LiveStreamPage() {
     return () => vv.removeEventListener('resize', onResize);
   }, [dispatch]);
 
+  // Extracted so handleAddToCart can re-fetch after stock changes
+  const fetchAllProducts = useCallback(async () => {
+    try {
+      const response = await apiClient.get<Product[]>('/products', {
+        params: { streamKey, status: 'AVAILABLE' },
+      });
+      setAllProducts(response.data ?? []);
+    } catch {
+      // non-critical
+    }
+  }, [streamKey]);
+
   // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -272,26 +297,12 @@ export default function LiveStreamPage() {
         // non-critical
       }
     };
-    const fetchAllProducts = async () => {
-      try {
-        const response = await apiClient.get<Product[]>('/products', {
-          params: { streamKey, status: 'AVAILABLE' },
-        });
-        setAllProducts(response.data ?? []);
-      } catch {
-        // non-critical
-      }
-    };
     fetchFeatured();
     fetchAllProducts();
 
-    const ws = io(
-      process.env.NEXT_PUBLIC_WS_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
-      {
-        withCredentials: true,
-      },
-    );
+    const ws = io(SOCKET_URL, {
+      withCredentials: true,
+    });
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
@@ -342,7 +353,7 @@ export default function LiveStreamPage() {
       ws.disconnect();
       if (purchaseNotifTimerRef.current) clearTimeout(purchaseNotifTimerRef.current);
     };
-  }, [streamKey]);
+  }, [streamKey, fetchAllProducts]);
 
   const fetchStreamStatus = useCallback(async () => {
     try {
@@ -385,7 +396,8 @@ export default function LiveStreamPage() {
   useEffect(() => {
     void fetchStreamStatus();
 
-    const intervalMs = snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
+    const intervalMs =
+      snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
     const interval = setInterval(() => {
       void fetchStreamStatus();
     }, intervalMs);
@@ -500,16 +512,37 @@ export default function LiveStreamPage() {
 
   const handleAddToCart = async (
     productId: string,
+    quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
   ) => {
+    const { isAuthenticated } = useAuthStore.getState();
+
+    // Check authentication first
+    if (!isAuthenticated) {
+      showToast('로그인 후 이용해주세요', 'error', {
+        label: '로그인',
+        onClick: () => router.push('/login'),
+      });
+      return;
+    }
+
     try {
       await apiClient.post('/cart', {
         productId,
-        quantity: 1,
+        quantity,
         color: selectedColor,
         size: selectedSize,
       });
+      // Invalidate cart AND product queries so stock counts update immediately
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cartKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: productKeys.list({ streamKey, status: 'AVAILABLE' }),
+        }),
+      ]);
+      // Also refresh local allProducts state for the mobile product sheet
+      void fetchAllProducts();
 
       showToast('장바구니에 담았어요!', 'success', {
         label: '장바구니 보기',
@@ -517,7 +550,18 @@ export default function LiveStreamPage() {
       });
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
-      showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
+
+      // Handle specific error types
+      if (error.statusCode === 401) {
+        showToast('로그인 세션이 만료되었습니다', 'error', {
+          label: '로그인',
+          onClick: () => router.push('/login?reason=session_expired'),
+        });
+      } else if (error.statusCode === 400) {
+        showToast(`${error.message || '장바구니 담기 실패'}`, 'error');
+      } else {
+        showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
+      }
     }
   };
 
@@ -675,7 +719,9 @@ export default function LiveStreamPage() {
                           <Volume2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                         )}
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">소리</span>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
+                        소리
+                      </span>
                     </button>
 
                     {isVolumeControlOpen && (
@@ -731,7 +777,9 @@ export default function LiveStreamPage() {
                       <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                         <Icon className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">{label}</span>
+                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
+                        {label}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -790,7 +838,9 @@ export default function LiveStreamPage() {
               <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
                 {allProducts.length}개
               </span>
-              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">지난상품</span>
+              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">
+                지난상품
+              </span>
             </button>
           </div>
 
@@ -1035,8 +1085,90 @@ export default function LiveStreamPage() {
             </div>
           </div>
 
-          {/* Bottom: Featured Product Bar */}
-          <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
+          {/* Bottom: Featured & Past Products Sections */}
+          <div className="w-full flex flex-col gap-8 bg-content-bg/50 border-t border-border-color p-6">
+            {/* Featured Products Section */}
+            {allProducts.length > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-bold text-primary-text">인기 상품</h3>
+                  <p className="text-sm text-secondary-text">지금 라이브에서 인기 있는 상품</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {allProducts.slice(0, 5).map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      className="group text-left hover:opacity-80 transition-opacity"
+                    >
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized={product.imageUrl.startsWith('/uploads/')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-primary-text truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-secondary-text">
+                        ₩{product.price.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Past Products Section */}
+            {allProducts.length > 5 && (
+              <div className="space-y-4 border-t border-border-color pt-6">
+                <div>
+                  <h3 className="text-xl font-bold text-primary-text">지난 상품</h3>
+                  <p className="text-sm text-secondary-text">이전에 소개한 상품들</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {allProducts.slice(5).map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      className="group text-left hover:opacity-80 transition-opacity"
+                    >
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized={product.imageUrl.startsWith('/uploads/')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-primary-text truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-secondary-text">
+                        ₩{product.price.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -54,7 +54,7 @@ export default function AlertsPage() {
   const fetchNotifications = async () => {
     try {
       // Try to fetch real orders for order notifications
-      const orderRes = await apiClient.get<any>('/orders/my').catch(() => null);
+      const orderRes = await apiClient.get<any>('/orders').catch(() => null);
       const orders = orderRes?.data?.orders || orderRes?.data || [];
 
       const orderNotifs: Notification[] = Array.isArray(orders)
@@ -62,7 +62,7 @@ export default function AlertsPage() {
             id: `order-${order.id}`,
             type: 'order' as const,
             title: getOrderTitle(order.status),
-            message: `주문번호 ${order.orderNumber || order.id?.slice(0, 8)} · ${formatPrice(order.totalAmount || 0)}`,
+            message: `주문번호 ${order.orderNumber || order.id?.slice(0, 8)} · ${formatPrice(order.total || 0)}`,
             time: formatTime(order.updatedAt || order.createdAt),
             read: order.status === 'DELIVERED',
             icon: getOrderIcon(order.status),
@@ -87,7 +87,7 @@ export default function AlertsPage() {
       // Fetch notices from API
       let noticeNotifs: Notification[] = [];
       try {
-        const noticeRes = await apiClient.get<any>('/admin/notices').catch(() => null);
+        const noticeRes = await apiClient.get<any>('/notices/admin').catch(() => null);
         const noticesData = noticeRes?.data?.notices || noticeRes?.data || [];
         if (Array.isArray(noticesData) && noticesData.length > 0) {
           noticeNotifs = noticesData.slice(0, 5).map((notice: any) => ({

@@ -27,9 +27,13 @@ export function UpcomingLiveCard({
   useEffect(() => {
     if (isLive) return;
     const update = () => {
-      const now = Date.now();
-      const target = new Date(scheduledTime).getTime();
+      // ISO 문자열이 UTC인지 확인하고 Date 객체로 변환
+      // new Date()는 현재 UTC 시간을 밀리초로 반환 (로컬시간과 무관하게)
+      const now = Date.now(); // UTC milliseconds since epoch
+      const scheduledDate = new Date(scheduledTime); // Parse ISO string (always UTC)
+      const target = scheduledDate.getTime(); // UTC milliseconds since epoch
       const diff = target - now;
+
       if (diff <= 0) {
         setCountdown('곧 시작');
         return;

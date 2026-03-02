@@ -50,7 +50,7 @@ test.describe('Admin Stream Key Validation', () => {
     await gotoWithRetry(page, '/admin/broadcasts');
 
     // 방송 페이지 로드 대기
-    const newBroadcastBtn = page.getByRole('button', { name: /새 방송 시작/ });
+    const newBroadcastBtn = page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first();
     const retryBtn = page.getByRole('button', { name: '다시 시도' });
 
     await Promise.race([
@@ -101,7 +101,7 @@ test.describe('Admin Stream Key Validation', () => {
     const titleInput = page.getByPlaceholder('예: 오늘의 라이브 방송');
     await expect(titleInput).toBeVisible({ timeout: 5000 });
     await titleInput.fill(`E2E 검증 ${Date.now()}`);
-    await page.getByRole('button', { name: '스트림 키 발급' }).click();
+    await page.getByRole('button', { name: /발급하기|스트림 키 발급/ }).click();
 
     // 결과 대기 (성공 or 실패 메시지)
     const successMsg = page.getByText('스트림 키가 발급되었습니다!');
@@ -130,7 +130,7 @@ test.describe('Admin Stream Key Validation', () => {
     await page.waitForTimeout(500);
 
     // ── A-BRD-ST-01: RTMP 서버 URL 레이블·유효 기간 레이블 UI 표시 ─────────
-    await expect(page.getByText('RTMP 서버 URL')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/RTMP.*URL/)).toBeVisible({ timeout: 5000 });
     console.log('✅ A-BRD-ST-01: RTMP 서버 URL 레이블 표시 확인');
 
     await expect(page.getByText('유효 기간')).toBeVisible({ timeout: 5000 });

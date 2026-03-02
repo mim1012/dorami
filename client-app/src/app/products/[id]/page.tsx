@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Minus, Plus, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProductById } from '@/lib/api/products';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
-import { useCart } from '@/lib/contexts/CartContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { formatPrice } from '@/lib/utils/price';
 import { Button } from '@/components/common/Button';
@@ -35,7 +36,8 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { addItem } = useCart();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,9 +49,14 @@ export default function ProductDetailPage() {
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const autoBuyHandled = useRef(false);
 
   const colors = product?.colorOptions ?? [];
   const sizes = product?.sizeOptions ?? [];
+  const preselectedSize = searchParams.get('size');
+  const preselectedColor = searchParams.get('color');
+  const preselectedQuantity = Number(searchParams.get('quantity') ?? '');
+  const preselectedIntent = searchParams.get('intent');
 
   // 모든 이미지 배열 (대표이미지 + 상세이미지)
   const allImages = product?.imageUrl
@@ -96,6 +103,23 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    if (!product) return;
+
+    if (preselectedQuantity > 0 && Number.isFinite(preselectedQuantity)) {
+      const max = Math.max(product.stock, 1);
+      const clamped = Math.min(preselectedQuantity, max);
+      setQuantity(clamped >= 1 ? clamped : 1);
+    }
+
+    if (preselectedSize && sizes.includes(preselectedSize)) {
+      setSelectedSize(preselectedSize);
+    }
+    if (preselectedColor && colors.includes(preselectedColor)) {
+      setSelectedColor(preselectedColor);
+    }
+  }, [preselectedSize, preselectedColor, preselectedQuantity, product, sizes, colors]);
+
   const maxQuantity = product ? Math.min(product.stock || 0, 10) : 1;
 
   const handleQuantityChange = (delta: number) => {
@@ -103,33 +127,53 @@ export default function ProductDetailPage() {
     if (next >= 1 && next <= maxQuantity) setQuantity(next);
   };
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (!product) return;
+
+    if (sizes.length > 0 && !selectedSize) {
+      alert('사이즈를 선택해주세요.');
+      return;
+    }
+
+    if (colors.length > 0 && !selectedColor) {
+      alert('색상을 선택해주세요.');
+      return;
+    }
+
     try {
       await apiClient.post('/cart', {
         productId: product.id,
         quantity,
+        ...(sizes.length > 0 && selectedSize ? { size: selectedSize } : {}),
+        ...(colors.length > 0 && selectedColor ? { color: selectedColor } : {}),
       });
-      addItem({
-        productId: product.id,
-        productName: product.name,
-        price: product.price,
-        quantity,
-        imageUrl: product.imageUrl,
-        stock: product.stock || 0,
-      });
+      await queryClient.invalidateQueries({ queryKey: cartKeys.all });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
       alert(error.response?.data?.message || '장바구니 추가에 실패했습니다.');
     }
-  };
+  }, [colors, queryClient, product, quantity, selectedColor, selectedSize]);
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = useCallback(async () => {
     await handleAddToCart();
     router.push('/cart');
-  };
+  }, [handleAddToCart, router]);
+
+  useEffect(() => {
+    if (preselectedIntent !== 'buy' || !product || autoBuyHandled.current) return;
+
+    autoBuyHandled.current = true;
+    (async () => {
+      try {
+        await handleAddToCart();
+        router.replace('/cart');
+      } catch {
+        autoBuyHandled.current = false;
+      }
+    })();
+  }, [preselectedIntent, product, handleAddToCart, router]);
 
   if (loading) {
     return (

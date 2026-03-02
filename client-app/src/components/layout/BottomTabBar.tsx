@@ -3,8 +3,9 @@
 import { useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, ShoppingCart, Video, User, MessageCircle } from 'lucide-react';
-import { useCart } from '@/lib/contexts/CartContext';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { useToast } from '@/components/common/Toast';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { getActiveStreams } from '@/lib/api/streaming';
 
@@ -28,11 +29,12 @@ const tabs: TabItem[] = [
 export function BottomTabBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { getTotalItems } = useCart();
-  const { user } = useAuth();
-  const cartItemCount = getTotalItems();
+  const { isAuthenticated, isLoading } = useAuth();
+  const { data: cartData } = useCart({ enabled: isAuthenticated && !isLoading });
+  const cartItemCount = cartData?.itemCount ?? 0;
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [noLiveToast, setNoLiveToast] = useState(false);
+  const { showToast } = useToast();
 
   const handleTabClick = async (tab: TabItem) => {
     if (tab.isInquiry) {
@@ -51,9 +53,18 @@ export function BottomTabBar() {
         setNoLiveToast(true);
         setTimeout(() => setNoLiveToast(false), 2500);
       }
+    } else if (tab.id === 'mypage') {
+      // 마이페이지: 인증 필수
+      if (!isAuthenticated && !isLoading) {
+        showToast('로그인 후 이용해주세요', 'error', {
+          label: '로그인',
+          onClick: () => router.push('/login'),
+        });
+        return;
+      }
+      router.push(tab.path!);
     } else if (tab.path) {
-      const path = tab.id === 'mypage' && user?.role === 'ADMIN' ? '/admin' : tab.path;
-      router.push(path);
+      router.push(tab.path);
     }
   };
 

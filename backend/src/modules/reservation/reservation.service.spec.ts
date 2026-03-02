@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ReservationService } from './reservation.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { RedisService } from '../../common/redis/redis.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -77,6 +78,16 @@ describe('ReservationService', () => {
             }),
           },
         },
+        {
+          provide: RedisService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            publish: jest.fn(),
+            incr: jest.fn().mockResolvedValue(1),
+          },
+        },
       ],
     }).compile();
 
@@ -100,16 +111,7 @@ describe('ReservationService', () => {
         .mockResolvedValue({ _sum: { quantity: 0 } } as any);
       jest.spyOn(prisma.reservation, 'findFirst').mockResolvedValue(null);
       jest.spyOn(prisma.reservation, 'count').mockResolvedValue(0);
-
-      // Mock $transaction to execute the callback with a mocked transaction context
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
-        return callback({
-          reservation: {
-            findFirst: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue(mockReservation),
-          },
-        });
-      });
+      jest.spyOn(prisma.reservation, 'create').mockResolvedValue(mockReservation as any);
 
       const result = await service.createReservation('user-1', createDto);
 

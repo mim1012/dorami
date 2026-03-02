@@ -20,6 +20,16 @@ import { test, expect } from '@playwright/test';
 test.describe('비로그인 접근 제어 (Next.js 미들웨어 FIX-003)', () => {
   test.setTimeout(60000);
   test.use({ storageState: { cookies: [], origins: [] } });
+  test.beforeEach(async ({ page }) => {
+    await page.context().clearCookies();
+    await page.evaluate(() => {
+      try {
+        localStorage.clear();
+      } catch {
+        // ignore
+      }
+    });
+  });
 
   // ─────────────────────────────────────────────────────────────────────────
   // 각 보호 경로별 리다이렉트 검증

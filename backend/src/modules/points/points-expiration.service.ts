@@ -95,22 +95,21 @@ export class PointsExpirationService {
 
           this.logger.log(`Expired ${amountToExpire} points for user ${userId}`);
         } catch (error) {
-          this.logger.error(
-            `Failed to expire points for user ${userId}`,
-            error.stack,
-          );
+          this.logger.error(`Failed to expire points for user ${userId}`, (error as Error).stack);
         }
       }
 
       // Send warning notifications for points expiring in 7 days
       await this.sendExpirationWarnings(config);
     } catch (error) {
-      this.logger.error('Failed to process point expirations', error.stack);
+      this.logger.error('Failed to process point expirations', (error as Error).stack);
     }
   }
 
   private async sendExpirationWarnings(config: { pointExpirationEnabled: boolean }) {
-    if (!config.pointExpirationEnabled) {return;}
+    if (!config.pointExpirationEnabled) {
+      return;
+    }
 
     const warningDate = new Date();
     warningDate.setDate(warningDate.getDate() + 7);

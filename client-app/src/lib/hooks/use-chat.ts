@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './use-auth';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 export interface ChatMessage {
   id: string;
@@ -47,10 +48,7 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
     setError(null);
 
     // Connect to chat namespace
-    const wsBaseUrl =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
-    const wsUrl = wsBaseUrl.replace(/^http/, 'ws');
+    const wsUrl = SOCKET_URL.replace(/^http/, 'ws');
 
     const socket = io(`${wsUrl}/chat`, {
       auth: { token },

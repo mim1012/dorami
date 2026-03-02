@@ -65,13 +65,12 @@ export default function OrdersPage() {
     }
   }, [user, authLoading, router]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -83,8 +82,27 @@ export default function OrdersPage() {
     });
   };
 
-  const getPaymentStatusInfo = (status: string) => {
-    switch (status) {
+  const getOrderRowStatusInfo = (orderStatus: string, paymentStatus: string) => {
+    if (orderStatus === 'CANCELLED') {
+      return { text: '주문 취소', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
+    }
+    if (orderStatus === 'SHIPPED') {
+      return { text: '배송 중', color: 'text-info', icon: Truck, bgColor: 'bg-blue-100' };
+    }
+    if (orderStatus === 'DELIVERED') {
+      return { text: '배송 완료', color: 'text-success', icon: CheckCircle, bgColor: 'bg-success/10' };
+    }
+
+    if (orderStatus === 'PAYMENT_CONFIRMED') {
+      return {
+        text: '결제 완료',
+        color: 'text-success',
+        icon: CheckCircle,
+        bgColor: 'bg-success/10',
+      };
+    }
+
+    switch (paymentStatus) {
       case 'PENDING':
         return { text: '입금 대기', color: 'text-warning', icon: Clock, bgColor: 'bg-warning/20' };
       case 'CONFIRMED':
@@ -96,9 +114,9 @@ export default function OrdersPage() {
         };
       case 'FAILED':
         return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
-      default:
-        return {
-          text: status,
+    default:
+      return {
+          text: paymentStatus,
           color: 'text-secondary-text',
           icon: Package,
           bgColor: 'bg-border-color',
@@ -116,23 +134,6 @@ export default function OrdersPage() {
         return { text: '배송 완료', color: 'text-success' };
       default:
         return { text: '대기 중', color: 'text-secondary-text' };
-    }
-  };
-
-  const getOrderStatusInfo = (status: string) => {
-    switch (status) {
-      case 'PENDING_PAYMENT':
-        return { text: '입금 대기 중', color: 'text-warning', icon: Clock };
-      case 'PAYMENT_CONFIRMED':
-        return { text: '결제 완료', color: 'text-success', icon: CheckCircle };
-      case 'SHIPPED':
-        return { text: '배송 중', color: 'text-info', icon: Truck };
-      case 'DELIVERED':
-        return { text: '배송 완료', color: 'text-success', icon: CheckCircle };
-      case 'CANCELLED':
-        return { text: '취소됨', color: 'text-error', icon: XCircle };
-      default:
-        return { text: status, color: 'text-secondary-text', icon: Package };
     }
   };
 
@@ -202,7 +203,7 @@ export default function OrdersPage() {
           {/* Orders List */}
           <div className="space-y-4">
             {orders.map((order) => {
-              const paymentStatus = getPaymentStatusInfo(order.paymentStatus);
+              const paymentStatus = getOrderRowStatusInfo(order.status, order.paymentStatus);
               const shippingStatus = getShippingStatusInfo(order.shippingStatus);
               const StatusIcon = paymentStatus.icon;
 
@@ -284,7 +285,7 @@ export default function OrdersPage() {
                       >
                         상세 보기
                       </Button>
-                      {order.paymentStatus === 'PENDING' && (
+                      {order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'PENDING' && (
                         <Button
                           variant="primary"
                           size="sm"

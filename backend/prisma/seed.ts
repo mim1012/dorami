@@ -84,6 +84,7 @@ async function main() {
       userId: adminUser.id,
       title: '2월 뷰티 신상 특집 라이브',
       status: 'PENDING',
+      scheduledAt: new Date(now.getTime() + 1 * 60 * 60 * 1000), // 1시간 후
       expiresAt: new Date(now.getTime() + 3 * 60 * 60 * 1000), // 3시간 후
     },
   });
@@ -94,7 +95,8 @@ async function main() {
       userId: adminUser.id,
       title: '겨울 패션 아이템 특가 방송',
       status: 'PENDING',
-      expiresAt: new Date(now.getTime() + 26 * 60 * 60 * 1000), // 내일
+      scheduledAt: new Date(now.getTime() + 24 * 60 * 60 * 1000), // 내일
+      expiresAt: new Date(now.getTime() + 26 * 60 * 60 * 1000), // 내일 +2시간
     },
   });
 

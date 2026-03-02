@@ -301,7 +301,7 @@ export class ReservationService {
         await this.promoteNextInQueue(reservation.productId);
       }
     } catch (error) {
-      this.logger.error('Failed to expire promoted reservations', error.stack);
+      this.logger.error('Failed to expire promoted reservations', (error as Error).stack);
     }
   }
 

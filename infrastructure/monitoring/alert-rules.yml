@@ -1,0 +1,119 @@
+# alert-rules.yml
+# Prometheus alerting rules for Dorami Live Commerce
+# Referenced by prometheus-config.yml
+
+groups:
+  - name: dorami.infrastructure
+    interval: 30s
+    rules:
+
+      # High CPU
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ printf \"%.1f\" $value }}% (threshold: 80%)"
+
+      - alert: CriticalCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ printf \"%.1f\" $value }}% (threshold: 95%)"
+
+      # High memory
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ printf \"%.1f\" $value }}%"
+
+      - alert: CriticalMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ printf \"%.1f\" $value }}%"
+
+  - name: dorami.application
+    interval: 30s
+    rules:
+
+      # Backend down
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dorami backend is down"
+          description: "Backend health check has been failing for 1 minute"
+
+      # High error rate
+      - alert: HighHTTPErrorRate
+        expr: |
+          sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(nginx_http_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP error rate"
+          description: "5xx error rate is {{ printf \"%.1f\" $value }}% (threshold: 5%)"
+
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been unreachable for 1 minute"
+
+      # PostgreSQL down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL has been unreachable for 1 minute"
+
+  - name: dorami.streaming
+    interval: 15s
+    rules:
+
+      # SRS down
+      - alert: StreamingServerDown
+        expr: probe_success{instance=~".*srs.*|.*8080.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SRS streaming server is down"
+          description: "SRS server health probe has been failing for 1 minute"
+
+      # High container CPU for SRS/nginx
+      - alert: StreamingContainerHighCPU
+        expr: |
+          rate(container_cpu_usage_seconds_total{
+            container_label_com_docker_compose_service=~"srs|nginx"
+          }[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Streaming container {{ $labels.name }} high CPU"
+          description: "Container CPU is {{ printf \"%.1f\" $value }}%"

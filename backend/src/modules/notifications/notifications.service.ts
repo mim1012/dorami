@@ -86,7 +86,7 @@ export class NotificationsService {
         return;
       }
     } catch (error) {
-      this.logger.warn(`Web push failed for user ${userId}: ${error.message}`);
+      this.logger.warn(`Web push failed for user ${userId}: ${(error as Error).message}`);
     }
 
     // 2순위: 카카오톡
@@ -116,7 +116,7 @@ export class NotificationsService {
         return;
       }
     } catch (error) {
-      this.logger.warn(`Web push failed for user ${userId}: ${error.message}`);
+      this.logger.warn(`Web push failed for user ${userId}: ${(error as Error).message}`);
     }
 
     // 2순위: 카카오톡
@@ -135,7 +135,7 @@ export class NotificationsService {
         await fn();
         return;
       } catch (error) {
-        this.logger.warn(`Notification attempt ${attempt} failed: ${error.message}`);
+        this.logger.warn(`Notification attempt ${attempt} failed: ${(error as Error).message}`);
 
         if (attempt === this.maxRetries) {
           this.logger.error('Notification failed after max retries');
@@ -174,7 +174,7 @@ export class NotificationsService {
    * Replace variables in template
    * Example: "주문번호: {{orderId}}" with {orderId: "ORD-123"} -> "주문번호: ORD-123"
    */
-  private replaceVariables(template: string, variables: Record<string, any>): string {
+  private replaceVariables(template: string, variables: Record<string, unknown>): string {
     let result = template;
     for (const [key, value] of Object.entries(variables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');

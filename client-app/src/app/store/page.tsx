@@ -69,6 +69,7 @@ export default function StorePage() {
 
   const handleAddToCart = async (
     productId: string,
+    quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
   ) => {
@@ -77,7 +78,7 @@ export default function StorePage() {
 
       await apiClient.post('/cart', {
         productId,
-        quantity: 1,
+        quantity,
         color: selectedColor,
         size: selectedSize,
       });

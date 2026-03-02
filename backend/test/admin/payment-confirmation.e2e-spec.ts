@@ -119,8 +119,8 @@ describe('Admin Payment Confirmation (E2E)', () => {
       data: {
         id: 'ORD-TEST-PAYMENT-001',
         userId: regularUser.id,
-        userEmail: regularUser.email,
-        depositorName: regularUser.depositorName,
+        userEmail: regularUser.email!,
+        depositorName: regularUser.depositorName!,
         shippingAddress: {
           street: '123 Test St',
           city: 'Test City',
@@ -128,7 +128,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
           zipCode: '12345',
           country: 'USA',
         },
-        instagramId: regularUser.instagramId,
+        instagramId: regularUser.instagramId!,
         status: 'PENDING_PAYMENT',
         paymentStatus: 'PENDING',
         shippingStatus: 'PENDING',
@@ -256,13 +256,16 @@ describe('Admin Payment Confirmation (E2E)', () => {
       const user = await prismaService.user.findFirst({
         where: { email: 'user_paymenttest@example.com' },
       });
+      if (!user) {
+        throw new Error('Test setup failed: user_paymenttest@example.com not found');
+      }
 
       await prismaService.order.create({
         data: {
           id: 'ORD-TEST-CONFIRMED-001',
-          userId: user.id,
-          userEmail: user.email,
-          depositorName: user.depositorName,
+          userId: user!.id,
+          userEmail: user.email!,
+          depositorName: user.depositorName!,
           shippingAddress: {
             street: '456 Confirmed St',
             city: 'Test City',
@@ -270,7 +273,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
             zipCode: '54321',
             country: 'USA',
           },
-          instagramId: user.instagramId,
+          instagramId: user.instagramId!,
           status: 'PAYMENT_CONFIRMED',
           paymentStatus: 'CONFIRMED',
           shippingStatus: 'PENDING',
@@ -284,9 +287,9 @@ describe('Admin Payment Confirmation (E2E)', () => {
       await prismaService.order.create({
         data: {
           id: 'ORD-TEST-FAILED-001',
-          userId: user.id,
-          userEmail: user.email,
-          depositorName: user.depositorName,
+          userId: user!.id,
+          userEmail: user.email!,
+          depositorName: user.depositorName!,
           shippingAddress: {
             street: '789 Failed St',
             city: 'Test City',
@@ -294,7 +297,7 @@ describe('Admin Payment Confirmation (E2E)', () => {
             zipCode: '67890',
             country: 'USA',
           },
-          instagramId: user.instagramId,
+          instagramId: user.instagramId!,
           status: 'CANCELLED',
           paymentStatus: 'FAILED',
           shippingStatus: 'PENDING',

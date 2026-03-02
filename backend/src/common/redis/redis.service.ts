@@ -4,15 +4,15 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit {
-  private client: Redis;
-  private pubClient: Redis;
-  private subClient: Redis;
+  private client!: Redis;
+  private pubClient!: Redis;
+  private subClient!: Redis;
 
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    const redisHost = this.configService.get('REDIS_HOST') || 'localhost';
-    const redisPort = this.configService.get('REDIS_PORT') || 6379;
+    const redisHost = this.configService.get('REDIS_HOST') ?? 'localhost';
+    const redisPort = this.configService.get('REDIS_PORT') ?? 6379;
     const redisPassword = this.configService.get('REDIS_PASSWORD');
 
     this.client = new Redis({

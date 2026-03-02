@@ -157,7 +157,7 @@ describe('AdminService', () => {
       expect(result.limit).toBe(20);
       expect(result.totalPages).toBe(3); // 47 / 20 = 2.35 → 3 pages
       expect(result.users[0].totalOrders).toBe(0); // Epic 8 placeholder
-      expect(result.users[0].totalPurchaseAmount).toBe(0); // Epic 8 placeholder
+      expect(result.users[0].totalPurchaseAmount).toBe('0'); // Epic 8 placeholder
     });
 
     it('should apply pagination correctly', async () => {
@@ -293,12 +293,15 @@ describe('AdminService', () => {
         email: 'user1@test.com',
         name: 'User One',
         instagramId: '@user_one',
-        createdAt: expect.any(Date),
-        lastLoginAt: expect.any(Date),
+        createdAt: expect.any(String),
+        lastLoginAt: expect.any(String),
+        lastPurchaseAt: null,
+        phone: undefined,
+        shippingAddressSummary: '-',
         status: 'ACTIVE',
         role: 'USER',
         totalOrders: 0,
-        totalPurchaseAmount: 0,
+        totalPurchaseAmount: '0',
       });
     });
 
@@ -375,6 +378,85 @@ describe('AdminService', () => {
       const result = await service.getUserDetail(userId);
 
       expect(result.shippingAddress).toBeNull();
+    });
+  });
+
+  describe('getOrderDetail', () => {
+    const orderId = 'ORD-20260131-00001';
+    const mockOrder = {
+      id: orderId,
+      userId: 'user-123',
+      userEmail: 'user@example.com',
+      depositorName: 'Test Depositor',
+      instagramId: '@test',
+      status: 'PAYMENT_CONFIRMED',
+      paymentStatus: 'CONFIRMED',
+      shippingStatus: 'PENDING',
+      subtotal: 3000,
+      shippingFee: 500,
+      total: 3500,
+      createdAt: new Date('2026-01-15'),
+      updatedAt: new Date('2026-01-15'),
+      paidAt: new Date('2026-01-15'),
+      shippedAt: null,
+      deliveredAt: null,
+      orderItems: [
+        {
+          id: 'item-1',
+          productId: 'prod-1',
+          productName: 'Test Product',
+          price: 3000,
+          shippingFee: 500,
+          quantity: 1,
+          color: null,
+          size: null,
+          Product: {
+            id: 'prod-1',
+            name: 'Test Product',
+            imageUrl: 'https://example.com/image.png',
+          },
+        },
+      ],
+      user: {
+        id: 'user-123',
+        email: 'user@example.com',
+        name: 'Test User',
+        instagramId: '@test',
+        depositorName: 'Test Depositor',
+        shippingAddress: JSON.stringify({
+          name: 'Legacy Name',
+          street: '789 Legacy Rd',
+          city: 'Seoul',
+          region: 'KR',
+          zipCode: '12345',
+          phone: '010-1234-5678',
+        }),
+      },
+    };
+
+    it('should return order detail with normalized shipping address from legacy fields', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
+      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
+        throw new Error('not encrypted');
+      });
+
+      const result = await service.getOrderDetail(orderId);
+
+      expect(result.shippingAddress).toEqual({
+        fullName: 'Legacy Name',
+        address1: '789 Legacy Rd',
+        address2: undefined,
+        city: 'Seoul',
+        state: 'KR',
+        zip: '12345',
+        phone: '010-1234-5678',
+      });
+    });
+
+    it('should throw NotFoundException when order does not exist', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.getOrderDetail(orderId)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -632,12 +714,11 @@ describe('AdminService', () => {
       jest.spyOn(prisma.liveStream, 'count').mockResolvedValue(2);
 
       // Mock top products
-      // @ts-expect-error - Complex Prisma groupBy type
       jest.spyOn(prisma.orderItem, 'groupBy').mockResolvedValue([
         { productId: 'p1', productName: 'Product 1', _sum: { quantity: 50 } },
         { productId: 'p2', productName: 'Product 2', _sum: { quantity: 40 } },
         { productId: 'p3', productName: 'Product 3', _sum: { quantity: 30 } },
-      ]);
+      ] as any);
 
       // Mock chat message counts
       jest
