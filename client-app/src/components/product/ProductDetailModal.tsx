@@ -33,12 +33,12 @@ export default function ProductDetailModal({
   onBuyNow,
 }: ProductDetailModalProps) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    Array.isArray(product.colorOptions) && product.colorOptions.length > 0
+    product.colorOptions && Array.isArray(product.colorOptions) && product.colorOptions.length > 0
       ? product.colorOptions[0]
       : undefined,
   );
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0
+    product.sizeOptions && Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0
       ? product.sizeOptions[0]
       : undefined,
   );
@@ -171,7 +171,7 @@ export default function ProductDetailModal({
           </div>
 
           {/* Color Options */}
-          {product.colorOptions.length > 0 && (
+          {product.colorOptions && product.colorOptions.length > 0 && (
             <div>
               <Caption className="text-secondary-text mb-2">컬러</Caption>
               <div className="grid grid-cols-4 gap-2">
@@ -196,7 +196,7 @@ export default function ProductDetailModal({
           )}
 
           {/* Size Options */}
-          {product.sizeOptions.length > 0 && (
+          {product.sizeOptions && product.sizeOptions.length > 0 && (
             <div>
               <Caption className="text-secondary-text mb-2">사이즈</Caption>
               <div className="grid grid-cols-4 gap-2">
