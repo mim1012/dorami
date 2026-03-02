@@ -104,6 +104,7 @@ export default function ProductDetailModal({
                 : []
           }
           productName={product.name}
+          aspectRatio="aspect-video"
         />
 
         {/* Product Info */}
