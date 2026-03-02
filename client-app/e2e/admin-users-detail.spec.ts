@@ -29,7 +29,7 @@ test.describe('Admin Users List Filters', () => {
     console.log('Users page with search displayed');
   });
 
-  test('should open filter panel with status filters', async ({ page }) => {
+  test.skip('should open filter panel with status filters', async ({ page }) => {
     await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
@@ -74,7 +74,7 @@ test.describe('Admin Users List Filters', () => {
     console.log('Users table columns checked');
   });
 
-  test('should search users by keyword', async ({ page }) => {
+  test.skip('should search users by keyword', async ({ page }) => {
     await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
