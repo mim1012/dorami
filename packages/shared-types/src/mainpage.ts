@@ -53,9 +53,22 @@ export interface PopularProductDto {
   soldCount: number;
 }
 
+export interface StoreProductDto {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number | null;
+  discountRate: number | null;
+  imageUrl: string | null;
+  isNew: boolean;
+  stock: number;
+  status: ProductStatus;
+}
+
 export interface MainPageData {
   currentLive: CurrentLiveDto | null;
   liveDeals: LiveDealProductDto[];
   upcomingLives: UpcomingLiveDto[];
   popularProducts: PopularProductDto[];
+  storeProducts: StoreProductDto[];
 }

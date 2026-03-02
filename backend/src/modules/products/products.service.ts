@@ -495,8 +495,9 @@ export class ProductsService {
   }
 
   /**
-   * Get store products (from ended live streams)
+   * Get store products (from ended live streams + streamKey-less products)
    * Epic 11 Story 11.1
+   * Includes: products with OFFLINE streamKey OR products with no streamKey (streamKey = null)
    */
   @LogErrors('get store products')
   async getStoreProducts(
@@ -510,13 +511,19 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    // Get products from ended (OFFLINE) live streams
+    // Get products from ended (OFFLINE) live streams OR products with no streamKey (null or empty string)
     const products = await this.prisma.product.findMany({
       where: {
-        liveStream: {
-          status: 'OFFLINE',
-        },
         status: 'AVAILABLE',
+        OR: [
+          { streamKey: null }, // Products with null streamKey
+          { streamKey: '' }, // Products with empty string streamKey
+          {
+            liveStream: {
+              status: 'OFFLINE', // Products from OFFLINE live streams
+            },
+          },
+        ],
       },
       include: {
         liveStream: {
@@ -537,10 +544,16 @@ export class ProductsService {
 
     const total = await this.prisma.product.count({
       where: {
-        liveStream: {
-          status: 'OFFLINE',
-        },
         status: 'AVAILABLE',
+        OR: [
+          { streamKey: null },
+          { streamKey: '' },
+          {
+            liveStream: {
+              status: 'OFFLINE',
+            },
+          },
+        ],
       },
     });
 

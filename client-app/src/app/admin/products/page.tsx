@@ -514,7 +514,7 @@ export default function AdminProductsPage() {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        streamKey: product.streamKey,
+        streamKey: product.streamKey || '',
         name: product.name,
         price: product.price.toString(),
         stock: product.stock.toString(),

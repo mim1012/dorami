@@ -41,6 +41,11 @@ interface PopularProductsResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
+interface StoreProductsResponse {
+  data: ProductResponse[];
+  meta: { total: number; page: number; totalPages: number };
+}
+
 interface LiveDealsResponse {
   products: ProductResponse[];
   streamTitle: string;
@@ -48,10 +53,15 @@ interface LiveDealsResponse {
 }
 
 export async function getMainPageData(): Promise<MainPageData> {
-  const [activeRes, upcomingRes, popularRes, liveDealsRes] = await Promise.all([
+  const [activeRes, upcomingRes, popularRes, storeRes, liveDealsRes] = await Promise.all([
     apiClient.get<ActiveStreamResponse[]>('/streaming/active'),
     apiClient.get<UpcomingStreamResponse[]>('/streaming/upcoming', { params: { limit: 4 } }),
     apiClient.get<PopularProductsResponse>('/products/popular', { params: { limit: 8 } }),
+    apiClient
+      .get<StoreProductsResponse>('/products/store', { params: { page: 1, limit: 8 } })
+      .catch(() => ({
+        data: { data: [], meta: { total: 0, page: 1, totalPages: 0 } } as StoreProductsResponse,
+      })),
     apiClient
       .get<LiveDealsResponse | null>('/products/live-deals')
       .catch(() => ({ data: null as LiveDealsResponse | null })),
@@ -63,6 +73,9 @@ export async function getMainPageData(): Promise<MainPageData> {
 
   // popular products: apiClient unwraps outer envelope → res.data = { data: [...], meta: {...} }
   const popularList = popularRes.data?.data ?? [];
+
+  // store products: 지난 상품 (OFFLINE 라이브)
+  const storeList = storeRes.data?.data ?? [];
 
   return {
     currentLive: currentLive
@@ -104,6 +117,17 @@ export async function getMainPageData(): Promise<MainPageData> {
       imageUrl: p.imageUrl ?? null,
       isNew: p.isNew ?? false,
       soldCount: p.soldCount ?? 0,
+    })),
+    storeProducts: storeList.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      originalPrice: p.originalPrice ?? null,
+      discountRate: p.discountRate ?? null,
+      imageUrl: p.imageUrl ?? null,
+      isNew: p.isNew ?? false,
+      stock: p.stock ?? 0,
+      status: p.status,
     })),
   };
 }
