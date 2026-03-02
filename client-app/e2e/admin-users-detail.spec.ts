@@ -78,7 +78,7 @@ test.describe('Admin Users List Filters', () => {
     await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
-    const searchInput = page.getByPlaceholder('이름, 이메일 또는 인스타그램 ID로 검색...');
+    const searchInput = page.getByPlaceholder('인스타그램 ID 또는 카카오톡 이메일 검색...');
     await searchInput.fill('test');
 
     // debounce 대기
