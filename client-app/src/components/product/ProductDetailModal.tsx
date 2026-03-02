@@ -95,17 +95,19 @@ export default function ProductDetailModal({
         </div>
 
         {/* Product Image Gallery */}
-        <ImageGallery
-          images={
-            product.images && product.images.length > 0
-              ? product.images
-              : product.imageUrl
-                ? [product.imageUrl]
-                : []
-          }
-          productName={product.name}
-          aspectRatio="aspect-auto"
-        />
+        <div className="max-h-64">
+          <ImageGallery
+            images={
+              product.images && product.images.length > 0
+                ? product.images
+                : product.imageUrl
+                  ? [product.imageUrl]
+                  : []
+            }
+            productName={product.name}
+            aspectRatio="aspect-auto"
+          />
+        </div>
 
         {/* Product Info */}
         <div className="p-6 space-y-6">
