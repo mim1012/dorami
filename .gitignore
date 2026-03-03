@@ -88,3 +88,4 @@ temp/
 tmp/
 *.tmp
 nul
+backend/uploads/
