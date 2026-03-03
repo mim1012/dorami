@@ -257,23 +257,23 @@ jobs:
             echo "=== SSL Certificate Setup Skipped for Staging ==="
             echo "⚠️  Staging environment runs on HTTP only. For production, configure domain-based HTTPS."
 
-            echo "=== Resolving any failed migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
-
-            echo "=== Running database migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
-
             echo "=== Restarting services ==="
-            # Force cleanup old containers AND volumes/networks (critical for port binding)
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml down -v --remove-orphans || true
+            # Stop containers WITHOUT removing volumes (preserves database)
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml down --remove-orphans || true
             sleep 2
 
             # Kill anything remaining on port 8080
             sudo fuser -k 8080/tcp 2>/dev/null || true
             sleep 1
 
-            # Start fresh
+            # Start services
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d
+
+            echo "=== Resolving any failed migrations ==="
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
+
+            echo "=== Running database migrations ==="
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
 
             echo "=== Cleaning up old images ==="
             docker image prune -af --filter "until=1h"
