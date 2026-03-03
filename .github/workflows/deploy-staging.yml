@@ -237,6 +237,9 @@ jobs:
               export ADMIN_EMAILS=${ADMIN_EMAILS}
             fi
 
+            echo "=== Fixing staging environment variables ==="
+            bash scripts/fix-staging-env.sh
+
             echo "Final IMAGE_TAG: ${IMAGE_TAG}"
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull || true
             echo "=== Verifying pulled staging image tags are immutable sha ==="
