@@ -552,6 +552,11 @@ jobs:
             POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
             POSTGRES_HOST="postgres"  # Container network alias
 
+            # CRITICAL FIX: Update .env.production with actual detected credentials
+            # so that docker-compose and backend use the correct user to connect
+            sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=${POSTGRES_USER}|" "${INFRA_DIR}/.env.production"
+            echo "INFO: Updated .env.production POSTGRES_USER=${POSTGRES_USER}"
+
             # Connect existing container to dorami-internal network with 'postgres' alias
             NETWORK=$(docker network ls --format '{{.Name}}' | grep 'dorami-internal' | head -1)
             if [ -n "${NETWORK}" ]; then
