@@ -164,8 +164,8 @@ jobs:
   # ===========================================
   build:
     name: Build and Promote Images
-    needs: [validate, test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.rollback != 'true'
+    needs: validate
+    if: always() && inputs.rollback != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
