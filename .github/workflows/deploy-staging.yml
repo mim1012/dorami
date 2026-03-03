@@ -148,26 +148,30 @@ jobs:
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
             echo "=== Loading environment for staging compose ==="
-            # CRITICAL: Save IMAGE_TAG before any sourcing to prevent it from being overwritten
-            DEPLOYMENT_IMAGE_TAG="${IMAGE_TAG}"
-
-            if [ -f .env.staging ]; then
-              set -a
-              . ./.env.staging
-              set +a
-            fi
-
-            # CRITICAL: Restore IMAGE_TAG to deployment version (never from .env.staging)
-            export IMAGE_TAG="${DEPLOYMENT_IMAGE_TAG}"
-            echo "Restored IMAGE_TAG to deployment version: ${IMAGE_TAG}"
-
-            # Export other required variables
+            # CRITICAL: IMAGE_TAG must come from deployment, never from .env.staging
+            echo "Using deployment IMAGE_TAG: ${IMAGE_TAG}"
+            export IMAGE_TAG=${IMAGE_TAG}
             export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
             export STAGING_HOST=${HOST}
             export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
             export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
             export ADMIN_EMAILS=${ADMIN_EMAILS}
 
+            if [ -f .env.staging ]; then
+              # Load .env.staging but PRESERVE deployment values by exporting them AFTER
+              set -a
+              . ./.env.staging
+              set +a
+              # FINAL RESTORATION: Ensure deployment values override file values
+              export IMAGE_TAG=${IMAGE_TAG}
+              export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
+              export STAGING_HOST=${HOST}
+              export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+              export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+              export ADMIN_EMAILS=${ADMIN_EMAILS}
+            fi
+
+            echo "Final IMAGE_TAG: ${IMAGE_TAG}"
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull
             echo "=== Verifying pulled staging image tags are immutable sha ==="
             BACKEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}"
