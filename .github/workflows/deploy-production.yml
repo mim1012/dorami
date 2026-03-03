@@ -160,11 +160,23 @@ jobs:
           fi
 
   # ===========================================
+  # Build and Push Docker Images
+  # ===========================================
+  build-images:
+    name: Build and Push Images
+    needs: [validate, test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.rollback != 'true'
+    uses: ./.github/workflows/build-images.yml
+    permissions:
+      contents: read
+      packages: write
+
+  # ===========================================
   # Promote Existing Image (reuse staging-tested image)
   # ===========================================
   build:
     name: Promote Image
-    needs: [validate, test]
+    needs: [validate, test, build-images]
     if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped') && inputs.rollback != 'true'
     runs-on: ubuntu-latest
     permissions:
