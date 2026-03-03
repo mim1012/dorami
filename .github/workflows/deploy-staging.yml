@@ -122,10 +122,17 @@ jobs:
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
         run: |
+          echo "Deploying with IMAGE_TAG: ${IMAGE_TAG}"
           ssh $USER@$HOST << ENDSSH
-            set -e
+            set -ex
+
+            echo "SSH connection successful"
+            echo "PWD: \$(pwd)"
+            echo "Current user: \$(whoami)"
 
             cd /opt/dorami
+            echo "Changed to /opt/dorami"
+            ls -la /opt/dorami | head -10
 
             echo "=== Pulling latest code ==="
             git fetch origin ${{ github.ref_name }}
