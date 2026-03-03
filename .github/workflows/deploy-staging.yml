@@ -196,7 +196,10 @@ jobs:
 
             # Clean up uploads directory to handle permission issues from previous Docker runs
             # The uploads directory is managed by Docker and not tracked in git anymore
-            rm -rf /opt/dorami/backend/uploads 2>/dev/null || true
+            echo "=== Checking uploads directory state before cleanup ==="
+            ls -ld /opt/dorami/backend/uploads 2>&1 || echo "uploads directory doesn't exist yet"
+            echo "=== Attempting to remove uploads directory ==="
+            rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Cleaning up old images ==="
