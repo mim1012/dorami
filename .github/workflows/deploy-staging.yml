@@ -194,6 +194,8 @@ jobs:
               echo "   This is OK for staging; production should enforce commit parity"
             fi
 
+            # Clean up uploads directory before git reset (fixes permission issues with .gitkeep)
+            rm -rf /opt/dorami/backend/uploads/.gitkeep 2>/dev/null || true
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Cleaning up old images ==="
