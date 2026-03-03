@@ -104,12 +104,17 @@ function ProductCard({
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left cursor-pointer"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-        <ImageWithFallback
-          key={`${product.id}-${currentImageIndex}`}
-          src={imageList[currentImageIndex]}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 transition-opacity duration-300 opacity-100"
-        />
+        {/* Pro method: Overlay all images, fade between them */}
+        {imageList.map((src, idx) => (
+          <ImageWithFallback
+            key={`${product.id}-img-${idx}`}
+            src={src}
+            alt={`${product.name} - image ${idx + 1}`}
+            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
+              idx === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+            }`}
+          />
+        ))}
 
         {/* Discount badge */}
         <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
