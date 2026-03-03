@@ -98,20 +98,24 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       - name: Validate image tag format
+        id: image_tag
         env:
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          BUILD_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
+          # Use GITHUB_SHA as fallback if build output not available
+          IMAGE_TAG="${BUILD_IMAGE_TAG:-sha-${GITHUB_SHA}}"
           if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
             echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
             exit 1
           fi
           echo "Validated IMAGE_TAG: ${IMAGE_TAG}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
       - name: Deploy via SSH
         env:
           HOST: ${{ secrets.STAGING_HOST }}
           USER: ${{ secrets.STAGING_USER }}
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          IMAGE_TAG: ${{ steps.image_tag.outputs.image_tag }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
