@@ -54,6 +54,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
   afterInit(_server: Server) {
     this.logger.log('Chat Gateway initialized');
+
+    // Periodic cleanup of messageTimes to prevent memory leaks
+    // Every 1 minute, remove timestamps older than the rate limit window
+    setInterval(() => {
+      const now = Date.now();
+      let cleanedCount = 0;
+
+      for (const [userId, times] of this.messageTimes.entries()) {
+        const recentTimes = times.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+        if (recentTimes.length > 0) {
+          this.messageTimes.set(userId, recentTimes);
+        } else {
+          this.messageTimes.delete(userId);
+          cleanedCount++;
+        }
+      }
+
+      if (cleanedCount > 0) {
+        this.logger.debug(`Chat rate limit cleanup: removed ${cleanedCount} expired user entries`);
+      }
+    }, 60000); // Run every 60 seconds
   }
 
   async handleConnection(client: Socket) {

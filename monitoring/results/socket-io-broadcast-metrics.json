@@ -1,0 +1,5614 @@
+{
+  "totalConnections": 100,
+  "successfulConnections": 0,
+  "failedConnections": 1100,
+  "messagesEmitted": 0,
+  "messagesReceived": 0,
+  "acksReceived": 0,
+  "messagesByReceiver": {
+    "user-306cf99c": 0,
+    "user-d873850f": 0,
+    "user-1e0e3396": 0,
+    "user-dbfbb1ec": 0,
+    "user-398ac142": 0,
+    "user-cba47867": 0,
+    "user-16d67506": 0,
+    "user-0a8ae7c2": 0,
+    "user-39a8fd10": 0,
+    "user-958538fb": 0,
+    "user-ae2a5696": 0,
+    "user-ba7ea81d": 0,
+    "user-3617b0c8": 0,
+    "user-a229e4a0": 0,
+    "user-ccfd1882": 0,
+    "user-bab208a7": 0,
+    "user-60f30ca6": 0,
+    "user-42f0111d": 0,
+    "user-e46d1798": 0,
+    "user-37bbc00e": 0,
+    "user-cb785207": 0,
+    "user-e2a42377": 0,
+    "user-3aeef377": 0,
+    "user-e344a6f3": 0,
+    "user-44faccd9": 0,
+    "user-a2c76340": 0,
+    "user-ecac8c87": 0,
+    "user-d97d9068": 0,
+    "user-cd467b2f": 0,
+    "user-7ea19d43": 0,
+    "user-76ca84c0": 0,
+    "user-77278d24": 0,
+    "user-ef47c9c4": 0,
+    "user-285e4233": 0,
+    "user-2a978dc6": 0,
+    "user-af664e54": 0,
+    "user-45ac0c1f": 0,
+    "user-36bcaafe": 0,
+    "user-8f1447a2": 0,
+    "user-afa90c62": 0,
+    "user-891ea22d": 0,
+    "user-95be1424": 0,
+    "user-0e666526": 0,
+    "user-83d4ceca": 0,
+    "user-f219f2de": 0,
+    "user-4302ffed": 0,
+    "user-a1ea1fad": 0,
+    "user-936c441b": 0,
+    "user-a4d2c790": 0,
+    "user-a6bae87d": 0,
+    "user-27676db1": 0,
+    "user-c1561671": 0,
+    "user-c17e29b3": 0,
+    "user-26d853cc": 0,
+    "user-6b31890d": 0,
+    "user-df1e653b": 0,
+    "user-1b5d73be": 0,
+    "user-2e8a9c2d": 0,
+    "user-8909ae9b": 0,
+    "user-2a5116b0": 0,
+    "user-c8cf2b41": 0,
+    "user-774b29fb": 0,
+    "user-4afdf86c": 0,
+    "user-2ba33d46": 0,
+    "user-3580d76b": 0,
+    "user-595a4202": 0,
+    "user-0dc6d76e": 0,
+    "user-becf70ad": 0,
+    "user-274e9875": 0,
+    "user-c37def98": 0,
+    "user-7df1d63e": 0,
+    "user-f914d917": 0,
+    "user-26e39299": 0,
+    "user-84f26ef5": 0,
+    "user-f133670a": 0,
+    "user-aedd2512": 0,
+    "user-1c5fcbcc": 0,
+    "user-bac16447": 0,
+    "user-5ab970e5": 0,
+    "user-ab56fb89": 0,
+    "user-b31bb095": 0,
+    "user-c486c6ec": 0,
+    "user-2439f9b7": 0,
+    "user-b564ec12": 0,
+    "user-a8caeaf9": 0,
+    "user-1e28e4cd": 0,
+    "user-fb421954": 0,
+    "user-5b2a48ab": 0,
+    "user-1cad7117": 0,
+    "user-a00f36a1": 0,
+    "user-945a3a4a": 0,
+    "user-e5cccd20": 0,
+    "user-285726da": 0,
+    "user-d5cccfaa": 0,
+    "user-c82759e6": 0,
+    "user-c4943301": 0,
+    "user-1287de52": 0,
+    "user-3cf6bcd7": 0,
+    "user-80f06ff4": 0,
+    "user-c8984fdb": 0
+  },
+  "errors": [
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.727Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.836Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.837Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.838Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.838Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.839Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.840Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.844Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.845Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.847Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.849Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.955Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.956Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.957Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.957Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.958Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.959Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.960Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.960Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.966Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:13.967Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.074Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.075Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.076Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.077Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.078Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.078Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.079Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.080Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.084Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.086Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.199Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.199Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.200Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.201Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.201Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.202Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.205Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.205Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.208Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.214Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.309Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.313Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.314Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.314Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.314Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.316Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.318Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.319Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.322Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.329Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.436Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.437Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.437Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.439Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.439Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.440Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.440Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.443Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.447Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.449Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.450Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.560Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.561Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.562Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.562Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.563Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.566Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.567Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.569Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.570Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.571Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.571Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.604Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.677Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.681Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.682Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.682Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.683Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.684Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.684Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.685Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.687Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.688Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.688Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.692Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.694Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.759Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.787Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.788Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.789Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.789Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.790Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.795Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.796Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.797Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.799Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.799Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.806Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.839Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.865Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.869Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.880Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.916Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.917Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.917Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.918Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.921Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.923Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.924Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.924Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.926Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.927Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.957Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:14.958Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.032Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.036Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.041Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.051Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.056Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.060Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.080Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.082Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.101Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.109Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.112Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.121Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.151Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.152Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.157Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.157Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.160Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.161Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.166Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.200Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.201Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.209Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.223Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.264Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.299Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.308Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.308Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.319Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.332Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.347Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.369Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.399Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.409Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.418Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.461Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.478Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.479Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.485Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.515Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.523Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.524Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.528Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.549Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.561Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.566Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.590Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.599Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.602Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.603Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.605Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.612Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.619Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.654Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.688Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.706Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.719Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.726Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.740Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.747Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.769Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.770Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.805Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.814Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.831Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.834Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.878Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:15.880Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.000Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.003Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.008Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.009Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.010Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.011Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.060Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.074Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.085Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.090Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.121Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.121Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.129Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.135Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.191Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.204Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.212Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.214Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.230Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.243Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.250Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.331Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.336Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.342Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.373Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.428Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.430Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.539Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.550Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.589Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.616Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.645Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.682Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.686Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.721Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.745Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.775Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.785Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.789Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.807Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.825Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.846Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.848Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.873Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.885Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.886Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.946Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:16.948Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.066Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.123Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.124Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.162Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.195Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.196Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.197Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.199Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.240Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.246Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.270Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.274Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.303Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.320Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.324Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.361Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.363Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.366Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.371Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.380Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.398Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.401Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.409Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.410Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.476Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.504Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.515Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.546Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.633Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.671Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.673Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.699Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.703Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.757Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.761Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.770Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.831Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.837Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:17.908Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.042Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.053Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.057Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.100Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.181Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.223Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.232Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.250Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.258Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.291Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.360Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.365Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.376Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.411Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.471Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.500Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.525Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.530Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.530Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.586Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.637Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.717Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.848Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.852Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.855Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.855Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:18.896Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.002Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.033Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.111Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.147Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.162Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.276Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.300Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.426Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.531Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.566Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.615Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.774Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.826Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.951Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.962Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:19.974Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.010Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.034Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.172Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.364Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.399Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.400Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.430Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.437Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.534Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.566Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.592Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.619Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.667Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.739Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.743Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.790Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.816Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.859Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.897Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.899Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:20.908Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.003Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.005Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.049Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.211Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.217Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.246Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.270Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.302Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.328Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.418Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.427Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.430Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.480Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.502Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.532Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.553Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.590Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.591Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.654Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.665Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.686Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.702Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.716Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.729Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.741Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.747Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.793Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.793Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.830Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.867Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.893Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.922Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.945Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:21.956Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.017Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.173Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.190Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.201Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.206Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.301Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.406Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.455Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.456Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.458Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.461Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.496Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.498Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.555Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.567Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.577Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.609Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.611Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.649Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.717Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.744Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.754Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:22.894Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.122Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.151Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.207Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.217Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.277Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.405Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.426Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.533Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.546Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.638Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:23.900Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.056Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.163Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.334Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.416Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.572Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.610Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.671Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.809Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.826Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.876Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:24.990Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.013Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.017Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.058Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.090Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.417Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.449Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.449Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.488Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.584Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.609Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.647Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.671Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.707Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.792Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.799Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.838Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.865Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.899Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.939Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.939Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:25.949Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.052Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.058Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.095Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.257Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.264Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.265Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.288Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.314Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.342Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.366Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.464Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.474Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.475Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.539Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.553Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.588Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.601Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.640Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.699Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.709Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.726Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.740Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.761Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.775Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.781Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.795Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.833Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.835Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.865Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.912Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.935Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.960Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.989Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:26.996Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.003Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.079Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.223Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.233Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.240Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.243Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.342Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.456Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.491Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.494Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.495Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.505Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.542Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.611Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.625Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.626Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.650Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.653Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.685Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.768Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.782Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.794Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:27.939Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.166Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.189Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.255Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.258Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.322Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.445Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.471Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.582Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.585Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.675Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:28.944Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.096Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.201Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.372Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.462Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.623Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.651Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.715Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.856Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.865Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:29.916Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.027Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.051Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.053Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.109Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.129Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.462Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.486Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.488Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.540Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.632Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.644Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.697Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.703Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.754Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.835Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.846Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.881Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.905Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.942Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.982Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.983Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:30.994Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.101Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.110Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.137Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.299Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.302Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.302Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.331Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.356Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.374Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.409Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.502Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.509Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.519Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.593Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.602Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.627Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.644Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.687Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.748Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.755Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.764Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.777Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.800Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.813Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.822Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.834Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.872Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.874Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.908Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.963Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:31.976Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.005Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.029Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.036Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.039Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.115Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.265Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.277Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.279Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.281Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.404Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.500Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.532Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.533Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.535Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.545Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.583Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.658Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.666Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.675Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.694Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.695Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.731Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.815Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.826Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.833Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:32.982Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.216Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.227Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.292Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.299Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.370Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.497Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.511Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.622Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.626Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.715Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:33.994Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.141Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.250Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.414Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.515Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.678Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.687Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.773Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.907Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.911Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:34.968Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.085Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.095Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.095Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.148Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.168Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.508Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.535Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.536Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.584Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.684Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.699Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.741Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.751Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.800Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.881Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.890Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.920Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.950Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:35.986Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.021Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.025Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.040Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.152Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.163Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.193Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.342Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.346Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.349Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.389Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.407Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.418Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.458Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.555Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.558Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.564Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.644Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.648Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.666Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.680Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.737Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.790Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.796Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.807Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.826Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.839Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.852Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.867Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.872Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.908Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.916Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:36.943Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.017Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.020Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.045Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.072Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.075Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.083Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.155Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.310Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.316Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.324Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.329Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.443Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.545Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.568Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.576Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.577Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.586Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.625Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.715Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.716Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.721Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.734Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.737Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.773Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.862Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.866Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:37.874Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.032Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.262Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.270Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.338Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.341Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.420Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.543Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.558Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.662Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.673Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:38.762Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.038Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.188Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.296Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.470Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.558Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.730Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.731Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.821Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.942Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:39.950Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.004Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.131Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.135Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.139Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.200Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.203Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.553Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.585Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.591Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.619Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.740Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.748Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.788Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.800Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.849Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.930Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.936Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.969Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:40.993Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.031Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.058Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.067Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.081Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.190Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.209Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.237Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.394Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.396Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.398Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.445Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.457Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.473Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.499Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.605Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.611Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.613Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.683Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.687Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.708Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.721Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.774Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.837Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.845Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.855Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.870Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.883Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.904Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.910Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.914Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.953Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.964Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:41.985Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.074Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.079Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.088Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.114Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.118Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.127Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.214Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.365Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.366Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.372Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.384Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.492Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.589Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.616Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.622Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.625Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.634Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.661Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.765Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.768Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.769Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.777Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.778Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.821Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.905Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.922Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:42.923Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.073Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.309Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.314Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.378Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.380Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.473Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.592Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.607Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.716Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.727Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:43.817Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.081Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.234Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.348Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.508Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.605Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.791Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.793Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.881Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.986Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:44.996Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.039Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.181Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.183Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.188Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.252Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.253Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.602Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.624Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.630Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.661Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.785Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.788Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.829Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.835Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.897Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.965Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:45.988Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.012Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.039Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.079Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.116Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.120Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.130Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.239Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.263Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.277Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.441Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.447Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.454Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.480Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.502Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.516Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.549Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.647Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.657Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.662Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.719Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.740Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.746Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.761Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.813Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.880Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.892Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.910Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.920Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.926Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.952Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.955Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.957Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:46.992Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.011Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.032Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.130Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.133Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.151Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.164Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.171Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.172Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.259Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.415Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.415Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.419Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.424Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.537Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.652Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.661Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.665Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.668Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.676Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.704Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.814Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.816Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.823Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.823Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.826Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.864Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.951Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.960Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:47.966Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.119Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.348Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.352Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.431Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.439Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.522Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.630Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.643Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.751Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.764Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:48.862Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.126Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.294Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.396Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.543Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.660Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.844Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.856Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:49.915Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.030Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.040Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.072Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.226Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.230Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.233Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.295Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.297Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.653Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.664Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.677Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.702Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.835Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.837Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.876Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.883Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:50.947Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.005Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.047Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.056Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.093Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.113Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.159Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.162Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.168Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.287Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.312Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.329Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.500Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.506Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.506Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.525Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.537Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.550Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.585Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.697Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.699Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.714Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.778Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.786Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.791Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.806Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.863Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.929Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.934Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.953Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.962Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.963Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:51.994Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.004Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.005Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.032Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.056Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.071Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.178Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.181Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.192Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.212Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.225Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.225Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.311Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.465Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.465Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.467Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.468Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.574Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.703Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.703Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.707Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.713Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.718Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.742Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.872Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.874Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.878Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.881Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.883Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.904Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.995Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:52.998Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.010Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.169Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.392Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.397Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.474Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.480Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.574Z"
+    },
+    {
+      "userId": "user-d873850f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.674Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.686Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.800Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.815Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:53.908Z"
+    },
+    {
+      "userId": "user-a4d2c790",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.162Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.336Z"
+    },
+    {
+      "userId": "user-e46d1798",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.449Z"
+    },
+    {
+      "userId": "user-77278d24",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.595Z"
+    },
+    {
+      "userId": "user-84f26ef5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.706Z"
+    },
+    {
+      "userId": "user-891ea22d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.885Z"
+    },
+    {
+      "userId": "user-44faccd9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.900Z"
+    },
+    {
+      "userId": "user-285726da",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:54.963Z"
+    },
+    {
+      "userId": "user-45ac0c1f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.069Z"
+    },
+    {
+      "userId": "user-bab208a7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.087Z"
+    },
+    {
+      "userId": "user-ccfd1882",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.109Z"
+    },
+    {
+      "userId": "user-1e0e3396",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.279Z"
+    },
+    {
+      "userId": "user-774b29fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.280Z"
+    },
+    {
+      "userId": "user-8909ae9b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.280Z"
+    },
+    {
+      "userId": "user-274e9875",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.338Z"
+    },
+    {
+      "userId": "user-7df1d63e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.354Z"
+    },
+    {
+      "userId": "user-83d4ceca",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.702Z"
+    },
+    {
+      "userId": "user-ba7ea81d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.707Z"
+    },
+    {
+      "userId": "user-4302ffed",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.715Z"
+    },
+    {
+      "userId": "user-bac16447",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.741Z"
+    },
+    {
+      "userId": "user-2e8a9c2d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.888Z"
+    },
+    {
+      "userId": "user-6b31890d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.892Z"
+    },
+    {
+      "userId": "user-2439f9b7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.915Z"
+    },
+    {
+      "userId": "user-f914d917",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.925Z"
+    },
+    {
+      "userId": "user-60f30ca6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:55.995Z"
+    },
+    {
+      "userId": "user-f219f2de",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.058Z"
+    },
+    {
+      "userId": "user-4afdf86c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.101Z"
+    },
+    {
+      "userId": "user-398ac142",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.103Z"
+    },
+    {
+      "userId": "user-dbfbb1ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.141Z"
+    },
+    {
+      "userId": "user-1c5fcbcc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.155Z"
+    },
+    {
+      "userId": "user-af664e54",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.208Z"
+    },
+    {
+      "userId": "user-c37def98",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.210Z"
+    },
+    {
+      "userId": "user-c17e29b3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.215Z"
+    },
+    {
+      "userId": "user-aedd2512",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.337Z"
+    },
+    {
+      "userId": "user-1287de52",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.360Z"
+    },
+    {
+      "userId": "user-ae2a5696",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.379Z"
+    },
+    {
+      "userId": "user-c8cf2b41",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.542Z"
+    },
+    {
+      "userId": "user-26e39299",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.553Z"
+    },
+    {
+      "userId": "user-cba47867",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.556Z"
+    },
+    {
+      "userId": "user-42f0111d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.577Z"
+    },
+    {
+      "userId": "user-c1561671",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.604Z"
+    },
+    {
+      "userId": "user-2a978dc6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.605Z"
+    },
+    {
+      "userId": "user-958538fb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.635Z"
+    },
+    {
+      "userId": "user-c82759e6",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.748Z"
+    },
+    {
+      "userId": "user-0dc6d76e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.750Z"
+    },
+    {
+      "userId": "user-1b5d73be",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.759Z"
+    },
+    {
+      "userId": "user-76ca84c0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.817Z"
+    },
+    {
+      "userId": "user-5b2a48ab",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.838Z"
+    },
+    {
+      "userId": "user-3aeef377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.841Z"
+    },
+    {
+      "userId": "user-16d67506",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.853Z"
+    },
+    {
+      "userId": "user-cd467b2f",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.912Z"
+    },
+    {
+      "userId": "user-a1ea1fad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.971Z"
+    },
+    {
+      "userId": "user-3cf6bcd7",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.977Z"
+    },
+    {
+      "userId": "user-df1e653b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:56.998Z"
+    },
+    {
+      "userId": "user-37bbc00e",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.003Z"
+    },
+    {
+      "userId": "user-a229e4a0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.034Z"
+    },
+    {
+      "userId": "user-1e28e4cd",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.048Z"
+    },
+    {
+      "userId": "user-e344a6f3",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.048Z"
+    },
+    {
+      "userId": "user-39a8fd10",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.079Z"
+    },
+    {
+      "userId": "user-8f1447a2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.109Z"
+    },
+    {
+      "userId": "user-26d853cc",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.114Z"
+    },
+    {
+      "userId": "user-0e666526",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.226Z"
+    },
+    {
+      "userId": "user-c4943301",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.230Z"
+    },
+    {
+      "userId": "user-3617b0c8",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.236Z"
+    },
+    {
+      "userId": "user-3580d76b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.259Z"
+    },
+    {
+      "userId": "user-a6bae87d",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.267Z"
+    },
+    {
+      "userId": "user-fb421954",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.276Z"
+    },
+    {
+      "userId": "user-e2a42377",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.376Z"
+    },
+    {
+      "userId": "user-d97d9068",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.503Z"
+    },
+    {
+      "userId": "user-7ea19d43",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.510Z"
+    },
+    {
+      "userId": "user-ecac8c87",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.511Z"
+    },
+    {
+      "userId": "user-595a4202",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.513Z"
+    },
+    {
+      "userId": "user-0a8ae7c2",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.629Z"
+    },
+    {
+      "userId": "user-afa90c62",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.764Z"
+    },
+    {
+      "userId": "user-5ab970e5",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.774Z"
+    },
+    {
+      "userId": "user-c8984fdb",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.775Z"
+    },
+    {
+      "userId": "user-becf70ad",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.775Z"
+    },
+    {
+      "userId": "user-a00f36a1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.785Z"
+    },
+    {
+      "userId": "user-a2c76340",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.803Z"
+    },
+    {
+      "userId": "user-936c441b",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.934Z"
+    },
+    {
+      "userId": "user-95be1424",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.938Z"
+    },
+    {
+      "userId": "user-a8caeaf9",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.944Z"
+    },
+    {
+      "userId": "user-d5cccfaa",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.944Z"
+    },
+    {
+      "userId": "user-ef47c9c4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.945Z"
+    },
+    {
+      "userId": "user-b564ec12",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:57.956Z"
+    },
+    {
+      "userId": "user-27676db1",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.044Z"
+    },
+    {
+      "userId": "user-cb785207",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.049Z"
+    },
+    {
+      "userId": "user-e5cccd20",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.060Z"
+    },
+    {
+      "userId": "user-306cf99c",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.210Z"
+    },
+    {
+      "userId": "user-285e4233",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.436Z"
+    },
+    {
+      "userId": "user-80f06ff4",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.440Z"
+    },
+    {
+      "userId": "user-36bcaafe",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.515Z"
+    },
+    {
+      "userId": "user-f133670a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.525Z"
+    },
+    {
+      "userId": "user-ab56fb89",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.618Z"
+    },
+    {
+      "userId": "user-2a5116b0",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.731Z"
+    },
+    {
+      "userId": "user-2ba33d46",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.858Z"
+    },
+    {
+      "userId": "user-945a3a4a",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:58.868Z"
+    },
+    {
+      "userId": "user-c486c6ec",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:59.008Z"
+    },
+    {
+      "userId": "user-1cad7117",
+      "error": "websocket error",
+      "timestamp": "2026-03-02T20:51:59.390Z"
+    },
+    {
+      "userId": "user-b31bb095",
+      "error": "timeout",
+      "timestamp": "2026-03-02T20:52:16.971Z"
+    }
+  ],
+  "startTime": 1772484673596,
+  "endTime": 1772503284739
+}
