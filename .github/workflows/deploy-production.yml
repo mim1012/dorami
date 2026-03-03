@@ -401,6 +401,8 @@ jobs:
           POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
           POSTGRES_DB=dorami_production
 
+          REDIS_HOST=redis
+          REDIS_PORT=6379
           REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
 
           JWT_SECRET=${PROD_JWT_SECRET}
@@ -416,6 +418,7 @@ jobs:
           RTMP_SERVER_URL=rtmp://www.doremi-live.com:1935/live
           RTMP_INTERNAL_URL=rtmp://srs:1935/live
           HLS_SERVER_URL=https://www.doremi-live.com/hls
+          SRS_API_URL=http://srs:1985
 
           NEXT_PUBLIC_API_URL=https://www.doremi-live.com/api
           NEXT_PUBLIC_WS_URL=https://www.doremi-live.com
