@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ssh -i /c/Users/PC_1M/.ssh/staging-key ubuntu@staging.doremi-live.com \\\"cd /opt/dorami && docker exec dorami-backend-1 npx ts-node -O '{\\\\\\\"module\\\\\\\":\\\\\\\"commonjs\\\\\\\"}' prisma/seed.ts 2>&...",
-  "error": "Exit code 255\nubuntu@staging.doremi-live.com: Permission denied (publickey).\r\n\nubuntu@staging.doremi-live.com: Permission denied (publickey).",
-  "timestamp": "2026-03-03T08:59:18.266Z",
+  "tool_input_preview": "{\"command\":\"cd D:\\\\Project\\\\dorami && npm run type-check:all 2>&1 | head -50\",\"description\":\"Run TypeScript type checking on all workspaces\"}",
+  "error": "Exit code 1\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory\n\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory",
+  "timestamp": "2026-03-03T15:22:33.591Z",
   "retry_count": 1
 }
