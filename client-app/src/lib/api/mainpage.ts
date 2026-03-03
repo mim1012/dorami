@@ -59,7 +59,14 @@ export async function getMainPageData(): Promise<MainPageData> {
   const [activeRes, upcomingRes, popularRes, storeRes, liveDealsRes] = await Promise.all([
     apiClient.get<ActiveStreamResponse[]>('/streaming/active'),
     apiClient.get<UpcomingStreamResponse[]>('/streaming/upcoming', { params: { limit: 4 } }),
-    apiClient.get<PopularProductsResponse>('/products/popular', { params: { limit: 8 } }),
+    apiClient
+      .get<PopularProductsResponse>('/products/popular', { params: { limit: 8 } })
+      .catch(() => ({
+        data: {
+          data: [],
+          meta: { total: 0, page: 1, limit: 8, totalPages: 0 },
+        } as PopularProductsResponse,
+      })),
     apiClient
       .get<StoreProductsResponse>('/products/store', { params: { page: 1, limit: 8 } })
       .catch(() => ({
