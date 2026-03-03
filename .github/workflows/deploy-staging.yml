@@ -145,6 +145,17 @@ jobs:
               echo "⚠️  These changes will be applied. Ensure compatibility with deployed services."
             fi
 
+            echo "=== Verifying image ↔ code commit parity ==="
+            CURRENT_COMMIT=$(git rev-parse HEAD)
+            IMAGE_COMMIT="${GITHUB_SHA}"
+            if [ "$CURRENT_COMMIT" != "$IMAGE_COMMIT" ]; then
+              echo "⚠️  NOTICE: Code commit ≠ Image commit (expected for staging)"
+              echo "   Code: $CURRENT_COMMIT"
+              echo "   Image: $IMAGE_COMMIT"
+              echo "   Reason: git reset --hard fetches latest, but Docker image is immutable"
+              echo "   This is OK for staging; production should enforce commit parity"
+            fi
+
             git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Cleaning up old images ==="
