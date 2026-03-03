@@ -533,23 +533,23 @@ jobs:
 
           if [ -n "${EXISTING_POSTGRES}" ]; then
             echo "=== Reusing existing postgres container: ${EXISTING_POSTGRES} ==="
-            # For existing containers, detect their actual credentials (don't override)
-            # The container was already initialized with specific credentials in previous deployment
+            # For existing containers, detect their actual credentials (don't modify .env.production!)
+            # CRITICAL: Do NOT modify .env.production — this triggers container recreation which breaks initialization
 
             # Try to detect if dorami_prod user exists; if not, use legacy 'postgres' user
             if docker exec "${EXISTING_POSTGRES}" psql -U dorami_prod -d dorami_production -c "SELECT 1" >/dev/null 2>&1; then
               # Modern credentials exist - use them
               echo "INFO: Detected modern credentials (dorami_prod)"
-              POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+              POSTGRES_USER="dorami_prod"
+              POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             else
-              # Legacy credentials - revert to postgres/postgres (legacy container or migration in progress)
-              echo "INFO: Detected legacy or unknown credentials - falling back to postgres user"
-              sed -i 's/^POSTGRES_USER=.*/POSTGRES_USER=postgres/'              "${INFRA_DIR}/.env.production"
-              sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/'      "${INFRA_DIR}/.env.production"
-              sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=live_commerce_production/'  "${INFRA_DIR}/.env.production"
+              # Legacy credentials - use 'postgres' user from the existing container
+              echo "INFO: Detected legacy or unknown credentials - using postgres user from existing container"
               POSTGRES_USER="postgres"
+              POSTGRES_PASSWORD="postgres"
             fi
             POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
+            POSTGRES_HOST="postgres"  # Container network alias
 
             # Connect existing container to dorami-internal network with 'postgres' alias
             NETWORK=$(docker network ls --format '{{.Name}}' | grep 'dorami-internal' | head -1)
@@ -563,6 +563,8 @@ jobs:
             $COMPOSE_CMD up -d --no-deps postgres
             POSTGRES_CONTAINER="dorami-postgres-prod"
             POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+            POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+            POSTGRES_HOST="postgres"  # Container network alias
           fi
 
           # 6. Wait for PostgreSQL
