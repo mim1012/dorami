@@ -524,22 +524,31 @@ jobs:
           $COMPOSE_CMD up -d --no-deps redis
 
           # 5b. Handle postgres: reuse existing or start fresh
-          if docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
-            echo "=== Reusing existing live-commerce-postgres (no data migration needed) ==="
-            # Override .env.production DB credentials with legacy values
-            sed -i 's/^POSTGRES_USER=.*/POSTGRES_USER=postgres/'              "${INFRA_DIR}/.env.production"
-            sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/'      "${INFRA_DIR}/.env.production"
-            sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=live_commerce_production/'  "${INFRA_DIR}/.env.production"
+          EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(live-commerce-postgres|dorami-postgres-prod)$' | head -1)
+
+          if [ -n "${EXISTING_POSTGRES}" ]; then
+            echo "=== Reusing existing postgres container: ${EXISTING_POSTGRES} ==="
+            # For existing containers, use their original credentials (don't override)
+            # The container was already initialized with specific credentials in previous deployment
+            if [ "${EXISTING_POSTGRES}" = "live-commerce-postgres" ]; then
+              # Legacy container - use legacy credentials
+              sed -i 's/^POSTGRES_USER=.*/POSTGRES_USER=postgres/'              "${INFRA_DIR}/.env.production"
+              sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/'      "${INFRA_DIR}/.env.production"
+              sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=live_commerce_production/'  "${INFRA_DIR}/.env.production"
+              POSTGRES_USER="postgres"
+            else
+              # Modern container (dorami-postgres-prod) - use .env credentials as-is (from GitHub Secrets)
+              POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+            fi
+            POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
+
             # Connect existing container to dorami-internal network with 'postgres' alias
-            # so backend can resolve hostname 'postgres' → live-commerce-postgres
             NETWORK=$(docker network ls --format '{{.Name}}' | grep 'dorami-internal' | head -1)
             if [ -n "${NETWORK}" ]; then
-              docker network connect --alias postgres "${NETWORK}" live-commerce-postgres 2>/dev/null \
-                && echo "INFO: live-commerce-postgres joined ${NETWORK} as 'postgres'" \
-                || echo "INFO: live-commerce-postgres already on ${NETWORK}"
+              docker network connect --alias postgres "${NETWORK}" "${POSTGRES_CONTAINER}" 2>/dev/null \
+                && echo "INFO: ${POSTGRES_CONTAINER} joined ${NETWORK} as 'postgres'" \
+                || echo "INFO: ${POSTGRES_CONTAINER} already on ${NETWORK}"
             fi
-            POSTGRES_CONTAINER="live-commerce-postgres"
-            POSTGRES_USER="postgres"
           else
             echo "=== Starting new postgres (fresh deployment) ==="
             $COMPOSE_CMD up -d --no-deps postgres
