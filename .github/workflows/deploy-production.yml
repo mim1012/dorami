@@ -583,7 +583,13 @@ jobs:
 
           # 6.5. Run database migrations (CRITICAL: must run before backend)
           echo "=== Running database migrations ==="
-          $COMPOSE_CMD run --rm -T backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
+          # Construct DATABASE_URL with detected credentials (override container's .env)
+          DB_HOST="${POSTGRES_HOST:-postgres}"
+          DB_PORT="${POSTGRES_PORT:-5432}"
+          DB_NAME="dorami_production"
+          DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
+          echo "INFO: Using DATABASE_URL with user: ${POSTGRES_USER}"
+          $COMPOSE_CMD run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
           echo "Migrations completed successfully"
 
           # 7. Start backend (force-recreate to use new image)
