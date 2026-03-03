@@ -17,7 +17,6 @@ import {
   UpdateProductDto,
   UpdateStockDto,
   ProductResponseDto,
-  ProductStatus,
   ReorderProductsDto,
   BulkUpdateStatusDto,
   BulkDeleteDto,
@@ -145,44 +144,6 @@ export class ProductsController {
       maxLimit: 50,
     });
     return this.productsService.getPopularProducts(pageNum, limitNum);
-  }
-
-  /**
-   * Epic 5 Story 5.2, 5.3: Get products by stream key (Public)
-   * Query params: streamKey (required), status (optional)
-   */
-  @Public()
-  @Get()
-  @ApiOperation({ summary: 'Get all products for a stream (Public)' })
-  @ApiQuery({
-    name: 'streamKey',
-    description: 'Stream key',
-    required: true,
-    example: 'abc123def456',
-  })
-  @ApiQuery({
-    name: 'status',
-    description: 'Filter by status',
-    enum: ProductStatus,
-    required: false,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Products retrieved successfully',
-    type: [ProductResponseDto],
-  })
-  @ApiResponse({ status: 400, description: 'Invalid query parameters' })
-  async findAll(
-    @Query('streamKey') streamKey?: string,
-    @Query('status') status?: ProductStatus,
-  ): Promise<ProductResponseDto[]> {
-    // If streamKey is provided, filter by stream
-    if (streamKey) {
-      return await this.productsService.findByStreamKey(streamKey, status);
-    }
-
-    // Otherwise return all products (legacy behavior)
-    return await this.productsService.findAll(status);
   }
 
   /**
