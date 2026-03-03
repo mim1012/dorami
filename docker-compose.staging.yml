@@ -144,7 +144,8 @@ services:
       - backend
     ports:
       - "1935:1935"
-      - "127.0.0.1:8080:8080"
+    # Port 8080 removed — HTTP-FLV/HLS traffic routes through nginx reverse proxy on internal network
+    # Client requests: nginx (80/443) → proxy to srs:8080 (internal)
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
     logging:
