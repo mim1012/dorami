@@ -46,6 +46,55 @@ function hasValidImageMagicBytes(buf: Buffer): boolean {
 @Controller('upload')
 @UseGuards(JwtAuthGuard) // All upload endpoints require authentication
 export class UploadController {
+  private validateAndProcessImage(file: Express.Multer.File, userId: string) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Second-pass: magic-bytes check on the saved file to prevent MIME spoofing
+    let buf: Buffer;
+    try {
+      buf = readFileSync(file.path);
+    } catch {
+      throw new BadRequestException('Failed to read uploaded file');
+    }
+
+    if (!hasValidImageMagicBytes(buf)) {
+      try {
+        unlinkSync(file.path);
+      } catch {
+        /* best-effort cleanup */
+      }
+      throw new BadRequestException('File content does not match an allowed image type');
+    }
+
+    // Rename to a safe extension derived from the validated magic bytes
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/jpg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+    };
+    const safeExt = mimeToExt[file.mimetype] ?? '.jpg';
+    const safeFilename = `${file.filename.replace('.bin', '')}${safeExt}`;
+    try {
+      renameSync(file.path, join(dirname(file.path), safeFilename));
+    } catch {
+      // If rename fails, still return the .bin path — not ideal but not a security risk
+    }
+
+    const imageUrl = `/uploads/${safeFilename}`;
+    return {
+      url: imageUrl,
+      filename: safeFilename,
+      size: file.size,
+      mimetype: file.mimetype,
+      uploadedBy: userId,
+      uploadedAt: new Date().toISOString(),
+    };
+  }
+
   @Post('image')
   @ApiOperation({
     summary: '이미지 업로드',
@@ -99,51 +148,65 @@ export class UploadController {
     }),
   )
   uploadImage(@CurrentUser('userId') userId: string, @UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
+    return this.validateAndProcessImage(file, userId);
+  }
 
-    // Second-pass: magic-bytes check on the saved file to prevent MIME spoofing
-    let buf: Buffer;
-    try {
-      buf = readFileSync(file.path);
-    } catch {
-      throw new BadRequestException('Failed to read uploaded file');
-    }
-
-    if (!hasValidImageMagicBytes(buf)) {
-      try {
-        unlinkSync(file.path);
-      } catch {
-        /* best-effort cleanup */
-      }
-      throw new BadRequestException('File content does not match an allowed image type');
-    }
-
-    // Rename to a safe extension derived from the validated magic bytes
-    const mimeToExt: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/jpg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-    };
-    const safeExt = mimeToExt[file.mimetype] ?? '.jpg';
-    const safeFilename = `${file.filename.replace('.bin', '')}${safeExt}`;
-    try {
-      renameSync(file.path, join(dirname(file.path), safeFilename));
-    } catch {
-      // If rename fails, still return the .bin path — not ideal but not a security risk
-    }
-
-    const imageUrl = `/uploads/${safeFilename}`;
-    return {
-      url: imageUrl,
-      filename: safeFilename,
-      size: file.size,
-      mimetype: file.mimetype,
-      uploadedBy: userId,
-      uploadedAt: new Date().toISOString(),
-    };
+  @Post('thumbnail')
+  @ApiOperation({
+    summary: '썸네일 업로드',
+    description: '라이브 방송 썸네일을 업로드합니다. JPEG, PNG, GIF, WebP 형식만 허용 (최대 5MB).',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: 201,
+    description: '업로드 성공',
+    schema: {
+      example: {
+        url: '/uploads/uuid.jpg',
+        filename: 'uuid.jpg',
+        size: 102400,
+        mimetype: 'image/jpeg',
+        uploadedBy: 'user-id',
+        uploadedAt: '2024-01-01T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: '잘못된 파일 형식 또는 파일 없음' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (_req, _file, callback) => {
+          // UUID filename prevents path traversal and enumeration
+          callback(null, `${randomUUID()}.bin`);
+        },
+      }),
+      fileFilter: (_req, file, callback) => {
+        // First-pass: MIME type check (client-supplied, strengthened below with magic bytes)
+        if (!/^image\/(jpg|jpeg|png|gif|webp)$/.exec(file.mimetype)) {
+          return callback(
+            new BadRequestException('Only image files (jpg, jpeg, png, gif, webp) are allowed'),
+            false,
+          );
+        }
+        // Extension check (empty extension allowed when MIME type already validated above)
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const ext = extname(file.originalname).toLowerCase();
+        if (ext !== '' && !allowedExtensions.includes(ext)) {
+          return callback(new BadRequestException('Invalid file extension'), false);
+        }
+        callback(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB
+      },
+    }),
+  )
+  uploadThumbnail(
+    @CurrentUser('userId') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.validateAndProcessImage(file, userId);
   }
 }
