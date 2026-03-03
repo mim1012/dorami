@@ -533,11 +533,10 @@ export class ProductsService {
           },
         },
       },
-      orderBy: {
-        liveStream: {
-          endedAt: 'desc',
-        },
-      },
+      orderBy: [
+        { liveStream: { endedAt: 'desc' } },
+        { createdAt: 'desc' }, // Fallback for products with no streamKey
+      ],
       skip,
       take: limit,
     });
@@ -614,37 +613,49 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where: { status: 'AVAILABLE' },
-        include: {
-          _count: {
-            select: {
-              orderItems: {
-                where: {
-                  order: {
-                    status: { in: ['PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED'] },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          orderItems: {
-            _count: 'desc',
-          },
-        },
-        skip,
-        take: limit,
-      }),
-      this.prisma.product.count({ where: { status: 'AVAILABLE' } }),
-    ]);
+    // Step 1: Get all products with their sale counts (raw SQL for performance)
+    const productsWithCounts = await this.prisma.$queryRaw<
+      Array<{ id: string; sold_count: bigint }>
+    >`
+      SELECT
+        p.id,
+        COUNT(DISTINCT oi.id) as sold_count
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.status = 'AVAILABLE'
+        AND (o.status IN ('PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED') OR o.id IS NULL)
+      GROUP BY p.id
+      ORDER BY sold_count DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `;
+
+    const productIds = productsWithCounts.map((p) => p.id);
+
+    // Step 2: Get full product details
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+
+    // Step 3: Merge counts back and maintain sort order
+    const productsWithSoldCount = productIds.map((id) => {
+      const product = products.find((p) => p.id === id)!;
+      const countData = productsWithCounts.find((p) => p.id === id)!;
+      return {
+        product,
+        soldCount: Number(countData.sold_count),
+      };
+    });
+
+    // Step 4: Get total count
+    const total = await this.prisma.product.count({
+      where: { status: 'AVAILABLE' },
+    });
 
     return {
-      data: products.map((p) => ({
-        ...this.mapToResponseDto(p),
-        soldCount: p._count.orderItems,
+      data: productsWithSoldCount.map(({ product, soldCount }) => ({
+        ...this.mapToResponseDto(product),
+        soldCount,
       })),
       meta: {
         total,
