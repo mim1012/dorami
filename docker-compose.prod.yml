@@ -74,7 +74,7 @@ services:
       NODE_ENV: production
       APP_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-warn}
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=20&pool_timeout=30
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       REDIS_PASSWORD: ${REDIS_PASSWORD}
