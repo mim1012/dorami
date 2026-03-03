@@ -603,18 +603,17 @@ jobs:
           DB_PORT="${POSTGRES_PORT:-5432}"
           DB_NAME="dorami_production"
 
-          # Try postgres superuser first (no password, trust auth on docker network)
+          # Use trust auth for both migrations and backend connections
+          # Trust auth works reliably on docker networks and doesn't require password management
           DATABASE_URL="postgresql://postgres@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer"
-          echo "INFO: Attempting migrations with postgres superuser (trust auth)"
+          echo "INFO: Attempting migrations with postgres superuser (trust auth on docker network)"
 
-          if eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy 2>&1 | grep -q "Authentication failed"; then
-            # Fall back to dorami_prod with password from env
-            echo "INFO: Trust auth failed, using dorami_prod with password"
-            MIGRATION_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
-            DATABASE_URL="postgresql://dorami_prod:${MIGRATION_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
-            eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
-          fi
+          eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
           echo "Migrations completed successfully"
+
+          # Set backend to use same trust auth connection string for consistency
+          echo "INFO: Configuring backend for trust auth (same as migrations)"
+          sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" "${INFRA_DIR}/.env.production"
 
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
