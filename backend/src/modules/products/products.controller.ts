@@ -199,6 +199,43 @@ export class ProductsController {
   }
 
   /**
+   * Epic 5 Story 5.2, 5.3: Get all products (Public)
+   * Query params: streamKey (optional), status (optional)
+   * Note: This route must be after all specific named routes to avoid conflicts
+   */
+  @Public()
+  @Get()
+  @ApiOperation({ summary: 'Get all products (Public)' })
+  @ApiQuery({
+    name: 'streamKey',
+    description: 'Filter by stream key',
+    required: false,
+    example: 'abc123def456',
+  })
+  @ApiQuery({
+    name: 'status',
+    description: 'Filter by status',
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+    type: [ProductResponseDto],
+  })
+  async findAll(
+    @Query('streamKey') streamKey?: string,
+    @Query('status') status?: string,
+  ): Promise<ProductResponseDto[]> {
+    // If streamKey is provided, filter by stream
+    if (streamKey) {
+      return await this.productsService.findByStreamKey(streamKey, status);
+    }
+
+    // Otherwise return all products
+    return await this.productsService.findAll(status);
+  }
+
+  /**
    * Epic 5 Story 5.4: Get a single product by ID (Public)
    */
   @Public()
