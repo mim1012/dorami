@@ -33,7 +33,7 @@ export class BusinessExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      if (typeof exceptionResponse === 'object') {
         // Strip `context` in production to avoid leaking internal IDs / stock counts
         const {
           context,
