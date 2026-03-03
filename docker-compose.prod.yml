@@ -25,14 +25,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+    mem_limit: 2g
+    cpus: '2'
     logging:
       driver: json-file
       options:
@@ -47,22 +41,19 @@ services:
     image: redis:7-alpine
     container_name: dorami-redis-prod
     restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
-      REDIS_MAXMEMORY: 512mb
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 768M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     logging:
       driver: json-file
       options:
@@ -87,6 +78,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SRS_API_URL: http://srs:1985
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required (64+ chars)}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY required}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
@@ -108,14 +102,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 256M
+    mem_limit: 1g
+    cpus: '2'
     volumes:
       - uploads_data:/app/uploads:rw
     logging:
@@ -144,14 +132,8 @@ services:
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
       NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
+    mem_limit: 512m
+    cpus: '1'
     logging:
       driver: json-file
       options:
@@ -169,14 +151,8 @@ services:
       - '127.0.0.1:8080:8080'  # HTTP-FLV + HLS (Nginx container proxy)
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 256M
+    mem_limit: 1g
+    cpus: '2'
     logging:
       driver: json-file
       options:
