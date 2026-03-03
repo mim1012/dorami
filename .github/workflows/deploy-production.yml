@@ -544,9 +544,10 @@ jobs:
               POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             else
               # Legacy credentials - use 'postgres' user from the existing container
+              # The postgres user uses the same password as in .env.production
               echo "INFO: Detected legacy or unknown credentials - using postgres user from existing container"
               POSTGRES_USER="postgres"
-              POSTGRES_PASSWORD="postgres"
+              POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             fi
             POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
             POSTGRES_HOST="postgres"  # Container network alias
