@@ -169,6 +169,37 @@ export class AuthService {
     }
   }
 
+  /**
+   * Handle dev login: create or update user based on email
+   * Role assignment: check ADMIN_EMAILS whitelist, preserve existing ADMIN role
+   */
+  async validateDevLoginUser(email: string, name?: string): Promise<User> {
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+
+    // Determine role: check whitelist, but never downgrade ADMIN
+    const roleToAssign = this.adminEmailSet.has(email) ? 'ADMIN' : 'USER';
+    const finalRole = existingUser?.role === 'ADMIN' ? 'ADMIN' : roleToAssign;
+
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        lastLoginAt: new Date(),
+        role: finalRole,
+      },
+      create: {
+        kakaoId: `dev_${randomUUID()}`,
+        email,
+        name: name || email.split('@')[0],
+        role: roleToAssign,
+        status: 'ACTIVE',
+        lastLoginAt: new Date(),
+      },
+    });
+
+    this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
+    return user;
+  }
+
   async logout(userId: string, accessToken?: string): Promise<void> {
     // Blacklist the specific token by jti if available
     if (accessToken) {
