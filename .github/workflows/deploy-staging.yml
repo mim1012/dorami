@@ -136,11 +136,22 @@ jobs:
 
             echo "=== Pulling latest code ==="
             git fetch origin ${{ github.ref_name }}
+
+            echo "=== Checking for docker-compose file changes ==="
+            COMPOSE_CHANGES=$(git diff HEAD origin/${{ github.ref_name }} -- docker-compose*.yml infrastructure/ nginx/ | wc -l)
+            if [ "$COMPOSE_CHANGES" -gt 0 ]; then
+              echo "⚠️  WARNING: docker-compose/infrastructure/nginx config changes detected"
+              git diff HEAD origin/${{ github.ref_name }} -- docker-compose*.yml infrastructure/ nginx/ | head -30
+              echo "⚠️  These changes will be applied. Ensure compatibility with deployed services."
+            fi
+
             git reset --hard origin/${{ github.ref_name }}
 
             echo "=== Cleaning up old images ==="
-            docker image prune -af --filter "until=24h" || true
-            docker builder prune -af --filter "until=24h" || true
+            # Only prune dangling images and ghcr.io images (with repo filter)
+            docker image prune -af --filter "until=72h" --filter "label=org.opencontainers.image.source=https://github.com/mim1012/dorami" || true
+            docker builder prune -af --filter "until=72h" || true
+            echo "✓ Cleanup complete (preserved non-dorami images)"
             echo "Disk usage after cleanup:"
             df -h / | tail -1
 
@@ -199,12 +210,32 @@ jobs:
 
             echo "=== Ensuring uploads directory is writable ==="
             mkdir -p /opt/dorami/backend/uploads
-            chmod 777 /opt/dorami/backend/uploads
+            # Use 755 for directory (rwxr-xr-x) - secure default, not world-writable
+            chmod 755 /opt/dorami/backend/uploads
+            # Ensure backend container user can write (docker runs as specific user)
+            sudo chown -R 1001:1001 /opt/dorami/backend/uploads || true
+            chmod 755 /opt/dorami/backend/uploads
 
             echo "=== Setting up SSL certificate (if not exists) ==="
             STAGING_DOMAIN=$(grep -oP "staging\.[^/]+" <<< "${{ vars.STAGING_URL }}" || echo "staging.doremi-live.com")
-            if [ ! -f /opt/dorami/nginx/ssl/fullchain.pem ] || [ ! -f /opt/dorami/nginx/ssl/privkey.pem ]; then
-              echo "SSL certificates not found. Setting up Certbot..."
+            CERT_PATH="/opt/dorami/nginx/ssl"
+            CERT_FILE="${CERT_PATH}/fullchain.pem"
+            CERT_KEY="${CERT_PATH}/privkey.pem"
+
+            if [ -f "$CERT_FILE" ] && [ -f "$CERT_KEY" ]; then
+              # Check if cert is expiring within 30 days
+              EXPIRATION=$(sudo openssl x509 -enddate -noout -in "$CERT_FILE" 2>/dev/null | cut -d= -f2)
+              EXPIRATION_EPOCH=$(date -d "$EXPIRATION" +%s 2>/dev/null || echo 0)
+              NOW_EPOCH=$(date +%s)
+              DAYS_REMAINING=$(( (EXPIRATION_EPOCH - NOW_EPOCH) / 86400 ))
+
+              if [ "$DAYS_REMAINING" -gt 30 ]; then
+                echo "✓ SSL certificate valid (${DAYS_REMAINING} days remaining)"
+              else
+                echo "⚠️  Certificate expiring soon (${DAYS_REMAINING} days). Renewal needed."
+              fi
+            else
+              echo "SSL certificates not found. Setting up Certbot (one-time only)..."
 
               # Install Certbot if not present
               command -v certbot > /dev/null || {
@@ -217,14 +248,13 @@ jobs:
               docker compose -f docker-compose.base.yml -f docker-compose.staging.yml stop nginx || true
               sleep 2
 
-              # Issue certificate
+              # Issue certificate (NO --force-renewal to prevent rate limits)
               echo "Requesting Let's Encrypt certificate for ${STAGING_DOMAIN}..."
               sudo certbot certonly \
                 --standalone \
                 --email admin@doremi-live.com \
                 --agree-tos \
                 --non-interactive \
-                --force-renewal \
                 -d "${STAGING_DOMAIN}" || {
                 echo "WARNING: Certbot failed. Continuing with HTTP mode..."
               }
@@ -232,15 +262,13 @@ jobs:
               # Copy certificates if they were created
               if [ -d "/etc/letsencrypt/live/${STAGING_DOMAIN}" ]; then
                 echo "Copying certificates to nginx/ssl/..."
-                mkdir -p nginx/ssl
-                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/fullchain.pem nginx/ssl/
-                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/privkey.pem nginx/ssl/
-                sudo chmod 644 nginx/ssl/fullchain.pem nginx/ssl/privkey.pem
-                sudo chown $(id -u):$(id -g) nginx/ssl/*
+                mkdir -p "$CERT_PATH"
+                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/fullchain.pem "$CERT_FILE"
+                sudo cp /etc/letsencrypt/live/${STAGING_DOMAIN}/privkey.pem "$CERT_KEY"
+                sudo chmod 644 "$CERT_FILE" "$CERT_KEY"
+                sudo chown $(id -u):$(id -g) "$CERT_PATH"/*
                 echo "✓ SSL certificates installed"
               fi
-            else
-              echo "✓ SSL certificates already exist"
             fi
 
             echo "=== Resolving any failed migrations ==="
