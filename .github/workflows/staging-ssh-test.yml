@@ -1,0 +1,39 @@
+name: Staging SSH Diagnostic Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ssh-test:
+    name: SSH Connection Test
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ secrets.STAGING_HOST }}
+      USER: ${{ secrets.STAGING_USER }}
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          echo "SSH key setup complete"
+
+      - name: Test SSH Connection
+        run: |
+          echo "Testing SSH connection to $USER@$HOST"
+          ssh -v $USER@$HOST "whoami; pwd; uname -a" 2>&1 || exit 0
+
+      - name: Check Docker Status
+        run: |
+          echo "=== Docker Status ==="
+          ssh $USER@$HOST << 'ENDSSH' 2>&1 || true
+          set -ex
+          whoami
+          pwd
+          docker --version
+          docker ps -a
+          cd /opt/dorami 2>/dev/null && ls -la || echo "Directory not found"
+          ENDSSH
