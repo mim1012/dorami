@@ -245,10 +245,9 @@ jobs:
             echo "=== Ensuring uploads directory is writable ==="
             mkdir -p /opt/dorami/backend/uploads
             # Use 755 for directory (rwxr-xr-x) - secure default, not world-writable
-            chmod 755 /opt/dorami/backend/uploads
+            sudo chmod 755 /opt/dorami/backend/uploads || true
             # Ensure backend container user can write (docker runs as specific user)
             sudo chown -R 1001:1001 /opt/dorami/backend/uploads || true
-            chmod 755 /opt/dorami/backend/uploads
 
             echo "=== Setting up SSL certificate (if not exists) ==="
             STAGING_DOMAIN=$(grep -oP "staging\.[^/]+" <<< "${STAGING_URL_VAR}" || echo "staging.doremi-live.com")
