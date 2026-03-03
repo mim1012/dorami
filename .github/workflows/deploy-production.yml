@@ -533,17 +533,21 @@ jobs:
 
           if [ -n "${EXISTING_POSTGRES}" ]; then
             echo "=== Reusing existing postgres container: ${EXISTING_POSTGRES} ==="
-            # For existing containers, use their original credentials (don't override)
+            # For existing containers, detect their actual credentials (don't override)
             # The container was already initialized with specific credentials in previous deployment
-            if [ "${EXISTING_POSTGRES}" = "live-commerce-postgres" ]; then
-              # Legacy container - use legacy credentials
+
+            # Try to detect if dorami_prod user exists; if not, use legacy 'postgres' user
+            if docker exec "${EXISTING_POSTGRES}" psql -U dorami_prod -d dorami_production -c "SELECT 1" >/dev/null 2>&1; then
+              # Modern credentials exist - use them
+              echo "INFO: Detected modern credentials (dorami_prod)"
+              POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+            else
+              # Legacy credentials - revert to postgres/postgres (legacy container or migration in progress)
+              echo "INFO: Detected legacy or unknown credentials - falling back to postgres user"
               sed -i 's/^POSTGRES_USER=.*/POSTGRES_USER=postgres/'              "${INFRA_DIR}/.env.production"
               sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/'      "${INFRA_DIR}/.env.production"
               sed -i 's/^POSTGRES_DB=.*/POSTGRES_DB=live_commerce_production/'  "${INFRA_DIR}/.env.production"
               POSTGRES_USER="postgres"
-            else
-              # Modern container (dorami-postgres-prod) - use .env credentials as-is (from GitHub Secrets)
-              POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             fi
             POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
 
