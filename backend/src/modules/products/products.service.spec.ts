@@ -32,7 +32,15 @@ describe('ProductsService', () => {
       aggregate: jest.fn(),
       updateMany: jest.fn(),
     },
-  };
+  } as any;
+
+  mockPrismaService.$transaction = jest.fn((callback) =>
+    Promise.resolve(
+      callback({
+        product: mockPrismaService.product,
+      }),
+    ),
+  );
 
   const mockEventEmitter = {
     emit: jest.fn(),

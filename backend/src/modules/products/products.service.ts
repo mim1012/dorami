@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -13,11 +13,12 @@ import {
 import {
   ProductNotFoundException,
   InsufficientStockException,
+  EntityNotFoundException,
 } from '../../common/exceptions/business.exception';
 import { LogErrors } from '../../common/decorators/log-errors.decorator';
 import { findOrThrow } from '../../common/prisma/find-or-throw.util';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
+import { Prisma, Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
 
 // Type for product update data
 interface ProductUpdateData {
@@ -63,7 +64,7 @@ export class ProductsService {
 
       if (!stream) {
         this.logger.error(`LiveStream not found for key: "${streamKey}"`);
-        throw new NotFoundException(`LiveStream with key ${streamKey} not found`);
+        throw new EntityNotFoundException('LiveStream', streamKey);
       }
       this.logger.log(`LiveStream found: id=${stream.id}, status=${stream.status}`);
     }
@@ -342,29 +343,37 @@ export class ProductsService {
    */
   @LogErrors('update stock')
   async updateStock(id: string, updateStockDto: UpdateStockDto): Promise<ProductResponseDto> {
-    const product = await findOrThrow(
-      this.prisma.product.findUnique({ where: { id } }),
-      'Product',
-      id,
+    const { product, updatedProduct } = await this.prisma.$transaction(
+      async (tx) => {
+        const product = await findOrThrow(tx.product.findUnique({ where: { id } }), 'Product', id);
+
+        const newStock = product.quantity + updateStockDto.quantity;
+
+        if (newStock < 0) {
+          throw new InsufficientStockException(
+            id,
+            product.quantity,
+            Math.abs(updateStockDto.quantity),
+          );
+        }
+
+        const updatedProduct = await tx.product.update({
+          where: { id },
+          data: {
+            quantity: newStock,
+            status: newStock === 0 ? 'SOLD_OUT' : product.status,
+          },
+        });
+
+        return { product, updatedProduct };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    const newStock = product.quantity + updateStockDto.quantity;
+    this.logger.log(
+      `Stock updated for product ${id}: ${product.quantity} → ${updatedProduct.quantity}`,
+    );
 
-    if (newStock < 0) {
-      throw new InsufficientStockException(id, product.quantity, Math.abs(updateStockDto.quantity));
-    }
-
-    const updatedProduct = await this.prisma.product.update({
-      where: { id },
-      data: {
-        quantity: newStock,
-        status: newStock === 0 ? 'SOLD_OUT' : product.status,
-      },
-    });
-
-    this.logger.log(`Stock updated for product ${id}: ${product.quantity} → ${newStock}`);
-
-    // Emit stock update event
     this.eventEmitter.emit('product:stock:updated', {
       productId: updatedProduct.id,
       streamKey: updatedProduct.streamKey,
