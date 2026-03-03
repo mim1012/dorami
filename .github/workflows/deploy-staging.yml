@@ -264,9 +264,14 @@ jobs:
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
 
             echo "=== Restarting services ==="
-            # Kill any process using port 8080 from previous deployments
+            # Stop all containers first to free port 8080
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml down || true
+            sleep 2
+            # Kill any remaining processes
             sudo lsof -i :8080 -t | xargs -r kill -9 2>/dev/null || true
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d --force-recreate --remove-orphans
+            sleep 1
+            # Start fresh
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d --remove-orphans
 
             echo "=== Cleaning up old images ==="
             docker image prune -af --filter "until=1h"
