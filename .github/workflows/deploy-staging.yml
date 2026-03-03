@@ -117,13 +117,15 @@ jobs:
           USER: ${{ secrets.STAGING_USER }}
           IMAGE_TAG: ${{ steps.image_tag.outputs.image_tag }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          STAGING_URL_VAR: ${{ vars.STAGING_URL }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
         run: |
           echo "Deploying with IMAGE_TAG: ${IMAGE_TAG}"
-          ssh $USER@$HOST << ENDSSH
+          ssh $USER@$HOST << 'ENDSSH'
             set -ex
 
             echo "SSH connection successful"
@@ -135,19 +137,19 @@ jobs:
             ls -la /opt/dorami | head -10
 
             echo "=== Pulling latest code ==="
-            git fetch origin ${{ github.ref_name }}
+            git fetch origin "${GITHUB_REF_NAME}"
 
             echo "=== Checking for docker-compose file changes ==="
-            COMPOSE_CHANGES=$(git diff HEAD origin/${{ github.ref_name }} -- docker-compose*.yml infrastructure/ nginx/ | wc -l)
+            COMPOSE_CHANGES=$(git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | wc -l)
             if [ "$COMPOSE_CHANGES" -gt 0 ]; then
               echo "⚠️  WARNING: docker-compose/infrastructure/nginx config changes detected"
-              git diff HEAD origin/${{ github.ref_name }} -- docker-compose*.yml infrastructure/ nginx/ | head -30
+              git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | head -30
               echo "⚠️  These changes will be applied. Ensure compatibility with deployed services."
             fi
 
             echo "=== Verifying image ↔ code commit parity ==="
             CURRENT_COMMIT=$(git rev-parse HEAD)
-            IMAGE_COMMIT="${GITHUB_SHA}"
+            IMAGE_COMMIT="${IMAGE_TAG#sha-}"
             if [ "$CURRENT_COMMIT" != "$IMAGE_COMMIT" ]; then
               echo "⚠️  NOTICE: Code commit ≠ Image commit (expected for staging)"
               echo "   Code: $CURRENT_COMMIT"
@@ -194,7 +196,7 @@ jobs:
             fi
 
             echo "Final IMAGE_TAG: ${IMAGE_TAG}"
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull || true
             echo "=== Verifying pulled staging image tags are immutable sha ==="
             BACKEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}"
             FRONTEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}"
@@ -218,7 +220,7 @@ jobs:
             chmod 755 /opt/dorami/backend/uploads
 
             echo "=== Setting up SSL certificate (if not exists) ==="
-            STAGING_DOMAIN=$(grep -oP "staging\.[^/]+" <<< "${{ vars.STAGING_URL }}" || echo "staging.doremi-live.com")
+            STAGING_DOMAIN=$(grep -oP "staging\.[^/]+" <<< "${STAGING_URL_VAR}" || echo "staging.doremi-live.com")
             CERT_PATH="/opt/dorami/nginx/ssl"
             CERT_FILE="${CERT_PATH}/fullchain.pem"
             CERT_KEY="${CERT_PATH}/privkey.pem"
