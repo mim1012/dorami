@@ -10,10 +10,10 @@ export class RedisService implements OnModuleInit {
 
   constructor(private configService: ConfigService) {}
 
-  async onModuleInit() {
-    const redisHost = this.configService.get('REDIS_HOST') ?? 'localhost';
-    const redisPort = this.configService.get('REDIS_PORT') ?? 6379;
-    const redisPassword = this.configService.get('REDIS_PASSWORD');
+  async onModuleInit(): Promise<void> {
+    const redisHost = this.configService.get<string>('REDIS_HOST') ?? 'localhost';
+    const redisPort = this.configService.get<number>('REDIS_PORT') ?? 6379;
+    const redisPassword = this.configService.get<string | undefined>('REDIS_PASSWORD');
 
     this.client = new Redis({
       host: redisHost,
@@ -21,7 +21,7 @@ export class RedisService implements OnModuleInit {
       password: redisPassword,
       maxRetriesPerRequest: 1,
       connectTimeout: 2000,
-      retryStrategy: (times) => {
+      retryStrategy: (times: number): number | null => {
         if (times > 3) {
           return null;
         }

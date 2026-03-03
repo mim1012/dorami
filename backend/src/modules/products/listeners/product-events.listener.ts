@@ -2,9 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from '../../../common/logger/logger.service';
-import { PrismaService } from '../../../common/prisma/prisma.service';
-import { OrderCreatedEvent } from '../../../common/events/order.events';
-import { ProductStockUpdatedEvent } from '../../../common/events/product.events';
 import { SocketIoProvider } from '../../websocket/socket-io.provider';
 
 @Injectable()
@@ -12,53 +9,11 @@ export class ProductEventsListener {
   private readonly logger: LoggerService;
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly socketIo: SocketIoProvider,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('ProductEventsListener');
-  }
-
-  /**
-   * Handle order:created event
-   * Decrease stock for all products in order
-   */
-  @OnEvent('order:created')
-  async handleOrderCreated(event: OrderCreatedEvent) {
-    this.logger.log(`Order created: ${event.orderId}, processing stock updates...`);
-
-    // Decrease stock for all products in order
-    for (const item of event.items) {
-      const product = await this.prisma.product.findUnique({
-        where: { id: item.productId },
-      });
-
-      if (!product) {
-        this.logger.error(`Product ${item.productId} not found`);
-        continue;
-      }
-
-      const newQuantity = product.quantity - item.quantity;
-
-      await this.prisma.product.update({
-        where: { id: item.productId },
-        data: { quantity: newQuantity },
-      });
-
-      // Emit product stock updated event
-      this.eventEmitter.emit(
-        'product:stock:updated',
-        new ProductStockUpdatedEvent(
-          item.productId,
-          product.quantity,
-          newQuantity,
-          'purchase',
-        ),
-      );
-
-      this.logger.log(`Product ${item.productId} stock: ${product.quantity} → ${newQuantity}`);
-    }
   }
 
   /**
@@ -145,7 +100,9 @@ export class ProductEventsListener {
         },
       });
 
-      this.logger.warn(`Low stock warning: Product ${payload.productId} has only ${payload.newStock} left`);
+      this.logger.warn(
+        `Low stock warning: Product ${payload.productId} has only ${payload.newStock} left`,
+      );
     }
   }
 
@@ -164,5 +121,4 @@ export class ProductEventsListener {
       });
     }
   }
-
 }

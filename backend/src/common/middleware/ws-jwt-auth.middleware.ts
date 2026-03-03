@@ -18,6 +18,16 @@ function getRedisClient(): Redis {
   return redisClient;
 }
 
+export interface JwtPayload {
+  userId: string;
+  sub?: string;
+  email: string;
+  name: string;
+  role: string;
+  type?: string;
+  jti?: string;
+}
+
 export type AuthenticatedSocket = Socket & {
   user: {
     userId: string;
@@ -49,9 +59,9 @@ export async function authenticateSocket(
   }
 
   try {
-    const payload = await jwtService.verifyAsync(token, {
+    const payload = (await jwtService.verifyAsync(token, {
       secret: process.env.JWT_SECRET,
-    });
+    })) as JwtPayload;
 
     // Reject non-access tokens
     if (payload.type && payload.type !== 'access') {
@@ -78,7 +88,7 @@ export async function authenticateSocket(
     // When admin suspends a user, their userId is added to blacklist
     try {
       const redis = getRedisClient();
-      const uid = (payload.userId ?? payload.sub) as string;
+      const uid = payload.userId ?? payload.sub;
       const isSuspended = await redis.exists(`suspended:${uid}`);
       if (isSuspended === 1) {
         throw new WsException('Account is suspended');
