@@ -75,8 +75,12 @@ function ProductCard({
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Build the effective image list: prefer images[] array, fall back to single image
-  const imageList = product.images && product.images.length > 0 ? product.images : [product.image];
+  // Main/primary image: use product.image (imageUrl from API)
+  // Gallery images: use product.images array (additional images for carousel)
+  // For carousel: start with primary image, then add gallery images
+  const primaryImage = product.image;
+  const galleryImages = product.images && product.images.length > 0 ? product.images : [];
+  const imageList = [primaryImage, ...galleryImages];
   const hasMultiple = imageList.length > 1;
 
   const handlePrev = (e: React.MouseEvent) => {
@@ -101,9 +105,10 @@ function ProductCard({
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
         <ImageWithFallback
+          key={`${product.id}-${currentImageIndex}`}
           src={imageList[currentImageIndex]}
           alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 transition-opacity duration-300 opacity-100"
         />
 
         {/* Discount badge */}
