@@ -151,10 +151,10 @@ jobs:
           echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
           echo "  GHCR_TOKEN=${GHCR_TOKEN:0:20}..." # Show first 20 chars only
 
-          ssh $USER@$HOST << 'ENDSSH'
+          ssh $USER@$HOST << ENDSSH
             set -ex
 
-            # Re-export runner env vars inside SSH (GitHub context doesn't expand in heredoc)
+            # Variables expanded by runner before SSH transmission (unquoted heredoc)
             export IMAGE_TAG="${IMAGE_TAG}"
             export GITHUB_REF_NAME="${GITHUB_REF_NAME}"
             export GITHUB_REPOSITORY_OWNER="${GITHUB_REPOSITORY_OWNER}"
@@ -194,7 +194,7 @@ jobs:
               echo "   This is OK for staging; production should enforce commit parity"
             fi
 
-            git reset --hard origin/${{ github.ref_name }}
+            git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Cleaning up old images ==="
             # Only prune dangling images and ghcr.io images (with repo filter)
