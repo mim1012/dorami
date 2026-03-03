@@ -17,6 +17,7 @@ import {
   UpdateProductDto,
   UpdateStockDto,
   ProductResponseDto,
+  ProductStatus,
   ReorderProductsDto,
   BulkUpdateStatusDto,
   BulkDeleteDto,
@@ -224,7 +225,7 @@ export class ProductsController {
   })
   async findAll(
     @Query('streamKey') streamKey?: string,
-    @Query('status') status?: string,
+    @Query('status') status?: ProductStatus,
   ): Promise<ProductResponseDto[]> {
     // If streamKey is provided, filter by stream
     if (streamKey) {
