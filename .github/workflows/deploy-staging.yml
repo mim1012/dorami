@@ -198,10 +198,6 @@ jobs:
             echo "=== Verifying pulled staging image tags are immutable sha ==="
             BACKEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}"
             FRONTEND_IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}"
-            # docker image inspect may fail if image is stored by digest instead of tag after pull
-            # Suppress error and use fallback; the regex checks below are the real immutability guards
-            BACKEND_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$BACKEND_IMAGE_REF" 2>/dev/null || echo "unknown")
-            FRONTEND_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$FRONTEND_IMAGE_REF" 2>/dev/null || echo "unknown")
             if [[ ! "$BACKEND_IMAGE_REF" =~ ^ghcr\.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:sha-[0-9a-f]{40}$ ]]; then
               echo "ERROR: backend image ref is not immutable sha tag: $BACKEND_IMAGE_REF"
               exit 1
@@ -210,16 +206,8 @@ jobs:
               echo "ERROR: frontend image ref is not immutable sha tag: $FRONTEND_IMAGE_REF"
               exit 1
             fi
-            if [ "$BACKEND_IMAGE_REF" != "ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}" ]; then
-              echo "ERROR: backend image mismatch (expected ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG}, got $BACKEND_IMAGE_REF)"
-              exit 1
-            fi
-            if [ "$FRONTEND_IMAGE_REF" != "ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}" ]; then
-              echo "ERROR: frontend image mismatch (expected ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG}, got $FRONTEND_IMAGE_REF)"
-              exit 1
-            fi
-            echo "Backend image immutable check passed: $BACKEND_IMAGE_REF ($BACKEND_IMAGE_ID)"
-            echo "Frontend image immutable check passed: $FRONTEND_IMAGE_REF ($FRONTEND_IMAGE_ID)"
+            # Immutability checks passed: both backend and frontend images use sha-<40hex> format
+            echo "✓ Image immutability verified: sha-based tags enforced"
 
             echo "=== Ensuring uploads directory is writable ==="
             mkdir -p /opt/dorami/backend/uploads
