@@ -557,9 +557,12 @@ jobs:
             sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=${POSTGRES_USER}|" "${INFRA_DIR}/.env.production"
             echo "INFO: Updated .env.production POSTGRES_USER=${POSTGRES_USER}"
 
-            # NOTE: When using postgres user with trust auth, the password in DATABASE_URL is irrelevant
-            # Trust auth on docker network takes precedence and doesn't require a password.
-            # We keep POSTGRES_PASSWORD value as-is because docker-compose requires it to be non-empty.
+            # Ensure the detected user has the password from .env.production
+            # This allows password-based authentication to work for the backend container
+            POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+            docker exec "${POSTGRES_CONTAINER}" psql -U postgres -c "ALTER USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}';" 2>/dev/null \
+              && echo "INFO: Set password for ${POSTGRES_USER} user" \
+              || echo "WARNING: Could not set password (may not be needed if trust auth works)"
 
             # Connect existing container to dorami-internal network with 'postgres' alias
             NETWORK=$(docker network ls --format '{{.Name}}' | grep 'dorami-internal' | head -1)
