@@ -96,6 +96,13 @@ export class OrdersService {
    * Epic 13 Story 13.3: Support pointsToUse for point redemption
    */
   async createOrderFromCart(userId: string, pointsToUse?: number): Promise<OrderResponseDto> {
+    let capturedStockUpdates: Array<{
+      productId: string;
+      streamKey: string | null;
+      oldStock: number;
+      newStock: number;
+    }> = [];
+
     const order = await this.prisma.$transaction(
       async (tx) => {
         // Fetch user data
@@ -138,13 +145,14 @@ export class OrdersService {
         }
 
         // Deduct stock atomically for cart items
-        await this.inventoryService.batchDecreaseStockTx(
+        const stockUpdates = await this.inventoryService.batchDecreaseStockTx(
           tx,
           cartItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
           })),
         );
+        capturedStockUpdates = stockUpdates;
 
         // Calculate totals using shared helper (DRY) - now with global shipping
         const cartProductIds = cartItems.map((item) => item.productId);
@@ -261,10 +269,35 @@ export class OrdersService {
 
     this.eventEmitter.emit('order:created', event);
 
+    // WebSocket 재고 업데이트 브로드캐스트 (트랜잭션 성공 후)
+    for (const update of capturedStockUpdates) {
+      if (update.streamKey) {
+        const updatedProduct = await this.prisma.product.findUnique({
+          where: { id: update.productId },
+        });
+        if (updatedProduct) {
+          this.eventEmitter.emit('product:stock:updated', {
+            productId: update.productId,
+            streamKey: update.streamKey,
+            oldStock: update.oldStock,
+            newStock: update.newStock,
+            product: updatedProduct,
+          });
+        }
+      }
+    }
+
     return this.mapToResponseDto(order);
   }
 
   async createOrder(userId: string, createOrderDto: CreateOrderDto): Promise<OrderResponseDto> {
+    let capturedStockUpdates: Array<{
+      productId: string;
+      streamKey: string | null;
+      oldStock: number;
+      newStock: number;
+    }> = [];
+
     // Fetch user data for required fields
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -318,13 +351,14 @@ export class OrdersService {
     // (stock decremented but order not created, or vice versa)
     const order = await this.prisma.$transaction(
       async (tx) => {
-        await this.inventoryService.batchDecreaseStockTx(
+        const stockUpdates = await this.inventoryService.batchDecreaseStockTx(
           tx,
           createOrderDto.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
           })),
         );
+        capturedStockUpdates = stockUpdates;
 
         return tx.order.create({
           data: {
@@ -374,6 +408,24 @@ export class OrdersService {
     );
 
     this.eventEmitter.emit('order:created', event);
+
+    // WebSocket 재고 업데이트 브로드캐스트 (트랜잭션 성공 후)
+    for (const update of capturedStockUpdates) {
+      if (update.streamKey) {
+        const updatedProduct = await this.prisma.product.findUnique({
+          where: { id: update.productId },
+        });
+        if (updatedProduct) {
+          this.eventEmitter.emit('product:stock:updated', {
+            productId: update.productId,
+            streamKey: update.streamKey,
+            oldStock: update.oldStock,
+            newStock: update.newStock,
+            product: updatedProduct,
+          });
+        }
+      }
+    }
 
     return this.mapToResponseDto(order);
   }

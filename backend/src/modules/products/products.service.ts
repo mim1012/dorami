@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -13,11 +13,12 @@ import {
 import {
   ProductNotFoundException,
   InsufficientStockException,
+  EntityNotFoundException,
 } from '../../common/exceptions/business.exception';
 import { LogErrors } from '../../common/decorators/log-errors.decorator';
 import { findOrThrow } from '../../common/prisma/find-or-throw.util';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
+import { Prisma, Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
 
 // Type for product update data
 interface ProductUpdateData {
@@ -63,7 +64,7 @@ export class ProductsService {
 
       if (!stream) {
         this.logger.error(`LiveStream not found for key: "${streamKey}"`);
-        throw new NotFoundException(`LiveStream with key ${streamKey} not found`);
+        throw new EntityNotFoundException('LiveStream', streamKey);
       }
       this.logger.log(`LiveStream found: id=${stream.id}, status=${stream.status}`);
     }
@@ -342,29 +343,37 @@ export class ProductsService {
    */
   @LogErrors('update stock')
   async updateStock(id: string, updateStockDto: UpdateStockDto): Promise<ProductResponseDto> {
-    const product = await findOrThrow(
-      this.prisma.product.findUnique({ where: { id } }),
-      'Product',
-      id,
+    const { product, updatedProduct } = await this.prisma.$transaction(
+      async (tx) => {
+        const product = await findOrThrow(tx.product.findUnique({ where: { id } }), 'Product', id);
+
+        const newStock = product.quantity + updateStockDto.quantity;
+
+        if (newStock < 0) {
+          throw new InsufficientStockException(
+            id,
+            product.quantity,
+            Math.abs(updateStockDto.quantity),
+          );
+        }
+
+        const updatedProduct = await tx.product.update({
+          where: { id },
+          data: {
+            quantity: newStock,
+            status: newStock === 0 ? 'SOLD_OUT' : product.status,
+          },
+        });
+
+        return { product, updatedProduct };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    const newStock = product.quantity + updateStockDto.quantity;
+    this.logger.log(
+      `Stock updated for product ${id}: ${product.quantity} → ${updatedProduct.quantity}`,
+    );
 
-    if (newStock < 0) {
-      throw new InsufficientStockException(id, product.quantity, Math.abs(updateStockDto.quantity));
-    }
-
-    const updatedProduct = await this.prisma.product.update({
-      where: { id },
-      data: {
-        quantity: newStock,
-        status: newStock === 0 ? 'SOLD_OUT' : product.status,
-      },
-    });
-
-    this.logger.log(`Stock updated for product ${id}: ${product.quantity} → ${newStock}`);
-
-    // Emit stock update event
     this.eventEmitter.emit('product:stock:updated', {
       productId: updatedProduct.id,
       streamKey: updatedProduct.streamKey,
@@ -533,11 +542,10 @@ export class ProductsService {
           },
         },
       },
-      orderBy: {
-        liveStream: {
-          endedAt: 'desc',
-        },
-      },
+      orderBy: [
+        { liveStream: { endedAt: 'desc' } },
+        { createdAt: 'desc' }, // Fallback for products with no streamKey
+      ],
       skip,
       take: limit,
     });
@@ -614,45 +622,62 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where: { status: 'AVAILABLE' },
-        include: {
-          _count: {
-            select: {
-              orderItems: {
-                where: {
-                  order: {
-                    status: { in: ['PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED'] },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          orderItems: {
-            _count: 'desc',
-          },
-        },
-        skip,
-        take: limit,
-      }),
-      this.prisma.product.count({ where: { status: 'AVAILABLE' } }),
-    ]);
+    try {
+      // Step 1: Get all products with their sale counts (raw SQL for performance)
+      const productsWithCounts = await this.prisma.$queryRaw<
+        Array<{ id: string; sold_count: bigint }>
+      >`
+        SELECT
+          p.id,
+          COUNT(DISTINCT oi.id) as sold_count
+        FROM products p
+        LEFT JOIN order_items oi ON p.id = oi.product_id
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE p.status = 'AVAILABLE'
+          AND (o.status IN ('PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED') OR o.id IS NULL)
+        GROUP BY p.id
+        ORDER BY sold_count DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `;
 
-    return {
-      data: products.map((p) => ({
-        ...this.mapToResponseDto(p),
-        soldCount: p._count.orderItems,
-      })),
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      const productIds = productsWithCounts.map((p) => p.id);
+
+      // Step 2: Get full product details
+      const products = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+      });
+
+      // Step 3: Merge counts back and maintain sort order
+      const productsWithSoldCount = productIds.map((id) => {
+        const product = products.find((p) => p.id === id)!;
+        const countData = productsWithCounts.find((p) => p.id === id)!;
+        return {
+          product,
+          soldCount: Number(countData.sold_count),
+        };
+      });
+
+      // Step 4: Get total count
+      const total = await this.prisma.product.count({
+        where: { status: 'AVAILABLE' },
+      });
+
+      return {
+        data: productsWithSoldCount.map(({ product, soldCount }) => ({
+          ...this.mapToResponseDto(product),
+          soldCount,
+        })),
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      this.logger.error('getPopularProducts error:', error);
+      throw error;
+    }
   }
 
   /**

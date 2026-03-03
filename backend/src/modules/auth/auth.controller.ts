@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -19,7 +19,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { SkipCsrf } from '../../common/guards/csrf.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { TokenPayload } from './dto/auth.dto';
+import { TokenPayload, DevLoginDto } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
 import { User } from '@prisma/client';
 
@@ -260,19 +260,22 @@ export class AuthController {
    */
   @Public()
   @SkipCsrf()
-  @SkipThrottle()
+  @Throttle({
+    short: { limit: 3, ttl: 10000 },
+    medium: { limit: 5, ttl: 60000 },
+    long: { limit: 10, ttl: 300000 },
+  })
   @Post('dev-login')
   @ApiOperation({
-    summary: '개발용 로그인 (개발 환경 전용)',
-    description:
-      'Kakao OAuth 없이 이메일로 로그인합니다. NODE_ENV=development 환경에서만 동작합니다.',
+    summary: '개발용 로그인 (개발/스테이징 환경)',
+    description: 'Kakao OAuth 없이 이메일로 로그인합니다. ENABLE_DEV_AUTH=true일 때만 동작합니다.',
   })
   @ApiResponse({ status: 200, description: '개발 로그인 성공' })
-  @ApiResponse({ status: 403, description: '개발 환경이 아님' })
-  async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'production');
-    if (nodeEnv !== 'development') {
-      throw new ForbiddenException('Dev login is only available in development environment');
+  @ApiResponse({ status: 403, description: '개발 인증 비활성화됨' })
+  async devLogin(@Body() body: DevLoginDto, @Res() res: Response) {
+    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH', 'false');
+    if (enableDevAuth !== 'true') {
+      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }
 
     const { email, name } = body;
@@ -286,37 +289,8 @@ export class AuthController {
       });
     }
 
-    // Assign role based on ADMIN_EMAILS whitelist (same logic as Kakao OAuth)
-    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
-    const adminEmailSet = new Set(
-      adminEmails
-        .split(',')
-        .map((e) => e.trim())
-        .filter((e) => e.length > 0),
-    );
-    const roleToAssign = adminEmailSet.has(email) ? 'ADMIN' : 'USER';
-
-    const { randomUUID } = await import('crypto');
-    const existingUser = await this.prisma.user.findUnique({ where: { email } });
-    // Preserve existing ADMIN role — never downgrade on re-login
-    const finalRole = existingUser?.role === 'ADMIN' ? 'ADMIN' : roleToAssign;
-
-    const user = await this.prisma.user.upsert({
-      where: { email },
-      update: {
-        lastLoginAt: new Date(),
-        role: finalRole,
-      },
-      create: {
-        kakaoId: `dev_${randomUUID()}`,
-        email,
-        name: name || email.split('@')[0],
-        role: roleToAssign,
-        status: 'ACTIVE',
-        lastLoginAt: new Date(),
-      },
-    });
-    this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
+    // Use service method to handle dev login user validation with proper role assignment
+    const user = await this.authService.validateDevLoginUser(email, name);
 
     const loginResponse = await this.authService.login(user);
 

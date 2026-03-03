@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import * as crypto from 'crypto';
 
 export const SKIP_CSRF_KEY = 'skipCsrf';
@@ -15,9 +15,9 @@ export const SKIP_CSRF_KEY = 'skipCsrf';
  * Decorator to skip CSRF check for specific routes
  */
 export const SkipCsrf = () => {
-  return (target: object, propertyKey?: string, descriptor?: PropertyDescriptor) => {
+  return (target: object, propertyKey?: string, descriptor?: PropertyDescriptor): void => {
     if (propertyKey && descriptor) {
-      Reflect.defineMetadata(SKIP_CSRF_KEY, true, descriptor.value);
+      Reflect.defineMetadata(SKIP_CSRF_KEY, true, descriptor.value as object);
     } else {
       Reflect.defineMetadata(SKIP_CSRF_KEY, true, target);
     }
@@ -44,7 +44,7 @@ export class CsrfGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse();
+    const response = context.switchToHttp().getResponse<Response>();
 
     // Skip CSRF for safe methods (GET, HEAD, OPTIONS)
     const safeMethods = ['GET', 'HEAD', 'OPTIONS'];
@@ -70,8 +70,8 @@ export class CsrfGuard implements CanActivate {
     }
 
     // Validate CSRF token
-    const cookieToken = request.cookies?.['csrf-token'];
-    const headerToken = request.headers['x-csrf-token'] as string;
+    const cookieToken = request.cookies['csrf-token'] as string | undefined;
+    const headerToken = request.headers['x-csrf-token'] as string | undefined;
 
     if (!cookieToken || !headerToken) {
       this.logger.warn(`CSRF token missing - Cookie: ${!!cookieToken}, Header: ${!!headerToken}`);
@@ -83,7 +83,7 @@ export class CsrfGuard implements CanActivate {
     }
 
     // Use timing-safe comparison to prevent timing attacks
-    if (!this.timingSafeEqual(cookieToken, headerToken)) {
+    if (!this.timingSafeEqual(cookieToken as string, headerToken as string)) {
       this.logger.warn('CSRF token mismatch');
       throw new ForbiddenException({
         statusCode: 403,
@@ -98,19 +98,15 @@ export class CsrfGuard implements CanActivate {
   /**
    * Ensure CSRF token exists in cookie
    */
-  private ensureCsrfToken(
-    request: Request,
-    response: { cookie: (name: string, value: string, options: object) => void },
-    forceNew = false,
-  ): void {
-    const existingToken = request.cookies?.['csrf-token'] as string | undefined;
+  private ensureCsrfToken(request: Request, response: Response, forceNew = false): void {
+    const existingToken = request.cookies['csrf-token'] as string | undefined;
 
     if (!existingToken || forceNew) {
       const newToken = this.generateCsrfToken();
 
       // Use x-forwarded-proto to detect HTTPS — NODE_ENV='production' even on
       // HTTP staging environments, so it cannot be used as the secure indicator.
-      const proto: string = (request.headers['x-forwarded-proto'] as string) ?? '';
+      const proto = (request.headers['x-forwarded-proto'] as string | undefined) ?? '';
       const isHttps =
         proto === 'https' || (request.socket as { encrypted?: boolean }).encrypted === true;
 

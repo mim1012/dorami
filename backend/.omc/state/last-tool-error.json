@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /d/Project/dorami/backend && source .env && npx prisma migrate status 2>&1\",\"description\":\"Load .env and check migration status\"}",
-  "error": "Exit code 1\n.env: line 40: Kookmin: command not found\n.env: line 42: Live: command not found\nLoaded Prisma config from prisma.config.ts.\n\nPrisma config detected, skipping environment variable loading.\nPrisma schema loaded from prisma\\schema.prisma\nError: Prisma schema validation - (get-config wasm)\nError code: P1012\nerror: Environment variable not found: DATABASE_URL.\n  -->  prisma\\schema.prisma:11\n   | \n10 |   provider = \"postgresql\"\n11 |   url      = env(\"DATABASE_URL\")\n   | \n\nValidation Error...",
-  "timestamp": "2026-03-02T12:11:16.891Z",
-  "retry_count": 2
+  "tool_input_preview": "{\"command\":\"cd D:\\\\Project\\\\dorami && npm run type-check:all 2>&1 | head -50\",\"description\":\"Run TypeScript type checking on all workspaces\"}",
+  "error": "Exit code 1\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory\n\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory",
+  "timestamp": "2026-03-03T15:22:33.591Z",
+  "retry_count": 1
 }

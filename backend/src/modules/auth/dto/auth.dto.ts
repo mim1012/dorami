@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsOptional, MaxLength } from 'class-validator';
 
 export class LoginResponseDto {
   accessToken!: string;
@@ -29,4 +29,15 @@ export class TokenPayload {
   jti?: string; // unique token ID for blacklisting
   iat?: number;
   exp?: number;
+}
+
+export class DevLoginDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email!: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  name?: string;
 }

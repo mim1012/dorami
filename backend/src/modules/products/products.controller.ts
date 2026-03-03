@@ -148,44 +148,6 @@ export class ProductsController {
   }
 
   /**
-   * Epic 5 Story 5.2, 5.3: Get products by stream key (Public)
-   * Query params: streamKey (required), status (optional)
-   */
-  @Public()
-  @Get()
-  @ApiOperation({ summary: 'Get all products for a stream (Public)' })
-  @ApiQuery({
-    name: 'streamKey',
-    description: 'Stream key',
-    required: true,
-    example: 'abc123def456',
-  })
-  @ApiQuery({
-    name: 'status',
-    description: 'Filter by status',
-    enum: ProductStatus,
-    required: false,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Products retrieved successfully',
-    type: [ProductResponseDto],
-  })
-  @ApiResponse({ status: 400, description: 'Invalid query parameters' })
-  async findAll(
-    @Query('streamKey') streamKey?: string,
-    @Query('status') status?: ProductStatus,
-  ): Promise<ProductResponseDto[]> {
-    // If streamKey is provided, filter by stream
-    if (streamKey) {
-      return await this.productsService.findByStreamKey(streamKey, status);
-    }
-
-    // Otherwise return all products (legacy behavior)
-    return await this.productsService.findAll(status);
-  }
-
-  /**
    * Duplicate a product (Admin only)
    */
   @Post(':id/duplicate')
@@ -235,6 +197,43 @@ export class ProductsController {
   @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
   async bulkDelete(@Body() dto: BulkDeleteDto): Promise<{ deleted: number; failed: string[] }> {
     return this.productsService.bulkDelete(dto.ids);
+  }
+
+  /**
+   * Epic 5 Story 5.2, 5.3: Get all products (Public)
+   * Query params: streamKey (optional), status (optional)
+   * Note: This route must be after all specific named routes to avoid conflicts
+   */
+  @Public()
+  @Get()
+  @ApiOperation({ summary: 'Get all products (Public)' })
+  @ApiQuery({
+    name: 'streamKey',
+    description: 'Filter by stream key',
+    required: false,
+    example: 'abc123def456',
+  })
+  @ApiQuery({
+    name: 'status',
+    description: 'Filter by status',
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully',
+    type: [ProductResponseDto],
+  })
+  async findAll(
+    @Query('streamKey') streamKey?: string,
+    @Query('status') status?: ProductStatus,
+  ): Promise<ProductResponseDto[]> {
+    // If streamKey is provided, filter by stream
+    if (streamKey) {
+      return await this.productsService.findByStreamKey(streamKey, status);
+    }
+
+    // Otherwise return all products
+    return await this.productsService.findAll(status);
   }
 
   /**

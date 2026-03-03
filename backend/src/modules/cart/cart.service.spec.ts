@@ -121,9 +121,13 @@ describe('CartService', () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
+          },
           cart: {
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
             create: jest.fn().mockResolvedValue(mockCartItem),
+            findFirst: jest.fn().mockResolvedValue(null),
           },
         };
         return callback(tx);
@@ -187,6 +191,21 @@ describe('CartService', () => {
         .mockResolvedValue({ _sum: { quantity: 8 } } as any);
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
 
+      // Mock $transaction to throw when checking insufficient stock
+      // (8 reserved + 5 requested = 13 > 10 available)
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 8 } }),
+          },
+        };
+        // This will trigger the insufficient stock check in the service
+        return callback(tx);
+      });
+
       await expect(
         service.addToCart('user-1', { productId: 'product-1', quantity: 5 }),
       ).rejects.toThrow(BadRequestException);
@@ -202,6 +221,9 @@ describe('CartService', () => {
       const updatedItem = { ...mockCartItem, quantity: 2 };
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
+          },
           cart: {
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
             update: jest.fn().mockResolvedValue(updatedItem),
@@ -233,6 +255,9 @@ describe('CartService', () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(noTimerProduct),
+          },
           cart: {
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
             create: jest.fn().mockResolvedValue(noTimerCartItem),
@@ -304,6 +329,9 @@ describe('CartService', () => {
       const updatedItem = { ...mockCartItem, quantity: 3 };
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
+          },
           cart: {
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
             update: jest.fn().mockResolvedValue(updatedItem),
@@ -334,6 +362,9 @@ describe('CartService', () => {
 
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
+          },
           cart: {
             // reserved=5, current item qty=1, so availableStock = 10-5+1=6, requesting 10 => throw
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 5 } }),

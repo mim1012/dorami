@@ -162,7 +162,6 @@ export function ImageLightbox({
             }
           >
             {/* Use img tag for lightbox to avoid layout constraints */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentSrc}
               alt={`${productName} 이미지 ${currentIndex + 1}`}

@@ -42,9 +42,9 @@ export class RedisIoAdapter extends IoAdapter {
             return Math.min(retries * 100, 3000);
           },
         },
-      }) as RedisClientType;
+      });
 
-      this.subClient = this.pubClient.duplicate() as RedisClientType;
+      this.subClient = this.pubClient.duplicate();
 
       // Add error handlers
       this.pubClient.on('error', (err: Error) => {
@@ -101,7 +101,8 @@ export class RedisIoAdapter extends IoAdapter {
     this.isConnected = false;
   }
 
-  createIOServer(port: number, options?: ServerOptions): ReturnType<IoAdapter['createIOServer']> {
+  override createIOServer(port: number, options?: ServerOptions) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const server = super.createIOServer(port, {
       ...options,
       cors: {
@@ -119,12 +120,14 @@ export class RedisIoAdapter extends IoAdapter {
 
     // Only use Redis adapter if connected
     if (this.isConnected && this.adapterConstructor) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       server.adapter(this.adapterConstructor);
       this.logger.log('Socket.IO using Redis adapter for horizontal scaling');
     } else {
       this.logger.log('Socket.IO using default in-memory adapter');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return server;
   }
 }

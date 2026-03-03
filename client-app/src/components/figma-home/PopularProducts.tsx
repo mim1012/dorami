@@ -31,80 +31,7 @@ type PopularProductsProps = {
   isError?: boolean;
 };
 
-const FALLBACK_PRODUCTS: HomeProduct[] = [
-  {
-    id: 'fallback-1',
-    name: '핑크 스프링 드레스',
-    price: 68000,
-    originalPrice: 98000,
-    discountRate: 31,
-    image:
-      'https://images.unsplash.com/photo-1749448621946-5dd68de99664?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGZhc2hpb24lMjBwaW5rJTIwZHJlc3N8ZW58MXx8fHwxNzcyMDkyMTIwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-2',
-    name: '베이직 롱 코트',
-    price: 89000,
-    originalPrice: 149000,
-    discountRate: 40,
-    image:
-      'https://images.unsplash.com/photo-1638385583463-e3d424c22916?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGJlaWdlJTIwY29hdCUyMHdpbnRlcnxlbnwxfHx8fDE3NzIwOTIxMjF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-3',
-    name: '화이트 실크 블라우스',
-    price: 45000,
-    originalPrice: 72000,
-    discountRate: 38,
-    image:
-      'https://images.unsplash.com/photo-1761014219776-4ac940eca1c2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMHdoaXRlJTIwYmxvdXNlJTIwZWxlZ2FudHxlbnwxfHx8fDE3NzIwOTIxMjF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-4',
-    name: '라벤더 니트',
-    price: 52000,
-    originalPrice: 78000,
-    discountRate: 33,
-    image:
-      'https://images.unsplash.com/photo-1667013068391-e09dda140af8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGxhdmVuZGVyJTIwc3dlYXRlcnxlbnwxfHx8fDE3NzIwOTIxMjJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-5',
-    name: '캐시미어 카디건',
-    price: 95000,
-    originalPrice: 145000,
-    discountRate: 34,
-    image:
-      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGNhcmRpZ2FufGVufDF8fHx8MTc3MjEyMzQwMnww&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-6',
-    name: '플리츠 스커트',
-    price: 38000,
-    originalPrice: 65000,
-    discountRate: 42,
-    image:
-      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHNraXJ0JTIwZmFzaGlvbnxlbnwxfHx8fDE3NzIxMjM0MDN8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-7',
-    name: '레더 재킷',
-    price: 125000,
-    originalPrice: 189000,
-    discountRate: 34,
-    image:
-      'https://images.unsplash.com/photo-1551028719-00167b16eac5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGxlYXRoZXIlMjBqYWNrZXR8ZW58MXx8fHwxNzcyMTIzNDA0fDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-8',
-    name: '와이드 팬츠',
-    price: 42000,
-    originalPrice: 68000,
-    discountRate: 38,
-    image:
-      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHdpZGUlMjBwYW50c3xlbnwxfHx8fDE3NzIxMjM0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-];
+const FALLBACK_PRODUCTS: HomeProduct[] = [];
 
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=80';
@@ -148,8 +75,12 @@ function ProductCard({
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Build the effective image list: prefer images[] array, fall back to single image
-  const imageList = product.images && product.images.length > 0 ? product.images : [product.image];
+  // Main/primary image: use product.image (imageUrl from API)
+  // Gallery images: use product.images array (additional images for carousel)
+  // For carousel: start with primary image, then add gallery images
+  const primaryImage = product.image;
+  const galleryImages = product.images && product.images.length > 0 ? product.images : [];
+  const imageList = [primaryImage, ...galleryImages];
   const hasMultiple = imageList.length > 1;
 
   const handlePrev = (e: React.MouseEvent) => {
@@ -173,11 +104,17 @@ function ProductCard({
       className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left cursor-pointer"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-        <ImageWithFallback
-          src={imageList[currentImageIndex]}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+        {/* Pro method: Overlay all images, fade between them */}
+        {imageList.map((src, idx) => (
+          <ImageWithFallback
+            key={`${product.id}-img-${idx}`}
+            src={src}
+            alt={`${product.name} - image ${idx + 1}`}
+            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
+              idx === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+            }`}
+          />
+        ))}
 
         {/* Discount badge */}
         <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
@@ -279,10 +216,9 @@ export function PopularProducts({
   const featuredProducts = getDisplayProducts(apiFeaturedProducts);
   const pastProducts = getDisplayProducts(apiPastProducts);
 
-  const isUsingFallback =
-    featuredProducts === FALLBACK_PRODUCTS || pastProducts === FALLBACK_PRODUCTS;
-  const showFallbackTag = isUsingFallback && !isLoading;
-  const showLoadingMessage = isLoading && isError;
+  const isUsingFallback = false;
+  const showFallbackTag = false;
+  const showLoadingMessage = isError && !isLoading;
 
   const goToProductDetail = (
     product: HomeProduct,
@@ -342,24 +278,38 @@ export function PopularProducts({
               <Play className="w-6 h-6 text-[#FF4D8D]" fill="#FF4D8D" />
               <h3 className="text-2xl md:text-3xl font-bold text-gray-900">인기 상품</h3>
             </div>
-            <button
-              onClick={() => setShowViewAll('featured')}
-              className="flex items-center gap-1 text-sm md:text-base text-[#FF4D8D] hover:text-[#FF6BA0] transition-colors group font-semibold"
-            >
-              <span>더보기</span>
-              <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            {featuredProducts.length > 0 && (
+              <button
+                onClick={() => setShowViewAll('featured')}
+                className="flex items-center gap-1 text-sm md:text-base text-[#FF4D8D] hover:text-[#FF6BA0] transition-colors group font-semibold"
+              >
+                <span>더보기</span>
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
           </div>
           <p className="text-base text-gray-600">이전 라이브에서 가장 인기 있었던 상품들</p>
         </div>
 
-        {showLoadingMessage && (
+        {isLoading && (
           <p className="rounded-lg border border-[#FFE5EE] bg-[#FFF0F5] px-4 py-2 text-sm text-[#B084CC]">
-            인기 상품 API 호출 중 문제가 있어 샘플 데이터로 표시합니다.
+            인기 상품을 불러오는 중입니다...
           </p>
         )}
 
-        {renderProductGrid(featuredProducts)}
+        {showLoadingMessage && (
+          <p className="rounded-lg border border-[#FFE5EE] bg-[#FFF0F5] px-4 py-2 text-sm text-[#B084CC]">
+            인기 상품을 불러올 수 없습니다. 나중에 다시 시도해주세요.
+          </p>
+        )}
+
+        {!isLoading && featuredProducts.length === 0 && !isError && (
+          <p className="text-center text-sm text-gray-500 py-6">
+            현재 표시할 인기 상품이 없습니다.
+          </p>
+        )}
+
+        {featuredProducts.length > 0 && renderProductGrid(featuredProducts)}
       </div>
 
       {/* Past Products Section */}
