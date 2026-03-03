@@ -97,13 +97,10 @@ export default function ProductDetailModal({
         {/* Product Image Gallery */}
         <div className="max-h-96">
           <ImageGallery
-            images={
-              product.images && product.images.length > 0
-                ? product.images
-                : product.imageUrl
-                  ? [product.imageUrl]
-                  : []
-            }
+            images={[
+              ...(product.imageUrl ? [product.imageUrl] : []),
+              ...(product.images && product.images.length > 0 ? product.images : []),
+            ]}
             productName={product.name}
             aspectRatio="aspect-auto"
           />

@@ -98,7 +98,9 @@ export async function captureException(
   try {
     const Sentry = await import('@sentry/nestjs');
     if (typeof Sentry === 'object' && Sentry !== null && 'captureException' in Sentry) {
-      const sentryModule = Sentry as { captureException: (e: Error, opts: { extra?: Record<string, unknown> }) => void };
+      const sentryModule = Sentry as {
+        captureException: (e: Error, opts: { extra?: Record<string, unknown> }) => void;
+      };
       sentryModule.captureException(error, { extra: context });
     }
   } catch {
