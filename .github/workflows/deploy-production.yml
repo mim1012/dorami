@@ -497,7 +497,7 @@ jobs:
 
           # 4. Pull new backend + frontend images from GHCR
           echo "=== Pulling images (${DEPLOY_IMAGE_TAG}) ==="
-          $COMPOSE_CMD pull backend frontend
+          $COMPOSE_CMD pull backend frontend  # Note: Pull is OK without quoting since it's the last command
 
           # 4b. Verify pulled images are immutable sha tags and target exact build tag
           BACKEND_IMAGE_REF="ghcr.io/${DEPLOY_REPO_OWNER}/dorami-backend:${DEPLOY_IMAGE_TAG}"
@@ -526,7 +526,7 @@ jobs:
 
           # 5. Start redis first (this also creates the dorami-internal network)
           echo "=== Starting redis ==="
-          $COMPOSE_CMD up -d --no-deps redis
+          eval "$COMPOSE_CMD" up -d --no-deps redis
 
           # 5b. Handle postgres: reuse existing or start fresh
           EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(live-commerce-postgres|dorami-postgres-prod)$' | head -1)
@@ -573,7 +573,7 @@ jobs:
             fi
           else
             echo "=== Starting new postgres (fresh deployment) ==="
-            $COMPOSE_CMD up -d --no-deps postgres
+            eval "$COMPOSE_CMD" up -d --no-deps postgres
             POSTGRES_CONTAINER="dorami-postgres-prod"
             POSTGRES_USER=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
@@ -607,18 +607,18 @@ jobs:
           DATABASE_URL="postgresql://postgres@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer"
           echo "INFO: Attempting migrations with postgres superuser (trust auth)"
 
-          if $COMPOSE_CMD run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy 2>&1 | grep -q "Authentication failed"; then
+          if eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy 2>&1 | grep -q "Authentication failed"; then
             # Fall back to dorami_prod with password from env
             echo "INFO: Trust auth failed, using dorami_prod with password"
             MIGRATION_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             DATABASE_URL="postgresql://dorami_prod:${MIGRATION_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public"
-            $COMPOSE_CMD run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
+            eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
           fi
           echo "Migrations completed successfully"
 
           # 7. Start backend (force-recreate to use new image)
           echo "=== Starting backend ==="
-          $COMPOSE_CMD up -d --no-deps --force-recreate backend
+          eval "$COMPOSE_CMD" up -d --no-deps --force-recreate backend
 
           # 8. Wait for backend Docker health check
           echo "=== Waiting for backend health ==="
@@ -646,7 +646,7 @@ jobs:
 
           # 9. Start frontend (force-recreate to use new image)
           echo "=== Starting frontend ==="
-          $COMPOSE_CMD up -d --no-deps --force-recreate frontend
+          eval "$COMPOSE_CMD" up -d --no-deps --force-recreate frontend
 
           # 10. Wait for frontend Docker health check
           echo "=== Waiting for frontend health ==="
@@ -670,19 +670,19 @@ jobs:
           # 11. Start SRS media server (non-fatal)
           echo "=== Starting SRS ==="
           docker rm -f dorami-srs-prod 2>/dev/null || true
-          $COMPOSE_CMD up -d --no-deps srs 2>&1 | tail -5 \
+          eval "$COMPOSE_CMD" up -d --no-deps srs 2>&1 | tail -5 \
             && echo "SRS started" \
             || echo "WARNING: SRS failed (non-fatal)"
 
           # 12. Start nginx service (Now includes nginx service with SSL)
           echo "=== Starting nginx ==="
-          $COMPOSE_CMD up -d --no-deps nginx 2>&1 | tail -5 \
+          eval "$COMPOSE_CMD" up -d --no-deps nginx 2>&1 | tail -5 \
             && echo "nginx started" \
             || echo "WARNING: nginx failed (non-fatal: SSL certs may need setup)"
 
           # 13. Final status
           echo "--- Docker Compose status ---"
-          $COMPOSE_CMD ps 2>/dev/null || true
+          eval "$COMPOSE_CMD" ps 2>/dev/null || true
 
           if ! ${backend_ok}; then
             echo "ERROR: Deployment failed — backend not healthy"
