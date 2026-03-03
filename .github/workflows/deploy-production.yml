@@ -557,12 +557,9 @@ jobs:
             sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=${POSTGRES_USER}|" "${INFRA_DIR}/.env.production"
             echo "INFO: Updated .env.production POSTGRES_USER=${POSTGRES_USER}"
 
-            # If using legacy postgres user (not dorami_prod), also set empty password
-            # because postgres user uses trust auth on docker network (no password needed)
-            if [ "${POSTGRES_USER}" = "postgres" ]; then
-              sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=|" "${INFRA_DIR}/.env.production"
-              echo "INFO: Using legacy postgres user with trust auth (password cleared)"
-            fi
+            # NOTE: When using postgres user with trust auth, the password in DATABASE_URL is irrelevant
+            # Trust auth on docker network takes precedence and doesn't require a password.
+            # We keep POSTGRES_PASSWORD value as-is because docker-compose requires it to be non-empty.
 
             # Connect existing container to dorami-internal network with 'postgres' alias
             NETWORK=$(docker network ls --format '{{.Name}}' | grep 'dorami-internal' | head -1)
