@@ -263,16 +263,15 @@ export class AuthController {
   @SkipThrottle()
   @Post('dev-login')
   @ApiOperation({
-    summary: '개발용 로그인 (개발 환경 전용)',
-    description:
-      'Kakao OAuth 없이 이메일로 로그인합니다. NODE_ENV=development 환경에서만 동작합니다.',
+    summary: '개발용 로그인 (개발/스테이징 환경)',
+    description: 'Kakao OAuth 없이 이메일로 로그인합니다. ENABLE_DEV_AUTH=true일 때만 동작합니다.',
   })
   @ApiResponse({ status: 200, description: '개발 로그인 성공' })
-  @ApiResponse({ status: 403, description: '개발 환경이 아님' })
+  @ApiResponse({ status: 403, description: '개발 인증 비활성화됨' })
   async devLogin(@Body() body: { email: string; name?: string }, @Res() res: Response) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'production');
-    if (nodeEnv !== 'development') {
-      throw new ForbiddenException('Dev login is only available in development environment');
+    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH', 'false');
+    if (enableDevAuth !== 'true') {
+      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }
 
     const { email, name } = body;
