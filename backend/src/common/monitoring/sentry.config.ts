@@ -25,7 +25,9 @@ export function getSentryConfig(): SentryConfig | null {
   const dsn = process.env.SENTRY_DSN;
 
   if (!dsn) {
-    console.log('Sentry DSN not configured - error tracking disabled');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Sentry DSN not configured - error tracking disabled');
+    }
     return null;
   }
 
@@ -74,10 +76,14 @@ export async function initSentry(): Promise<boolean> {
       ],
     });
 
-    console.log(`Sentry initialized for ${config.environment} environment`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Sentry initialized for ${config.environment} environment`);
+    }
     return true;
   } catch {
-    console.log('Sentry package not installed - error tracking disabled');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Sentry package not installed - error tracking disabled');
+    }
     return false;
   }
 }
@@ -91,9 +97,10 @@ export async function captureException(
 ): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as { captureException: (e: Error, opts: object) => void }).captureException(error, {
-      extra: context,
-    });
+    if (typeof Sentry === 'object' && Sentry !== null && 'captureException' in Sentry) {
+      const sentryModule = Sentry as { captureException: (e: Error, opts: { extra?: Record<string, unknown> }) => void };
+      sentryModule.captureException(error, { extra: context });
+    }
   } catch {
     // Sentry not available, just log
     console.error('Error:', error.message, context);
@@ -106,11 +113,14 @@ export async function captureException(
 export async function setUser(user: { id: string; email?: string; role?: string }): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as { setUser: (u: object | null) => void }).setUser({
-      id: user.id,
-      email: user.email,
-      // Don't include sensitive data
-    });
+    if (typeof Sentry === 'object' && Sentry !== null && 'setUser' in Sentry) {
+      const sentryModule = Sentry as { setUser: (u: object | null) => void };
+      sentryModule.setUser({
+        id: user.id,
+        email: user.email,
+        // Don't include sensitive data
+      });
+    }
   } catch {
     // Sentry not available
   }
@@ -122,7 +132,10 @@ export async function setUser(user: { id: string; email?: string; role?: string 
 export async function clearUser(): Promise<void> {
   try {
     const Sentry = await import('@sentry/nestjs');
-    (Sentry as { setUser: (u: object | null) => void }).setUser(null);
+    if (typeof Sentry === 'object' && Sentry !== null && 'setUser' in Sentry) {
+      const sentryModule = Sentry as { setUser: (u: object | null) => void };
+      sentryModule.setUser(null);
+    }
   } catch {
     // Sentry not available
   }
