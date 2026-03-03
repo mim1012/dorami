@@ -11,7 +11,7 @@ echo "🚀 Starting Dorami Staging Deployment..."
 
 # Step 1: Pull latest code
 echo "📥 Pulling latest develop branch..."
-cd $DEPLOY_DIR && git pull origin develop
+cd $DEPLOY_DIR && git fetch origin develop && git reset --hard origin/develop
 
 # Step 2: Stop containers (preserving data)
 echo "🛑 Stopping containers (preserving data)..."
