@@ -6,7 +6,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting database seeding...');
 
-  // Clear existing data
+  // Only seed if products table is empty (preserves admin-created products)
+  const existingProducts = await prisma.product.count();
+  if (existingProducts > 0) {
+    console.log(`⏭️ Skipping seed: ${existingProducts} products already exist`);
+    await prisma.$disconnect();
+    return;
+  }
+
+  // Clear existing data (only on initial setup when no products exist)
   console.log('Clearing existing data...');
   await prisma.notificationSubscription.deleteMany();
   await prisma.pointTransaction.deleteMany();
