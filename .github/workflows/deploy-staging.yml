@@ -144,9 +144,25 @@ jobs:
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
         run: |
-          echo "Deploying with IMAGE_TAG: ${IMAGE_TAG}"
+          # Validate variables are available before SSH
+          echo "Pre-SSH validation:"
+          echo "  IMAGE_TAG=${IMAGE_TAG}"
+          echo "  GITHUB_REF_NAME=${GITHUB_REF_NAME}"
+          echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
+          echo "  GHCR_TOKEN=${GHCR_TOKEN:0:20}..." # Show first 20 chars only
+
           ssh $USER@$HOST << 'ENDSSH'
             set -ex
+
+            # Re-export runner env vars inside SSH (GitHub context doesn't expand in heredoc)
+            export IMAGE_TAG="${IMAGE_TAG}"
+            export GITHUB_REF_NAME="${GITHUB_REF_NAME}"
+            export GITHUB_REPOSITORY_OWNER="${GITHUB_REPOSITORY_OWNER}"
+            export STAGING_URL_VAR="${STAGING_URL_VAR}"
+            export GHCR_TOKEN="${GHCR_TOKEN}"
+            export KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
+            export KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
+            export ADMIN_EMAILS="${ADMIN_EMAILS}"
 
             echo "SSH connection successful"
             echo "PWD: \$(pwd)"
