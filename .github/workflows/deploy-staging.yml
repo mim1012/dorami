@@ -154,11 +154,17 @@ jobs:
             export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
             export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
             export ADMIN_EMAILS=${ADMIN_EMAILS}
+
+            # Save the correct IMAGE_TAG before sourcing .env.staging
+            CORRECT_IMAGE_TAG="${IMAGE_TAG}"
             if [ -f .env.staging ]; then
               set -a
               . ./.env.staging
               set +a
+              # Restore the correct IMAGE_TAG (don't let .env.staging override it)
+              export IMAGE_TAG="${CORRECT_IMAGE_TAG}"
             fi
+            echo "Using IMAGE_TAG: ${IMAGE_TAG}"
 
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull
             echo "=== Verifying pulled staging image tags are immutable sha ==="
