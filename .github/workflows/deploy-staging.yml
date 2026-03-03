@@ -195,7 +195,8 @@ jobs:
             fi
 
             # Clean up uploads directory before git reset (fixes permission issues with .gitkeep)
-            rm -rf /opt/dorami/backend/uploads/.gitkeep 2>/dev/null || true
+            # Use sudo if needed to force remove file with permission issues from previous deployments
+            sudo rm -rf /opt/dorami/backend/uploads/.gitkeep 2>/dev/null || rm -rf /opt/dorami/backend/uploads/.gitkeep 2>/dev/null || true
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Cleaning up old images ==="
