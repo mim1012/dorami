@@ -22,6 +22,29 @@ volumes:
 
 ---
 
+## 🔴 CRITICAL RULE: Docker Compose DNS Resolution
+
+**All internal service communication MUST use SERVICE NAME, never container_name:**
+
+```yaml
+# ✅ CORRECT (Docker Compose DNS resolves service name)
+proxy_pass http://backend:3001;        # service: backend
+proxy_pass http://frontend:3000;       # service: frontend
+proxy_pass http://postgres:5432;       # service: postgres
+proxy_pass http://redis:6379;          # service: redis
+proxy_pass http://srs:8080;            # service: srs
+
+# ❌ WRONG (container_name causes DNS resolution failure)
+proxy_pass http://dorami-backend-prod:3001;      # upstream host not found!
+proxy_pass http://dorami-frontend-prod:3000;     # upstream host not found!
+```
+
+**Why?** Docker Compose's internal DNS only recognizes service names defined in `services:` block. `container_name` is cosmetic (for `docker ps` display) and cannot be used for networking.
+
+**Verification:** All proxy_pass routes in `default.conf` use correct service names ✅
+
+---
+
 ## 🚀 Production Deployment Steps
 
 ### Step 1: Push changes to git

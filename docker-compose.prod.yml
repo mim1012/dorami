@@ -8,6 +8,10 @@
 # - 로깅: max-size/file 지정
 # - 환경변수: 모두 필수 (:? 검증)
 # - 네트워크: dorami-internal (internal=false for outbound)
+#
+# 🔴 CRITICAL RULE: Docker 내부 통신은 SERVICE NAME 사용
+# ✅ proxy_pass http://backend:3001      (service name - correct)
+# ❌ proxy_pass http://dorami-backend-prod:3001  (container_name - wrong, dns fails)
 
 version: '3.8'
 
