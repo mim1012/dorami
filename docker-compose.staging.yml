@@ -120,7 +120,7 @@ services:
       - "443:443"
     volumes:
       - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d/staging-http.conf:/etc/nginx/conf.d/staging-http.conf:ro
+      - ./nginx/conf.d/staging.conf:/etc/nginx/conf.d/default.conf:ro
       - ./backend/uploads:/var/www/uploads
       - certbot_www:/var/www/certbot:ro
     healthcheck:
