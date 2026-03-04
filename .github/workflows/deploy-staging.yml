@@ -419,19 +419,48 @@ jobs:
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} BACKEND_URL="$STAGING_BACKEND_URL" 'bash -s' << 'EOF'
           set -e
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > /tmp/smoke.png
-          # Dev login → JWT cookie
-          curl -sf -X POST "${BACKEND_URL}/api/auth/dev-login" \
+
+          # Dev login → save JWT cookie
+          LOGIN_STATUS=$(curl -s -o /tmp/smoke-login-body.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${BACKEND_URL}/api/auth/dev-login" \
             -H "Content-Type: application/json" \
             -d '{"email":"smoke@test.local","name":"Smoke"}' \
-            -c /tmp/smoke-cookies.txt -o /dev/null
-          # Upload test image
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -c /tmp/smoke-cookies.txt)
+          echo "Dev login HTTP status: $LOGIN_STATUS"
+          echo "Dev login response body:"
+          cat /tmp/smoke-login-body.txt || true
+
+          # Verify auth succeeded before attempting upload
+          if [ ! -s /tmp/smoke-cookies.txt ]; then
+            echo "Auth failed: cookie file is missing or empty"
+            rm -f /tmp/smoke.png /tmp/smoke-login-body.txt /tmp/smoke-cookies.txt
+            exit 1
+          fi
+          [ "$LOGIN_STATUS" = "200" ] || [ "$LOGIN_STATUS" = "201" ] || {
+            echo "Auth failed with HTTP $LOGIN_STATUS"
+            rm -f /tmp/smoke.png /tmp/smoke-login-body.txt /tmp/smoke-cookies.txt
+            exit 1
+          }
+          echo "Auth succeeded (HTTP $LOGIN_STATUS)"
+
+          # Upload test image using saved cookies
+          UPLOAD_STATUS=$(curl -s -o /tmp/smoke-upload-body.txt -w "%{http_code}" \
+            --max-time 30 \
             -X POST "${BACKEND_URL}/api/upload/image" \
             -b /tmp/smoke-cookies.txt \
             -F "file=@/tmp/smoke.png;type=image/png")
-          rm -f /tmp/smoke.png /tmp/smoke-cookies.txt
-          [ "$STATUS" = "201" ] || [ "$STATUS" = "200" ] || { echo "FAIL: Upload returned $STATUS"; exit 1; }
-          echo "PASSED: Upload ($STATUS)"
+          echo "Upload HTTP status: $UPLOAD_STATUS"
+          echo "Upload response body:"
+          cat /tmp/smoke-upload-body.txt || true
+
+          rm -f /tmp/smoke.png /tmp/smoke-cookies.txt /tmp/smoke-login-body.txt /tmp/smoke-upload-body.txt
+
+          [ "$UPLOAD_STATUS" = "201" ] || [ "$UPLOAD_STATUS" = "200" ] || {
+            echo "Upload test failed with HTTP $UPLOAD_STATUS"
+            exit 1
+          }
+          echo "PASSED: Upload ($UPLOAD_STATUS)"
           EOF
 
       - name: SRS & Live Stream Health Check
