@@ -255,6 +255,14 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
           ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
 
+      - name: Test SSH Connection
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "Testing SSH connection..."
+          ssh -v $USER@$HOST "echo SSH_CONNECTION_OK" || exit 1
+
       - name: Copy backup script to server
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
