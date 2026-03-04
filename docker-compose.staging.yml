@@ -49,7 +49,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
-      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
+      KAKAO_CALLBACK_URL: http://staging.doremi-live.com/api/auth/kakao/callback
       CORS_ORIGINS: http://staging.doremi-live.com
       REDIS_HOST: redis
       REDIS_PORT: "6379"
