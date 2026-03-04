@@ -608,7 +608,7 @@ jobs:
           DATABASE_URL="postgresql://postgres@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer"
           echo "INFO: Attempting migrations with postgres superuser (trust auth on docker network)"
 
-          eval "$COMPOSE_CMD" run --rm -T -e "DATABASE_URL=${DATABASE_URL}" backend npx prisma migrate deploy || { echo "ERROR: Migration failed"; exit 1; }
+          eval "$COMPOSE_CMD run --rm -T -e \"DATABASE_URL=${DATABASE_URL}\" backend npx prisma migrate deploy" || { echo "ERROR: Migration failed"; exit 1; }
           echo "Migrations completed successfully"
 
           # Set backend to use same trust auth connection string for consistency
