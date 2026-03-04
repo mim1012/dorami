@@ -208,7 +208,13 @@ async function bootstrap() {
   if (!redisUrl) {
     throw new Error('REDIS_URL must be set (config validation should have caught this)');
   }
-  const pubClient = createClient({ url: redisUrl });
+  const pubClient = createClient({
+    url: redisUrl,
+    socket: {
+      connectTimeout: 30000, // 30 seconds
+      reconnectStrategy: (retries) => Math.min(retries * 100, 5000), // exponential backoff
+    },
+  });
   const subClient = pubClient.duplicate();
 
   await Promise.all([pubClient.connect(), subClient.connect()]);

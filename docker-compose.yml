@@ -44,11 +44,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     ports:
-      - '127.0.0.1:3001:3001'
+      - '3011:3001'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/live_commerce

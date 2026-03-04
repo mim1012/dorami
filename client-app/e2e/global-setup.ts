@@ -55,15 +55,21 @@ function getChromeFallbackCandidates(): string[] {
   const programFiles = process.env.ProgramFiles;
   const programFilesX86 = process.env['ProgramFiles(x86)'];
   return [
-    ...(programFiles ? [path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe')] : []),
+    ...(programFiles
+      ? [path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe')]
+      : []),
     ...(programFilesX86
       ? [path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe')]
       : []),
-    ...(programFiles ? [path.join(programFiles, 'Google', 'Chrome Beta', 'Application', 'chrome.exe')] : []),
+    ...(programFiles
+      ? [path.join(programFiles, 'Google', 'Chrome Beta', 'Application', 'chrome.exe')]
+      : []),
     ...(programFilesX86
       ? [path.join(programFilesX86, 'Google', 'Chrome Beta', 'Application', 'chrome.exe')]
       : []),
-    ...(programFiles ? [path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe')] : []),
+    ...(programFiles
+      ? [path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe')]
+      : []),
   ].filter(fileExists);
 }
 
@@ -188,7 +194,7 @@ async function authenticate(
   const apiContext = await request.newContext({ baseURL: BACKEND_URL });
 
   const loginRes = await apiContext.post('/api/auth/dev-login', {
-    data: { email, name: `E2E ${role}`, role },
+    data: { email, name: `E2E ${role}` },
   });
 
   if (!loginRes.ok()) {
