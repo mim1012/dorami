@@ -13,6 +13,7 @@ import { StreamingService } from './modules/streaming/streaming.service';
 import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -465,7 +466,7 @@ async function bootstrap() {
         }
 
         const messageData = {
-          id: Date.now().toString(),
+          id: randomUUID(),
           liveId: payload.liveId,
           userId: authenticatedSocket.user.userId,
           username,
@@ -535,6 +536,24 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
+
+        // Remove message from Redis history so new joiners don't see it
+        const historyKey = `chat:${payload.liveId}:history`;
+        pubClient
+          .lRange(historyKey, 0, -1)
+          .then((entries) => {
+            const match = entries.find((entry) => {
+              try {
+                return (JSON.parse(entry) as { id: string }).id === payload.messageId;
+              } catch {
+                return false;
+              }
+            });
+            if (match) {
+              return pubClient.lRem(historyKey, 0, match);
+            }
+          })
+          .catch((err) => logger.warn(`Failed to remove deleted message from Redis: ${err}`));
 
         socket.emit('chat:delete-message:success', {
           type: 'chat:delete-message:success',

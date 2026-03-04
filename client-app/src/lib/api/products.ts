@@ -26,20 +26,6 @@ export async function getProductsByStreamKey(streamKey: string): Promise<Product
   return response.data;
 }
 
-export async function getPopularProducts(
-  page: number = 1,
-  limit: number = 8,
-): Promise<{
-  data: Product[];
-  meta: { total: number; page: number; limit: number; totalPages: number };
-}> {
-  const response = await apiClient.get<{
-    data: Product[];
-    meta: { total: number; page: number; limit: number; totalPages: number };
-  }>(`/products/popular?page=${page}&limit=${limit}`);
-  return response.data;
-}
-
 export async function getStoreProducts(
   page: number = 1,
   limit: number = 8,

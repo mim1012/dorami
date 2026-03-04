@@ -21,8 +21,6 @@ function getRedisClient(): Redis {
 export interface JwtPayload {
   userId: string;
   sub?: string;
-  email: string;
-  name: string;
   role: string;
   type?: string;
   jti?: string;
@@ -31,8 +29,6 @@ export interface JwtPayload {
 export type AuthenticatedSocket = Socket & {
   user: {
     userId: string;
-    email: string;
-    name: string;
     role: string;
   };
 };
@@ -102,8 +98,6 @@ export async function authenticateSocket(
 
     (socket as AuthenticatedSocket).user = {
       userId: payload.userId,
-      email: payload.email,
-      name: payload.name,
       role: payload.role,
     };
 
