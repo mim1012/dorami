@@ -98,7 +98,7 @@ services:
       DISABLE_CSRF: 'false'
       COOKIE_SECURE: 'true'
       ENABLE_DEV_AUTH: 'false'
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-amykim422@gmail.com}
       SENTRY_DSN: ${SENTRY_DSN:-}
       APP_VERSION: ${APP_VERSION:-1.0.0}
     depends_on:
