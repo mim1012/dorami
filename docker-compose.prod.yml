@@ -119,8 +119,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-frontend-prod
     restart: always
-    ports:
-      - '127.0.0.1:3000:3000'  # Nginx container proxy only
+    expose:
+      - 3000
     environment:
       NODE_ENV: production
       APP_ENV: production
@@ -149,7 +149,6 @@ services:
     restart: always
     ports:
       - '1935:1935'  # RTMP ingest
-      - '127.0.0.1:8080:8080'  # HTTP-FLV + HLS (Nginx container proxy)
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
     mem_limit: 1g

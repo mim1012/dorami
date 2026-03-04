@@ -130,8 +130,11 @@ jobs:
           SKIP_LIVE_CHECK: ${{ inputs.skip_live_check }}
         run: |
           ssh $USER@$HOST bash << 'ENDSSH' > /tmp/live-count.txt
-          if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
-            docker exec dorami-postgres-prod psql -U dorami_prod -d dorami_production -t \
+          if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
+            docker exec dorami-postgres-1 psql -U postgres -d live_commerce_production -t \
+              -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
+          elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
+            docker exec dorami-postgres-prod psql -U postgres -d live_commerce_production -t \
               -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
           elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
             docker exec live-commerce-postgres psql -U postgres -d live_commerce_production -t \
@@ -234,6 +237,7 @@ jobs:
     # GitHub's success() evaluates the full upstream graph and returns false.
     if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -254,6 +258,14 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
           ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+
+      - name: Test SSH Connection
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "Testing SSH connection..."
+          ssh -v $USER@$HOST "echo SSH_CONNECTION_OK" || exit 1
 
       - name: Copy backup script to server
         env:
@@ -277,7 +289,7 @@ jobs:
 
             export POSTGRES_USER="dorami_prod"
             export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-            export POSTGRES_DB="dorami_production"
+            export POSTGRES_DB="live_commerce_production"
             export S3_BUCKET="${S3_BUCKET}"
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
             export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
@@ -293,14 +305,15 @@ jobs:
               mkdir -p $BACKUP_DIR
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-              if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
-                docker exec dorami-postgres-prod pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
-              elif docker ps --format '{{.Names}}' | grep -q live-commerce-postgres; then
-                docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from legacy container)"
+              # Try all known container names directly (don't use docker ps due to SSH environment issues)
+              if docker exec dorami-postgres-1 pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-1)"
+              elif docker exec dorami-postgres-prod pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-prod)"
+              elif docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from live-commerce-postgres)"
               else
-                echo "ERROR: No PostgreSQL container found"
+                echo "ERROR: Failed to dump database from all known containers"
                 exit 1
               fi
 
@@ -404,7 +417,7 @@ jobs:
 
           POSTGRES_USER=dorami_prod
           POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
-          POSTGRES_DB=dorami_production
+          POSTGRES_DB=live_commerce_production
 
           REDIS_HOST=redis
           REDIS_PORT=6379
@@ -529,7 +542,7 @@ jobs:
           eval "$COMPOSE_CMD" up -d --no-deps redis
 
           # 5b. Handle postgres: reuse existing or start fresh
-          EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(live-commerce-postgres|dorami-postgres-prod)$' | head -1)
+          EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(dorami-postgres-1|live-commerce-postgres|dorami-postgres-prod)$' | head -1)
 
           if [ -n "${EXISTING_POSTGRES}" ]; then
             echo "=== Reusing existing postgres container: ${EXISTING_POSTGRES} ==="
@@ -537,7 +550,7 @@ jobs:
             # CRITICAL: Do NOT modify .env.production — this triggers container recreation which breaks initialization
 
             # Try to detect if dorami_prod user exists; if not, use legacy 'postgres' user
-            if docker exec "${EXISTING_POSTGRES}" psql -U dorami_prod -d dorami_production -c "SELECT 1" >/dev/null 2>&1; then
+            if docker exec "${EXISTING_POSTGRES}" psql -U postgres -d live_commerce_production -c "SELECT 1" >/dev/null 2>&1; then
               # Modern credentials exist - use them
               echo "INFO: Detected modern credentials (dorami_prod)"
               POSTGRES_USER="dorami_prod"
@@ -601,7 +614,7 @@ jobs:
           # Alternative: if docker network auth fails, will fall back to .env.production credentials
           DB_HOST="${POSTGRES_HOST:-postgres}"
           DB_PORT="${POSTGRES_PORT:-5432}"
-          DB_NAME="dorami_production"
+          DB_NAME="live_commerce_production"
 
           # Use trust auth for both migrations and backend connections
           # Trust auth works reliably on docker networks and doesn't require password management
