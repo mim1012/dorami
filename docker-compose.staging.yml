@@ -47,9 +47,9 @@ services:
       REDIS_ADAPTER_ENABLED: "true"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
-      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
-      KAKAO_CALLBACK_URL: https://staging.doremi-live.com/api/auth/kakao/callback
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
       CORS_ORIGINS: https://staging.doremi-live.com
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -123,7 +123,7 @@ services:
       - certbot_www:/var/www/certbot:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -159,10 +159,14 @@ services:
 
 networks:
   dorami-internal:
+    name: dorami-internal
     driver: bridge
     internal: false
-    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
-    # the correct network name (<projectname>_dorami-internal) without conflicts
 
 volumes:
   certbot_www:
+    name: dorami_certbot_www
+  postgres_data:
+    name: dorami_postgres_data
+  redis_data:
+    name: dorami_redis_data

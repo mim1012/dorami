@@ -89,3 +89,4 @@ tmp/
 *.tmp
 nul
 backend/uploads/
+ssh/

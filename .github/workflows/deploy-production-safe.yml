@@ -1,0 +1,54 @@
+name: Deploy to Production (Safe)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        type: string
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/dorami
+
+jobs:
+  deploy:
+    name: Safe Production Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy safe deployment script
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST 'mkdir -p /opt/dorami/scripts'
+          scp scripts/safe-deploy-production.sh $USER@$HOST:/opt/dorami/scripts/
+          scp scripts/check-destructive-migrations.sh $USER@$HOST:/opt/dorami/scripts/
+          scp docker-compose.base.yml docker-compose.prod.yml $USER@$HOST:/opt/dorami/
+
+      - name: Execute Safe Deployment
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          IMAGE_TAG: ${{ inputs.version }}
+        run: |
+          ssh $USER@$HOST "cd /opt/dorami && IMAGE_TAG=$IMAGE_TAG bash scripts/safe-deploy-production.sh"

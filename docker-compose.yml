@@ -4,7 +4,6 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: dorami-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
@@ -25,7 +24,6 @@ services:
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: dorami-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -45,10 +43,12 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: dorami-backend
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
-      - '3001:3001'
+      - '127.0.0.1:3001:3001'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/live_commerce
@@ -56,9 +56,9 @@ services:
       JWT_SECRET: dev-secret-key-12345-change-in-production
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      KAKAO_CLIENT_ID: dev-kakao-client-id
-      KAKAO_CLIENT_SECRET: dev-kakao-client-secret
-      KAKAO_CALLBACK_URL: http://localhost:3000/auth/callback
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-dev-kakao-client-id}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-dev-kakao-client-secret}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:-http://localhost:3000/auth/callback}
       PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       CSRF_ENABLED: "false"
       ADMIN_EMAILS: admin@dorami.shop
@@ -72,10 +72,32 @@ services:
     networks:
       - dorami-internal
 
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: client-app/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_WS_URL: https://www.doremi-live.com
+      BACKEND_URL: http://backend:3001
+      MEDIA_SERVER_URL: http://srs:8080
+    depends_on:
+      - backend
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dorami-internal
+
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
     image: ossrs/srs:6
-    container_name: dorami-srs
     restart: unless-stopped
     ports:
       - '1935:1935'  # RTMP
@@ -89,10 +111,11 @@ services:
 
 volumes:
   postgres_data:
+    name: dorami_postgres_data
   redis_data:
+    name: dorami_redis_data
 
 networks:
   dorami-internal:
+    name: dorami-internal
     driver: bridge
-    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
-    # the correct network name (<projectname>_dorami-internal)
