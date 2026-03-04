@@ -237,6 +237,7 @@ jobs:
     # GitHub's success() evaluates the full upstream graph and returns false.
     if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout

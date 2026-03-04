@@ -28,10 +28,6 @@ services:
     networks:
       - dorami-internal
 
-  # Frontend override (remove port binding - nginx handles external access)
-  frontend:
-    ports: []
-
   # Backend override (staging settings only)
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
@@ -100,8 +96,8 @@ services:
       NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
       NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
       NEXT_PUBLIC_APP_ENV: staging
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - 3000
     logging:
       driver: "json-file"
       options:
@@ -115,8 +111,10 @@ services:
     image: nginx:alpine
     restart: always
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
