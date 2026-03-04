@@ -1,6 +1,6 @@
 # 프로덕션 서버 상태 점검 보고서
 
-**점검 일시**: 2026-03-04 10:36 UTC
+**점검 일시**: 2026-03-04 10:36 UTC → **최종 업데이트**: 2026-03-04 10:59 UTC
 **점검 대상**: production server (15.165.66.23)
 
 ---
@@ -25,14 +25,14 @@
 
 ### 실행 중인 컨테이너
 
-| 컨테이너                 | 이미지                                        | 상태         | 포트           |
-| ------------------------ | --------------------------------------------- | ------------ | -------------- |
-| **dorami-backend-prod**  | ghcr.io/mim1012/dorami-backend:sha-7466f1dcd  | ✅ healthy   | 127.0.0.1:3001 |
-| **dorami-frontend-prod** | ghcr.io/mim1012/dorami-frontend:sha-7466f1dcd | ✅ healthy   | 127.0.0.1:3000 |
-| **dorami-postgres-prod** | postgres:16-alpine                            | ✅ healthy   | 5432/tcp       |
-| **dorami-redis-prod**    | redis:7-alpine                                | ✅ healthy   | 6379/tcp       |
-| **dorami-nginx-prod**    | nginx:alpine                                  | ⚠️ unhealthy | 0.0.0.0:80,443 |
-| **dorami-srs-prod**      | ossrs/srs:6                                   | ✅ running   | 1935,8080      |
+| 컨테이너                 | 이미지                                        | 상태       | 포트           |
+| ------------------------ | --------------------------------------------- | ---------- | -------------- |
+| **dorami-backend-prod**  | ghcr.io/mim1012/dorami-backend:sha-7466f1dcd  | ✅ healthy | 127.0.0.1:3001 |
+| **dorami-frontend-prod** | ghcr.io/mim1012/dorami-frontend:sha-7466f1dcd | ✅ healthy | 127.0.0.1:3000 |
+| **dorami-postgres-prod** | postgres:16-alpine                            | ✅ healthy | 5432/tcp       |
+| **dorami-redis-prod**    | redis:7-alpine                                | ✅ healthy | 6379/tcp       |
+| **dorami-nginx-prod**    | nginx:alpine                                  | ✅ healthy | 0.0.0.0:80,443 |
+| **dorami-srs-prod**      | ossrs/srs:6                                   | ✅ running | 1935,8080      |
 
 **결론**: ✅ 6개 컨테이너 모두 실행 중 (Nginx 상태 표시만 unhealthy)
 
@@ -261,14 +261,14 @@ D infrastructure/aws-cdk/lib/streaming-stack.ts    ← 삭제됨
 
 ### 컨테이너 상세 정보
 
-| 서비스   | 이미지                              | 생성 시간 | 실행 시간 | 상태         | 포트           |
-| -------- | ----------------------------------- | --------- | --------- | ------------ | -------------- |
-| backend  | ghcr.io/dorami-backend:sha-7466f1d  | 56분 전   | 56분      | ✅ healthy   | 127.0.0.1:3001 |
-| frontend | ghcr.io/dorami-frontend:sha-7466f1d | 56분 전   | 56분      | ✅ healthy   | 127.0.0.1:3000 |
-| postgres | postgres:16-alpine                  | 56분 전   | 56분      | ✅ healthy   | 5432/tcp       |
-| redis    | redis:7-alpine                      | 56분 전   | 56분      | ✅ healthy   | 6379/tcp       |
-| nginx    | nginx:alpine                        | 51분 전   | 44분      | ⚠️ unhealthy | 0.0.0.0:80,443 |
-| srs      | ossrs/srs:6                         | 56분 전   | 56분      | ✅ running   | 1935,8080      |
+| 서비스   | 이미지                              | 생성 시간 | 실행 시간 | 상태       | 포트           |
+| -------- | ----------------------------------- | --------- | --------- | ---------- | -------------- |
+| backend  | ghcr.io/dorami-backend:sha-7466f1d  | 56분 전   | 56분      | ✅ healthy | 127.0.0.1:3001 |
+| frontend | ghcr.io/dorami-frontend:sha-7466f1d | 56분 전   | 56분      | ✅ healthy | 127.0.0.1:3000 |
+| postgres | postgres:16-alpine                  | 56분 전   | 56분      | ✅ healthy | 5432/tcp       |
+| redis    | redis:7-alpine                      | 56분 전   | 56분      | ✅ healthy | 6379/tcp       |
+| nginx    | nginx:alpine                        | 47분 전   | 40분      | ✅ healthy | 0.0.0.0:80,443 |
+| srs      | ossrs/srs:6                         | 56분 전   | 56분      | ✅ running | 1935,8080      |
 
 **결론**: ✅ 6개 컨테이너 모두 정상 실행 중
 
@@ -276,7 +276,7 @@ D infrastructure/aws-cdk/lib/streaming-stack.ts    ← 삭제됨
 
 ## 📋 최종 체크리스트
 
-### ✅ 정상 항목 (13개)
+### ✅ 정상 항목 (15개)
 
 - [x] 서버 기본 환경 정상
 - [x] Docker 컨테이너 6개 모두 실행
@@ -289,13 +289,14 @@ D infrastructure/aws-cdk/lib/streaming-stack.ts    ← 삭제됨
 - [x] Backend 환경 변수 완벽 설정
 - [x] Backend API 응답 정상
 - [x] Nginx HTTP 응답 정상
+- [x] Nginx health check: **healthy** ✅ (수정됨)
 - [x] DNS 설정 정상 (도메인 → IP)
 - [x] Docker Compose 구조 정상
+- [x] Admin 사용자 설정 완료 (amykim422@gmail.com)
 
-### ⚠️ 주의 항목 (2개)
+### ⚠️ 주의 항목 (1개)
 
 - [ ] Disk 사용량: 74.5% (권장: 80% 미만) → 향후 모니터링
-- [ ] Nginx health check: unhealthy (실제 서비스는 정상) → 원인 파악 필요
 - [ ] Zombie process: 4개 → 정리 권장
 
 ### 🟡 추가 사항
@@ -320,9 +321,22 @@ D infrastructure/aws-cdk/lib/streaming-stack.ts    ← 삭제됨
 ### 모니터링 필요 사항
 
 1. **Disk space** 모니터링 (현재 74.5%)
-2. **Nginx health check** 원인 파악
-3. **Zombie process** 정리
-4. **Docker image cleanup** (81개 버전 → 용량 절약)
+2. **Zombie process** 정리
+3. **Docker image cleanup** (81개 버전 → 용량 절약)
+
+### 최근 수정 사항 (2026-03-04 10:36~10:59 UTC)
+
+✅ **Nginx Health Check 수정** (Commit: 76f0798, d716895)
+
+- `listen 80` → `listen 80 default_server;` (explicit default_server declaration)
+- Docker healthcheck URL: `localhost` → `127.0.0.1` (DNS resolution fix)
+- **결과**: Nginx container status: unhealthy → **healthy** ✅
+
+✅ **Admin 사용자 설정** (Commit: 9bd9b95)
+
+- 데이터베이스: amykim422@gmail.com 사용자를 ADMIN role로 승격
+- 환경변수: `ADMIN_EMAILS=amykim422@gmail.com` 설정 (자동 admin 할당)
+- **결과**: Admin 계정 생성 완료 ✅
 
 ### 배포 준비 상태
 
@@ -331,4 +345,5 @@ D infrastructure/aws-cdk/lib/streaming-stack.ts    ← 삭제됨
 ---
 
 **보고서 작성 시간**: 2026-03-04 10:36 UTC
+**최종 업데이트**: 2026-03-04 10:59 UTC (Nginx health check 및 Admin 설정 완료)
 **다음 점검**: 정기 점검 스케줄 참고
