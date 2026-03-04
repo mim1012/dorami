@@ -120,10 +120,9 @@ services:
       - "443:443"
     volumes:
       - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/conf.d/staging-http.conf:/etc/nginx/conf.d/staging-http.conf:ro
       - ./backend/uploads:/var/www/uploads
       - certbot_www:/var/www/certbot:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 30s
