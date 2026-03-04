@@ -10,14 +10,6 @@ const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);
 
-  const handleKakaoChannel = () => {
-    if (KAKAO_CHANNEL_ID) {
-      window.open(`https://pf.kakao.com/${KAKAO_CHANNEL_ID}/chat`, '_blank', 'noopener,noreferrer');
-    } else {
-      window.location.href = 'mailto:422sss@live.com';
-    }
-  };
-
   return (
     <>
       <footer className="relative mt-2 pb-20">
@@ -83,8 +75,10 @@ export function Footer() {
             </a>
 
             {/* KakaoTalk Channel */}
-            <button
-              onClick={handleKakaoChannel}
+            <a
+              href={`https://pf.kakao.com/${KAKAO_CHANNEL_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#FEE500]/30 bg-[#FEE500]/10 hover:bg-[#FEE500]/20 active:scale-95 transition-all"
               aria-label="카카오톡 채널 상담"
             >
@@ -95,7 +89,7 @@ export function Footer() {
               <span className="text-[10px] font-semibold text-[#3A1D1D]/80 dark:text-[#FEE500]">
                 카카오톡 채널
               </span>
-            </button>
+            </a>
           </div>
 
           {/* Business info card */}
@@ -131,10 +125,12 @@ export function Footer() {
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">문의</span>
                 <a
-                  href="mailto:422sss@live.com"
-                  className="text-hot-pink/80 font-medium hover:text-hot-pink transition-colors"
+                  href={`https://pf.kakao.com/${KAKAO_CHANNEL_ID}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-hot-pink/80 font-medium hover:text-hot-pink transition-colors underline"
                 >
-                  422sss@live.com
+                  카카오톡 문의
                 </a>
               </div>
               <div className="flex gap-2">
