@@ -131,10 +131,10 @@ jobs:
         run: |
           ssh $USER@$HOST bash << 'ENDSSH' > /tmp/live-count.txt
           if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
-            docker exec dorami-postgres-1 psql -U dorami_prod -d dorami_production -t \
+            docker exec dorami-postgres-1 psql -U postgres -d dorami_production -t \
               -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
           elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
-            docker exec dorami-postgres-prod psql -U dorami_prod -d dorami_production -t \
+            docker exec dorami-postgres-prod psql -U postgres -d dorami_production -t \
               -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
           elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
             docker exec live-commerce-postgres psql -U postgres -d live_commerce_production -t \
@@ -305,10 +305,10 @@ jobs:
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
               if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
-                docker exec dorami-postgres-1 pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+                docker exec dorami-postgres-1 pg_dump -U postgres dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
                 echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
               elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
-                docker exec dorami-postgres-prod pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+                docker exec dorami-postgres-prod pg_dump -U postgres dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
                 echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
               elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
                 docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
@@ -551,7 +551,7 @@ jobs:
             # CRITICAL: Do NOT modify .env.production — this triggers container recreation which breaks initialization
 
             # Try to detect if dorami_prod user exists; if not, use legacy 'postgres' user
-            if docker exec "${EXISTING_POSTGRES}" psql -U dorami_prod -d dorami_production -c "SELECT 1" >/dev/null 2>&1; then
+            if docker exec "${EXISTING_POSTGRES}" psql -U postgres -d dorami_production -c "SELECT 1" >/dev/null 2>&1; then
               # Modern credentials exist - use them
               echo "INFO: Detected modern credentials (dorami_prod)"
               POSTGRES_USER="dorami_prod"
