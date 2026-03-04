@@ -122,6 +122,19 @@ async function bootstrap() {
   );
   logger.log('Response compression enabled');
 
+  // Content-Type charset middleware - ensure UTF-8 encoding for all JSON responses
+  app.use(
+    (
+      _req: unknown,
+      res: { setHeader: (name: string, value: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      next();
+    },
+  );
+  logger.log('UTF-8 charset header enabled');
+
   // Manual CORS middleware removed - using NestJS built-in CORS instead
 
   // Global Validation Pipe - CRITICAL: Input validation
@@ -776,50 +789,81 @@ async function bootstrap() {
     })();
   });
 
-  // Listen for order:paid events from OrdersService and broadcast purchase notification
-  eventEmitter.on('order:paid', (payload: { orderId: string; userId: string; paidAt: Date }) => {
-    void (async () => {
-      try {
-        const [user, order] = await Promise.all([
-          prismaService.user.findUnique({
-            where: { id: payload.userId },
-            select: { instagramId: true, name: true },
-          }),
-          prismaService.order.findUnique({
-            where: { id: payload.orderId },
-            include: {
-              orderItems: {
-                include: {
-                  Product: {
-                    select: { streamKey: true },
-                  },
+  type OrderNotificationPayload = {
+    orderId: string;
+    userId: string;
+    streamKey?: string;
+    streamKeys?: string[];
+  };
+
+  const broadcastOrderNotification = async (
+    payload: OrderNotificationPayload,
+    action: '주문을 생성했습니다' | '결제했습니다',
+    rootEvent: 'order:new' | 'order:paid',
+  ) => {
+    try {
+      const [user, order] = await Promise.all([
+        prismaService.user.findUnique({
+          where: { id: payload.userId },
+          select: { instagramId: true, name: true },
+        }),
+        prismaService.order.findUnique({
+          where: { id: payload.orderId },
+          include: {
+            orderItems: {
+              include: {
+                Product: {
+                  select: { streamKey: true },
                 },
               },
             },
-          }),
-        ]);
+          },
+        }),
+      ]);
 
-        const displayName = user?.instagramId ?? user?.name ?? '익명';
-        const streamKey = order?.orderItems?.[0]?.Product?.streamKey;
+      const displayName = user?.instagramId ?? user?.name ?? '익명';
+      const eventStreamKeys = new Set<string>([
+        ...(payload.streamKey ? [payload.streamKey] : []),
+        ...(payload.streamKeys ?? []),
+        ...(order?.orderItems
+          ?.map((item) => item.Product?.streamKey)
+          ?.filter((streamKey): streamKey is string => Boolean(streamKey)) ?? []),
+      ]);
 
-        if (!streamKey) {
-          logger.warn(`order:paid — no streamKey found for order ${payload.orderId}`);
-          return;
+      if (eventStreamKeys.size === 0) {
+        logger.warn(`order:${rootEvent} — no streamKey found for order ${payload.orderId}`);
+      } else {
+        for (const streamKey of eventStreamKeys) {
+          rootNamespace.to(`stream:${streamKey}`).emit('order:purchase:notification', {
+            streamKey,
+            displayName,
+            message: `${displayName}님이 ${action}`,
+          });
+          logger.log(
+            `Broadcasted order:purchase:notification to stream:${streamKey} for user ${displayName}`,
+          );
         }
-
-        rootNamespace.to(`stream:${streamKey}`).emit('order:purchase:notification', {
-          streamKey,
-          displayName,
-          message: `${displayName}님이 결제했습니다`,
-        });
-
-        logger.log(
-          `Broadcasted order:purchase:notification to stream:${streamKey} for user ${displayName}`,
-        );
-      } catch (error) {
-        logger.warn(`Failed to broadcast order:purchase:notification: ${error}`);
       }
-    })();
+
+      rootNamespace.emit(rootEvent, {
+        orderId: payload.orderId,
+        userId: payload.userId,
+        streamKeys: [...eventStreamKeys],
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.warn(`Failed to broadcast order notification for event ${rootEvent}: ${error}`);
+    }
+  };
+
+  // Listen for order:created events from OrdersService and broadcast order notification
+  eventEmitter.on('order:created', (payload: OrderNotificationPayload) => {
+    void broadcastOrderNotification(payload, '주문을 생성했습니다', 'order:new');
+  });
+
+  // Listen for order:paid events from OrdersService and broadcast purchase notification
+  eventEmitter.on('order:paid', (payload: { orderId: string; userId: string; paidAt: Date }) => {
+    void broadcastOrderNotification(payload, '결제했습니다', 'order:paid');
   });
 
   // Create root namespace (/) with WebsocketGateway logic
