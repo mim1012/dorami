@@ -98,11 +98,11 @@ export default function ProductDetailModal({
         <div className="max-h-96">
           <ImageGallery
             images={[
-              ...(product.imageUrl ? [product.imageUrl] : []),
-              ...(product.images && product.images.length > 0 ? product.images : []),
+              product.images?.[0] ?? product.imageUrl,
+              ...(product.images?.slice(1) ?? []),
             ]}
             productName={product.name}
-            aspectRatio="aspect-auto"
+            aspectRatio="aspect-square"
           />
         </div>
 

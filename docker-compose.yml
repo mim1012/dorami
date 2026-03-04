@@ -80,6 +80,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_WS_URL: https://www.doremi-live.com
+      NEXT_PUBLIC_ENABLE_DEV_AUTH: 'true'
       BACKEND_URL: http://backend:3001
       MEDIA_SERVER_URL: http://srs:8080
     depends_on:
