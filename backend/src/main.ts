@@ -183,6 +183,11 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
+      // In development, allow all localhost/127.0.0.1 origins regardless of port
+      if (!isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -205,7 +210,17 @@ async function bootstrap() {
   logger.log('📡 Creating Socket.IO server manually...');
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: isProduction
+        ? allowedOrigins
+        : (origin, callback) => {
+            if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+              callback(null, true);
+            } else if (allowedOrigins.includes(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error('Not allowed by CORS'));
+            }
+          },
       credentials: true,
     },
     transports: ['websocket', 'polling'],
