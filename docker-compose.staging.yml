@@ -119,8 +119,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/staging-ssl.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/streaming-routing.conf:/etc/nginx/streaming-routing.conf:ro
+      - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./backend/uploads:/var/www/uploads
       - certbot_www:/var/www/certbot:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
