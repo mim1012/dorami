@@ -199,10 +199,10 @@ export async function devLogin(
 
   try {
     // Retry on 429 (rate limit) — parallel workers can hit the throttle limit
-    let response = await apiCtx.post('/api/auth/dev-login', { data: { email, role } });
+    let response = await apiCtx.post('/api/auth/dev-login', { data: { email } });
     for (let retry = 0; retry < 3 && response.status() === 429; retry++) {
       await new Promise((r) => setTimeout(r, 4000 + retry * 3000));
-      response = await apiCtx.post('/api/auth/dev-login', { data: { email, role } });
+      response = await apiCtx.post('/api/auth/dev-login', { data: { email } });
     }
 
     if (!response.ok()) {
