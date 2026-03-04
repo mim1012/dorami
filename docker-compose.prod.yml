@@ -170,9 +170,9 @@ services:
       - "443:443"
     volumes:
       - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/production.conf:/etc/nginx/conf.d/00-production.conf:ro
-      - ./infrastructure/docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/10-default.conf:ro
-      - ./nginx/streaming-routing.conf:/etc/nginx/conf.d/20-streaming-routing.conf:ro
+      - ./infrastructure/docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/production.conf:/etc/nginx/includes/production.conf:ro
+      - ./nginx/streaming-routing.conf:/etc/nginx/includes/streaming-routing.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
       - uploads_data:/var/www/uploads:ro
