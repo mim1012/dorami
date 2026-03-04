@@ -28,6 +28,10 @@ services:
     networks:
       - dorami-internal
 
+  # Frontend override (remove port binding - nginx handles external access)
+  frontend:
+    ports: []
+
   # Backend override (staging settings only)
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
