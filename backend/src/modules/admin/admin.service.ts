@@ -371,7 +371,7 @@ export class AdminService {
       instagramId: user.instagramId,
       shippingAddressSummary: user.shippingAddress
         ? this.formatShippingAddressSummary(
-            this.encryptionService.decryptAddress(user.shippingAddress),
+            this.encryptionService.decryptAddress(user.shippingAddress as string),
           )
         : '-',
       createdAt: user.createdAt.toISOString(),
