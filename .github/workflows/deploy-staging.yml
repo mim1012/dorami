@@ -373,15 +373,39 @@ jobs:
 
       - name: Health Check - Backend
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            "curl -sf -o /dev/null -w '%{http_code}' ${{ env.STAGING_BACKEND_URL }}/api/health/live"
-          echo "Backend health check passed"
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} bash << 'ENDSSH'
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting 10s for backend to stabilize..."
+          sleep 10
+          for i in 1 2 3; do
+            STATUS=$(curl -sf -o /dev/null -w '%{http_code}' http://localhost:3001/api/health/live 2>/dev/null || echo "000")
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backend health check attempt $i/3 — HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backend health check passed"
+              exit 0
+            fi
+            [ "$i" -lt 3 ] && sleep 2
+          done
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backend health check failed after 3 attempts (last HTTP $STATUS)"
+          exit 1
+          ENDSSH
 
       - name: Health Check - Frontend
         run: |
-          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} \
-            "curl -sf -o /dev/null -w '%{http_code}' ${{ env.STAGING_FRONTEND_URL }}"
-          echo "Frontend health check passed"
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} bash << 'ENDSSH'
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting 10s for frontend to stabilize..."
+          sleep 10
+          for i in 1 2 3; do
+            STATUS=$(curl -sf -o /dev/null -w '%{http_code}' http://localhost:3000 2>/dev/null || echo "000")
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Frontend health check attempt $i/3 — HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] Frontend health check passed"
+              exit 0
+            fi
+            [ "$i" -lt 3 ] && sleep 2
+          done
+          echo "[$(date '+%Y-%m-%d %H:%M:%S')] Frontend health check failed after 3 attempts (last HTTP $STATUS)"
+          exit 1
+          ENDSSH
 
       - name: API Response Test
         run: |
