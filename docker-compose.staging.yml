@@ -66,7 +66,7 @@ services:
       HLS_SERVER_URL: ${CDN_URL:-http://srs:8080/hls}
       SRS_API_URL: http://srs:1985
     ports:
-      - "0.0.0.0:3001:3001"
+      - "127.0.0.1:3001:3001"
     volumes:
       - ./backend/uploads:/app/uploads
     logging:
@@ -123,7 +123,7 @@ services:
       - certbot_www:/var/www/certbot:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -159,10 +159,14 @@ services:
 
 networks:
   dorami-internal:
+    name: dorami-internal
     driver: bridge
     internal: false
-    # Note: NOT specifying 'name:' allows Docker Compose to auto-generate
-    # the correct network name (<projectname>_dorami-internal) without conflicts
 
 volumes:
   certbot_www:
+    name: dorami_certbot_www
+  postgres_data:
+    name: dorami_postgres_data
+  redis_data:
+    name: dorami_redis_data

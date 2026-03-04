@@ -18,7 +18,6 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: dorami-postgres-prod
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
@@ -43,7 +42,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: dorami-redis-prod
     restart: always
     command: >
       redis-server
@@ -70,7 +68,6 @@ services:
 
   backend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
-    container_name: dorami-backend-prod
     restart: always
     ports:
       - '127.0.0.1:3001:3001'  # Nginx container proxy only
@@ -210,7 +207,6 @@ volumes:
 
 networks:
   dorami-internal:
-    external: true
-    name: dorami_dorami-internal  # Match existing network name on production host
+    name: dorami-internal
     driver: bridge
     internal: false  # Allow outbound internet (OAuth, Sentry, etc.)
