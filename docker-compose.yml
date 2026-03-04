@@ -4,7 +4,6 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: dorami-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
@@ -25,7 +24,6 @@ services:
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: dorami-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -45,7 +43,6 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: dorami-backend
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -80,7 +77,6 @@ services:
     build:
       context: .
       dockerfile: client-app/Dockerfile
-    container_name: dorami-frontend
     restart: unless-stopped
     ports:
       - '3000:3000'
@@ -102,7 +98,6 @@ services:
   # SRS Media Server for Live Streaming (RTMP ingest → HTTP-FLV + HLS)
   srs:
     image: ossrs/srs:6
-    container_name: dorami-srs
     restart: unless-stopped
     ports:
       - '1935:1935'  # RTMP
