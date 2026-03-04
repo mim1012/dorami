@@ -5,8 +5,8 @@
 # Requirements:
 #   - IMAGE_TAG environment variable (docker image tag)
 #   - .env.production file with DB credentials
-#   - SSH access to production server (or docker-compose.prod.yml local)
-#   - All 4 containers on dorami-network (backend, postgres, redis, nginx)
+#   - docker-compose.base.yml and docker-compose.prod.yml in current directory
+#   - All containers on dorami-internal network (backend, postgres, redis, nginx)
 
 set -euo pipefail
 
@@ -21,7 +21,9 @@ BACKUP_DIR="${BACKUP_DIR:-.backups}"
 IMAGE_TAG="${IMAGE_TAG:?ERROR: IMAGE_TAG environment variable required (e.g., sha-abc123def)}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-ghcr.io/your-org}"
 BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${IMAGE_TAG}"
-DOCKER_NETWORK="${DOCKER_NETWORK:-dorami-network}"
+DOCKER_NETWORK="${DOCKER_NETWORK:-dorami-internal}"
+COMPOSE_BASE="${COMPOSE_BASE:-docker-compose.base.yml}"
+COMPOSE_PROD="${COMPOSE_PROD:-docker-compose.prod.yml}"
 DB_HOST="${DB_HOST:-dorami-postgres-prod}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-live_commerce_production}"
@@ -92,10 +94,10 @@ log_success "Database connectivity verified"
 log_step "STEP 3: Network Verification"
 
 REQUIRED_CONTAINERS=(
-  "dorami-backend"
+  "dorami-backend-prod"
   "dorami-postgres-prod"
   "dorami-redis-prod"
-  "dorami-nginx-prod"
+  "dorami-nginx"
 )
 
 for container in "${REQUIRED_CONTAINERS[@]}"; do
@@ -165,14 +167,14 @@ log_step "STEP 7: Deploy Backend Container"
 
 log_warning "Pulling latest backend image..."
 
-if ! docker compose pull backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" pull backend; then
   log_error "Failed to pull backend image"
   exit 1
 fi
 
 log_warning "Starting new backend container..."
 
-if ! docker compose up -d backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" up -d backend; then
   log_error "Failed to start backend container"
   exit 1
 fi
@@ -190,7 +192,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker ps | grep -q "dorami-backend"; then
+  if docker ps | grep -q "dorami-backend-prod"; then
     log_success "Backend container running"
     break
   fi
@@ -223,7 +225,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     log_error "API health check failed after $MAX_RETRIES retries"
-    log_warning "Backend may still be initializing. Check logs: docker logs dorami-backend"
+    log_warning "Backend may still be initializing. Check logs: docker logs dorami-backend-prod"
     exit 1
   fi
 
