@@ -130,7 +130,10 @@ jobs:
           SKIP_LIVE_CHECK: ${{ inputs.skip_live_check }}
         run: |
           ssh $USER@$HOST bash << 'ENDSSH' > /tmp/live-count.txt
-          if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
+          if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
+            docker exec dorami-postgres-1 psql -U dorami_prod -d dorami_production -t \
+              -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
+          elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
             docker exec dorami-postgres-prod psql -U dorami_prod -d dorami_production -t \
               -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n'
           elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
@@ -301,10 +304,13 @@ jobs:
               mkdir -p $BACKUP_DIR
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-              if docker ps --format '{{.Names}}' | grep -q dorami-postgres-prod; then
+              if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
+                docker exec dorami-postgres-1 pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
+              elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
                 docker exec dorami-postgres-prod pg_dump -U dorami_prod dorami_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
                 echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
-              elif docker ps --format '{{.Names}}' | grep -q live-commerce-postgres; then
+              elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
                 docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
                 echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from legacy container)"
               else
@@ -537,7 +543,7 @@ jobs:
           eval "$COMPOSE_CMD" up -d --no-deps redis
 
           # 5b. Handle postgres: reuse existing or start fresh
-          EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(live-commerce-postgres|dorami-postgres-prod)$' | head -1)
+          EXISTING_POSTGRES=$(docker ps --format '{{.Names}}' | grep -E '^(dorami-postgres-1|live-commerce-postgres|dorami-postgres-prod)$' | head -1)
 
           if [ -n "${EXISTING_POSTGRES}" ]; then
             echo "=== Reusing existing postgres container: ${EXISTING_POSTGRES} ==="
