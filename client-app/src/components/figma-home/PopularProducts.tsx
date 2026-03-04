@@ -43,7 +43,7 @@ function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomePr
     price: product.price,
     originalPrice: product.originalPrice ?? product.price,
     discountRate: product.discountRate ?? 0,
-    image: product.imageUrl ?? PLACEHOLDER_IMAGE,
+    image: product.images?.[0] ?? product.imageUrl ?? PLACEHOLDER_IMAGE,
     images: product.images && product.images.length > 0 ? product.images : undefined,
     colorOptions: product.colorOptions,
     sizeOptions: product.sizeOptions,
@@ -338,7 +338,10 @@ export function PopularProducts({
 
       {selectedProduct && (
         <ProductDetailModal
-          product={selectedProduct}
+          product={{
+            ...selectedProduct,
+            imageUrl: selectedProduct.image,
+          } as any}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={async (productId, quantity, color, size) => {
             try {

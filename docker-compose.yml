@@ -58,6 +58,7 @@ services:
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:-http://localhost:3000/auth/callback}
       PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       CSRF_ENABLED: "false"
+      ENABLE_DEV_AUTH: "true"
       ADMIN_EMAILS: admin@dorami.shop
     depends_on:
       postgres:
@@ -80,6 +81,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_WS_URL: https://www.doremi-live.com
+      NEXT_PUBLIC_ENABLE_DEV_AUTH: 'true'
       BACKEND_URL: http://backend:3001
       MEDIA_SERVER_URL: http://srs:8080
     depends_on:
