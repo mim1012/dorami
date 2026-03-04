@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd D:\\\\Project\\\\dorami && npm run type-check:all 2>&1 | head -50\",\"description\":\"Run TypeScript type checking on all workspaces\"}",
-  "error": "Exit code 1\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory\n\n/usr/bin/bash: line 1: cd: D:Projectdorami: No such file or directory",
-  "timestamp": "2026-03-03T15:22:33.591Z",
+  "tool_input_preview": "{\"command\":\"grep -rn \\\"IMAGE_TAG\\\" .github/workflows/deploy-staging.yml | head -10 && \\\\\\necho \\\"\\\" && \\\\\\necho \\\"=== Docker Compose 이미지 태그 ===\\\" && \\\\\\ngrep \\\"image:.*dorami-backend\\\" docker-compose....",
+  "error": "Exit code 2\ngrep: .github/workflows/deploy-staging.yml: No such file or directory\n\n=== Docker Compose 이미지 태그 ===\ngrep: docker-compose.*.yml: No such file or directory\n\ngrep: .github/workflows/deploy-staging.yml: No such file or directory\n\n=== Docker Compose 이미지 태그 ===\ngrep: docker-compose.*.yml: No such file or directory",
+  "timestamp": "2026-03-04T03:03:23.422Z",
   "retry_count": 1
 }
