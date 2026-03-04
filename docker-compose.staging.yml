@@ -47,9 +47,9 @@ services:
       REDIS_ADAPTER_ENABLED: "true"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
-      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
-      KAKAO_CALLBACK_URL: https://staging.doremi-live.com/api/auth/kakao/callback
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
+      KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
       CORS_ORIGINS: https://staging.doremi-live.com
       REDIS_HOST: redis
       REDIS_PORT: "6379"

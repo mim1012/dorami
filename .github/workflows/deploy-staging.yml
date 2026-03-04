@@ -131,6 +131,43 @@ jobs:
           echo "Validated IMAGE_TAG: ${IMAGE_TAG}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
+      - name: Validate environment variables
+        env:
+          KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
+          KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
+        run: |
+          echo "=== Validating required environment variables ==="
+          MISSING_VARS=()
+
+          if [ -z "$KAKAO_CLIENT_ID" ]; then
+            MISSING_VARS+=("STAGING_KAKAO_CLIENT_ID")
+          else
+            echo "✓ STAGING_KAKAO_CLIENT_ID is set"
+          fi
+
+          if [ -z "$KAKAO_CLIENT_SECRET" ]; then
+            MISSING_VARS+=("STAGING_KAKAO_CLIENT_SECRET")
+          else
+            echo "✓ STAGING_KAKAO_CLIENT_SECRET is set"
+          fi
+
+          if [ -z "$KAKAO_CALLBACK_URL" ]; then
+            MISSING_VARS+=("STAGING_KAKAO_CALLBACK_URL")
+          else
+            echo "✓ STAGING_KAKAO_CALLBACK_URL is set"
+          fi
+
+          if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+            echo "❌ ERROR: Missing required GitHub Actions secrets:"
+            for var in "${MISSING_VARS[@]}"; do
+              echo "   - $var"
+            done
+            exit 1
+          fi
+
+          echo "✅ All required Kakao OAuth environment variables are set"
+
       - name: Deploy via SSH
         env:
           HOST: ${{ secrets.STAGING_HOST }}
@@ -142,6 +179,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
+          KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
           ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
         run: |
           # Validate variables are available before SSH
@@ -162,6 +200,7 @@ jobs:
             export GHCR_TOKEN="${GHCR_TOKEN}"
             export KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
             export KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
+            export KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
             export ADMIN_EMAILS="${ADMIN_EMAILS}"
 
             echo "SSH connection successful"
@@ -221,6 +260,7 @@ jobs:
             export STAGING_HOST=${HOST}
             export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
             export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+            export KAKAO_CALLBACK_URL=${KAKAO_CALLBACK_URL}
             export ADMIN_EMAILS=${ADMIN_EMAILS}
 
             if [ -f .env.staging ]; then
@@ -234,6 +274,7 @@ jobs:
               export STAGING_HOST=${HOST}
               export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
               export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+              export KAKAO_CALLBACK_URL=${KAKAO_CALLBACK_URL}
               export ADMIN_EMAILS=${ADMIN_EMAILS}
             fi
 
