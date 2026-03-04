@@ -304,17 +304,15 @@ jobs:
               mkdir -p $BACKUP_DIR
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-              if docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-1$'; then
-                docker exec dorami-postgres-1 pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
-              elif docker ps --format '{{.Names}}' | grep -q '^dorami-postgres-prod$'; then
-                docker exec dorami-postgres-prod pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz"
-              elif docker ps --format '{{.Names}}' | grep -q '^live-commerce-postgres$'; then
-                docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from legacy container)"
+              # Try all known container names directly (don't use docker ps due to SSH environment issues)
+              if docker exec dorami-postgres-1 pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-1)"
+              elif docker exec dorami-postgres-prod pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-prod)"
+              elif docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from live-commerce-postgres)"
               else
-                echo "ERROR: No PostgreSQL container found"
+                echo "ERROR: Failed to dump database from all known containers"
                 exit 1
               fi
 
