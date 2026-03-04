@@ -100,7 +100,7 @@ export default function ProductDetailModal({
             images={[
               product.images?.[0] ?? product.imageUrl,
               ...(product.images?.slice(1) ?? []),
-            ]}
+            ].filter((x): x is string => typeof x === 'string')}
             productName={product.name}
             aspectRatio="aspect-square"
           />
