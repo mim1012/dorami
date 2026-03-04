@@ -88,16 +88,7 @@ export class InventoryService {
   async batchDecreaseStockTx(
     tx: Prisma.TransactionClient,
     items: { productId: string; quantity: number }[],
-  ): Promise<
-    Array<{ productId: string; streamKey: string | null; oldStock: number; newStock: number }>
-  > {
-    const results: Array<{
-      productId: string;
-      streamKey: string | null;
-      oldStock: number;
-      newStock: number;
-    }> = [];
-
+  ): Promise<void> {
     for (const item of items) {
       const product = await tx.product.findUnique({
         where: { id: item.productId },
@@ -111,25 +102,14 @@ export class InventoryService {
         throw new InsufficientStockException(item.productId, product.quantity, item.quantity);
       }
 
-      const newQuantity = product.quantity - item.quantity;
-
       await tx.product.update({
         where: { id: item.productId },
         data: {
-          quantity: newQuantity,
-          status: newQuantity === 0 ? 'SOLD_OUT' : product.status,
+          quantity: product.quantity - item.quantity,
+          status: product.quantity - item.quantity === 0 ? 'SOLD_OUT' : product.status,
         },
       });
-
-      results.push({
-        productId: item.productId,
-        streamKey: product.streamKey,
-        oldStock: product.quantity,
-        newStock: newQuantity,
-      });
     }
-
-    return results;
   }
 
   /**

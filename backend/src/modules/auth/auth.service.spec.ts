@@ -30,6 +30,7 @@ describe('AuthService', () => {
   const mockTokenPayload = {
     sub: 'user-123',
     userId: 'user-123',
+    email: 'test@example.com',
     kakaoId: 'kakao-123',
     role: 'USER',
   };

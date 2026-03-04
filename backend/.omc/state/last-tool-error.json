@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"grep -rn \\\"IMAGE_TAG\\\" .github/workflows/deploy-staging.yml | head -10 && \\\\\\necho \\\"\\\" && \\\\\\necho \\\"=== Docker Compose 이미지 태그 ===\\\" && \\\\\\ngrep \\\"image:.*dorami-backend\\\" docker-compose....",
-  "error": "Exit code 2\ngrep: .github/workflows/deploy-staging.yml: No such file or directory\n\n=== Docker Compose 이미지 태그 ===\ngrep: docker-compose.*.yml: No such file or directory\n\ngrep: .github/workflows/deploy-staging.yml: No such file or directory\n\n=== Docker Compose 이미지 태그 ===\ngrep: docker-compose.*.yml: No such file or directory",
-  "timestamp": "2026-03-04T03:03:23.422Z",
-  "retry_count": 1
-}

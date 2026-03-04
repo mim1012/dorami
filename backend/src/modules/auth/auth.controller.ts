@@ -19,7 +19,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { SkipCsrf } from '../../common/guards/csrf.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { DevLoginDto } from './dto/auth.dto';
+import { TokenPayload, DevLoginDto } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
 import { User } from '@prisma/client';
 
@@ -245,15 +245,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: '현재 로그인 사용자 정보 조회',
-    description: '데이터베이스에서 현재 사용자 정보를 조회합니다.',
+    description: 'JWT 토큰에서 사용자 정보를 반환합니다.',
   })
-  @ApiResponse({ status: 200, description: '현재 사용자 정보' })
+  @ApiResponse({ status: 200, description: '현재 사용자 토큰 페이로드' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async getProfile(@CurrentUser('userId') userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, kakaoId: true, email: true, name: true, role: true, status: true },
-    });
+  async getProfile(@CurrentUser() user: TokenPayload) {
     return user;
   }
 

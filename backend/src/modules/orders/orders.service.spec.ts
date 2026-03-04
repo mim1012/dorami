@@ -176,7 +176,7 @@ describe('OrdersService - createOrderFromCart', () => {
           provide: InventoryService,
           useValue: {
             batchDecreaseStock: jest.fn(),
-            batchDecreaseStockTx: jest.fn().mockResolvedValue([]),
+            batchDecreaseStockTx: jest.fn().mockResolvedValue(undefined),
             restoreStock: jest.fn(),
           },
         },

@@ -123,7 +123,9 @@ export class AdminService {
     private redisService: RedisService,
   ) {}
 
-  private getSystemConfigDefaults(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  private getSystemConfigDefaults(
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
     return {
       id: 'system',
       noticeText: null,
@@ -160,7 +162,11 @@ export class AdminService {
     return fallback;
   }
 
-  private normalizeConfigItems(raw: unknown, section: ConfigSection, itemDefaults: AdminConfigItem) {
+  private normalizeConfigItems(
+    raw: unknown,
+    section: ConfigSection,
+    itemDefaults: AdminConfigItem,
+  ) {
     if (!Array.isArray(raw)) {
       return [] as AdminConfigItems;
     }
@@ -177,7 +183,11 @@ export class AdminService {
     });
   }
 
-  private async updateConfigSection(section: ConfigSection, items: AdminConfigItems, itemDefaults: AdminConfigItem) {
+  private async updateConfigSection(
+    section: ConfigSection,
+    items: AdminConfigItems,
+    itemDefaults: AdminConfigItem,
+  ) {
     const normalizedItems = this.normalizeConfigItems(items, section, itemDefaults);
     const updateData: Record<string, AdminConfigItems> = {};
     const createData: Record<string, AdminConfigItems | unknown> = this.getSystemConfigDefaults();
@@ -359,7 +369,11 @@ export class AdminService {
       name: user.name,
       phone: user.phone,
       instagramId: user.instagramId,
-      shippingAddressSummary: this.formatShippingAddressSummary(user.shippingAddress),
+      shippingAddressSummary: user.shippingAddress
+        ? this.formatShippingAddressSummary(
+            this.encryptionService.decryptAddress(user.shippingAddress),
+          )
+        : '-',
       createdAt: user.createdAt.toISOString(),
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       status: user.status,

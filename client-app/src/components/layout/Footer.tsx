@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { LegalModal } from '@/components/legal/LegalModal';
 
 const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
-const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_DeEAX';
+const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
 
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);

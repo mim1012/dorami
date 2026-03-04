@@ -94,8 +94,10 @@ export class AuthService {
   async login(user: User): Promise<LoginResponseDto> {
     const payload: TokenPayload = {
       sub: user.id,
-      userId: user.id,
+      userId: user.id, // Add userId for JWT strategy compatibility
+      email: user.email ?? '', // Include email per Story 2.1 spec
       kakaoId: user.kakaoId,
+      name: user.name,
       role: user.role,
     };
 

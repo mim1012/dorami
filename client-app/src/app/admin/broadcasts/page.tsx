@@ -278,10 +278,8 @@ export default function BroadcastsPage() {
     if (!match) return url;
     const [, host, path] = match;
     const hasPort = /:\d+$/.test(host);
-    const fullUrl = hasPort ? url : `${host}:1935${path || ''}`;
-    // 스트림 키(마지막 path segment) 제거 → OBS URL 필드용
-    const lastSlash = fullUrl.lastIndexOf('/');
-    return lastSlash > 8 ? fullUrl.substring(0, lastSlash) : fullUrl;
+    if (hasPort) return url;
+    return `${host}:1935${path || ''}`;
   };
 
   const handleGenerateStreamKey = async () => {
@@ -1020,7 +1018,7 @@ export default function BroadcastsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
-                      RTMP 서버 URL (OBS 서버 입력란에 붙여넣기)
+                      RTMP 스트림 URL (포트 1935)
                     </label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg font-mono text-sm text-primary-text truncate">
