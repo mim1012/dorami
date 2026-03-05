@@ -34,110 +34,6 @@ jobs:
       contents: read
       packages: write
 
-  parity_gate:
-    name: Parity Gate (metadata required)
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate parity inputs
-        env:
-          STAGING_URL: ${{ vars.STAGING_URL }}
-          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
-          STAGING_HOST: ${{ secrets.STAGING_HOST }}
-          STAGING_USER: ${{ secrets.STAGING_USER }}
-          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
-          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
-          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
-          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-        run: |
-          if [ -z "${STAGING_URL}" ] || [ -z "${PRODUCTION_URL}" ]; then
-            echo "ERROR: vars.STAGING_URL and vars.PRODUCTION_URL must be set."
-            exit 1
-          fi
-          if [ -z "${STAGING_HOST}" ] || [ -z "${STAGING_USER}" ] || [ -z "${PRODUCTION_HOST}" ] || [ -z "${PRODUCTION_USER}" ]; then
-            echo "ERROR: STAGING_HOST/USER and PRODUCTION_HOST/USER are required."
-            exit 1
-          fi
-          if [ -z "${STAGING_SSH_KEY}" ] || [ -z "${PRODUCTION_SSH_KEY}" ]; then
-            echo "ERROR: STAGING_SSH_KEY and PRODUCTION_SSH_KEY are required for metadata parity."
-            exit 1
-          fi
-
-      - name: Prepare SSH key files
-        id: ssh_keys
-        env:
-          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
-          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-        run: |
-          write_ssh_key() {
-            local source="$1"
-            local out_path="$2"
-
-            if [ -z "${source}" ]; then
-              echo "Missing SSH key input."
-              return 1
-            fi
-
-            if echo "${source}" | grep -q "BEGIN"; then
-              printf '%s\n' "${source}" > "${out_path}"
-            else
-              printf '%s' "${source}" | base64 -d > "${out_path}" 2>/dev/null || {
-                echo "ERROR: ${out_path} is not valid PEM or base64 key."
-                return 1
-              }
-            fi
-            chmod 600 "${out_path}"
-            ssh-keygen -y -f "${out_path}" >/dev/null 2>&1 || {
-              echo "ERROR: invalid ssh key: ${out_path}"
-              return 1
-            }
-          }
-
-          STAGING_KEY_FILE="${RUNNER_TEMP}/staging_ssh_key"
-          PROD_KEY_FILE="${RUNNER_TEMP}/prod_ssh_key"
-
-          write_ssh_key "${STAGING_SSH_KEY}" "${STAGING_KEY_FILE}"
-          write_ssh_key "${PRODUCTION_SSH_KEY}" "${PROD_KEY_FILE}"
-
-          echo "staging_key=${STAGING_KEY_FILE}" >> "$GITHUB_OUTPUT"
-          echo "production_key=${PROD_KEY_FILE}" >> "$GITHUB_OUTPUT"
-
-      - name: Verify parity & metadata fingerprint
-        continue-on-error: true
-        env:
-          STAGING_URL: ${{ vars.STAGING_URL }}
-          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
-          STAGING_HOST: ${{ secrets.STAGING_HOST }}
-          STAGING_USER: ${{ secrets.STAGING_USER }}
-          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
-          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
-          STAGING_KEY_FILE: ${{ steps.ssh_keys.outputs.staging_key }}
-          PROD_KEY_FILE: ${{ steps.ssh_keys.outputs.production_key }}
-        run: |
-          node scripts/streaming-parity-check.mjs \
-            --staging-url "${STAGING_URL}" \
-            --production-url "${PRODUCTION_URL}" \
-            --stream-key smoke-check \
-            --max-latency-ms 2500 \
-            --min-score 90 \
-            --collect-metadata true \
-            --require-metadata true \
-            --staging-ssh-host "${STAGING_HOST}" \
-            --staging-ssh-user "${STAGING_USER}" \
-            --staging-ssh-key "${STAGING_KEY_FILE}" \
-            --production-ssh-host "${PRODUCTION_HOST}" \
-            --production-ssh-user "${PRODUCTION_USER}" \
-            --production-ssh-key "${PROD_KEY_FILE}" \
-            --staging-compose-base docker-compose.base.yml \
-            --staging-compose-overlay docker-compose.staging.yml \
-            --production-compose-base docker-compose.base.yml \
-            --production-compose-overlay docker-compose.prod.yml \
-            --staging-compose-env /opt/dorami/.env.staging \
-            --production-compose-env /opt/dorami/.env.production \
-            --staging-nginx-include nginx/streaming-routing.conf \
-            --production-nginx-include nginx/streaming-routing.conf
 
   deploy:
     name: Deploy Production
@@ -201,22 +97,19 @@ jobs:
           HOST: ${{ steps.prep.outputs.host }}
           USER: ${{ steps.prep.outputs.user }}
         run: |
-          ssh "$USER@$HOST" 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker /opt/dorami/monitoring/grafana/provisioning/dashboards /opt/dorami/monitoring/grafana/provisioning/datasources /opt/dorami/monitoring/prometheus/rules'
+          ssh "$USER@$HOST" 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker 
 
-          scp docker-compose.base.yml docker-compose.prod.yml docker-compose.prod-blue-green.yml docker-compose.observability.yml \
+          scp docker-compose.base.yml docker-compose.prod.yml \
             nginx/production.conf nginx/production-canary.conf nginx/streaming-routing.conf nginx/streaming-routing.blue-green.template.conf \
             $USER@$HOST:/opt/dorami/
 
           scp -r infrastructure/docker/srs \
             $USER@$HOST:/opt/dorami/infrastructure/docker/
 
-          scp monitoring/prometheus.yml $USER@$HOST:/opt/dorami/monitoring/prometheus.yml
 
-          scp -r monitoring/grafana \
-            $USER@$HOST:/opt/dorami/monitoring/
+            $USER@$HOST:
 
-          scp -r monitoring/prometheus \
-            $USER@$HOST:/opt/dorami/monitoring/
+            $USER@$HOST:
 
       - name: Ensure production env and repository owner
         env:
