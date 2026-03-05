@@ -208,13 +208,15 @@ export class ReStreamService implements OnModuleDestroy {
     // stream key passed via -rtmp_playpath so TLS handshake completes correctly.
     // Plain RTMP targets keep the existing concatenated URL format.
     const isRtmps = target.rtmpUrl.startsWith('rtmps://');
-    const outputUrl = isRtmps ? target.rtmpUrl : `${target.rtmpUrl}${target.streamKey}`;
+    // RTMPS: append stream key directly to URL (librtmp -rtmp_playpath doesn't work with RTMPS)
+    // RTMP: concatenate directly with stream key
+    const outputUrl = `${target.rtmpUrl}${target.streamKey}`;
 
-    // Extract numeric part of stream key (before '?') for RTMPS to avoid URL parameter truncation
-    const streamKeyForPlaypath = target.streamKey.split('?')[0];
-    const rtmpsExtraArgs: string[] = isRtmps
-      ? ['-rtmp_playpath', streamKeyForPlaypath, '-rtmp_live', 'live']
-      : [];
+    // For plain RTMP only, extract numeric part and use -rtmp_playpath to avoid URL parameter truncation
+    const rtmpsExtraArgs: string[] = isRtmps ? [] : (() => {
+      const streamKeyForPlaypath = target.streamKey.split('?')[0];
+      return ['-rtmp_playpath', streamKeyForPlaypath, '-rtmp_live', 'live'];
+    })();
 
     // Create log entry
     const log = await this.prisma.reStreamLog.create({
