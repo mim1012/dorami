@@ -231,7 +231,7 @@ jobs:
             exit 1
           fi
 
-          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
+          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=sha-98d058be68e8f07888e7287d8e576eb2bd1127e0|" .env.production || echo "IMAGE_TAG=sha-98d058be68e8f07888e7287d8e576eb2bd1127e0" >> .env.production
           sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
 
           if [ -n "${KAKAO_JS_KEY}" ]; then
@@ -291,8 +291,8 @@ jobs:
           ssh "$USER@$HOST" bash << 'ENDSSH'
           set -euo pipefail
           cd /opt/dorami
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
-          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d backend frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production ps
           ENDSSH
 
