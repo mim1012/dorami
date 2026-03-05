@@ -541,12 +541,12 @@ jobs:
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} SRS_API_URL="$STAGING_SRS_API_URL" NGINX_URL="$STAGING_NGINX_URL" FRONTEND_URL="$STAGING_FRONTEND_URL" 'bash -s' << 'EOF'
           set -e
-          # SRS HTTP API (port 1985)
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${SRS_API_URL}/api/v1/versions" 2>/dev/null || echo "000")
+          # SRS HTTP API (port 1985) — test via docker exec (1985 not exposed externally)
+          STATUS=$(docker exec dorami-srs-1 curl -sf -o /dev/null -w "%{http_code}" "http://localhost:1985/api/v1/versions" 2>/dev/null || echo "000")
           [ "$STATUS" = "200" ] || { echo "FAIL: SRS API returned $STATUS (expected 200)"; exit 1; }
           echo "PASSED: SRS API ($STATUS)"
-          # RTMP port 1935
-          nc -zw3 localhost 1935 && echo "PASSED: RTMP port 1935" || { echo "FAIL: RTMP port 1935 unreachable"; exit 1; }
+          # RTMP port 1935 — test via docker exec
+          docker exec dorami-srs-1 nc -zw3 localhost 1935 && echo "PASSED: RTMP port 1935" || { echo "FAIL: RTMP port 1935 unreachable"; exit 1; }
           # nginx → SRS HTTP-FLV routing (non-streaming → 404/200, never 502)
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${NGINX_URL}/live/live/smoke-check.flv" 2>/dev/null || echo "000")
           [ "$STATUS" != "502" ] && [ "$STATUS" != "000" ] || { echo "FAIL: HTTP-FLV routing broken ($STATUS)"; exit 1; }
