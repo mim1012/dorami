@@ -140,10 +140,9 @@ jobs:
             --production-nginx-include nginx/streaming-routing.conf
 
   deploy:
-    name: Deploy Production (Blue/Green + Soak)
+    name: Deploy Production
     needs: [build]
-    # Parity gate disabled for demo mode - skipping staging validation
-    # In production, add: needs: [build, parity_gate]
+    # Demo mode: CI → Build → Deploy (no parity gate, no blue/green, no soak)
     if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
@@ -269,15 +268,7 @@ jobs:
           echo "Environment updated for IMAGE_TAG=${IMAGE_TAG}"
           ENDSSH
 
-      - name: Sync green/blue deployment script
-        env:
-          HOST: ${{ steps.prep.outputs.host }}
-          USER: ${{ steps.prep.outputs.user }}
-        run: |
-          scp scripts/streaming-blue-green-deploy.sh "$USER@$HOST:/tmp/streaming-blue-green-deploy.sh"
-          ssh "$USER@$HOST" "chmod +x /tmp/streaming-blue-green-deploy.sh"
-
-      - name: Run production blue/green + soak gate
+      - name: Deploy to production
         id: bluegreen
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
