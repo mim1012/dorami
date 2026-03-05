@@ -94,10 +94,12 @@ log_success "Database connectivity verified"
 log_step "STEP 3: Network Verification"
 
 REQUIRED_CONTAINERS=(
-  "dorami-backend-prod"
-  "dorami-postgres-prod"
-  "dorami-redis-prod"
-  "dorami-nginx"
+  "dorami-postgres-1"
+  "dorami-redis-1"
+  "dorami-nginx-prod"
+)
+REQUIRED_SERVICES=(
+  "backend-prod"
 )
 
 for container in "${REQUIRED_CONTAINERS[@]}"; do
@@ -192,7 +194,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker ps | grep -q "dorami-backend-prod"; then
+  if docker-compose -f docker-compose.prod.yml ps backend-prod 2>/dev/null | grep -q "running"; then
     log_success "Backend container running"
     break
   fi
@@ -225,7 +227,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     log_error "API health check failed after $MAX_RETRIES retries"
-    log_warning "Backend may still be initializing. Check logs: docker logs dorami-backend-prod"
+    log_warning "Backend may still be initializing. Check logs: docker-compose -f docker-compose.prod.yml logs backend-prod"
     exit 1
   fi
 

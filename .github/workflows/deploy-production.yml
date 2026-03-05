@@ -636,7 +636,7 @@ jobs:
           echo "=== Waiting for backend health ==="
           backend_ok=false
           for i in $(seq 1 24); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo "unknown")
+            status=$(docker inspect --format='{{.State.Health.Status}}' backend-prod 2>/dev/null || echo "unknown")
             if [ "${status}" = "healthy" ]; then
               echo "Backend healthy!"
               backend_ok=true
@@ -644,7 +644,7 @@ jobs:
             fi
             if [ "${status}" = "unhealthy" ]; then
               echo "ERROR: Backend is unhealthy"
-              docker logs dorami-backend-prod --tail 50 2>/dev/null || true
+              docker logs backend-prod --tail 50 2>/dev/null || true
               exit 1
             fi
             echo "Backend status: ${status} (${i}/24)"
@@ -652,7 +652,7 @@ jobs:
           done
           if ! ${backend_ok}; then
             echo "ERROR: Backend health check timed out"
-            docker logs dorami-backend-prod --tail 50 2>/dev/null || true
+            docker logs backend-prod --tail 50 2>/dev/null || true
             exit 1
           fi
 
@@ -889,7 +889,7 @@ jobs:
         run: |
           ssh $USER@$HOST 'bash -s' << 'ENDSSH'
             for i in 1 2 3 4 5; do
-              status=$(docker inspect --format='{{.State.Health.Status}}' dorami-backend-prod 2>/dev/null || echo "unknown")
+              status=$(docker inspect --format='{{.State.Health.Status}}' backend-prod 2>/dev/null || echo "unknown")
               if [ "${status}" = "healthy" ]; then
                 echo "Backend API healthy!"
                 exit 0
@@ -898,7 +898,7 @@ jobs:
               sleep 10
             done
             echo "Backend health check failed!"
-            docker logs dorami-backend-prod --tail 20 2>/dev/null || true
+            docker logs backend-prod --tail 20 2>/dev/null || true
             exit 1
           ENDSSH
 
@@ -928,7 +928,7 @@ jobs:
           EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
         run: |
           deployed=$(ssh $USER@$HOST \
-            'docker exec dorami-backend-prod wget -qO- http://localhost:3001/api/health 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"version\",\"unknown\"))" 2>/dev/null || echo "unknown"')
+            'docker exec backend-prod wget -qO- http://localhost:3001/api/health 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get(\"version\",\"unknown\"))" 2>/dev/null || echo "unknown"')
           echo "Deployed version: ${deployed}"
           echo "Expected version: ${EXPECTED_VERSION}"
           if [ "${deployed}" = "${EXPECTED_VERSION}" ]; then
