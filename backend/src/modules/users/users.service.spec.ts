@@ -23,6 +23,7 @@ describe('UsersService - Profile Completion', () => {
   const mockEncryptionService = {
     encryptAddress: jest.fn(),
     decryptAddress: jest.fn(),
+    tryDecryptAddress: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -158,13 +159,13 @@ describe('UsersService - Profile Completion', () => {
     it('should throw ConflictException if Instagram ID is already taken', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({ id: 'other-user-id' });
 
-      await expect(
-        service.completeProfile(userId, completeProfileDto),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
+        ConflictException,
+      );
 
-      await expect(
-        service.completeProfile(userId, completeProfileDto),
-      ).rejects.toThrow('This Instagram ID is already registered');
+      await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
+        'This Instagram ID is already registered',
+      );
 
       // Should not call encryptAddress or update if Instagram ID is taken
       expect(mockEncryptionService.encryptAddress).not.toHaveBeenCalled();
@@ -182,7 +183,10 @@ describe('UsersService - Profile Completion', () => {
       } as any);
 
       await expect(
-        service.completeProfile(userId, { ...completeProfileDto, instagramId: '@updated_instagram' }),
+        service.completeProfile(userId, {
+          ...completeProfileDto,
+          instagramId: '@updated_instagram',
+        }),
       ).resolves.not.toThrow();
 
       expect(mockPrismaService.user.update).toHaveBeenCalled();
@@ -199,7 +203,10 @@ describe('UsersService - Profile Completion', () => {
 
       // Note: The @ prefix is added by class-transformer in the DTO
       // This test assumes the DTO has already applied the transform
-      await service.completeProfile(userId, { ...completeProfileDto, instagramId: '@no_at_symbol' });
+      await service.completeProfile(userId, {
+        ...completeProfileDto,
+        instagramId: '@no_at_symbol',
+      });
 
       expect(mockPrismaService.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -273,7 +280,7 @@ describe('UsersService - Profile Completion', () => {
         id: userId,
         shippingAddress: mockEncryptedAddress,
       });
-      mockEncryptionService.decryptAddress.mockReturnValue(mockDecryptedAddress);
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getShippingAddress(userId);
 
@@ -281,7 +288,7 @@ describe('UsersService - Profile Completion', () => {
         where: { id: userId },
         select: { shippingAddress: true },
       });
-      expect(mockEncryptionService.decryptAddress).toHaveBeenCalledWith(mockEncryptedAddress);
+      expect(mockEncryptionService.tryDecryptAddress).toHaveBeenCalledWith(mockEncryptedAddress);
       expect(result).toEqual(mockDecryptedAddress);
     });
 
@@ -291,7 +298,7 @@ describe('UsersService - Profile Completion', () => {
       const result = await service.getShippingAddress(userId);
 
       expect(result).toBeNull();
-      expect(mockEncryptionService.decryptAddress).not.toHaveBeenCalled();
+      expect(mockEncryptionService.tryDecryptAddress).not.toHaveBeenCalled();
     });
 
     it('should return null if shipping address is null', async () => {
@@ -303,7 +310,7 @@ describe('UsersService - Profile Completion', () => {
       const result = await service.getShippingAddress(userId);
 
       expect(result).toBeNull();
-      expect(mockEncryptionService.decryptAddress).not.toHaveBeenCalled();
+      expect(mockEncryptionService.tryDecryptAddress).not.toHaveBeenCalled();
     });
 
     it('should handle decryption errors gracefully', async () => {
@@ -311,11 +318,11 @@ describe('UsersService - Profile Completion', () => {
         id: userId,
         shippingAddress: 'corrupted:data',
       });
-      mockEncryptionService.decryptAddress.mockImplementation(() => {
-        throw new Error('Decryption failed');
-      });
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(null);
 
-      await expect(service.getShippingAddress(userId)).rejects.toThrow('Decryption failed');
+      const result = await service.getShippingAddress(userId);
+
+      expect(result).toBeNull();
     });
   });
 
@@ -334,7 +341,7 @@ describe('UsersService - Profile Completion', () => {
 
     it('should update shipping address successfully', async () => {
       mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
         email: 'user@test.com',
@@ -382,7 +389,7 @@ describe('UsersService - Profile Completion', () => {
       };
 
       mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.decryptAddress.mockReturnValue(dtoWithoutAddress2);
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(dtoWithoutAddress2);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
         shippingAddress: mockEncryptedAddress,
@@ -403,7 +410,7 @@ describe('UsersService - Profile Completion', () => {
 
     it('should encrypt address before storing', async () => {
       mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
       } as any);
@@ -422,7 +429,7 @@ describe('UsersService - Profile Completion', () => {
 
     it('should throw error if user not found', async () => {
       mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.decryptAddress.mockReturnValue(updateAddressDto);
+      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
       mockPrismaService.user.update.mockRejectedValue(new Error('Record not found'));
 
       await expect(
