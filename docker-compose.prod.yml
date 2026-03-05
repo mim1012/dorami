@@ -116,7 +116,9 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG:?IMAGE_TAG required}
+    build:
+      context: .
+      dockerfile: client-app/Dockerfile
     container_name: dorami-frontend-prod
     restart: always
     expose:
