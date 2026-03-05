@@ -69,15 +69,20 @@ export default function ProfileRegisterPage() {
     error: instagramCheckError,
   } = useInstagramCheck(formData.instagramId);
 
+  // Step 1: Not authenticated → go to login
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (authLoading) return;
+    const isAuthenticated = !!(user?.kakaoId || user?.email);
+    if (!isAuthenticated) {
+      router.replace('/login');
     }
   }, [user, authLoading, router]);
 
-  // 이미 프로필이 완성된 유저가 이 페이지에 오면 홈으로 이동
+  // Step 2: Profile already complete → go to home
   useEffect(() => {
-    if (!authLoading && user?.instagramId && user?.depositorName) {
+    if (authLoading) return;
+    const isProfileComplete = !!(user?.instagramId && user?.depositorName);
+    if (user && isProfileComplete) {
       router.replace('/');
     }
   }, [user, authLoading, router]);
