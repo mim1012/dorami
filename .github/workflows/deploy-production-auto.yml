@@ -288,20 +288,13 @@ jobs:
 
           echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
 
-          bash scripts/streaming-blue-green-deploy.sh \
-            --image-tag "${IMAGE_TAG}" \
-            --host "${HOST}" \
-            --user "${USER}" \
-            --ssh-key "$KEY_FILE" \
-            --workdir /opt/dorami \
-            --compose-base docker-compose.base.yml \
-            --compose-overlay docker-compose.prod-blue-green.yml \
-            --canary-url "http://${HOST}:13080" \
-            --canary-port 13080 \
-            --soak-duration "${SOAK_DURATION}" \
-            --soak-interval "${SOAK_INTERVAL}" \
-            --soak-max-users "${SOAK_USERS}" \
-            --soak-stream-key smoke-check
+          ssh "$USER@$HOST" bash << 'ENDSSH'
+          set -euo pipefail
+          cd /opt/dorami
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d backend frontend
+          docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production ps
+          ENDSSH
 
       - name: Deploy observability stack
         env:
