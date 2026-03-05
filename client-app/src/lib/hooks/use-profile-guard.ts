@@ -3,8 +3,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './use-auth';
 
 /**
- * Hook to guard routes that require completed profile
- * Redirects to /profile/register if profile is incomplete
+ * Hook to guard routes that require completed profile.
+ * Two-step check: authentication first, then profile completion.
+ * Redirects to /login if not authenticated, /profile/register if profile is incomplete.
  */
 export function useProfileGuard() {
   const router = useRouter();
@@ -14,28 +15,27 @@ export function useProfileGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    if (!user) {
-      // Not authenticated — redirect to login with return target.
-      // Pass reason so login page can show "세션이 만료되었습니다".
+    // Step 1: Authentication check
+    const isAuthenticated = !!(user?.kakaoId || user?.email);
+    if (!isAuthenticated) {
       const returnTo = pathname || '/';
       const safeReturnTo = returnTo.startsWith('/') ? returnTo : '/';
-      router.push(`/login?reason=session_expired&returnTo=${encodeURIComponent(safeReturnTo)}`);
+      router.replace(`/login?reason=session_expired&returnTo=${encodeURIComponent(safeReturnTo)}`);
       return;
     }
 
-    // Admin users skip profile completion
-    if (user.role === 'ADMIN') return;
+    // Step 2: Admin users skip profile completion
+    if (user?.role === 'ADMIN') return;
 
-    // Check if profile is complete
-    const needsProfileCompletion = !user.instagramId || !user.depositorName;
-
-    if (needsProfileCompletion) {
-      router.push('/profile/register');
+    // Step 3: Profile completion check
+    const isProfileComplete = !!(user?.instagramId && user?.depositorName);
+    if (!isProfileComplete) {
+      router.replace('/profile/register');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, pathname]);
 
   return {
     isLoading,
-    isProfileComplete: user ? !!(user.instagramId && user.depositorName) : false,
+    isProfileComplete: !!(user?.instagramId && user?.depositorName),
   };
 }

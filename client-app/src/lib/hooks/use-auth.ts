@@ -56,7 +56,12 @@ export function useAuth() {
     window.location.href = '/login';
   };
 
-  const needsProfileCompletion = user && (!user.instagramId || !user.depositorName);
+  // Authentication: user has a valid identity (kakaoId or email)
+  const isUserAuthenticated = !!(user?.kakaoId || user?.email);
+  // Profile completion: user has filled in required profile fields
+  const isProfileComplete = !!(user?.instagramId && user?.depositorName);
+  // Convenience: needs profile if authenticated but profile incomplete
+  const needsProfileCompletion = isUserAuthenticated && !isProfileComplete;
 
   return {
     user,
@@ -64,6 +69,8 @@ export function useAuth() {
     isLoading,
     logout: handleLogout,
     refreshProfile: fetchProfile,
+    isUserAuthenticated,
+    isProfileComplete,
     needsProfileCompletion,
   };
 }

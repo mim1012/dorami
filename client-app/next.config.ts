@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 // Security headers applied to every response from the Next.js frontend
-const baseSecurityHeaders = [
+const baseHeaders = [
   // Prevent this page from being embedded in frames on other origins (clickjacking)
   { key: 'X-Frame-Options', value: 'DENY' },
   // Prevent MIME-type sniffing
@@ -19,17 +19,17 @@ const baseSecurityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'off' },
 ];
 
-// HSTS: only enforce HTTPS in production to avoid caching issues in staging
-const getSecurityHeaders = () => {
-  const headers = [...baseSecurityHeaders];
-  if (process.env.NODE_ENV === 'production') {
-    headers.push({
-      key: 'Strict-Transport-Security',
-      value: 'max-age=31536000; includeSubDomains; preload',
-    });
-  }
-  return headers;
-};
+// HSTS: only apply in production (staging uses HTTP)
+const isProduction = process.env.APP_ENV === 'production';
+const securityHeaders = isProduction
+  ? [
+      ...baseHeaders,
+      {
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains; preload',
+      },
+    ]
+  : baseHeaders;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
       {
         // Apply security headers to all routes
         source: '/(.*)',
-        headers: getSecurityHeaders(),
+        headers: securityHeaders,
       },
     ];
   },
