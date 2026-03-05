@@ -217,6 +217,9 @@ jobs:
           REPO_OWNER: ${{ steps.prep.outputs.repo_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
+          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          PROD_PROFILE_ENCRYPTION_KEY: ${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}
         run: |
           ssh "$USER@$HOST" bash << ENDSSH
           set -euo pipefail
@@ -233,6 +236,18 @@ jobs:
           if [ -n "${KAKAO_JS_KEY}" ]; then
             sed -i "s|^KAKAO_JS_KEY=.*|KAKAO_JS_KEY=${KAKAO_JS_KEY}|" .env.production || echo "KAKAO_JS_KEY=${KAKAO_JS_KEY}" >> .env.production
           fi
+
+          # Update PROD_* secrets if provided
+          if [ -n "${PROD_KAKAO_CLIENT_SECRET}" ]; then
+            sed -i "s|^KAKAO_CLIENT_SECRET=.*|KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}|" .env.production || echo "KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}" >> .env.production
+          fi
+          if [ -n "${PROD_POSTGRES_PASSWORD}" ]; then
+            sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}|" .env.production || echo "POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}" >> .env.production
+          fi
+          if [ -n "${PROD_PROFILE_ENCRYPTION_KEY}" ]; then
+            sed -i "s|^PROFILE_ENCRYPTION_KEY=.*|PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}|" .env.production || echo "PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}" >> .env.production
+          fi
+
           echo "Environment updated for IMAGE_TAG=${IMAGE_TAG}"
           ENDSSH
 
