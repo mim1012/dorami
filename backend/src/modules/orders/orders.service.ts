@@ -795,8 +795,8 @@ export class OrdersService {
         quantity: item.quantity,
         price: String(item.price),
         shippingFee: String(item.shippingFee),
-        color: item.color,
-        size: item.size,
+        color: item.color || undefined,
+        size: item.size || undefined,
       })),
     };
   }
