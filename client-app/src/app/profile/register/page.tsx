@@ -148,8 +148,8 @@ export default function ProfileRegisterPage() {
 
     if (!formData.phone) {
       newErrors.phone = '전화번호를 입력해주세요';
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
+    } else if (!/^\+[0-9\s\-()]{7,20}$/.test(formData.phone)) {
+      newErrors.phone = '국제 전화번호 형식: +1 213-555-1234';
     }
 
     setErrors(newErrors);
@@ -332,12 +332,12 @@ export default function ProfileRegisterPage() {
               />
 
               <Input
-                label="전화번호 (미국)"
+                label="전화번호 (국제)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
-                placeholder="(123) 456-7890"
+                placeholder="+1 213-555-1234"
                 fullWidth
                 required
               />

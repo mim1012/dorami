@@ -537,6 +537,16 @@ export default function LiveStreamPage() {
       return;
     }
 
+    // Check profile completion
+    const { needsProfileCompletion } = useAuth();
+    if (needsProfileCompletion) {
+      showToast('프로필 완성 후 이용 가능합니다', 'error', {
+        label: '프로필 완성',
+        onClick: () => router.push('/profile/register'),
+      });
+      return;
+    }
+
     try {
       await apiClient.post('/cart', {
         productId,
