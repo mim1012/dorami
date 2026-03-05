@@ -97,19 +97,14 @@ jobs:
           HOST: ${{ steps.prep.outputs.host }}
           USER: ${{ steps.prep.outputs.user }}
         run: |
-          ssh "$USER@$HOST" 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker 
+          ssh "$USER@$HOST" 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker'
 
           scp docker-compose.base.yml docker-compose.prod.yml \
-            nginx/production.conf nginx/production-canary.conf nginx/streaming-routing.conf nginx/streaming-routing.blue-green.template.conf \
+            nginx/production.conf nginx/streaming-routing.conf \
             $USER@$HOST:/opt/dorami/
 
           scp -r infrastructure/docker/srs \
             $USER@$HOST:/opt/dorami/infrastructure/docker/
-
-
-            $USER@$HOST:
-
-            $USER@$HOST:
 
       - name: Ensure production env and repository owner
         env:
