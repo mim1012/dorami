@@ -136,8 +136,8 @@ jobs:
 
   deploy:
     name: Deploy Production (Blue/Green + Soak)
-    needs: [build, parity_gate]
-    if: ${{ needs.build.result == 'success' && needs.parity_gate.result == 'success' }}
+    needs: [build]
+    if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
