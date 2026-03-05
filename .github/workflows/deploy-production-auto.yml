@@ -228,6 +228,7 @@ jobs:
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_PROFILE_ENCRYPTION_KEY: ${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}
+          PROD_GRAFANA_ADMIN_PASSWORD: ${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}
         run: |
           ssh "$USER@$HOST" bash << ENDSSH
           set -euo pipefail
@@ -254,6 +255,13 @@ jobs:
           fi
           if [ -n "${PROD_PROFILE_ENCRYPTION_KEY}" ]; then
             sed -i "s|^PROFILE_ENCRYPTION_KEY=.*|PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}|" .env.production || echo "PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}" >> .env.production
+          fi
+          if [ -n "${PROD_GRAFANA_ADMIN_PASSWORD}" ]; then
+            sed -i "s|^GRAFANA_ADMIN_PASSWORD=.*|GRAFANA_ADMIN_PASSWORD=${PROD_GRAFANA_ADMIN_PASSWORD}|" .env.production || echo "GRAFANA_ADMIN_PASSWORD=${PROD_GRAFANA_ADMIN_PASSWORD}" >> .env.production
+          else
+            # Generate a default password if not provided
+            GRAFANA_PASS=$(openssl rand -base64 32 | tr -d '=+/' | cut -c1-25)
+            sed -i "s|^GRAFANA_ADMIN_PASSWORD=.*|GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASS}|" .env.production || echo "GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASS}" >> .env.production
           fi
 
           echo "Environment updated for IMAGE_TAG=${IMAGE_TAG}"
@@ -313,8 +321,8 @@ jobs:
           ssh "$USER@$HOST" bash << ENDSSH
           set -euo pipefail
           cd /opt/dorami
-          docker compose -f docker-compose.observability.yml up -d
-          docker compose -f docker-compose.observability.yml ps
+          docker compose -f docker-compose.observability.yml --env-file .env.production up -d
+          docker compose -f docker-compose.observability.yml --env-file .env.production ps
           ENDSSH
 
       - name: Production health check + active slot
