@@ -113,5 +113,7 @@ export class OrderResponseDto {
     quantity: number;
     price: string;
     shippingFee: string;
+    color?: string;
+    size?: string;
   }[];
 }

@@ -17,6 +17,8 @@ interface OrderItem {
   quantity: number;
   price: number;
   shippingFee: number;
+  color?: string;
+  size?: string;
 }
 
 interface Order {
@@ -90,7 +92,12 @@ export default function OrdersPage() {
       return { text: '배송 중', color: 'text-info', icon: Truck, bgColor: 'bg-blue-100' };
     }
     if (orderStatus === 'DELIVERED') {
-      return { text: '배송 완료', color: 'text-success', icon: CheckCircle, bgColor: 'bg-success/10' };
+      return {
+        text: '배송 완료',
+        color: 'text-success',
+        icon: CheckCircle,
+        bgColor: 'bg-success/10',
+      };
     }
 
     if (orderStatus === 'PAYMENT_CONFIRMED') {
@@ -114,8 +121,8 @@ export default function OrdersPage() {
         };
       case 'FAILED':
         return { text: '결제 실패', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
-    default:
-      return {
+      default:
+        return {
           text: paymentStatus,
           color: 'text-secondary-text',
           icon: Package,
@@ -243,6 +250,12 @@ export default function OrdersPage() {
                             <Body className="text-primary-text font-semibold mb-1">
                               {item.productName}
                             </Body>
+                            {(item.color || item.size) && (
+                              <div className="text-secondary-text text-sm space-y-0.5 mb-1">
+                                {item.color && <div>색상: {item.color}</div>}
+                                {item.size && <div>사이즈: {item.size}</div>}
+                              </div>
+                            )}
                             <Body className="text-secondary-text text-sm">
                               {formatPrice(item.price)} × {item.quantity}개
                             </Body>

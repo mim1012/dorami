@@ -171,6 +171,12 @@ export default function CheckoutPage() {
               <div key={item.id} className="flex justify-between items-center">
                 <div className="flex-1 min-w-0">
                   <Body className="text-primary-text truncate">{item.productName}</Body>
+                  {(item.color || item.size) && (
+                    <div className="text-secondary-text text-sm space-y-0.5 mb-1">
+                      {item.color && <div>색상: {item.color}</div>}
+                      {item.size && <div>사이즈: {item.size}</div>}
+                    </div>
+                  )}
                   <Body className="text-secondary-text text-sm">
                     {formatPrice(item.price)} x {item.quantity}개
                   </Body>
