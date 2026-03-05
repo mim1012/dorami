@@ -240,7 +240,7 @@ jobs:
             exit 1
           fi
 
-          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=sha-98d058be68e8f07888e7287d8e576eb2bd1127e0|" .env.production || echo "IMAGE_TAG=sha-98d058be68e8f07888e7287d8e576eb2bd1127e0" >> .env.production
+          sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env.production || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env.production
           sed -i "s|^GITHUB_REPOSITORY_OWNER=.*|GITHUB_REPOSITORY_OWNER=${REPO_OWNER}|" .env.production || echo "GITHUB_REPOSITORY_OWNER=${REPO_OWNER}" >> .env.production
 
           if [ -n "${KAKAO_JS_KEY}" ]; then
@@ -312,33 +312,22 @@ jobs:
         run: |
           echo "⏭️  Observability stack deployment skipped (optional service for demo)"
 
-      - name: Production health check + active slot
+      - name: Production health check
         env:
-          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
           HOST: ${{ steps.prep.outputs.host }}
           USER: ${{ steps.prep.outputs.user }}
         run: |
+          ssh "$USER@$HOST" bash << 'ENDSSH'
           set -e
-          if [ -z "${PRODUCTION_URL}" ]; then
-            echo "ERROR: vars.PRODUCTION_URL is required."
-            exit 1
-          fi
-
           for i in 1 2 3 4 5 6; do
-            status="$(curl -sL -o /dev/null -w '%{http_code}' "${PRODUCTION_URL}/api/health/live" || echo 000)"
+            status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/health/live || echo 000)"
             if [ "$status" = "200" ]; then
-              echo "backend health ok"
-              break
+              echo "✅ Backend health check passed"
+              exit 0
             fi
-            echo "health retry ${i}/6 (${status})"
+            echo "health retry ${i}/6 (status: ${status})"
             sleep 10
           done
-
-          if [ "${status:-000}" != "200" ]; then
-            echo "ERROR: health check failed after retries"
-            exit 1
-          fi
-
-          echo "Active slot (if exists):"
-          ssh "$USER@$HOST" "cat /opt/dorami/.dorami-active-slot || true"
-          echo "Deployment verification done."
+          echo "❌ Health check failed after 6 retries"
+          exit 1
+          ENDSSH
