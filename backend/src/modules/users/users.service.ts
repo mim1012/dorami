@@ -124,7 +124,7 @@ export class UsersService {
 
     // Cast Json to string for decryption
     const encryptedString = user.shippingAddress as string;
-    return this.encryptionService.decryptAddress(encryptedString);
+    return this.encryptionService.tryDecryptAddress(encryptedString);
   }
 
   /**
@@ -143,7 +143,7 @@ export class UsersService {
     let shippingAddress: ShippingAddress | undefined;
     if (user.shippingAddress) {
       const encryptedString = user.shippingAddress as string;
-      shippingAddress = this.encryptionService.decryptAddress(encryptedString);
+      shippingAddress = this.encryptionService.tryDecryptAddress(encryptedString) ?? undefined;
     }
 
     return {

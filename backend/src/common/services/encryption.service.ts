@@ -7,9 +7,9 @@ export interface ShippingAddress {
   address1: string;
   address2?: string;
   city: string;
-  state: string;  // 2-letter code: CA, NY, TX, etc.
-  zip: string;    // 12345 or 12345-6789
-  phone: string;  // (XXX) XXX-XXXX
+  state: string; // 2-letter code: CA, NY, TX, etc.
+  zip: string; // 12345 or 12345-6789
+  phone: string; // (XXX) XXX-XXXX
 }
 
 @Injectable()
@@ -60,5 +60,18 @@ export class EncryptionService {
     plaintext += decipher.final('utf8');
 
     return JSON.parse(plaintext) as ShippingAddress;
+  }
+
+  /**
+   * Safe decrypt - returns null if decryption fails (e.g., wrong encryption key)
+   * Used for operations that should not fail if address cannot be decrypted
+   */
+  tryDecryptAddress(encrypted: string): ShippingAddress | null {
+    try {
+      return this.decryptAddress(encrypted);
+    } catch (error) {
+      console.warn('Failed to decrypt address (wrong key or corrupted data):', error);
+      return null;
+    }
   }
 }

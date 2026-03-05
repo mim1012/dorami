@@ -363,25 +363,29 @@ export class AdminService {
     const statsMap = new Map(orderStats.map((s) => [s.userId, s]));
 
     // Map users to DTOs with order stats
-    const userDtos: UserListItemDto[] = users.map((user) => ({
-      id: user.id,
-      email: user.email ?? '',
-      name: user.name,
-      phone: user.phone,
-      instagramId: user.instagramId,
-      shippingAddressSummary: user.shippingAddress
-        ? this.formatShippingAddressSummary(
-            this.encryptionService.decryptAddress(user.shippingAddress as string),
-          )
-        : '-',
-      createdAt: user.createdAt.toISOString(),
-      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
-      status: user.status,
-      role: user.role,
-      totalOrders: statsMap.get(user.id)?._count.id ?? 0,
-      totalPurchaseAmount: String(statsMap.get(user.id)?._sum.total ?? 0),
-      lastPurchaseAt: statsMap.get(user.id)?._max.createdAt?.toISOString() ?? null,
-    }));
+    const userDtos: UserListItemDto[] = users.map((user) => {
+      const decryptedAddress = user.shippingAddress
+        ? this.encryptionService.tryDecryptAddress(user.shippingAddress as string)
+        : null;
+
+      return {
+        id: user.id,
+        email: user.email ?? '',
+        name: user.name,
+        phone: user.phone,
+        instagramId: user.instagramId,
+        shippingAddressSummary: decryptedAddress
+          ? this.formatShippingAddressSummary(decryptedAddress)
+          : '-',
+        createdAt: user.createdAt.toISOString(),
+        lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+        status: user.status,
+        role: user.role,
+        totalOrders: statsMap.get(user.id)?._count.id ?? 0,
+        totalPurchaseAmount: String(statsMap.get(user.id)?._sum.total ?? 0),
+        lastPurchaseAt: statsMap.get(user.id)?._max.createdAt?.toISOString() ?? null,
+      };
+    });
 
     const totalPages = Math.ceil(total / limit);
 
