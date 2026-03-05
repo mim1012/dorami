@@ -810,13 +810,13 @@ jobs:
           fi
           echo "PASSED: HTTP redirects to HTTPS"
 
-          echo "=== SRS API check (via SSH) ==="
-          STATUS=$(ssh $USER@$HOST 'curl -sf -o /dev/null -w "%{http_code}" http://localhost:1985/api/v1/versions 2>/dev/null || echo 000')
+          echo "=== SRS API check (via Docker exec) ==="
+          STATUS=$(ssh $USER@$HOST 'docker exec dorami-srs-1 curl -sf -o /dev/null -w "%{http_code}" http://localhost:1985/api/v1/versions 2>/dev/null || echo 000')
           [ "$STATUS" = "200" ] || { echo "FAIL: SRS API returned $STATUS (expected 200)"; exit 1; }
           echo "PASSED: SRS API ($STATUS)"
 
-          echo "=== RTMP port 1935 check ==="
-          ssh $USER@$HOST 'nc -zw3 localhost 1935' \
+          echo "=== RTMP port 1935 check (via Docker exec) ==="
+          ssh $USER@$HOST 'docker exec dorami-srs-1 nc -zw3 localhost 1935' \
             && echo "PASSED: RTMP port 1935 listening" \
             || { echo "FAIL: RTMP port 1935 not listening"; exit 1; }
 
