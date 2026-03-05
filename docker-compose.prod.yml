@@ -67,7 +67,9 @@ services:
       - dorami-internal
 
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: always
     ports:
       - '127.0.0.1:3001:3001'  # Nginx container proxy only
