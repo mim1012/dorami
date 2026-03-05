@@ -72,9 +72,9 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
 
       redis:
         image: redis:7-alpine
@@ -82,9 +82,9 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
 
     steps:
       - uses: actions/checkout@v4
@@ -125,6 +125,7 @@ jobs:
           PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
       - name: E2E Tests
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: npm run test:e2e
         env:

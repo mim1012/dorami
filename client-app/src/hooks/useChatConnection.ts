@@ -5,7 +5,11 @@ import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
-export function useChatConnection(streamKey: string) {
+export function useChatConnection(
+  streamKey: string,
+  options: { forceLogoutOnAuthFailure?: boolean } = {},
+) {
+  const { forceLogoutOnAuthFailure = false } = options;
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
@@ -19,6 +23,7 @@ export function useChatConnection(streamKey: string) {
       chatConfig.circuitBreakerCooldownMs,
     ),
   );
+  const pendingSendQueue = useRef<string[]>([]);
 
   // 마지막 connect_error가 인증(토큰 만료) 에러였는지 추적
   const lastAuthErrorRef = useRef(false);
@@ -26,14 +31,18 @@ export function useChatConnection(streamKey: string) {
   useEffect(() => {
     // WebSocket connection - connect to /chat namespace
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
     const socket = io(`${SOCKET_URL}/chat`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
-      auth: token ? { token } : undefined,
+      ...(token ? { auth: { token } } : {}),
       reconnection: true,
       reconnectionAttempts: chatConfig.maxAttempts,
       reconnectionDelay: chatConfig.delays[0],
       reconnectionDelayMax: chatConfig.delays[chatConfig.delays.length - 1],
+      randomizationFactor: chatConfig.jitterFactor,
+      timeout: 20000,
+      autoConnect: true,
     });
 
     socketRef.current = socket;
@@ -49,6 +58,12 @@ export function useChatConnection(streamKey: string) {
 
       // Join chat room (gateway expects liveId)
       socket.emit('chat:join-room', { liveId: streamKey });
+      if (pendingSendQueue.current.length > 0) {
+        for (const msg of pendingSendQueue.current) {
+          socket.emit('chat:send-message', { liveId: streamKey, message: msg });
+        }
+        pendingSendQueue.current = [];
+      }
     });
 
     // Re-join room after reconnection (network switch, background recovery)
@@ -90,7 +105,9 @@ export function useChatConnection(streamKey: string) {
           }
           circuitBreakerRef.current.recordFailure();
           socket.disconnect();
-          forceLogout();
+          if (forceLogoutOnAuthFailure) {
+            forceLogout();
+          }
           return;
         }
         lastAuthErrorRef.current = false;
@@ -103,6 +120,7 @@ export function useChatConnection(streamKey: string) {
     socket.on('disconnect', () => {
       if (process.env.NODE_ENV !== 'production') console.log('[Chat] WebSocket disconnected');
       setIsConnected(false);
+      lastAuthErrorRef.current = false;
     });
 
     socket.on('connect_error', (error) => {
@@ -121,6 +139,19 @@ export function useChatConnection(streamKey: string) {
       setIsConnected(false);
     });
 
+    socket.io.on('reconnect_error', (error) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[Chat] 재연결 실패:', error);
+      }
+      circuitBreakerRef.current.recordFailure();
+      setIsConnected(false);
+    });
+
+    socket.io.on('reconnect_failed', () => {
+      console.error('[Chat] 재연결 횟수 초과');
+      setIsConnected(false);
+    });
+
     // Track user count locally via join/leave events
     // (backend emits 'chat:user-joined' and 'chat:user-left', not 'chat:user-count')
     socket.on('chat:user-joined', () => {
@@ -136,6 +167,16 @@ export function useChatConnection(streamKey: string) {
         socketRef.current.emit('chat:leave-room', { liveId: streamKey });
         socketRef.current.disconnect();
       }
+
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('chat:user-joined');
+      socket.off('chat:user-left');
+      socket.io.off('reconnect');
+      socket.io.off('reconnect_attempt');
+      socket.io.off('reconnect_error');
+      socket.io.off('reconnect_failed');
     };
   }, [streamKey]);
 
@@ -145,6 +186,11 @@ export function useChatConnection(streamKey: string) {
         liveId: streamKey,
         message,
       });
+      return;
+    }
+
+    if (message?.trim()) {
+      pendingSendQueue.current = [...pendingSendQueue.current, message].slice(-20);
     }
   };
 

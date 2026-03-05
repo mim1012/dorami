@@ -45,7 +45,7 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     ports:
-      - '3011:3001'
+      - '3001:3001'
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/live_commerce
@@ -78,9 +78,10 @@ services:
     ports:
       - '3000:3000'
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       NEXT_PUBLIC_WS_URL: https://www.doremi-live.com
       NEXT_PUBLIC_ENABLE_DEV_AUTH: 'true'
+      NEXT_PUBLIC_KAKAO_CHANNEL_ID: '_NJMzX'
       BACKEND_URL: http://backend:3001
       MEDIA_SERVER_URL: http://srs:8080
     depends_on:

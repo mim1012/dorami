@@ -98,7 +98,7 @@ function LoginContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: devEmail, role: devRole }),
+        body: JSON.stringify({ email: devEmail }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));

@@ -4,6 +4,9 @@ import { useEffect } from 'react';
 import { refreshAuthToken, forceLogout } from './token-manager';
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10분
+const MAX_CONSECUTIVE_REFRESH_FAILURES = 2; // 임시 네트워크 오류는 1회 재시도 후 한 번만 강제 로그아웃
+
+let consecutiveRefreshFailures = 0;
 
 /**
  * useTokenAutoRefresh
@@ -29,12 +32,47 @@ export function useTokenAutoRefresh(streamKey: string): void {
         }
 
         const success = await refreshAuthToken();
-
         if (!success) {
+          consecutiveRefreshFailures += 1;
+          // 일시 오류는 15초 뒤 한 번 더 재시도해서 잘못된 네트워크 실패에 즉시 튕김이 생기지 않게 함
+          const retried = await new Promise<boolean>((resolve) => {
+            setTimeout(async () => {
+              try {
+                const retryResult = await refreshAuthToken();
+                resolve(retryResult);
+              } catch {
+                resolve(false);
+              }
+            }, 15_000);
+          });
+
+          if (!retried) {
+            consecutiveRefreshFailures += 1;
+          } else {
+            consecutiveRefreshFailures = 0;
+          }
+        } else {
+          consecutiveRefreshFailures = 0;
+        }
+
+        if (success || consecutiveRefreshFailures < MAX_CONSECUTIVE_REFRESH_FAILURES) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[TokenAutoRefresh] Token refresh recovered');
+          }
+          return;
+        }
+
+        if (consecutiveRefreshFailures >= MAX_CONSECUTIVE_REFRESH_FAILURES) {
           console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
           forceLogout();
-        } else if (process.env.NODE_ENV !== 'production') {
-          console.log('[TokenAutoRefresh] Token refreshed successfully');
+        }
+
+        if (!consecutiveRefreshFailures) {
+          consecutiveRefreshFailures = 0;
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[TokenAutoRefresh] refreshFailures=', consecutiveRefreshFailures);
         }
       } catch (error) {
         // 네트워크 일시 오류 등은 다음 주기에 재시도 — 즉시 로그아웃 불필요

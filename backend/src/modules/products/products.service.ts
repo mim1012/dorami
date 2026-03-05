@@ -441,15 +441,27 @@ export class ProductsService {
    */
   @LogErrors('bulk update product status')
   async bulkUpdateStatus(dto: BulkUpdateStatusDto): Promise<{ updated: number }> {
+    const uniqueIds = [...new Set(dto.ids)];
+
     const result = await this.prisma.product.updateMany({
-      where: { id: { in: dto.ids } },
+      where: { id: { in: uniqueIds } },
       data: { status: dto.status as PrismaProductStatus },
     });
 
+    const updatedProducts = await this.prisma.product.findMany({
+      where: { id: { in: uniqueIds } },
+    });
+
     // Emit events for each product
-    for (const id of dto.ids) {
+    for (const product of updatedProducts) {
+      if (!product.streamKey) {
+        continue;
+      }
+
       this.eventEmitter.emit('product:updated', {
-        productId: id,
+        productId: product.id,
+        streamKey: product.streamKey,
+        product: this.mapToResponseDto(product),
       });
     }
 

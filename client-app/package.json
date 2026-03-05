@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "e2e:smoke:user": "playwright test e2e/api-health.spec.ts e2e/live-page.spec.ts e2e/user-cart-order.spec.ts --project=user",
+    "e2e:smoke:admin": "playwright test e2e/smoke-admin-live-product-realtime.spec.ts e2e/smoke-admin-orders-management.spec.ts --project=admin",
+    "e2e:smoke": "npm run e2e:smoke:user && npm run e2e:smoke:admin"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
