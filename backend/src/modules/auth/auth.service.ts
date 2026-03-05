@@ -196,9 +196,13 @@ export class AuthService {
   }
 
   async logout(userId: string): Promise<void> {
-    // Invalidate any user sessions stored in Redis
-    const sessionKey = `user-session:${userId}`;
-    await this.redisService.del(sessionKey);
+    // Add user to blacklist to prevent token reuse
+    const ttl = parseInt(this.configService.get<string>('JWT_EXPIRY_HOURS', '24'), 10) * 60 * 60;
+    await this.redisService.set(`blacklist:${userId}`, 'true', ttl);
+
+    // Delete refresh token from Redis
+    await this.redisService.del(`refresh_token:${userId}`);
+
     this.logger.log(`[Auth] User logged out: ${userId}`);
   }
 }
