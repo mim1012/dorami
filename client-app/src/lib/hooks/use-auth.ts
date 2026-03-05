@@ -18,9 +18,18 @@ export function useAuth() {
         nickname?: string;
         profileImage?: string;
         role: string;
+        phone?: string;
         depositorName?: string;
         instagramId?: string;
-        shippingAddress?: object;
+        shippingAddress?: {
+          fullName?: string;
+          address1?: string;
+          address2?: string;
+          city?: string;
+          state?: string;
+          zip?: string;
+          phone?: string;
+        };
         createdAt: string;
         updatedAt: string;
       }>('/users/me');
