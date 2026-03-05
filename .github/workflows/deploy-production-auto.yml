@@ -17,6 +17,10 @@ concurrency:
   group: production-deployment
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   ci:
     name: CI Tests
@@ -140,6 +144,9 @@ jobs:
     needs: [build]
     if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout
@@ -286,7 +293,7 @@ jobs:
             exit 1
           }
 
-          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
           ssh "$USER@$HOST" bash << 'ENDSSH'
           set -euo pipefail
