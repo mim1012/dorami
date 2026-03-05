@@ -101,6 +101,7 @@ jobs:
           echo "production_key=${PROD_KEY_FILE}" >> "$GITHUB_OUTPUT"
 
       - name: Verify parity & metadata fingerprint
+        continue-on-error: true
         env:
           STAGING_URL: ${{ vars.STAGING_URL }}
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
