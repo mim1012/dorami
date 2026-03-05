@@ -135,6 +135,56 @@ export default function MyPagePage() {
     }
   };
 
+  const handleInstagramIdEdit = () => {
+    setInstagramIdInput(profile?.instagramId || '');
+    setInstagramIdError(null);
+    setIsInstagramIdEditOpen(true);
+  };
+
+  const handleInstagramIdSubmit = async () => {
+    const trimmed = instagramIdInput.trim();
+    if (!trimmed || trimmed === '@') {
+      setInstagramIdError('인스타그램 ID를 입력해주세요');
+      return;
+    }
+    if (!/^@[a-zA-Z0-9._]+$/.test(trimmed)) {
+      setInstagramIdError('올바른 인스타그램 ID 형식이 아닙니다');
+      return;
+    }
+    try {
+      const response = await apiClient.patch<ProfileData>('/users/me', { instagramId: trimmed });
+      setProfile(response.data);
+      setIsInstagramIdEditOpen(false);
+      setSuccessMessage('인스타그램 ID가 저장되었습니다');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch {
+      setInstagramIdError('저장에 실패했습니다. 다시 시도해주세요');
+    }
+  };
+
+  const handleDepositorNameEdit = () => {
+    setDepositorNameInput(profile?.depositorName || '');
+    setDepositorNameError(null);
+    setIsDepositorNameEditOpen(true);
+  };
+
+  const handleDepositorNameSubmit = async () => {
+    const trimmed = depositorNameInput.trim();
+    if (!trimmed) {
+      setDepositorNameError('입금자명을 입력해주세요');
+      return;
+    }
+    try {
+      const response = await apiClient.patch<ProfileData>('/users/me', { depositorName: trimmed });
+      setProfile(response.data);
+      setIsDepositorNameEditOpen(false);
+      setSuccessMessage('입금자명이 저장되었습니다');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch {
+      setDepositorNameError('저장에 실패했습니다. 다시 시도해주세요');
+    }
+  };
+
   // Loading state (auth + profile guard + profile data)
   if (authLoading || guardLoading || (user && isLoadingProfile)) {
     return (
@@ -192,6 +242,8 @@ export default function MyPagePage() {
             nickname={profile.nickname}
             phone={profile.phone}
             onPhoneEdit={handlePhoneEdit}
+            onInstagramIdEdit={handleInstagramIdEdit}
+            onDepositorNameEdit={handleDepositorNameEdit}
           />
 
           <PointsBalanceCard />
@@ -250,6 +302,82 @@ export default function MyPagePage() {
                 </button>
                 <button
                   onClick={handlePhoneSubmit}
+                  className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isInstagramIdEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+              <Body className="text-primary-text font-semibold mb-4">인스타그램 ID 등록</Body>
+              <input
+                type="text"
+                value={instagramIdInput}
+                onChange={(e) => {
+                  setInstagramIdInput(e.target.value);
+                  setInstagramIdError(null);
+                }}
+                placeholder="@username"
+                className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
+              />
+              {instagramIdError && (
+                <Body className="text-error text-caption mb-2">{instagramIdError}</Body>
+              )}
+              <Body className="text-secondary-text text-caption mb-4">
+                @로 시작하는 인스타그램 ID를 입력해주세요 (예: @username)
+              </Body>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsInstagramIdEditOpen(false)}
+                  className="flex-1 py-3 border border-border-color rounded-button text-secondary-text text-sm hover:bg-primary-black transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleInstagramIdSubmit}
+                  className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isDepositorNameEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+              <Body className="text-primary-text font-semibold mb-4">입금자명 등록</Body>
+              <input
+                type="text"
+                value={depositorNameInput}
+                onChange={(e) => {
+                  setDepositorNameInput(e.target.value);
+                  setDepositorNameError(null);
+                }}
+                placeholder="입금자 이름"
+                className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
+              />
+              {depositorNameError && (
+                <Body className="text-error text-caption mb-2">{depositorNameError}</Body>
+              )}
+              <Body className="text-secondary-text text-caption mb-4">
+                송금받을 때 표시될 입금자명을 입력해주세요
+              </Body>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDepositorNameEditOpen(false)}
+                  className="flex-1 py-3 border border-border-color rounded-button text-secondary-text text-sm hover:bg-primary-black transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDepositorNameSubmit}
                   className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   저장
