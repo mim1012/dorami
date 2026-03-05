@@ -579,8 +579,6 @@ export default function VideoPlayer({
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
-      pingInterval: 25000,
-      pingTimeout: 120000,
       timeout: 20000,
       reconnectionAttempts: streamingConfig.maxAttempts,
       reconnectionDelay: streamingConfig.delays[0],
