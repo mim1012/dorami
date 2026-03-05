@@ -383,6 +383,9 @@ jobs:
       STAGING_NGINX_URL: http://localhost
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -485,17 +488,34 @@ jobs:
           }
           echo "Auth succeeded (HTTP $LOGIN_STATUS)"
 
-          # Upload test image using saved cookies
-          UPLOAD_STATUS=$(curl -s -o /tmp/smoke-upload-body.txt -w "%{http_code}" \
-            --max-time 30 \
-            -X POST "${BACKEND_URL}/api/upload/image" \
-            -b /tmp/smoke-cookies.txt \
-            -F "file=@/tmp/smoke.png;type=image/png")
+          # Get CSRF token from /api/csrf endpoint
+          CSRF_RESPONSE=$(curl -s --max-time 30 \
+            "${BACKEND_URL}/api/csrf" \
+            -b /tmp/smoke-cookies.txt)
+          CSRF_TOKEN=$(echo "$CSRF_RESPONSE" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+          if [ -n "$CSRF_TOKEN" ]; then
+            echo "CSRF token obtained: ${CSRF_TOKEN:0:20}..."
+            # Upload with CSRF token
+            UPLOAD_STATUS=$(curl -s -o /tmp/smoke-upload-body.txt -w "%{http_code}" \
+              --max-time 30 \
+              -X POST "${BACKEND_URL}/api/upload/image" \
+              -H "X-CSRF-Token: ${CSRF_TOKEN}" \
+              -b /tmp/smoke-cookies.txt \
+              -F "file=@/tmp/smoke.png;type=image/png")
+          else
+            echo "WARNING: Failed to get CSRF token, attempting upload without it"
+            UPLOAD_STATUS=$(curl -s -o /tmp/smoke-upload-body.txt -w "%{http_code}" \
+              --max-time 30 \
+              -X POST "${BACKEND_URL}/api/upload/image" \
+              -b /tmp/smoke-cookies.txt \
+              -F "file=@/tmp/smoke.png;type=image/png")
+          fi
           echo "Upload HTTP status: $UPLOAD_STATUS"
           echo "Upload response body:"
           cat /tmp/smoke-upload-body.txt || true
 
-          rm -f /tmp/smoke.png /tmp/smoke-cookies.txt /tmp/smoke-login-body.txt /tmp/smoke-upload-body.txt
+          rm -f /tmp/smoke.png /tmp/smoke-cookies.txt /tmp/smoke-login-body.txt /tmp/smoke-upload-body.txt /tmp/csrf-response.txt
 
           [ "$UPLOAD_STATUS" = "201" ] || [ "$UPLOAD_STATUS" = "200" ] || {
             echo "Upload test failed with HTTP $UPLOAD_STATUS"
