@@ -162,6 +162,97 @@ describe('AuthService', () => {
     });
   });
 
+  describe('validateKakaoUser', () => {
+    const kakaoProfile = {
+      kakaoId: 'kakao-real-456',
+      email: 'test@example.com',
+      nickname: 'Test User',
+    };
+
+    it('should find existing user by email and link real kakaoId', async () => {
+      const existingUser = { ...mockUser, kakaoId: 'dev_placeholder', email: 'test@example.com' };
+      const updatedUser = { ...existingUser, kakaoId: 'kakao-real-456' };
+
+      jest
+        .spyOn(prismaService.user, 'findUnique')
+        .mockResolvedValueOnce(existingUser as any) // email lookup
+        .mockResolvedValueOnce(null); // conflict check
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser as any);
+
+      const result = await service.validateKakaoUser(kakaoProfile);
+
+      expect(result.kakaoId).toBe('kakao-real-456');
+      expect(prismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ kakaoId: 'kakao-real-456' }),
+        }),
+      );
+    });
+
+    it('should find existing user by kakaoId when email not provided', async () => {
+      const profileNoEmail = { kakaoId: 'kakao-123', nickname: 'Test User' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(mockUser as any); // kakaoId lookup
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(mockUser as any);
+
+      const result = await service.validateKakaoUser(profileNoEmail);
+
+      expect(result.id).toBe(mockUser.id);
+      // kakaoId should NOT be updated in data (not found by email)
+      expect(prismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ kakaoId: expect.anything() }),
+        }),
+      );
+    });
+
+    it('should create new user when no email and no kakaoId match', async () => {
+      const profileNoEmail = { kakaoId: 'kakao-new-999', nickname: 'New User' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(null); // kakaoId lookup
+      jest.spyOn(prismaService.user, 'create').mockResolvedValue({
+        ...mockUser,
+        kakaoId: 'kakao-new-999',
+        email: null,
+      } as any);
+
+      const result = await service.validateKakaoUser(profileNoEmail);
+
+      expect(prismaService.user.create).toHaveBeenCalled();
+      expect(result.kakaoId).toBe('kakao-new-999');
+    });
+
+    it('should skip kakaoId update when another user already owns that kakaoId', async () => {
+      const existingUser = { ...mockUser, id: 'user-A', kakaoId: 'dev_placeholder' };
+      const conflictUser = { ...mockUser, id: 'user-B', kakaoId: 'kakao-real-456' };
+      const updatedUser = { ...existingUser }; // kakaoId unchanged
+
+      jest
+        .spyOn(prismaService.user, 'findUnique')
+        .mockResolvedValueOnce(existingUser as any) // email lookup
+        .mockResolvedValueOnce(conflictUser as any); // conflict check
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser as any);
+
+      await service.validateKakaoUser(kakaoProfile);
+
+      // update should be called without kakaoId in data
+      expect(prismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ kakaoId: expect.anything() }),
+        }),
+      );
+    });
+
+    it('should not update kakaoId when user already has the correct kakaoId', async () => {
+      const existingUser = { ...mockUser, kakaoId: 'kakao-real-456' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(existingUser as any); // email lookup finds user with same kakaoId
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(existingUser as any);
+
+      await service.validateKakaoUser(kakaoProfile);
+
+      // No conflict check needed, update called without kakaoId (same value, no change)
+      expect(prismaService.user.update).toHaveBeenCalled();
+    });
+  });
+
   describe('logout', () => {
     it('should add user to blacklist', async () => {
       await service.logout(mockUser.id);

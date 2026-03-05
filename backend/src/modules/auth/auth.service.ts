@@ -44,12 +44,17 @@ export class AuthService {
 
     // Find existing user by email FIRST, then kakaoId (email-based account linking)
     let user = null;
+    let foundByEmail = false;
 
-    // Priority 1: Find by email (email-based account linking)
+    // Priority 1: Find by email (email-based account linking for pre-Kakao users)
     if (profile.email) {
       user = await this.prisma.user.findUnique({
         where: { email: profile.email },
       });
+      if (user) {
+        foundByEmail = true;
+        this.logger.log(`[Kakao] Found existing user by email: ${user.id}`);
+      }
     }
 
     // Priority 2: Find by kakaoId (if no email match)
@@ -57,6 +62,9 @@ export class AuthService {
       user = await this.prisma.user.findUnique({
         where: { kakaoId: profile.kakaoId },
       });
+      if (user) {
+        this.logger.log(`[Kakao] Found existing user by kakaoId: ${user.id}`);
+      }
     }
 
     // Check if user email is in cached admin whitelist
@@ -78,17 +86,46 @@ export class AuthService {
 
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
-      // Update user profile, link kakaoId if missing, and update lastLoginAt
+      // Update user profile and update lastLoginAt
       // For existing users: preserve role UNLESS they're promoted to ADMIN via whitelist
       const finalRole =
         user.role === 'ADMIN' || !isAdmin
           ? user.role // Keep existing ADMIN status, or don't demote USER
           : 'ADMIN'; // Promote to ADMIN if in whitelist
 
+      // If found by email, always link the real kakaoId so future kakaoId lookups work.
+      // If found by kakaoId, keep the existing kakaoId (already correct).
+      const newKakaoId = foundByEmail ? profile.kakaoId : user.kakaoId;
+
+      // Check if newKakaoId conflicts with another user before updating
+      if (foundByEmail && newKakaoId !== user.kakaoId) {
+        const conflict = await this.prisma.user.findUnique({
+          where: { kakaoId: newKakaoId },
+        });
+        if (conflict && conflict.id !== user.id) {
+          // Another account already owns this kakaoId — log and keep existing kakaoId
+          this.logger.warn(
+            `[Kakao] kakaoId ${newKakaoId} already linked to user ${conflict.id}; skipping kakaoId update for user ${user.id}`,
+          );
+        } else {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+              kakaoId: newKakaoId,
+              name: profile.nickname,
+              email: profile.email ?? user.email,
+              role: finalRole,
+              lastLoginAt: new Date(),
+            },
+          });
+          this.logger.log(`Returning user: ${user.id} (role: ${finalRole}, kakaoId linked)`);
+          return user;
+        }
+      }
+
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
-          kakaoId: user.kakaoId || profile.kakaoId,
           name: profile.nickname,
           email: profile.email ?? user.email,
           role: finalRole,
