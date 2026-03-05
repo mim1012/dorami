@@ -71,18 +71,24 @@ export class AuthService {
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
       // Update user profile, link kakaoId if missing, and update lastLoginAt
+      // For existing users: preserve role UNLESS they're promoted to ADMIN via whitelist
+      const finalRole =
+        user.role === 'ADMIN' || !isAdmin
+          ? user.role // Keep existing ADMIN status, or don't demote USER
+          : 'ADMIN'; // Promote to ADMIN if in whitelist
+
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           kakaoId: user.kakaoId || profile.kakaoId,
           name: profile.nickname,
           email: profile.email ?? user.email,
-          role: assignedRole,
+          role: finalRole,
           lastLoginAt: new Date(),
         },
       });
 
-      this.logger.log(`Returning user: ${user.id} (role: ${assignedRole})`);
+      this.logger.log(`Returning user: ${user.id} (role: ${finalRole})`);
     }
 
     return user;
