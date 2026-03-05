@@ -42,19 +42,22 @@ export class AuthService {
       `[Kakao] Profile received: kakaoId=${profile.kakaoId}, email=${profile.email ?? 'MISSING'}, nickname=${profile.nickname}`,
     );
 
-    // Find existing user by kakaoId OR email (preserve existing user profiles)
-    const whereConditions: Array<{ kakaoId?: string; email?: string }> = [
-      { kakaoId: profile.kakaoId },
-    ];
+    // Find existing user by email FIRST, then kakaoId (email-based account linking)
+    let user = null;
+
+    // Priority 1: Find by email (email-based account linking)
     if (profile.email) {
-      whereConditions.push({ email: profile.email });
+      user = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+      });
     }
 
-    let user = await this.prisma.user.findFirst({
-      where: {
-        OR: whereConditions,
-      },
-    });
+    // Priority 2: Find by kakaoId (if no email match)
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { kakaoId: profile.kakaoId },
+      });
+    }
 
     // Check if user email is in cached admin whitelist
     const isAdmin = profile.email && this.adminEmailSet.has(profile.email);
