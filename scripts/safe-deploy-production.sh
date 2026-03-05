@@ -167,14 +167,14 @@ log_step "STEP 7: Deploy Backend Container"
 
 log_warning "Pulling latest backend image..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" pull backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production pull backend; then
   log_error "Failed to pull backend image"
   exit 1
 fi
 
 log_warning "Starting new backend container..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" up -d backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production up -d backend; then
   log_error "Failed to start backend container"
   exit 1
 fi

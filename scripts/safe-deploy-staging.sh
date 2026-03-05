@@ -117,13 +117,13 @@ log_step "STEP 5: Deploy Backend Container"
 
 log_warning "Pulling latest backend image..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_STAGING" pull backend 2>/dev/null; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_STAGING" --env-file .env.staging pull backend 2>/dev/null; then
   log_warning "Image pull failed (may already be present locally)"
 fi
 
 log_warning "Starting new backend container..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_STAGING" up -d backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_STAGING" --env-file .env.staging up -d backend; then
   log_error "Failed to start backend container"
   exit 1
 fi
