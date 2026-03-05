@@ -37,6 +37,11 @@ export class AuthService {
   }
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
+    // Log Kakao profile data for debugging
+    this.logger.log(
+      `[Kakao] Profile received: kakaoId=${profile.kakaoId}, email=${profile.email ?? 'MISSING'}, nickname=${profile.nickname}`,
+    );
+
     // Find existing user by kakaoId OR email (preserve existing user profiles)
     const whereConditions: Array<{ kakaoId?: string; email?: string }> = [
       { kakaoId: profile.kakaoId },

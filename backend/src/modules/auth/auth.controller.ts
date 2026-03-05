@@ -138,17 +138,10 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
-      // Admin users go directly to /admin (no profile completion required)
-      // Regular users: redirect to profile registration if incomplete
-      const needsProfileCompletion =
-        user.role !== 'ADMIN' && (!user.instagramId || !user.depositorName);
-
+      // Admin users go directly to /admin
+      // Regular users: redirect to home (frontend will check profile completion)
       const redirectUrl =
-        user.role === 'ADMIN'
-          ? `${this.frontendUrl}/admin`
-          : needsProfileCompletion
-            ? `${this.frontendUrl}/profile/register`
-            : `${this.frontendUrl}/`;
+        user.role === 'ADMIN' ? `${this.frontendUrl}/admin` : `${this.frontendUrl}/`;
 
       res.redirect(redirectUrl);
       return;
