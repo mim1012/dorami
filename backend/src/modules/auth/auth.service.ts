@@ -194,4 +194,11 @@ export class AuthService {
     this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
     return user;
   }
+
+  async logout(userId: string): Promise<void> {
+    // Invalidate any user sessions stored in Redis
+    const sessionKey = `user-session:${userId}`;
+    await this.redisService.del(sessionKey);
+    this.logger.log(`[Auth] User logged out: ${userId}`);
+  }
 }
