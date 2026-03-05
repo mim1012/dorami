@@ -217,16 +217,18 @@ export class AdminService {
     }
 
     if (typeof addressValue === 'string') {
-      try {
-        const decrypted = this.encryptionService.decryptAddress(addressValue);
+      // Try decryption with legacy key fallback
+      const decrypted = this.encryptionService.tryDecryptAddress(addressValue);
+      if (decrypted) {
         return decrypted as unknown as Record<string, unknown>;
+      }
+
+      // Try parsing as plain JSON (pre-encryption data)
+      try {
+        const parsed = JSON.parse(addressValue);
+        return parsed as Record<string, unknown>;
       } catch {
-        try {
-          const parsed = JSON.parse(addressValue);
-          return parsed as Record<string, unknown>;
-        } catch {
-          return null;
-        }
+        return null;
       }
     }
 
