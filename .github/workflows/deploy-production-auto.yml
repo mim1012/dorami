@@ -142,6 +142,8 @@ jobs:
   deploy:
     name: Deploy Production (Blue/Green + Soak)
     needs: [build]
+    # Parity gate disabled for demo mode - skipping staging validation
+    # In production, add: needs: [build, parity_gate]
     if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
