@@ -96,14 +96,19 @@ export default function ProductDetailModal({
 
         {/* Product Image Gallery */}
         <div className="max-h-96">
-          <ImageGallery
-            images={[
-              product.images?.[0] ?? product.imageUrl,
-              ...(product.images?.slice(1) ?? []),
-            ].filter((x): x is string => typeof x === 'string')}
-            productName={product.name}
-            aspectRatio="aspect-square"
-          />
+          {(() => {
+            const images = (product.images ?? []).filter(Boolean);
+            if (images.length === 0 && product.imageUrl) {
+              images.push(product.imageUrl);
+            }
+            return (
+              <ImageGallery
+                images={images}
+                productName={product.name}
+                aspectRatio="aspect-square"
+              />
+            );
+          })()}
         </div>
 
         {/* Product Info */}
