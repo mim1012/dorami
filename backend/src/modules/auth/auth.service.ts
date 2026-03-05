@@ -37,9 +37,14 @@ export class AuthService {
   }
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
-    // Find existing user or create new one
-    let user = await this.prisma.user.findUnique({
-      where: { kakaoId: profile.kakaoId },
+    // Find existing user by kakaoId OR email (preserve existing user profiles)
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { kakaoId: profile.kakaoId },
+          profile.email ? { email: profile.email } : undefined,
+        ].filter(Boolean),
+      },
     });
 
     // Check if user email is in cached admin whitelist
@@ -61,10 +66,11 @@ export class AuthService {
 
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
-      // Update user profile, lastLoginAt, and role (in case whitelist changed)
+      // Update user profile, link kakaoId if missing, and update lastLoginAt
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
+          kakaoId: user.kakaoId || profile.kakaoId, // Link kakaoId if not already set
           name: profile.nickname,
           email: profile.email ?? user.email,
           role: assignedRole, // Update role based on current whitelist
