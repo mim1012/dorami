@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -158,7 +159,7 @@ export default function LiveStreamPage() {
     userCount,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey);
+  } = useChatConnection(streamKey, { forceLogoutOnAuthFailure: false });
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
 
@@ -299,13 +300,9 @@ export default function LiveStreamPage() {
     fetchFeatured();
     fetchAllProducts();
 
-    const ws = io(
-      process.env.NEXT_PUBLIC_WS_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
-      {
-        withCredentials: true,
-      },
-    );
+    const ws = io(SOCKET_URL, {
+      withCredentials: true,
+    });
     ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
     ws.on('stream:featured-product:updated', (data: any) => {
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
@@ -515,6 +512,7 @@ export default function LiveStreamPage() {
 
   const handleAddToCart = async (
     productId: string,
+    quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
   ) => {
@@ -532,7 +530,7 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
-        quantity: 1,
+        quantity,
         color: selectedColor,
         size: selectedSize,
       });
@@ -1000,10 +998,7 @@ export default function LiveStreamPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                        <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                        </span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                         <span className="text-white text-xs font-black tracking-wider">
                           LIVE<span className="sr-only"> 현재 생방송 중</span>
                         </span>
@@ -1087,8 +1082,90 @@ export default function LiveStreamPage() {
             </div>
           </div>
 
-          {/* Bottom: Featured Product Bar */}
-          <FeaturedProductBar streamKey={streamKey} onProductClick={handleProductClick} />
+          {/* Bottom: Featured & Past Products Sections */}
+          <div className="w-full flex flex-col gap-8 bg-content-bg/50 border-t border-border-color p-6">
+            {/* Featured Products Section */}
+            {allProducts.length > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-bold text-primary-text">인기 상품</h3>
+                  <p className="text-sm text-secondary-text">지금 라이브에서 인기 있는 상품</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {allProducts.slice(0, 5).map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      className="group text-left hover:opacity-80 transition-opacity"
+                    >
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized={product.imageUrl.startsWith('/uploads/')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-primary-text truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-secondary-text">
+                        ₩{product.price.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Past Products Section */}
+            {allProducts.length > 5 && (
+              <div className="space-y-4 border-t border-border-color pt-6">
+                <div>
+                  <h3 className="text-xl font-bold text-primary-text">지난 상품</h3>
+                  <p className="text-sm text-secondary-text">이전에 소개한 상품들</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {allProducts.slice(5).map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      className="group text-left hover:opacity-80 transition-opacity"
+                    >
+                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            unoptimized={product.imageUrl.startsWith('/uploads/')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-primary-text truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-secondary-text">
+                        ₩{product.price.toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

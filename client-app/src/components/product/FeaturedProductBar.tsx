@@ -6,6 +6,7 @@ import { Package } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { io } from 'socket.io-client';
 import type { Product } from '@/lib/types';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 type FeaturedProduct = Pick<
   Product,
@@ -48,11 +49,7 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
   };
 
   const setupWebSocket = () => {
-    const WS_URL =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
-
-    const ws = io(WS_URL, {
+    const ws = io(SOCKET_URL, {
       withCredentials: true,
     });
 

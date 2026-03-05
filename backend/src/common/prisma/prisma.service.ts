@@ -12,9 +12,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
   private connectionRetries = 0;
   private readonly maxRetries = 3;
+  private readonly connectionShutdownTimeoutMs = 30_000;
 
   constructor() {
+    const databaseUrl = PrismaService.buildDatabaseUrl();
+
     super({
+      datasources: {
+        db: {
+          url: databaseUrl,
+        },
+      },
       log:
         process.env.NODE_ENV === 'development'
           ? [
@@ -28,9 +36,29 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       transactionOptions: {
         isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
         maxWait: 5000, // Max time to wait for transaction start (ms)
-        timeout: 10000, // Max transaction execution time (ms)
+        timeout: parseInt(process.env.PRISMA_TRANSACTION_TIMEOUT_MS ?? '10000', 10),
       },
     });
+  }
+
+  private static buildDatabaseUrl(): string {
+    const databaseUrl = process.env.DATABASE_URL ?? '';
+    const connectionLimit = process.env.PRISMA_CONNECTION_LIMIT ?? '30';
+    const poolTimeout = process.env.PRISMA_POOL_TIMEOUT_SECONDS ?? '30';
+
+    if (!databaseUrl) {
+      return databaseUrl;
+    }
+
+    try {
+      const parsed = new URL(databaseUrl);
+      parsed.searchParams.set('connection_limit', connectionLimit);
+      parsed.searchParams.set('pool_timeout', poolTimeout);
+      return parsed.toString();
+    } catch {
+      // URL 형식이 비정상적일 경우, 원본 값 그대로 사용
+      return databaseUrl;
+    }
   }
 
   async onModuleInit() {
@@ -76,8 +104,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
-    this.logger.log('Database disconnected');
+    const timeout = setTimeout(() => {
+      this.logger.warn(
+        `Database disconnect timeout exceeded (${this.connectionShutdownTimeoutMs}ms)`,
+      );
+    }, this.connectionShutdownTimeoutMs);
+
+    try {
+      await this.$queryRaw`SELECT 1`;
+      await this.$disconnect();
+      this.logger.log('Database disconnected');
+    } catch (error) {
+      this.logger.error('Database shutdown failed', error as Error);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   /**

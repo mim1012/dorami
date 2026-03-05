@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -13,6 +13,8 @@ import { Display, Body } from '@/components/common/Typography';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 import { Download } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 interface OrderItem {
   productName: string;
@@ -75,6 +77,7 @@ function AdminOrdersContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get('limit') || '20', 10));
@@ -115,9 +118,19 @@ function AdminOrdersContent() {
     if (orderStatusFilter.length > 0) params.set('orderStatus', orderStatusFilter.join(','));
 
     router.push(`/admin/orders?${params.toString()}`, { scroll: false });
-  }, [page, pageSize, sortBy, sortOrder, debouncedSearch, dateFrom, dateTo, orderStatusFilter, router]);
+  }, [
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    debouncedSearch,
+    dateFrom,
+    dateTo,
+    orderStatusFilter,
+    router,
+  ]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user || user.role !== 'ADMIN') return;
 
     setIsLoading(true);
@@ -146,7 +159,17 @@ function AdminOrdersContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    user,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    debouncedSearch,
+    dateFrom,
+    dateTo,
+    orderStatusFilter,
+  ]);
 
   useEffect(() => {
     fetchOrders();
@@ -161,6 +184,26 @@ function AdminOrdersContent() {
     dateTo,
     orderStatusFilter,
   ]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+
+    const socket = io(SOCKET_URL, { withCredentials: true });
+    const handleRefreshOrders = () => {
+      void fetchOrders();
+    };
+
+    socket.on('order:new', handleRefreshOrders);
+    socket.on('order:paid', handleRefreshOrders);
+    socket.on('order:cancelled', handleRefreshOrders);
+
+    return () => {
+      socket.off('order:new', handleRefreshOrders);
+      socket.off('order:paid', handleRefreshOrders);
+      socket.off('order:cancelled', handleRefreshOrders);
+      socket.disconnect();
+    };
+  }, [user, fetchOrders]);
 
   const handleSort = (key: string) => {
     if (key === sortBy) {
@@ -219,6 +262,8 @@ function AdminOrdersContent() {
   };
 
   const handleExportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       const params: Record<string, string> = {
         sortBy,
@@ -245,7 +290,7 @@ function AdminOrdersContent() {
       const a = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       a.href = url;
-      a.download = `orders_${date}.xlsx`;
+      a.download = `order_export_${date}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -254,6 +299,8 @@ function AdminOrdersContent() {
     } catch (err: any) {
       console.error('Failed to export orders:', err);
       showToast('엑셀 내보내기에 실패했습니다.', 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -271,7 +318,10 @@ function AdminOrdersContent() {
 
   const collectProductNames = (items?: OrderItem[]) => {
     if (!items || items.length === 0) return '-';
-    return items.map((item) => item.productName).filter(Boolean).join(', ');
+    return items
+      .map((item) => item.productName)
+      .filter(Boolean)
+      .join(', ');
   };
 
   const collectUnique = (items: OrderListItem['items'], key: 'color' | 'size') => {
@@ -300,7 +350,9 @@ function AdminOrdersContent() {
       key: 'color',
       label: '색상',
       sortable: false,
-      render: (order) => <span className="text-caption">{collectUnique(order.items, 'color')}</span>,
+      render: (order) => (
+        <span className="text-caption">{collectUnique(order.items, 'color')}</span>
+      ),
     },
     {
       key: 'size',
@@ -366,16 +418,35 @@ function AdminOrdersContent() {
     <div className="space-y-6">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Display className="text-hot-pink mb-2">주문관리</Display>
-          <Body className="text-secondary-text">주문 내역을 조회하고 상태를 바로 변경합니다</Body>
+          <Display className="text-hot-pink mb-2">주문 관리</Display>
+          <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
         <Button
           variant="outline"
           onClick={handleExportCsv}
+          disabled={isExporting}
           className="w-full sm:w-auto flex items-center justify-center gap-2"
         >
-          <Download className="w-4 h-4" />
-          주문 내역 다운로드
+          {isExporting ? (
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+              />
+            </svg>
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          {isExporting ? '내보내는 중...' : '엑셀 내보내기'}
         </Button>
       </div>
 
@@ -468,7 +539,9 @@ function AdminOrdersContent() {
             onSort={handleSort}
             onRowClick={(order) => router.push(`/admin/orders/${order.id}`)}
             emptyMessage="필터 조건에 맞는 주문이 없습니다"
-            getRowClassName={(order) => (order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : '')}
+            getRowClassName={(order) =>
+              order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : ''
+            }
           />
           <Pagination
             currentPage={page}
@@ -480,7 +553,6 @@ function AdminOrdersContent() {
           />
         </>
       )}
-
     </div>
   );
 }

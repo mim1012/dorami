@@ -131,13 +131,16 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @ApiPropertyOptional({
-    description: 'Additional gallery images',
+    description: 'Additional gallery images (max 10)',
     example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
     type: [String],
+    maxItems: 10,
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(2048, { each: true })
   images?: string[];
 
   @ApiPropertyOptional({
@@ -288,13 +291,16 @@ export class UpdateProductDto {
   imageUrl?: string;
 
   @ApiPropertyOptional({
-    description: 'Additional gallery images',
+    description: 'Additional gallery images (max 10)',
     example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
     type: [String],
+    maxItems: 10,
   })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(2048, { each: true })
   images?: string[];
 
   @ApiPropertyOptional({

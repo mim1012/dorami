@@ -61,7 +61,8 @@ function LoginContent() {
   useEffect(() => {
     if (!user || !isAuthenticated || isLoading) return;
 
-    const needsProfile = !user.instagramId || !user.depositorName;
+    // Admin users don't need profile completion (no instagramId/depositorName required)
+    const needsProfile = user.role !== 'ADMIN' && (!user.instagramId || !user.depositorName);
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
     const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
 
@@ -97,7 +98,7 @@ function LoginContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: devEmail, role: devRole }),
+        body: JSON.stringify({ email: devEmail }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -117,7 +118,12 @@ function LoginContent() {
         const safeReturnTo =
           userData?.role === 'USER' && returnTo.startsWith('/admin') ? '/' : returnTo;
 
-        if (userData && (!userData.instagramId || !userData.depositorName)) {
+        // Only USER role needs profile completion
+        if (
+          userData?.role !== 'ADMIN' &&
+          userData &&
+          (!userData.instagramId || !userData.depositorName)
+        ) {
           router.push('/profile/register');
           return;
         }
@@ -128,7 +134,11 @@ function LoginContent() {
 
       if (userData?.role === 'ADMIN') {
         router.push('/admin');
-      } else if (userData && (!userData.instagramId || !userData.depositorName)) {
+      } else if (
+        userData?.role !== 'ADMIN' &&
+        userData &&
+        (!userData.instagramId || !userData.depositorName)
+      ) {
         router.push('/profile/register');
       } else {
         router.push('/');

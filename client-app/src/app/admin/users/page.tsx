@@ -187,7 +187,7 @@ function AdminUsersContent() {
     <div className="space-y-6">
       <div className="mb-6 md:mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Display className="text-hot-pink mb-2">사용자관리</Display>
+          <Display className="text-hot-pink mb-2">회원 관리</Display>
           <Body className="text-secondary-text">인스타 아이디 기준으로 사용자를 조회합니다</Body>
         </div>
       </div>
@@ -279,11 +279,13 @@ function AdminUsersContent() {
 
 export default function AdminUsersPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Body>불러오는 중...</Body>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-24">
+          <Body>불러오는 중...</Body>
+        </div>
+      }
+    >
       <AdminUsersContent />
     </Suspense>
   );

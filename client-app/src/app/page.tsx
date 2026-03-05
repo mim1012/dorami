@@ -1,5 +1,3 @@
-'use client';
-
 import { FigmaHomePage } from '@/components/figma-home/FigmaHomePage';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 

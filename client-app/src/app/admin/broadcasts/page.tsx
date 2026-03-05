@@ -228,9 +228,7 @@ export default function BroadcastsPage() {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return '';
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
 
   const formatDuration = (seconds: number | null) => {
@@ -402,7 +400,7 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      const response = await apiClient.post<{ url: string }>('/upload/thumbnail', formData);
       setNewStreamThumbnailUrl(response.data.url);
     } catch (err: any) {
       setThumbnailPreview(null);
@@ -494,7 +492,7 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await apiClient.post<{ url: string }>('/upload/image', formData);
+      const response = await apiClient.post<{ url: string }>('/upload/thumbnail', formData);
       setEditNewThumbnailUrl(response.data.url);
     } catch (err: any) {
       setEditThumbnailPreview(null);
@@ -547,7 +545,7 @@ export default function BroadcastsPage() {
 
   if (authLoading || !user || user?.role !== 'ADMIN') {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center py-24">
         <div className="text-secondary-text">Loading...</div>
       </div>
     );
@@ -646,7 +644,7 @@ export default function BroadcastsPage() {
                   <p className="text-sm text-secondary-text">방송 시간: {liveStatus.duration}</p>
                 )}
               </div>
-                  <div className="flex flex-wrap items-center gap-3 sm:justify-end shrink-0">
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end shrink-0">
                 <div className="text-right">
                   <div className="flex items-center gap-1.5 text-info">
                     <Eye className="w-4 h-4" />
@@ -743,7 +741,9 @@ export default function BroadcastsPage() {
                             {stream.streamKey}
                           </span>
                           <button
-                            onClick={() => handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)}
+                            onClick={() =>
+                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
+                            }
                             className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0 whitespace-nowrap"
                             title="스트림 키 복사"
                           >
@@ -845,9 +845,7 @@ export default function BroadcastsPage() {
                   {modalStep === 2 && '스트림 키 발급 완료'}
                   {modalStep === 3 && '동시송출 설정'}
                 </h2>
-                <p className="text-xs text-secondary-text">
-                  Step {modalStep}/3
-                </p>
+                <p className="text-xs text-secondary-text">Step {modalStep}/3</p>
               </div>
               <button
                 onClick={handleCloseModal}
@@ -874,12 +872,12 @@ export default function BroadcastsPage() {
                     />
                   </div>
                   <div>
-                      <label className="block text-sm font-medium text-primary-text mb-2">
+                    <label className="block text-sm font-medium text-primary-text mb-2">
                       방송 예정일{' '}
-                        <span className="text-secondary-text text-xs">
-                          (선택 · KST 한국 시간 기준)
-                        </span>
-                      </label>
+                      <span className="text-secondary-text text-xs">
+                        (선택 · KST 한국 시간 기준)
+                      </span>
+                    </label>
                     <input
                       type="datetime-local"
                       value={newStreamScheduledAt}
@@ -997,7 +995,9 @@ export default function BroadcastsPage() {
                       방송 예정일
                     </label>
                     <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-primary-text">
-                      {generatedStream.scheduledAt ? formatDate(generatedStream.scheduledAt) : '미설정'}
+                      {generatedStream.scheduledAt
+                        ? formatDate(generatedStream.scheduledAt)
+                        : '미설정'}
                     </div>
                   </div>
 
@@ -1026,7 +1026,10 @@ export default function BroadcastsPage() {
                       </div>
                       <button
                         onClick={() =>
-                          handleCopyToClipboard(getRtmpUrlWithPort(generatedStream.rtmpUrl), 'rtmpUrl')
+                          handleCopyToClipboard(
+                            getRtmpUrlWithPort(generatedStream.rtmpUrl),
+                            'rtmpUrl',
+                          )
                         }
                         className="p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="복사"
@@ -1133,7 +1136,9 @@ export default function BroadcastsPage() {
                     </div>
                   ) : restreamTargets.length > 0 ? (
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-primary-text">등록된 대상</label>
+                      <label className="block text-sm font-medium text-primary-text">
+                        등록된 대상
+                      </label>
                       {restreamTargets.map((target) => (
                         <div
                           key={target.id}
@@ -1141,7 +1146,9 @@ export default function BroadcastsPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-primary-text">{target.name}</p>
-                            <p className="text-xs text-secondary-text">{PLATFORM_LABELS[target.platform]}</p>
+                            <p className="text-xs text-secondary-text">
+                              {PLATFORM_LABELS[target.platform]}
+                            </p>
                           </div>
                           <button
                             onClick={() => handleDeleteRestreamTarget(target.id)}
@@ -1163,15 +1170,15 @@ export default function BroadcastsPage() {
 
                     {/* Platform selection */}
                     <div className="mb-3">
-                      <label className="block text-xs font-medium text-secondary-text mb-2">플랫폼</label>
+                      <label className="block text-xs font-medium text-secondary-text mb-2">
+                        플랫폼
+                      </label>
                       <div className="grid grid-cols-4 gap-2">
                         {Object.entries(PLATFORM_LABELS).map(([key, label]) => (
                           <button
                             key={key}
                             type="button"
-                            onClick={() =>
-                              handleRestreamPlatformChange(key as ReStreamPlatform)
-                            }
+                            onClick={() => handleRestreamPlatformChange(key as ReStreamPlatform)}
                             className={`px-2 py-2 rounded text-xs font-medium border transition-colors ${
                               newRestreamPlatform === key
                                 ? 'border-hot-pink bg-hot-pink/10 text-hot-pink'
@@ -1246,7 +1253,9 @@ export default function BroadcastsPage() {
 
                     <button
                       onClick={handleAddRestreamTarget}
-                      disabled={!newRestreamName.trim() || !newRestreamKey.trim() || isAddingRestream}
+                      disabled={
+                        !newRestreamName.trim() || !newRestreamKey.trim() || isAddingRestream
+                      }
                       className="w-full py-2 bg-hot-pink text-white rounded-lg font-medium text-sm hover:bg-hot-pink/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isAddingRestream ? '추가 중...' : '추가'}

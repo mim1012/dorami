@@ -81,7 +81,7 @@ export class ProductsService {
         timerEnabled: createDto.timerEnabled || false,
         timerDuration: createDto.timerDuration || 10,
         imageUrl: createDto.imageUrl,
-        images: createDto.images || [],
+        images: this.sanitizeImages(createDto.images),
         isNew: createDto.isNew || false,
         discountRate:
           createDto.discountRate !== null && createDto.discountRate !== undefined
@@ -211,7 +211,7 @@ export class ProductsService {
       updateData.imageUrl = updateDto.imageUrl;
     }
     if (updateDto.images !== undefined) {
-      updateData.images = updateDto.images;
+      updateData.images = this.sanitizeImages(updateDto.images);
     }
     if (updateDto.status !== undefined) {
       updateData.status = updateDto.status as PrismaProductStatus;
@@ -441,15 +441,27 @@ export class ProductsService {
    */
   @LogErrors('bulk update product status')
   async bulkUpdateStatus(dto: BulkUpdateStatusDto): Promise<{ updated: number }> {
+    const uniqueIds = [...new Set(dto.ids)];
+
     const result = await this.prisma.product.updateMany({
-      where: { id: { in: dto.ids } },
+      where: { id: { in: uniqueIds } },
       data: { status: dto.status as PrismaProductStatus },
     });
 
+    const updatedProducts = await this.prisma.product.findMany({
+      where: { id: { in: uniqueIds } },
+    });
+
     // Emit events for each product
-    for (const id of dto.ids) {
+    for (const product of updatedProducts) {
+      if (!product.streamKey) {
+        continue;
+      }
+
       this.eventEmitter.emit('product:updated', {
-        productId: id,
+        productId: product.id,
+        streamKey: product.streamKey,
+        product: this.mapToResponseDto(product),
       });
     }
 
@@ -495,8 +507,9 @@ export class ProductsService {
   }
 
   /**
-   * Get store products (from ended live streams)
+   * Get store products (from ended live streams + streamKey-less products)
    * Epic 11 Story 11.1
+   * Includes: products with OFFLINE streamKey OR products with no streamKey (streamKey = null)
    */
   @LogErrors('get store products')
   async getStoreProducts(
@@ -510,18 +523,17 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    // Get products from OFFLINE streams (past live) or with no stream assigned
+    // Get products from ended (OFFLINE) live streams OR products with no streamKey (null or empty string)
     const products = await this.prisma.product.findMany({
       where: {
         status: 'AVAILABLE',
         OR: [
+          { streamKey: null }, // Products with null streamKey
+          { streamKey: '' }, // Products with empty string streamKey
           {
             liveStream: {
-              status: 'OFFLINE',
+              status: 'OFFLINE', // Products from OFFLINE live streams
             },
-          },
-          {
-            streamKey: null,
           },
         ],
       },
@@ -533,7 +545,10 @@ export class ProductsService {
           },
         },
       },
-      orderBy: [{ createdAt: 'desc' }],
+      orderBy: [
+        { liveStream: { endedAt: 'desc' } },
+        { createdAt: 'desc' }, // Fallback for products with no streamKey
+      ],
       skip,
       take: limit,
     });
@@ -542,13 +557,12 @@ export class ProductsService {
       where: {
         status: 'AVAILABLE',
         OR: [
+          { streamKey: null },
+          { streamKey: '' },
           {
             liveStream: {
               status: 'OFFLINE',
             },
-          },
-          {
-            streamKey: null,
           },
         ],
       },
@@ -611,45 +625,81 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    const [products, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where: { status: 'AVAILABLE' },
-        include: {
-          _count: {
-            select: {
-              orderItems: {
-                where: {
-                  order: {
-                    status: { in: ['PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED'] },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: {
-          orderItems: {
-            _count: 'desc',
-          },
-        },
-        skip,
-        take: limit,
-      }),
-      this.prisma.product.count({ where: { status: 'AVAILABLE' } }),
-    ]);
+    try {
+      // Step 1: Get all products with their sale counts (raw SQL for performance)
+      const productsWithCounts = await this.prisma.$queryRaw<
+        Array<{ id: string; sold_count: bigint }>
+      >`
+        SELECT
+          p.id,
+          COUNT(DISTINCT oi.id) as sold_count
+        FROM products p
+        LEFT JOIN order_items oi ON p.id = oi.product_id
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE p.status = 'AVAILABLE'
+          AND (o.status IN ('PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED') OR o.id IS NULL)
+        GROUP BY p.id
+        ORDER BY sold_count DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `;
 
-    return {
-      data: products.map((p) => ({
-        ...this.mapToResponseDto(p),
-        soldCount: p._count.orderItems,
-      })),
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      const productIds = productsWithCounts.map((p) => p.id);
+
+      // Step 2: Get full product details
+      const products = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+      });
+
+      // Step 3: Merge counts back and maintain sort order
+      const productsWithSoldCount = productIds.map((id) => {
+        const product = products.find((p) => p.id === id)!;
+        const countData = productsWithCounts.find((p) => p.id === id)!;
+        return {
+          product,
+          soldCount: Number(countData.sold_count),
+        };
+      });
+
+      // Step 4: Get total count
+      const total = await this.prisma.product.count({
+        where: { status: 'AVAILABLE' },
+      });
+
+      return {
+        data: productsWithSoldCount.map(({ product, soldCount }) => ({
+          ...this.mapToResponseDto(product),
+          soldCount,
+        })),
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      this.logger.error('getPopularProducts error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deduplicate and trim image URLs, returning an empty array for undefined input.
+   */
+  private sanitizeImages(images: string[] | undefined): string[] {
+    if (!images || images.length === 0) {
+      return [];
+    }
+    const seen = new Set<string>();
+    return images
+      .map((url) => url.trim())
+      .filter((url) => {
+        if (!url || seen.has(url)) {
+          return false;
+        }
+        seen.add(url);
+        return true;
+      });
   }
 
   /**
@@ -662,8 +712,8 @@ export class ProductsService {
       name: product.name,
       price: parseFloat(product.price.toString()),
       stock: product.quantity, // Map quantity to stock
-      colorOptions: product.colorOptions,
-      sizeOptions: product.sizeOptions,
+      colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
+      sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
       shippingFee: parseFloat(product.shippingFee.toString()),
       freeShippingMessage: product.freeShippingMessage ?? undefined,
       timerEnabled: product.timerEnabled,

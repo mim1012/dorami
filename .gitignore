@@ -77,6 +77,7 @@ screenshots/
 # User uploads (track directory structure, ignore uploaded files)
 backend/uploads/*
 !backend/uploads/.gitkeep
+uploads/
 
 # OMC (oh-my-claudecode) tool state
 .omc/
@@ -88,6 +89,5 @@ temp/
 tmp/
 *.tmp
 nul
-
-# Generated/temporary directories
-dorami/
+backend/uploads/
+ssh/

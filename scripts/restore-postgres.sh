@@ -46,7 +46,7 @@ RESTORE_FILE=""
 
 # Docker container names
 POSTGRES_CONTAINER_NAMES=("dorami-postgres-prod" "live-commerce-postgres")
-APP_CONTAINERS=("dorami-backend-prod" "dorami-frontend-prod")
+APP_CONTAINERS=("backend-prod" "dorami-frontend-prod")
 
 # ============================================================================
 # Functions

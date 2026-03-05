@@ -111,7 +111,7 @@ export default function NotificationSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-[#FF4D8D] animate-spin" />
           <p className="text-sm text-gray-500">템플릿을 불러오는 중...</p>

@@ -16,6 +16,7 @@ interface FFmpegProcess {
 @Injectable()
 export class ReStreamService implements OnModuleDestroy {
   private readonly logger = new Logger(ReStreamService.name);
+  private readonly shuttingDownStreams = new Set<string>();
 
   /**
    * Map<liveStreamId, Map<targetId, FFmpegProcess>>
@@ -99,8 +100,15 @@ export class ReStreamService implements OnModuleDestroy {
   }
 
   async stopRestreaming(liveStreamId: string) {
+    if (this.shuttingDownStreams.has(liveStreamId)) {
+      return;
+    }
+
+    this.shuttingDownStreams.add(liveStreamId);
+
     const targetMap = this.processes.get(liveStreamId);
     if (!targetMap) {
+      this.shuttingDownStreams.delete(liveStreamId);
       return;
     }
 
@@ -108,11 +116,20 @@ export class ReStreamService implements OnModuleDestroy {
       `Stopping all restreams for liveStream ${liveStreamId} (${targetMap.size} processes)`,
     );
 
-    for (const [targetId, ffmpegProc] of targetMap) {
-      await this.killFFmpegProcess(ffmpegProc, liveStreamId, targetId);
-    }
+    const stopOps = Array.from(targetMap.entries()).map(([targetId, ffmpegProc]) =>
+      this.killFFmpegProcess(ffmpegProc, liveStreamId, targetId).catch((error) => {
+        this.logger.error(
+          `Failed to stop restream target ${targetId} for stream ${liveStreamId}: ${
+            (error as Error).message
+          }`,
+        );
+      }),
+    );
+
+    await Promise.all(stopOps);
 
     this.processes.delete(liveStreamId);
+    this.shuttingDownStreams.delete(liveStreamId);
   }
 
   async manualStartTarget(liveStreamId: string, targetId: string) {
@@ -176,6 +193,12 @@ export class ReStreamService implements OnModuleDestroy {
     target: { id: string; rtmpUrl: string; streamKey: string; name: string; muteAudio: boolean },
     restartCount = 0,
   ) {
+    const existingMap = this.processes.get(liveStreamId);
+    const existingProc = existingMap?.get(target.id);
+    if (existingProc) {
+      await this.killFFmpegProcess(existingProc, liveStreamId, target.id);
+    }
+
     const rtmpInternalUrl =
       this.configService.get<string>('RTMP_INTERNAL_URL') ?? 'rtmp://srs:1935/live';
 
@@ -273,8 +296,48 @@ export class ReStreamService implements OnModuleDestroy {
     const currentMap = this.processes.get(liveStreamId);
     const isStillTracked = currentMap?.get(target.id) === proc;
 
-    if (isNormalExit || !isStillTracked) {
-      // Normal exit or already cleaned up
+    if (this.shuttingDownStreams.has(liveStreamId)) {
+      if (currentMap) {
+        currentMap.delete(target.id);
+        if (currentMap.size === 0) {
+          this.processes.delete(liveStreamId);
+        }
+      }
+
+      await this.prisma.reStreamLog
+        .update({
+          where: { id: proc.logId },
+          data: {
+            status: 'STOPPED',
+            endedAt: new Date(),
+          },
+        })
+        .catch(() => {});
+
+      this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
+      return;
+    }
+
+    if (!isStillTracked) {
+      // A newer process for the same target replaced this one.
+      this.logger.log(`Old FFmpeg process for target "${target.name}" exited (code: ${code})`);
+
+      await this.prisma.reStreamLog
+        .update({
+          where: { id: proc.logId },
+          data: {
+            status: 'STOPPED',
+            endedAt: new Date(),
+          },
+        })
+        .catch(() => {});
+
+      this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
+      return;
+    }
+
+    if (isNormalExit) {
+      // Normal exit
       this.logger.log(`FFmpeg for target "${target.name}" exited (code: ${code})`);
 
       await this.prisma.reStreamLog
@@ -289,6 +352,9 @@ export class ReStreamService implements OnModuleDestroy {
 
       this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
       currentMap?.delete(target.id);
+      if (currentMap?.size === 0) {
+        this.processes.delete(liveStreamId);
+      }
       return;
     }
 
@@ -413,6 +479,9 @@ export class ReStreamService implements OnModuleDestroy {
 
   async onModuleDestroy() {
     this.logger.log('Cleaning up all FFmpeg processes...');
+    for (const liveStreamId of this.processes.keys()) {
+      this.shuttingDownStreams.add(liveStreamId);
+    }
 
     for (const [liveStreamId, targetMap] of this.processes) {
       for (const [targetId, ffmpegProc] of targetMap) {
@@ -421,5 +490,6 @@ export class ReStreamService implements OnModuleDestroy {
     }
 
     this.processes.clear();
+    this.shuttingDownStreams.clear();
   }
 }

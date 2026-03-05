@@ -1,0 +1,43 @@
+
+════════════════════════════════════════════════════════════
+  Socket.IO Broadcast Message Report (Type C)
+════════════════════════════════════════════════════════════
+
+📊 Broadcast Metrics:
+  Total Users: 100
+  Successfully Connected: 0
+  Broadcaster: 1 user
+  Receivers: -1 users
+  Test Duration: 310.2 minutes
+
+💬 Message Delivery:
+  Total Messages Emitted: 0
+  Total Messages Received: 0
+  Expected Received: 0
+
+  Delivery Rate: 0.00%
+  STATUS: ⚠️ WARNING (< 99.9%)
+
+  Messages Lost: 0
+  Loss Rate: 100.00%
+
+✅ Acknowledgments:
+  Total Acks Received: 0
+  Ack Rate: NaN%
+
+❌ Errors: 1100
+  - [user-306cf99c] websocket error
+  - [user-1e0e3396] websocket error
+  - [user-d873850f] websocket error
+  - [user-39a8fd10] websocket error
+  - [user-16d67506] websocket error
+  - [user-ae2a5696] websocket error
+  - [user-398ac142] websocket error
+  - [user-cba47867] websocket error
+  - [user-dbfbb1ec] websocket error
+  - [user-0a8ae7c2] websocket error
+
+════════════════════════════════════════════════════════════
+  Result: FAIL ❌
+════════════════════════════════════════════════════════════
+  

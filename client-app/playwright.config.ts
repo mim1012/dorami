@@ -43,7 +43,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: './e2e/.auth/admin.json',
       },
-      testMatch: /admin-.*\.spec\.ts/,
+      testMatch: /admin-.*\.spec\.ts|smoke-admin-live-product-realtime\.spec\.ts/,
     },
   ],
 });

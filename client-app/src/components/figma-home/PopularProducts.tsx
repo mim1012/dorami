@@ -3,120 +3,56 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Play } from 'lucide-react';
-import type { PopularProductDto } from '@live-commerce/shared-types';
+import type { PopularProductDto, StoreProductDto } from '@live-commerce/shared-types';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ProductDetailModal } from './ProductDetailModal';
 import { ViewAllModal } from './ViewAllModal';
 import { useAuthStore } from '@/lib/store/auth';
-import { useToast } from '@/components/common/Toast';
+import { apiClient } from '@/lib/api/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 
 type HomeProduct = {
   id: string;
   name: string;
   price: number;
   originalPrice: number;
+  stock?: number;
   discountRate?: number;
   image: string;
+  images?: string[];
   colorOptions?: string[];
   sizeOptions?: string[];
 };
 
 type PopularProductsProps = {
-  products?: PopularProductDto[];
+  featuredProducts?: PopularProductDto[];
+  pastProducts?: StoreProductDto[];
   isLoading?: boolean;
   isError?: boolean;
 };
 
-const FALLBACK_PRODUCTS: HomeProduct[] = [
-  {
-    id: 'fallback-1',
-    name: '핑크 스프링 드레스',
-    price: 68000,
-    originalPrice: 98000,
-    discountRate: 31,
-    image:
-      'https://images.unsplash.com/photo-1749448621946-5dd68de99664?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGZhc2hpb24lMjBwaW5rJTIwZHJlc3N8ZW58MXx8fHwxNzcyMDkyMTIwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-2',
-    name: '베이직 롱 코트',
-    price: 89000,
-    originalPrice: 149000,
-    discountRate: 40,
-    image:
-      'https://images.unsplash.com/photo-1638385583463-e3d424c22916?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGJlaWdlJTIwY29hdCUyMHdpbnRlcnxlbnwxfHx8fDE3NzIwOTIxMjF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-3',
-    name: '화이트 실크 블라우스',
-    price: 45000,
-    originalPrice: 72000,
-    discountRate: 38,
-    image:
-      'https://images.unsplash.com/photo-1761014219776-4ac940eca1c2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMHdoaXRlJTIwYmxvdXNlJTIwZWxlZ2FudHxlbnwxfHx8fDE3NzIwOTIxMjF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-4',
-    name: '라벤더 니트',
-    price: 52000,
-    originalPrice: 78000,
-    discountRate: 33,
-    image:
-      'https://images.unsplash.com/photo-1667013068391-e09dda140af8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxrb3JlYW4lMjB3b21hbiUyMGxhdmVuZGVyJTIwc3dlYXRlcnxlbnwxfHx8fDE3NzIwOTIxMjJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-5',
-    name: '캐시미어 카디건',
-    price: 95000,
-    originalPrice: 145000,
-    discountRate: 34,
-    image:
-      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGNhcmRpZ2FufGVufDF8fHx8MTc3MjEyMzQwMnww&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-6',
-    name: '플리츠 스커트',
-    price: 38000,
-    originalPrice: 65000,
-    discountRate: 42,
-    image:
-      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHNraXJ0JTIwZmFzaGlvbnxlbnwxfHx8fDE3NzIxMjM0MDN8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-7',
-    name: '레더 재킷',
-    price: 125000,
-    originalPrice: 189000,
-    discountRate: 34,
-    image:
-      'https://images.unsplash.com/photo-1551028719-00167b16eac5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGxlYXRoZXIlMjBqYWNrZXR8ZW58MXx8fHwxNzcyMTIzNDA0fDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 'fallback-8',
-    name: '와이드 팬츠',
-    price: 42000,
-    originalPrice: 68000,
-    discountRate: 38,
-    image:
-      'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHdpZGUlMjBwYW50c3xlbnwxfHx8fDE3NzIxMjM0MDV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-];
+const FALLBACK_PRODUCTS: HomeProduct[] = [];
 
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=80';
 
-function mapPopularProduct(product: PopularProductDto): HomeProduct {
+function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomeProduct {
   return {
     id: product.id,
     name: product.name,
     price: product.price,
     originalPrice: product.originalPrice ?? product.price,
+    stock: product.stock,
     discountRate: product.discountRate ?? 0,
-    image: product.imageUrl ?? PLACEHOLDER_IMAGE,
+    image: product.images?.[0] ?? product.imageUrl ?? PLACEHOLDER_IMAGE,
+    images: product.images && product.images.length > 0 ? product.images : undefined,
+    colorOptions: product.colorOptions,
+    sizeOptions: product.sizeOptions,
   };
 }
 
-function getDisplayProducts(apiProducts?: PopularProductDto[]) {
+function getDisplayProducts(apiProducts?: (PopularProductDto | StoreProductDto)[]): HomeProduct[] {
   if (apiProducts && apiProducts.length > 0) {
     return apiProducts.map(mapPopularProduct);
   }
@@ -130,21 +66,161 @@ type ModalSelectionPayload = {
   color?: string;
 };
 
+function ProductCard({
+  product,
+  showFallbackTag,
+  onClick,
+}: {
+  product: HomeProduct;
+  showFallbackTag: boolean;
+  onClick: () => void;
+}) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Main/primary image: use product.image (imageUrl from API)
+  // Gallery images: use product.images array (additional images for carousel)
+  // For carousel: start with primary image, then add gallery images
+  const primaryImage = product.image;
+  const galleryImages = product.images && product.images.length > 0 ? product.images : [];
+  const imageList = [primaryImage, ...galleryImages];
+  const hasMultiple = imageList.length > 1;
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i === 0 ? imageList.length - 1 : i - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i === imageList.length - 1 ? 0 : i + 1));
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
+      className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left cursor-pointer"
+    >
+      <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+        {/* Pro method: Overlay all images, fade between them */}
+        {imageList.map((src, idx) => (
+          <ImageWithFallback
+            key={`${product.id}-img-${idx}`}
+            src={src}
+            alt={`${product.name} - image ${idx + 1}`}
+            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
+              idx === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+            }`}
+          />
+        ))}
+
+        {/* Discount badge */}
+        <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
+          <span className="text-xs font-bold">{product.discountRate ?? 0}%</span>
+        </div>
+
+        {/* Prev / Next arrows — only when multiple images */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={handlePrev}
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors z-10 opacity-0 group-hover:opacity-100"
+              aria-label="이전 이미지"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center transition-colors z-10 opacity-0 group-hover:opacity-100"
+              aria-label="다음 이미지"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              {imageList.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(idx);
+                  }}
+                  className={`rounded-full transition-all duration-200 ${
+                    idx === currentImageIndex
+                      ? 'bg-[#FF4D8D] w-3.5 h-1.5'
+                      : 'bg-white/60 w-1.5 h-1.5'
+                  }`}
+                  aria-label={`이미지 ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="p-3 md:p-4">
+        <div className="mb-2">
+          <span className="text-xs text-[#B084CC] font-medium">라이브</span>
+        </div>
+        <h4 className="font-semibold text-sm md:text-base text-gray-900 mb-2 line-clamp-2">
+          {product.name}
+        </h4>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-base md:text-lg font-bold text-gray-900">
+            ₩{product.price.toLocaleString()}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 line-through">
+          ₩{product.originalPrice.toLocaleString()}
+        </span>
+        {showFallbackTag && (
+          <span className="text-[10px] text-[#FF6BA0] block mt-1">샘플 데이터</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PopularProducts({
-  products: apiProducts,
+  featuredProducts: apiFeaturedProducts,
+  pastProducts: apiPastProducts,
   isLoading = false,
   isError = false,
 }: PopularProductsProps) {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedProduct, setSelectedProduct] = useState<HomeProduct | null>(null);
-  const [showViewAll, setShowViewAll] = useState(false);
+  const [showViewAll, setShowViewAll] = useState<'featured' | 'past' | null>(null);
 
-  const products = getDisplayProducts(apiProducts);
-  const isUsingFallback = products === FALLBACK_PRODUCTS;
-  const showFallbackTag = isUsingFallback && !isLoading;
-  const showLoadingMessage = isLoading && isError;
+  // Map API products to display format
+  const featuredProducts = getDisplayProducts(apiFeaturedProducts);
+  const pastProducts = getDisplayProducts(apiPastProducts);
+
+  const isUsingFallback = false;
+  const showFallbackTag = false;
+  const showLoadingMessage = isError && !isLoading;
 
   const goToProductDetail = (
     product: HomeProduct,
@@ -152,10 +228,7 @@ export function PopularProducts({
     options?: ModalSelectionPayload,
   ) => {
     if (!isAuthenticated) {
-      showToast('로그인 후 이용해주세요', 'error', {
-        label: '로그인',
-        onClick: () => router.push('/login'),
-      });
+      router.push('/login');
       return;
     }
 
@@ -178,106 +251,137 @@ export function PopularProducts({
     router.push(`/products/${product.id}${queryString ? `?${queryString}` : ''}`);
   };
 
+  const renderProductGrid = (gridProducts: HomeProduct[]) => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+      {gridProducts.map((product) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          showFallbackTag={showFallbackTag}
+          onClick={() => {
+            if (!isAuthenticated) {
+              router.push('/login');
+              return;
+            }
+            setSelectedProduct(product);
+          }}
+        />
+      ))}
+    </div>
+  );
+
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Play className="w-6 h-6 text-[#B084CC]" fill="#B084CC" />
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900">라이브 인기 상품</h3>
+    <div className="space-y-12">
+      {/* Featured Products Section */}
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Play className="w-6 h-6 text-[#FF4D8D]" fill="#FF4D8D" />
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900">인기 상품</h3>
+            </div>
+            {featuredProducts.length > 0 && (
+              <button
+                onClick={() => setShowViewAll('featured')}
+                className="flex items-center gap-1 text-sm md:text-base text-[#FF4D8D] hover:text-[#FF6BA0] transition-colors group font-semibold"
+              >
+                <span>더보기</span>
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => setShowViewAll(true)}
-            className="flex items-center gap-1 text-sm md:text-base text-[#FF4D8D] hover:text-[#FF6BA0] transition-colors group font-semibold"
-          >
-            <span>더보기</span>
-            <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <p className="text-base text-gray-600">이전 라이브에서 가장 인기 있었던 상품들</p>
         </div>
-        <p className="text-base text-gray-600">
-          이전 라이브에서 가장 인기 있었던 상품들을 다시 만나보세요
-        </p>
+
+        {isLoading && (
+          <p className="rounded-lg border border-[#FFE5EE] bg-[#FFF0F5] px-4 py-2 text-sm text-[#B084CC]">
+            인기 상품을 불러오는 중입니다...
+          </p>
+        )}
+
+        {showLoadingMessage && (
+          <p className="rounded-lg border border-[#FFE5EE] bg-[#FFF0F5] px-4 py-2 text-sm text-[#B084CC]">
+            인기 상품을 불러올 수 없습니다. 나중에 다시 시도해주세요.
+          </p>
+        )}
+
+        {!isLoading && featuredProducts.length === 0 && !isError && (
+          <p className="text-center text-sm text-gray-500 py-6">
+            현재 표시할 인기 상품이 없습니다.
+          </p>
+        )}
+
+        {featuredProducts.length > 0 && renderProductGrid(featuredProducts)}
       </div>
 
-      {showLoadingMessage && (
-        <p className="rounded-lg border border-[#FFE5EE] bg-[#FFF0F5] px-4 py-2 text-sm text-[#B084CC]">
-          인기 상품 API 호출 중 문제가 있어 샘플 데이터로 표시합니다.
-        </p>
+      {/* Past Products Section */}
+      {pastProducts.length > 0 && (
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Play className="w-6 h-6 text-[#B084CC]" fill="#B084CC" />
+                <h3 className="text-2xl md:text-3xl font-bold text-gray-900">지난 상품</h3>
+              </div>
+              <button
+                onClick={() => setShowViewAll('past')}
+                className="flex items-center gap-1 text-sm md:text-base text-[#FF4D8D] hover:text-[#FF6BA0] transition-colors group font-semibold"
+              >
+                <span>더보기</span>
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+            <p className="text-base text-gray-600">이전 라이브의 추가 상품들</p>
+          </div>
+
+          {renderProductGrid(pastProducts)}
+        </div>
       )}
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-        {products.map((product) => (
-          <button
-            key={product.id}
-            type="button"
-            onClick={() => {
-              if (!isAuthenticated) {
-                showToast('로그인 후 이용해주세요', 'error', {
-                  label: '로그인',
-                  onClick: () => router.push('/login'),
-                });
-                return;
-              }
-              setSelectedProduct(product);
-            }}
-            className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left"
-          >
-            <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-              <ImageWithFallback
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute top-3 left-3 bg-[#FF4D8D] text-white px-3 py-1 rounded-full shadow-lg">
-                <span className="text-xs font-bold">{product.discountRate ?? 0}%</span>
-              </div>
-            </div>
-            <div className="p-3 md:p-4">
-              <div className="mb-2">
-                <span className="text-xs text-[#B084CC] font-medium">라이브</span>
-              </div>
-              <h4 className="font-semibold text-sm md:text-base text-gray-900 mb-2 line-clamp-2">
-                {product.name}
-              </h4>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-base md:text-lg font-bold text-gray-900">
-                  ₩{product.price.toLocaleString()}
-                </span>
-              </div>
-              <span className="text-xs text-gray-400 line-through">
-                ₩{product.originalPrice.toLocaleString()}
-              </span>
-              {showFallbackTag && (
-                <span className="text-[10px] text-[#FF6BA0] block mt-1">샘플 데이터</span>
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
 
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          onAddToCart={(payload) => {
-            goToProductDetail(selectedProduct, 'cart', payload);
-            setSelectedProduct(null);
+          onAddToCart={async (productId, quantity, color, size) => {
+            try {
+              await apiClient.post('/cart', {
+                productId,
+                quantity,
+                ...(color ? { color } : {}),
+                ...(size ? { size } : {}),
+              });
+              await queryClient.invalidateQueries({ queryKey: cartKeys.all });
+            } catch (error: any) {
+              console.error('Add to cart error:', error);
+              alert(error.response?.data?.message || '장바구니 추가 실패');
+            }
           }}
-          onBuyNow={(payload) => {
-            goToProductDetail(selectedProduct, 'buy', payload);
-            setSelectedProduct(null);
+          onBuyNow={async (productId, quantity, color, size) => {
+            try {
+              await apiClient.post('/cart', {
+                productId,
+                quantity,
+                ...(color ? { color } : {}),
+                ...(size ? { size } : {}),
+              });
+              await queryClient.invalidateQueries({ queryKey: cartKeys.all });
+              router.push('/cart');
+            } catch (error: any) {
+              console.error('Buy now error:', error);
+              alert(error.response?.data?.message || '구매 진행 실패');
+            }
           }}
         />
       )}
 
       {showViewAll && (
         <ViewAllModal
-          title="라이브 인기 상품"
+          title={showViewAll === 'featured' ? '인기 상품' : '지난 상품'}
           type="popular"
-          products={products}
-          onClose={() => setShowViewAll(false)}
+          products={showViewAll === 'featured' ? featuredProducts : pastProducts}
+          onClose={() => setShowViewAll(null)}
           onProductClick={(product) => {
-            setShowViewAll(false);
+            setShowViewAll(null);
             const targetProduct = {
               ...product,
               originalPrice: product.originalPrice ?? 0,

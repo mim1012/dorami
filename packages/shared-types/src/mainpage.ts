@@ -49,8 +49,27 @@ export interface PopularProductDto {
   originalPrice: number | null;
   discountRate: number | null;
   imageUrl: string | null;
+  images: string[];
+  stock?: number;
   isNew: boolean;
   soldCount: number;
+  colorOptions?: string[];
+  sizeOptions?: string[];
+}
+
+export interface StoreProductDto {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number | null;
+  discountRate: number | null;
+  imageUrl: string | null;
+  images: string[];
+  isNew: boolean;
+  stock: number;
+  status: ProductStatus;
+  colorOptions?: string[];
+  sizeOptions?: string[];
 }
 
 export interface MainPageData {
@@ -58,4 +77,5 @@ export interface MainPageData {
   liveDeals: LiveDealProductDto[];
   upcomingLives: UpcomingLiveDto[];
   popularProducts: PopularProductDto[];
+  storeProducts: StoreProductDto[];
 }

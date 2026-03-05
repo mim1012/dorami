@@ -20,7 +20,6 @@ import {
   X,
   CheckCircle,
   Timer,
-  Copy,
   GripVertical,
   Search,
 } from 'lucide-react';
@@ -96,7 +95,6 @@ function SortableRow({
   getStatusBadge,
   handleOpenModal,
   handleMarkAsSoldOut,
-  handleDuplicate,
   handleDelete,
 }: {
   product: Product;
@@ -106,7 +104,6 @@ function SortableRow({
   getStatusBadge: (status: string) => { text: string; color: string };
   handleOpenModal: (product?: Product) => void;
   handleMarkAsSoldOut: (id: string) => void;
-  handleDuplicate: (id: string) => void;
   handleDelete: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -160,12 +157,12 @@ function SortableRow({
           <div>
             <Body className="text-primary-text font-semibold">{product.name}</Body>
             <div className="flex gap-2 mt-1">
-              {product.colorOptions.length > 0 && (
+              {Array.isArray(product.colorOptions) && product.colorOptions.length > 0 && (
                 <span className="text-xs bg-info/20 text-info px-2 py-0.5 rounded">
                   색상: {product.colorOptions.join(', ')}
                 </span>
               )}
-              {product.sizeOptions.length > 0 && (
+              {Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0 && (
                 <span className="text-xs bg-purple-500/20 text-purple-500 px-2 py-0.5 rounded">
                   사이즈: {product.sizeOptions.join(', ')}
                 </span>
@@ -220,14 +217,6 @@ function SortableRow({
           >
             <Edit className="w-4 h-4" />
             <span className="ml-1 hidden sm:inline">수정</span>
-          </button>
-          <button
-            onClick={() => handleDuplicate(product.id)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-info"
-            title="복제"
-          >
-            <Copy className="w-4 h-4" />
-            <span className="ml-1 hidden sm:inline">복제</span>
           </button>
           {product.status === 'AVAILABLE' && (
             <button
@@ -365,19 +354,6 @@ export default function AdminProductsPage() {
       currency: 'KRW',
       maximumFractionDigits: 0,
     }).format(price);
-  };
-
-  // --- Feature 1: Duplicate ---
-  const handleDuplicate = async (productId: string) => {
-    try {
-      await apiClient.post(`/products/${productId}/duplicate`, {});
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      fetchProducts();
-      showToast('상품이 복제되었습니다!', 'success');
-    } catch (err: any) {
-      console.error('Failed to duplicate product:', err);
-      showToast(`상품 복제에 실패했습니다: ${err.message}`, 'error');
-    }
   };
 
   // --- Feature 2: DnD Reorder ---
@@ -538,7 +514,7 @@ export default function AdminProductsPage() {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        streamKey: product.streamKey,
+        streamKey: product.streamKey || '',
         name: product.name,
         price: product.price.toString(),
         stock: product.stock.toString(),
@@ -782,7 +758,7 @@ export default function AdminProductsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center py-24">
         <Body className="text-secondary-text">상품 목록을 불러오는 중...</Body>
       </div>
     );
@@ -793,7 +769,7 @@ export default function AdminProductsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary-text mb-2">상품관리</h1>
+          <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-3">
@@ -961,7 +937,6 @@ export default function AdminProductsPage() {
                         getStatusBadge={getStatusBadge}
                         handleOpenModal={handleOpenModal}
                         handleMarkAsSoldOut={handleMarkAsSoldOut}
-                        handleDuplicate={handleDuplicate}
                         handleDelete={handleDelete}
                       />
                     ))}

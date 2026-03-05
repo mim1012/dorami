@@ -37,12 +37,10 @@ export function useCartActivity(streamKey: string) {
     const baseUrl =
       process.env.NEXT_PUBLIC_WS_URL ||
       (typeof window !== 'undefined' ? window.location.origin : '');
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
     const socket = io(baseUrl + '/', {
       transports: ['websocket'],
       withCredentials: true,
-      auth: token ? { token } : undefined,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,

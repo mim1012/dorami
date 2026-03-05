@@ -247,16 +247,37 @@ export class OrdersService {
       },
     );
 
+    const productStreamKeys = await this.prisma.product.findMany({
+      where: { id: { in: order.orderItems.map((item) => item.productId!) } },
+      select: { id: true, streamKey: true },
+    });
+    const streamKeyByProductId = new Map(
+      productStreamKeys.map((product) => [product.id, product.streamKey ?? undefined]),
+    );
+    const createdOrderItems = order.orderItems.map((item) => {
+      const streamKey = streamKeyByProductId.get(item.productId ?? '');
+      return {
+        productId: item.productId!,
+        quantity: item.quantity,
+        priceAtPurchase: Number(item.price),
+        streamKey: streamKey ?? undefined,
+      };
+    });
+    const streamKeys = [
+      ...new Set(
+        createdOrderItems
+          .map((item) => item.streamKey)
+          .filter((streamKey): streamKey is string => Boolean(streamKey)),
+      ),
+    ];
+
     // Emit domain event
     const event = new OrderCreatedEvent(
       order.id,
       order.userId,
       Number(order.total),
-      order.orderItems.map((item) => ({
-        productId: item.productId!,
-        quantity: item.quantity,
-        priceAtPurchase: Number(item.price),
-      })),
+      createdOrderItems,
+      streamKeys,
     );
 
     this.eventEmitter.emit('order:created', event);
@@ -291,7 +312,6 @@ export class OrdersService {
       }
 
       return {
-        productId: item.productId,
         productName: product.name,
         quantity: item.quantity,
         price: product.price,
@@ -367,11 +387,18 @@ export class OrdersService {
       order.id,
       order.userId,
       Number(order.total),
-      order.orderItems.map((item) => ({
-        productId: item.productId!,
-        quantity: item.quantity,
-        priceAtPurchase: Number(item.price),
-      })),
+      order.orderItems.map((item) => {
+        const streamKey = productMap.get(item.productId!)?.streamKey ?? undefined;
+        return {
+          productId: item.productId!,
+          quantity: item.quantity,
+          priceAtPurchase: Number(item.price),
+          streamKey: streamKey === null ? undefined : streamKey,
+        };
+      }),
+      createOrderDto.items
+        .map((item) => productMap.get(item.productId)?.streamKey)
+        .filter((streamKey): streamKey is string => Boolean(streamKey)),
     );
 
     this.eventEmitter.emit('order:created', event);
@@ -609,10 +636,21 @@ export class OrdersService {
 
   /**
    * Cron job: Check for expired orders and auto-cancel them
-   * Runs every minute
+   * DISABLED: Orders should not auto-cancel based on ORDER_EXPIRATION_MINUTES
+   * Users need time to make bank transfers (no strict time limit)
+   * Manual cancellation via admin or user is preferred
+   *
+   * TODO: Consider implementing order expiration only after:
+   * - Much longer timeout (24+ hours)
+   * - Or after explicit user timeout (user doesn't make payment for X days)
+   * - Not based on 10-minute cart timer which is inappropriate for orders
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async cancelExpiredOrders() {
+    // INTENTIONALLY DISABLED - See comment above
+    return;
+
+    /* ORIGINAL CODE (DISABLED):
     try {
       const now = new Date();
       const expirationTime = new Date(now.getTime() - this.orderExpirationMinutes * 60 * 1000);
@@ -668,6 +706,7 @@ export class OrdersService {
     } catch (error) {
       this.logger.error('Failed to cancel expired orders', (error as Error).stack);
     }
+    */
   }
 
   /**

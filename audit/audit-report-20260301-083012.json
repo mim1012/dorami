@@ -1,0 +1,410 @@
+{
+  "report_meta": {
+    "generated_at": "2026-03-01T08:30:12Z",
+    "generator": "audit/04-generate-audit-report.sh",
+    "repo_root": "D:/Project/dorami",
+    "scripts_run": [
+      "01-collect-git-env.sh",
+      "02-prisma-drift-check.sh",
+      "03-docker-port-network.sh"
+    ]
+  },
+  "git_env": {
+    "timestamp": "2026-03-01T08:30:12Z",
+    "environment": "local",
+    "git": {
+      "commit": "fc23db55aebdb56c78ea6de58ad2bb6d031010d4",
+      "branch": "develop",
+      "remote_branches": [
+        "remotes/origin/HEAD -> origin/main",
+        "remotes/origin/develop",
+        "remotes/origin/feature/api-integration-homepage",
+        "remotes/origin/feature/dev-mock-login-and-fixes",
+        "remotes/origin/feature/pr1-improvements",
+        "remotes/origin/feature/ui-redesign-eunimarket-inspired",
+        "remotes/origin/fix/api-endpoint-mismatch",
+        "remotes/origin/fix/pr3-coderabbit-review-fixes",
+        "remotes/origin/hotfix/block-unauth-home-products",
+        "remotes/origin/main"
+      ],
+      "local_branches": [
+        "develop",
+        "fix/api-endpoint-mismatch",
+        "fix/pr3-coderabbit-review-fixes",
+        "hotfix/block-unauth-home-products",
+        "+ hotfix/prod-recovery-main",
+        "main",
+        "sync/main-develop-dryrun",
+        "+ worktree-agent-a522466a"
+      ]
+    },
+    "env_vars": {
+      "GITHUB_REPOSITORY_OWNER": "local",
+      "IMAGE_TAG": "latest",
+      "NODE_ENV": "production",
+      "APP_ENV": "staging",
+      "PORT": "3001",
+      "LOG_LEVEL": "info",
+      "DB_PASSWORD": "***REDACTED***",
+      "POSTGRES_USER": "dorami",
+      "POSTGRES_PASSWORD": "***REDACTED***",
+      "POSTGRES_DB": "live_commerce",
+      "REDIS_PASSWORD": "***REDACTED***",
+      "REDIS_HOST": "redis",
+      "REDIS_PORT": "6379",
+      "REDIS_PUBSUB_URL": "redis://***REDACTED***",
+      "JWT_SECRET": "***REDACTED***",
+      "KAKAO_CLIENT_ID": "staging_kakao_client_id",
+      "KAKAO_CLIENT_SECRET": "***REDACTED***",
+      "KAKAO_CALLBACK_URL": "http://***REDACTED***",
+      "FRONTEND_URL": "http://***REDACTED***",
+      "STAGING_HOST": "localhost",
+      "CORS_ORIGINS": "http://localhost:3000",
+      "RTMP_SERVER_URL": "rtmp://***REDACTED***",
+      "HLS_SERVER_URL": "http://***REDACTED***",
+      "PROFILE_ENCRYPTION_KEY": "***REDACTED***",
+      "CSRF_ENABLED": "true",
+      "COOKIE_SECURE": "false",
+      "ENABLE_DEV_AUTH": "***REDACTED***",
+      "ADMIN_EMAILS": "admin@dorami.shop",
+      "BANK_NAME": "KB국민은행",
+      "BANK_ACCOUNT_NUMBER": "12345678901234",
+      "BANK_ACCOUNT_HOLDER": "도라미",
+      "SENTRY_DSN": "***REDACTED***",
+      "APP_VERSION": "1.0.0-staging",
+      "BACKEND_URL": "http://***REDACTED***",
+      "HOSTNAME": "0.0.0.0",
+      "NEXT_PUBLIC_API_URL": "http://***REDACTED***",
+      "NEXT_PUBLIC_WS_URL": "ws://***REDACTED***",
+      "NEXT_PUBLIC_CDN_URL": "http://***REDACTED***",
+      "NEXT_PUBLIC_KAKAO_JS_KEY": "***REDACTED***",
+      "NEXT_PUBLIC_ENABLE_DEV_AUTH": "***REDACTED***",
+      "NEXT_PUBLIC_PREVIEW_ENABLED": "true",
+      "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "***REDACTED***",
+      "NEXT_PUBLIC_SENTRY_DSN": "***REDACTED***",
+      "NEXT_PUBLIC_APP_VERSION": "1.0.0-staging",
+      "WS_URL": "ws://***REDACTED***",
+      "CDN_URL": "http://***REDACTED***",
+      "VAPID_PUBLIC_KEY": "***REDACTED***"
+    },
+    "docker": {
+      "docker_version": "29.1.3",
+      "compose_version": "5.0.0-desktop.1",
+      "containers": [
+        {
+          "id": "0d6bb55bf72b",
+          "image": "dorami-backend",
+          "status": "Up 3 hours (healthy)",
+          "name": "live-commerce-backend",
+          "ports": "0.0.0.0:3001->3001/tcp, [::]:3001->3001/tcp"
+        },
+        {
+          "id": "699f4986c041",
+          "image": "ossrs/srs:6",
+          "status": "Up 3 hours",
+          "name": "live-commerce-srs",
+          "ports": "0.0.0.0:1935->1935/tcp, [::]:1935->1935/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp"
+        },
+        {
+          "id": "6239066f5e30",
+          "image": "postgres:16-alpine",
+          "status": "Up 3 hours (healthy)",
+          "name": "live-commerce-postgres",
+          "ports": "0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp"
+        },
+        {
+          "id": "50b4fcac6468",
+          "image": "redis:7-alpine",
+          "status": "Up 3 hours (healthy)",
+          "name": "live-commerce-redis",
+          "ports": "0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp"
+        },
+        {
+          "id": "2bd7e4663dca",
+          "image": "csharpkimchi-authserver",
+          "status": "Up 3 hours (healthy)",
+          "name": "kimchihedge-authserver",
+          "ports": "0.0.0.0:5000->80/tcp, [::]:5000->80/tcp"
+        },
+        {
+          "id": "e963f295bdb1",
+          "image": "postgres:15-alpine",
+          "status": "Up 3 hours (healthy)",
+          "name": "kimchihedge-db",
+          "ports": "0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp"
+        }
+      ],
+      "volumes": [
+        {
+          "name": "3f6b6f62642cc7240fe855e220a65c5e4a2482ead3f6cf7bf61140720dacd94a",
+          "driver": "local"
+        },
+        {
+          "name": "csharpkimchi_postgres_data",
+          "driver": "local"
+        },
+        {
+          "name": "dorami_postgres_data",
+          "driver": "local"
+        },
+        {
+          "name": "dorami_redis_data",
+          "driver": "local"
+        },
+        {
+          "name": "dorami_rtmp_data",
+          "driver": "local"
+        },
+        {
+          "name": "f0eeb899193c68b9fabe4bda8dca2eea826f258b6d743d6d6caf5baf605654cd",
+          "driver": "local"
+        }
+      ]
+    }
+  },
+  "prisma_drift": {
+    "timestamp": "2026-03-01T08:30:33Z",
+    "prisma": {
+      "status": "✔ Up to date",
+      "applied_migrations": [
+        "20260220000000_add_notice_category",
+        "20260221000000_add_live_stream_scheduled_at_thumbnail",
+        "20260223030006_add_alimtalk_settings",
+        "20260223100000_add_order_tracking_number",
+        "20260224000000_add_free_shipping_threshold",
+        "20260224000000_add_global_shipping_settings",
+        "20260224010000_add_shipping_zones_livestream_freeshipping",
+        "20260225000000_add_user_phone",
+        "20260225000000_add_zelle_and_free_shipping_fields",
+        "20260225010000_add_mute_audio_to_restream_target",
+        "20260228000000_add_livestream_description",
+        "20260228000001_add_order_item_product_id_index",
+        "20260228000002_add_admin_ui_config_sections",
+        "20260301010435_add_admin_cms_config_fields"
+      ],
+      "pending_migrations": [""],
+      "migration_count": 14
+    },
+    "database": {
+      "container": "live-commerce-postgres",
+      "database_url_detected": true,
+      "tables": 20,
+      "indexes": 75,
+      "foreign_keys": 21,
+      "enum_types": 16,
+      "table_data": {
+        "users": 4,
+        "live_streams": 1,
+        "products": 11,
+        "orders": 0,
+        "order_items": 0,
+        "carts": 1,
+        "reservations": 0,
+        "point_balances": 0,
+        "point_transactions": 0,
+        "settlements": 0,
+        "notification_subscriptions": 0,
+        "audit_logs": 0,
+        "notices": 0
+      }
+    },
+    "enum_details": {
+      "CartStatus": "ACTIVE,EXPIRED,COMPLETED",
+      "ModerationAction": "DELETE_MESSAGE,MUTE,BAN",
+      "OrderStatus": "PENDING_PAYMENT,PAYMENT_CONFIRMED,SHIPPED,DELIVERED,CANCELLED",
+      "PaymentMethod": "BANK_TRANSFER",
+      "PaymentStatus": "PENDING,CONFIRMED,FAILED",
+      "PointTransactionType": "EARNED_ORDER,USED_ORDER,REFUND_CANCELLED,MANUAL_ADD,MANUAL_SUBTRACT,EXPIRED",
+      "ProductStatus": "AVAILABLE,SOLD_OUT",
+      "ReStreamPlatform": "YOUTUBE,INSTAGRAM,TIKTOK,CUSTOM",
+      "ReStreamStatus": "IDLE,CONNECTING,ACTIVE,FAILED,STOPPED",
+      "ReservationStatus": "WAITING,PROMOTED,COMPLETED,CANCELLED,EXPIRED",
+      "Role": "USER,ADMIN",
+      "SettlementStatus": "PENDING,APPROVED,PAID",
+      "ShippingStatus": "PENDING,SHIPPED,DELIVERED",
+      "StreamStatus": "PENDING,LIVE,OFFLINE",
+      "UserStatus": "ACTIVE,INACTIVE,SUSPENDED",
+      "notice_category": "IMPORTANT,GENERAL"
+    }
+  },
+  "docker_network": {
+    "timestamp": "2026-03-01T08:30:55Z",
+    "containers": [
+      {
+        "name": "live-commerce-backend",
+        "image": "dorami-backend",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.065939374Z",
+        "ports": ["3001"],
+        "health": "healthy",
+        "cpu": "0.18%",
+        "memory": "137.8MiB / 7.454GiB",
+        "restart_count": 0
+      },
+      {
+        "name": "live-commerce-srs",
+        "image": "ossrs/srs:6",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.060439401Z",
+        "ports": ["1935", "8080"],
+        "health": "none",
+        "cpu": "0.60%",
+        "memory": "13.59MiB / 7.454GiB",
+        "restart_count": 0
+      },
+      {
+        "name": "live-commerce-postgres",
+        "image": "postgres:16-alpine",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.051925712Z",
+        "ports": ["5432"],
+        "health": "healthy",
+        "cpu": "0.00%",
+        "memory": "64.8MiB / 7.454GiB",
+        "restart_count": 0
+      },
+      {
+        "name": "live-commerce-redis",
+        "image": "redis:7-alpine",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.057221155Z",
+        "ports": ["6379"],
+        "health": "healthy",
+        "cpu": "0.34%",
+        "memory": "7.898MiB / 7.454GiB",
+        "restart_count": 0
+      },
+      {
+        "name": "kimchihedge-authserver",
+        "image": "csharpkimchi-authserver",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.069420568Z",
+        "ports": ["80"],
+        "health": "healthy",
+        "cpu": "0.22%",
+        "memory": "136.8MiB / 7.454GiB",
+        "restart_count": 0
+      },
+      {
+        "name": "kimchihedge-db",
+        "image": "postgres:15-alpine",
+        "status": "running",
+        "started_at": "2026-03-01T05:11:57.04923571Z",
+        "ports": ["5432"],
+        "health": "healthy",
+        "cpu": "0.00%",
+        "memory": "31.56MiB / 7.454GiB",
+        "restart_count": 0
+      }
+    ],
+    "networks": [
+      {
+        "name": "bridge",
+        "driver": "bridge",
+        "scope": "local",
+        "containers": []
+      },
+      {
+        "name": "csharpkimchi_default",
+        "driver": "bridge",
+        "scope": "local",
+        "containers": ["kimchihedge-authserver", "kimchihedge-db"]
+      },
+      {
+        "name": "dorami_default",
+        "driver": "bridge",
+        "scope": "local",
+        "containers": []
+      },
+      {
+        "name": "host",
+        "driver": "host",
+        "scope": "local",
+        "containers": []
+      },
+      {
+        "name": "live-commerce-network",
+        "driver": "bridge",
+        "scope": "local",
+        "containers": [
+          "live-commerce-backend",
+          "live-commerce-postgres",
+          "live-commerce-redis",
+          "live-commerce-srs"
+        ]
+      },
+      {
+        "name": "live-commerce-test-network",
+        "driver": "bridge",
+        "scope": "local",
+        "containers": []
+      },
+      {
+        "name": "none",
+        "driver": "null",
+        "scope": "local",
+        "containers": []
+      }
+    ],
+    "volumes": [
+      {
+        "name": "3f6b6f62642cc7240fe855e220a65c5e4a2482ead3f6cf7bf61140720dacd94a",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/3f6b6f62642cc7240fe855e220a65c5e4a2482ead3f6cf7bf61140720dacd94a/_data"
+      },
+      {
+        "name": "csharpkimchi_postgres_data",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/csharpkimchi_postgres_data/_data"
+      },
+      {
+        "name": "dorami_postgres_data",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/dorami_postgres_data/_data"
+      },
+      {
+        "name": "dorami_redis_data",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/dorami_redis_data/_data"
+      },
+      {
+        "name": "dorami_rtmp_data",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/dorami_rtmp_data/_data"
+      },
+      {
+        "name": "f0eeb899193c68b9fabe4bda8dca2eea826f258b6d743d6d6caf5baf605654cd",
+        "driver": "local",
+        "mountpoint": "/var/lib/docker/volumes/f0eeb899193c68b9fabe4bda8dca2eea826f258b6d743d6d6caf5baf605654cd/_data"
+      }
+    ],
+    "port_bindings": [],
+    "recent_logs": [
+      {
+        "container": "live-commerce-backend",
+        "tail_50": "[Nest] 1  - 03/01/2026, 8:00:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:00:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:05:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:05:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:05:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:10:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:10:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:10:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:15:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:15:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:15:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:20:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:20:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:20:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:25:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:25:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:25:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3\n[Nest] 1  - 03/01/2026, 8:30:00 AM     LOG [NotificationSchedulerService] Checking for upcoming live streams...\n[Nest] 1  - 03/01/2026, 8:30:00 AM     LOG [PushNotificationService] Found 1 upcoming streams\n[Nest] 1  - 03/01/2026, 8:30:00 AM     LOG [PushNotificationService] No subscribers for live stream d6927268-c898-4892-8c1e-ec1749f356a3"
+      },
+      {
+        "container": "live-commerce-srs",
+        "tail_50": "thread [1][u2q2u1im]: srs_tcp_connect() [./src/protocol/srs_protocol_st.cpp:218][errno=111]\n[2026-03-01 04:21:08.437][WARN][1][u2q2u1im][111] heartbeat err=code=1018(StConnect)(ST connect server failed) : http post hartbeart uri failed. url=http://backend:3001/api/streaming/srs-heartbeat, request={\"device_id\":\"\",\"ip\":\"172.21.0.5\",\"server\":\"vid-xyxq746\",\"service\":\"jf8q131z\",\"pid\":\"1\"} : http: connect server : http: tcp connect http backend:3001 to=30000ms, rto=30000ms : tcp: connect backend:3001 to=30000ms : connect to backend:3001\nthread [1][u2q2u1im]: do_heartbeat() [./src/app/srs_app_heartbeat.cpp:145][errno=111]\nthread [1][u2q2u1im]: post() [./src/protocol/srs_protocol_http_client.cpp:327][errno=111]\nthread [1][u2q2u1im]: connect() [./src/protocol/srs_protocol_http_client.cpp:452][errno=111]\nthread [1][u2q2u1im]: connect() [./src/protocol/srs_protocol_st.cpp:698][errno=111]\nthread [1][u2q2u1im]: srs_tcp_connect() [./src/protocol/srs_protocol_st.cpp:218][errno=111]\n[2026-03-01 05:11:57.933][INFO][1][p92sl661] XCORE-SRS/6.0.184(Hang)\n[2026-03-01 05:11:57.949][INFO][1][p92sl661] config parse complete\n[2026-03-01 05:11:57.949][INFO][1][p92sl661] enable in_docker by config\n[2026-03-01 05:11:57.950][INFO][1][p92sl661] write log to console\n[2026-03-01 05:11:57.955][WARN][1][p92sl661][2] stats network use index=0, ip=172.21.0.5, ifname=eth0\n[2026-03-01 05:11:57.955][WARN][1][p92sl661][2] stats disk not configed, disk iops disabled.\n[2026-03-01 05:11:58.001][WARN][1][p92sl661][11] enable auto reload for docker\n[2026-03-01 05:11:58.021][WARN][1][p92sl661][111] heartbeat err=code=1018(StConnect)(ST connect server failed) : http post hartbeart uri failed. url=http://backend:3001/api/streaming/srs-heartbeat, request={\"device_id\":\"\",\"ip\":\"172.21.0.5\",\"server\":\"vid-xyxq746\",\"service\":\"360187i7\",\"pid\":\"1\"} : http: connect server : http: tcp connect http backend:3001 to=30000ms, rto=30000ms : tcp: connect backend:3001 to=30000ms : connect to backend:3001\nthread [1][p92sl661]: do_heartbeat() [./src/app/srs_app_heartbeat.cpp:145][errno=111]\nthread [1][p92sl661]: post() [./src/protocol/srs_protocol_http_client.cpp:327][errno=111]\nthread [1][p92sl661]: connect() [./src/protocol/srs_protocol_http_client.cpp:452][errno=111]\nthread [1][p92sl661]: connect() [./src/protocol/srs_protocol_st.cpp:698][errno=111]\nthread [1][p92sl661]: srs_tcp_connect() [./src/protocol/srs_protocol_st.cpp:218][errno=111]"
+      },
+      {
+        "container": "live-commerce-postgres",
+        "tail_50": "2026-03-01 08:25:29.105 UTC [9978] ERROR:  relation \"system_configs\" does not exist at character 22\n2026-03-01 08:25:29.105 UTC [9978] STATEMENT:  SELECT COUNT(*) FROM \"system_configs\";\n2026-03-01 08:28:14.052 UTC [10240] ERROR:  relation \"cart_items\" does not exist at character 22\n2026-03-01 08:28:14.052 UTC [10240] STATEMENT:  SELECT COUNT(*) FROM \"cart_items\";\n2026-03-01 08:28:15.667 UTC [10289] ERROR:  relation \"cart_items\" does not exist at character 22\n2026-03-01 08:28:15.667 UTC [10289] STATEMENT:  SELECT COUNT(*) FROM \"cart_items\";\n2026-03-01 08:28:16.568 UTC [10310] ERROR:  relation \"re_stream_targets\" does not exist at character 22\n2026-03-01 08:28:16.568 UTC [10310] STATEMENT:  SELECT COUNT(*) FROM \"re_stream_targets\";\n2026-03-01 08:28:18.203 UTC [10352] ERROR:  relation \"system_configs\" does not exist at character 22\n2026-03-01 08:28:18.203 UTC [10352] STATEMENT:  SELECT COUNT(*) FROM \"system_configs\";\n2026-03-01 08:28:18.442 UTC [10359] ERROR:  relation \"re_stream_targets\" does not exist at character 22\n2026-03-01 08:28:18.442 UTC [10359] STATEMENT:  SELECT COUNT(*) FROM \"re_stream_targets\";\n2026-03-01 08:28:19.974 UTC [10403] ERROR:  relation \"system_configs\" does not exist at character 22\n2026-03-01 08:28:19.974 UTC [10403] STATEMENT:  SELECT COUNT(*) FROM \"system_configs\";\n2026-03-01 08:30:45.660 UTC [10601] ERROR:  relation \"cart_items\" does not exist at character 22\n2026-03-01 08:30:45.660 UTC [10601] STATEMENT:  SELECT COUNT(*) FROM \"cart_items\";\n2026-03-01 08:30:48.318 UTC [10638] ERROR:  relation \"re_stream_targets\" does not exist at character 22\n2026-03-01 08:30:48.318 UTC [10638] STATEMENT:  SELECT COUNT(*) FROM \"re_stream_targets\";\n2026-03-01 08:30:49.816 UTC [10660] ERROR:  relation \"system_configs\" does not exist at character 22\n2026-03-01 08:30:49.816 UTC [10660] STATEMENT:  SELECT COUNT(*) FROM \"system_configs\";"
+      },
+      {
+        "container": "live-commerce-redis",
+        "tail_50": "1:M 01 Mar 2026 05:11:57.857 * DB loaded from base file appendonly.aof.1.base.rdb: 0.005 seconds\n1:M 01 Mar 2026 05:11:57.859 * DB loaded from incr file appendonly.aof.1.incr.aof: 0.002 seconds\n1:M 01 Mar 2026 05:11:57.859 * DB loaded from append only file: 0.008 seconds\n1:M 01 Mar 2026 05:11:57.859 * Opening AOF incr file appendonly.aof.1.incr.aof on server start\n1:M 01 Mar 2026 05:11:57.859 * Ready to accept connections tcp\n1:M 01 Mar 2026 06:11:58.063 * 1 changes in 3600 seconds. Saving...\n1:M 01 Mar 2026 06:11:58.071 * Background saving started by pid 2190\n2190:C 01 Mar 2026 06:11:58.086 * DB saved on disk\n2190:C 01 Mar 2026 06:11:58.087 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB\n1:M 01 Mar 2026 06:11:58.172 * Background saving terminated with success\n1:M 01 Mar 2026 07:11:59.047 * 1 changes in 3600 seconds. Saving...\n1:M 01 Mar 2026 07:11:59.050 * Background saving started by pid 4375\n4375:C 01 Mar 2026 07:11:59.060 * DB saved on disk\n4375:C 01 Mar 2026 07:11:59.061 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB\n1:M 01 Mar 2026 07:11:59.152 * Background saving terminated with success\n1:M 01 Mar 2026 08:12:00.023 * 1 changes in 3600 seconds. Saving...\n1:M 01 Mar 2026 08:12:00.028 * Background saving started by pid 6551\n6551:C 01 Mar 2026 08:12:00.052 * DB saved on disk\n6551:C 01 Mar 2026 08:12:00.053 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB\n1:M 01 Mar 2026 08:12:00.128 * Background saving terminated with success"
+      },
+      {
+        "container": "kimchihedge-authserver",
+        "tail_50": "info: System.Net.Http.HttpClient.LambdaApi.ClientHandler[101]\n      Received HTTP response headers after 168.9475ms - 200\ninfo: System.Net.Http.HttpClient.LambdaApi.LogicalHandler[101]\n      End processing HTTP request after 169.0722ms - 200\ninfo: System.Net.Http.HttpClient.LambdaApi.LogicalHandler[100]\n      Start processing HTTP request GET https://ogh80p7tqk.execute-api.ap-northeast-2.amazonaws.com/prod/premium\ninfo: System.Net.Http.HttpClient.LambdaApi.ClientHandler[100]\n      Sending HTTP request GET https://ogh80p7tqk.execute-api.ap-northeast-2.amazonaws.com/prod/premium\ninfo: System.Net.Http.HttpClient.LambdaApi.ClientHandler[101]\n      Received HTTP response headers after 168.3703ms - 200\ninfo: System.Net.Http.HttpClient.LambdaApi.LogicalHandler[101]\n      End processing HTTP request after 170.7381ms - 200\ninfo: System.Net.Http.HttpClient.LambdaApi.LogicalHandler[100]\n      Start processing HTTP request GET https://ogh80p7tqk.execute-api.ap-northeast-2.amazonaws.com/prod/premium\ninfo: System.Net.Http.HttpClient.LambdaApi.ClientHandler[100]\n      Sending HTTP request GET https://ogh80p7tqk.execute-api.ap-northeast-2.amazonaws.com/prod/premium\ninfo: System.Net.Http.HttpClient.LambdaApi.ClientHandler[101]\n      Received HTTP response headers after 170.5676ms - 200\ninfo: System.Net.Http.HttpClient.LambdaApi.LogicalHandler[101]\n      End processing HTTP request after 170.6793ms - 200"
+      },
+      {
+        "container": "kimchihedge-db",
+        "tail_50": "2026-02-28 23:51:45.977 UTC [29] LOG:  invalid record length at 0/19B4FB8: wanted 24, got 0\n2026-02-28 23:51:45.977 UTC [29] LOG:  redo done at 0/19B4F80 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\n2026-02-28 23:51:45.984 UTC [27] LOG:  checkpoint starting: end-of-recovery immediate wait\n2026-02-28 23:51:46.004 UTC [27] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.004 s, sync=0.002 s, total=0.023 s; sync files=2, longest=0.002 s, average=0.001 s; distance=0 kB, estimate=0 kB\n2026-02-28 23:51:46.014 UTC [1] LOG:  database system is ready to accept connections\n\nPostgreSQL Database directory appears to contain a database; Skipping initialization\n\n2026-03-01 05:11:58.030 UTC [1] LOG:  starting PostgreSQL 15.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit\n2026-03-01 05:11:58.030 UTC [1] LOG:  listening on IPv4 address \"0.0.0.0\", port 5432\n2026-03-01 05:11:58.030 UTC [1] LOG:  listening on IPv6 address \"::\", port 5432\n2026-03-01 05:11:58.051 UTC [1] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"\n2026-03-01 05:11:58.073 UTC [29] LOG:  database system was interrupted; last known up at 2026-02-28 23:51:46 UTC\n2026-03-01 05:11:59.541 UTC [29] LOG:  database system was not properly shut down; automatic recovery in progress\n2026-03-01 05:11:59.546 UTC [29] LOG:  redo starts at 0/19B5030\n2026-03-01 05:11:59.546 UTC [29] LOG:  invalid record length at 0/19B5068: wanted 24, got 0\n2026-03-01 05:11:59.546 UTC [29] LOG:  redo done at 0/19B5030 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\n2026-03-01 05:11:59.552 UTC [27] LOG:  checkpoint starting: end-of-recovery immediate wait\n2026-03-01 05:11:59.571 UTC [27] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.004 s, total=0.022 s; sync files=2, longest=0.003 s, average=0.002 s; distance=0 kB, estimate=0 kB\n2026-03-01 05:11:59.586 UTC [1] LOG:  database system is ready to accept connections"
+      }
+    ],
+    "warnings": []
+  }
+}

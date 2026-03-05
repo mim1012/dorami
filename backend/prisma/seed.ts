@@ -6,7 +6,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting database seeding...');
 
-  // Clear existing data
+  // Only seed if products table is empty (preserves admin-created products)
+  const existingProducts = await prisma.product.count();
+  if (existingProducts > 0) {
+    console.log(`⏭️ Skipping seed: ${existingProducts} products already exist`);
+    await prisma.$disconnect();
+    return;
+  }
+
+  // Clear existing data (only on initial setup when no products exist)
   console.log('Clearing existing data...');
   await prisma.notificationSubscription.deleteMany();
   await prisma.pointTransaction.deleteMany();
@@ -117,6 +125,10 @@ async function main() {
       sizeOptions: [],
       shippingFee: new Decimal(3000),
       imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&q=80',
+        'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=700&q=80',
+      ],
       isNew: true,
       discountRate: new Decimal(20),
       originalPrice: new Decimal(47500),
@@ -132,6 +144,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500&q=80',
+        'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=700&q=80',
+      ],
       isNew: true,
       discountRate: new Decimal(0),
       originalPrice: new Decimal(24000),
@@ -147,6 +163,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=80',
+        'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(35),
       originalPrice: new Decimal(44600),
@@ -161,6 +181,10 @@ async function main() {
       sizeOptions: [],
       shippingFee: new Decimal(3000),
       imageUrl: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500&q=80',
+        'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(25),
       originalPrice: new Decimal(60000),
@@ -176,6 +200,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=500&q=80',
+        'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(15),
       originalPrice: new Decimal(37600),
@@ -191,6 +219,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=500&q=80',
+        'https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=700&q=80',
+      ],
       isNew: true,
       discountRate: new Decimal(30),
       originalPrice: new Decimal(270000),
@@ -206,6 +238,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+        'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(0),
       originalPrice: new Decimal(129000),
@@ -220,6 +256,10 @@ async function main() {
       sizeOptions: ['S', 'M', 'L'],
       shippingFee: new Decimal(3000),
       imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+        'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(40),
       originalPrice: new Decimal(98300),
@@ -235,6 +275,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700&q=80',
+      ],
       isNew: true,
       discountRate: new Decimal(10),
       originalPrice: new Decimal(221100),
@@ -250,6 +294,10 @@ async function main() {
       shippingFee: new Decimal(0),
       freeShippingMessage: '무료배송',
       imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700&q=80',
+      ],
       isNew: false,
       discountRate: new Decimal(30),
       originalPrice: new Decimal(127100),

@@ -37,9 +37,18 @@ export class AuthService {
   }
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
-    // Find existing user or create new one
-    let user = await this.prisma.user.findUnique({
-      where: { kakaoId: profile.kakaoId },
+    // Find existing user by kakaoId OR email (preserve existing user profiles)
+    const whereConditions: Array<{ kakaoId?: string; email?: string }> = [
+      { kakaoId: profile.kakaoId },
+    ];
+    if (profile.email) {
+      whereConditions.push({ email: profile.email });
+    }
+
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: whereConditions,
+      },
     });
 
     // Check if user email is in cached admin whitelist
@@ -51,24 +60,25 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           kakaoId: profile.kakaoId,
-          email: profile.email ?? null, // Set to null if undefined (user denied email permission)
+          email: profile.email ?? null,
           name: profile.nickname,
-          role: assignedRole, // Assign role based on whitelist
-          status: 'ACTIVE', // Set status to ACTIVE
-          lastLoginAt: new Date(), // Set lastLoginAt
+          role: assignedRole,
+          status: 'ACTIVE',
+          lastLoginAt: new Date(),
         },
       });
 
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
-      // Update user profile, lastLoginAt, and role (in case whitelist changed)
+      // Update user profile, link kakaoId if missing, and update lastLoginAt
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
+          kakaoId: user.kakaoId || profile.kakaoId,
           name: profile.nickname,
           email: profile.email ?? user.email,
-          role: assignedRole, // Update role based on current whitelist
-          lastLoginAt: new Date(), // Update lastLoginAt
+          role: assignedRole,
+          lastLoginAt: new Date(),
         },
       });
 
@@ -78,14 +88,11 @@ export class AuthService {
     return user;
   }
 
-  /**
-   * Parse a JWT expiresIn string (e.g. "1h", "30d") to seconds for Redis TTL.
-   */
   private parseExpiresInToSeconds(expiresIn: string): number {
     const match = /^(\d+)([smhd])$/.exec(expiresIn);
     if (!match) {
       return 30 * 24 * 60 * 60;
-    } // fallback: 30 days
+    }
     const value = parseInt(match[1], 10);
     const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
     return value * (multipliers[match[2]] ?? 86400);
@@ -94,8 +101,8 @@ export class AuthService {
   async login(user: User): Promise<LoginResponseDto> {
     const payload: TokenPayload = {
       sub: user.id,
-      userId: user.id, // Add userId for JWT strategy compatibility
-      email: user.email ?? '', // Include email per Story 2.1 spec
+      userId: user.id,
+      email: user.email ?? '',
       kakaoId: user.kakaoId,
       name: user.name,
       role: user.role,
@@ -112,7 +119,6 @@ export class AuthService {
       { expiresIn: refreshExpiresIn },
     );
 
-    // Store refresh token in Redis with TTL derived from JWT_REFRESH_EXPIRES_IN
     const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
     try {
       await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
@@ -137,19 +143,16 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify<TokenPayload>(refreshToken);
 
-      // Reject access tokens used as refresh tokens
       if (payload.type && payload.type !== 'refresh') {
         throw new UnauthorizedException('Invalid token type');
       }
 
-      // Verify refresh token exists in Redis
       const storedToken = await this.redisService.get(`refresh_token:${payload.sub}`);
 
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // Get user from database
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
@@ -158,41 +161,48 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
-      // Token Rotation: Delete old refresh token BEFORE issuing new one
-      // This prevents race conditions where old token could be reused
       await this.redisService.del(`refresh_token:${payload.sub}`);
 
-      // Issue new tokens (this will store new refresh token in Redis)
       return this.login(user);
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
 
-  async logout(userId: string, accessToken?: string): Promise<void> {
-    // Blacklist the specific token by jti if available
-    if (accessToken) {
-      try {
-        const decoded = this.jwtService.decode(accessToken) as TokenPayload & { exp: number };
-        if (decoded?.jti) {
-          const now = Math.floor(Date.now() / 1000);
-          const ttl = decoded.exp > now ? decoded.exp - now : 0;
-          if (ttl > 0) {
-            await this.redisService.set(`blacklist:${decoded.jti}`, 'true', ttl);
-          }
-        }
-      } catch {
-        // Fallback: blacklist by userId
-        const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900);
-        await this.redisService.set(`blacklist:${userId}`, 'true', blacklistTTL);
-      }
-    } else {
-      // Fallback: blacklist by userId
-      const blacklistTTL = this.configService.get<number>('AUTH_BLACKLIST_TTL_SECONDS', 900);
-      await this.redisService.set(`blacklist:${userId}`, 'true', blacklistTTL);
-    }
+  async validateDevLoginUser(email: string, name?: string): Promise<User> {
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
 
-    // Remove refresh token from Redis
+    const roleToAssign = this.adminEmailSet.has(email) ? 'ADMIN' : 'USER';
+    const finalRole = existingUser?.role === 'ADMIN' ? 'ADMIN' : roleToAssign;
+
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        lastLoginAt: new Date(),
+        role: finalRole,
+      },
+      create: {
+        kakaoId: `dev_${randomUUID()}`,
+        email,
+        name: name || email.split('@')[0],
+        role: roleToAssign,
+        status: 'ACTIVE',
+        lastLoginAt: new Date(),
+      },
+    });
+
+    this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
+    return user;
+  }
+
+  async logout(userId: string): Promise<void> {
+    // Add user to blacklist to prevent token reuse
+    const ttl = parseInt(this.configService.get<string>('JWT_EXPIRY_HOURS', '24'), 10) * 60 * 60;
+    await this.redisService.set(`blacklist:${userId}`, 'true', ttl);
+
+    // Delete refresh token from Redis
     await this.redisService.del(`refresh_token:${userId}`);
+
+    this.logger.log(`[Auth] User logged out: ${userId}`);
   }
 }

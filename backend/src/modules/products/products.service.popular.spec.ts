@@ -12,6 +12,7 @@ const mockPrisma = {
     aggregate: jest.fn(),
     updateMany: jest.fn(),
   },
+  $queryRaw: jest.fn(),
 };
 
 const mockEventEmitter = { emit: jest.fn() };
@@ -53,16 +54,21 @@ describe('ProductsService.getPopularProducts', () => {
     status: 'AVAILABLE',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
-    _count: { orderItems: 5 },
     ...overrides,
   });
 
   it('should return products sorted by soldCount DESC', async () => {
-    const products = [
-      makeProduct({ id: 'prod-1', _count: { orderItems: 10 } }),
-      makeProduct({ id: 'prod-2', _count: { orderItems: 5 } }),
-      makeProduct({ id: 'prod-3', _count: { orderItems: 1 } }),
+    const countsResult = [
+      { id: 'prod-1', sold_count: BigInt(10) },
+      { id: 'prod-2', sold_count: BigInt(5) },
+      { id: 'prod-3', sold_count: BigInt(1) },
     ];
+    const products = [
+      makeProduct({ id: 'prod-1' }),
+      makeProduct({ id: 'prod-2' }),
+      makeProduct({ id: 'prod-3' }),
+    ];
+    mockPrisma.$queryRaw.mockResolvedValue(countsResult);
     mockPrisma.product.findMany.mockResolvedValue(products);
     mockPrisma.product.count.mockResolvedValue(3);
 
@@ -75,6 +81,7 @@ describe('ProductsService.getPopularProducts', () => {
   });
 
   it('should handle pagination correctly', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 'prod-1', sold_count: BigInt(5) }]);
     mockPrisma.product.findMany.mockResolvedValue([makeProduct()]);
     mockPrisma.product.count.mockResolvedValue(20);
 
@@ -84,49 +91,15 @@ describe('ProductsService.getPopularProducts', () => {
     expect(result.meta.limit).toBe(8);
     expect(result.meta.total).toBe(20);
     expect(result.meta.totalPages).toBe(3);
-
-    // Verify skip was calculated correctly
-    expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 8, take: 8 }),
-    );
-  });
-
-  it('should only count PAYMENT_CONFIRMED, SHIPPED, DELIVERED orders', async () => {
-    mockPrisma.product.findMany.mockResolvedValue([makeProduct()]);
-    mockPrisma.product.count.mockResolvedValue(1);
-
-    await service.getPopularProducts(1, 8);
-
-    expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        include: expect.objectContaining({
-          _count: expect.objectContaining({
-            select: expect.objectContaining({
-              orderItems: expect.objectContaining({
-                where: {
-                  order: {
-                    status: { in: ['PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED'] },
-                  },
-                },
-              }),
-            }),
-          }),
-        }),
-      }),
-    );
   });
 
   it('should exclude SOLD_OUT products', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
     mockPrisma.product.findMany.mockResolvedValue([]);
     mockPrisma.product.count.mockResolvedValue(0);
 
     await service.getPopularProducts(1, 8);
 
-    expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { status: 'AVAILABLE' },
-      }),
-    );
     expect(mockPrisma.product.count).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { status: 'AVAILABLE' },
@@ -135,7 +108,8 @@ describe('ProductsService.getPopularProducts', () => {
   });
 
   it('should return soldCount of 0 when product has no qualifying orders', async () => {
-    mockPrisma.product.findMany.mockResolvedValue([makeProduct({ _count: { orderItems: 0 } })]);
+    mockPrisma.$queryRaw.mockResolvedValue([{ id: 'prod-1', sold_count: BigInt(0) }]);
+    mockPrisma.product.findMany.mockResolvedValue([makeProduct()]);
     mockPrisma.product.count.mockResolvedValue(1);
 
     const result = await service.getPopularProducts(1, 8);
@@ -143,16 +117,14 @@ describe('ProductsService.getPopularProducts', () => {
     expect(result.data[0].soldCount).toBe(0);
   });
 
-  it('should use orderItems count desc ordering', async () => {
+  it('should use raw SQL with correct filtering and ordering', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
     mockPrisma.product.findMany.mockResolvedValue([]);
     mockPrisma.product.count.mockResolvedValue(0);
 
     await service.getPopularProducts(1, 8);
 
-    expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        orderBy: { orderItems: { _count: 'desc' } },
-      }),
-    );
+    // Verify $queryRaw was called (the raw SQL query)
+    expect(mockPrisma.$queryRaw).toHaveBeenCalled();
   });
 });

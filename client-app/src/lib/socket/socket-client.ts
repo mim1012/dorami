@@ -1,98 +1,189 @@
 import { io, Socket } from 'socket.io-client';
-import { RECONNECT_CONFIG } from './reconnect-config';
+import { RECONNECT_CONFIG, ReconnectProfile } from './reconnect-config';
+import { SOCKET_URL } from '../config/socket-url';
 
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+type SocketNamespace = string;
+interface QueuedEmit {
+  event: string;
+  args: unknown[];
+}
+
+interface SocketState {
+  socket: Socket;
+  namespace: string;
+  token: string | null;
+  refCount: number;
+  reconnectAttempts: number;
+  queue: QueuedEmit[];
+}
 
 export class SocketClient {
-  private socket: Socket | null = null;
-  private token: string | null = null;
+  private readonly sockets = new Map<SocketNamespace, SocketState>();
+  private readonly maxQueueSize = 100;
 
-  connect(token: string, namespace: string = 'chat'): Socket {
-    if (this.socket?.connected) {
-      console.log('Socket already connected');
-      return this.socket;
+  connect(token: string | null | undefined, namespace: string = 'chat'): Socket {
+    const namespaceKey = this.normalizeNamespace(namespace);
+    const normalizedToken = token ?? null;
+    const existing = this.sockets.get(namespaceKey);
+
+    if (existing) {
+      if (existing.token !== normalizedToken) {
+        existing.socket.disconnect();
+        this.sockets.delete(namespaceKey);
+      } else {
+        existing.refCount += 1;
+        if (!existing.socket.connected) {
+          existing.socket.connect();
+        }
+
+        return existing.socket;
+      }
     }
 
-    this.token = token;
-
-    const config = RECONNECT_CONFIG.default;
-    this.socket = io(`${SOCKET_URL}/${namespace}`, {
-      auth: {
-        token: this.token,
-      },
+    const config = this.getReconnectProfile(namespaceKey);
+    const socket = io(this.buildUrl(namespaceKey), {
+      ...(normalizedToken ? { auth: { token: normalizedToken } } : {}),
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: config.maxAttempts,
       reconnectionDelay: config.delays[0],
       reconnectionDelayMax: config.delays[config.delays.length - 1],
+      randomizationFactor: config.jitterFactor,
       timeout: 20000,
+      autoConnect: true,
     });
 
-    this.setupEventListeners();
+    const state: SocketState = {
+      socket,
+      namespace: namespaceKey,
+      token: normalizedToken,
+      refCount: 1,
+      reconnectAttempts: 0,
+      queue: [],
+    };
 
-    return this.socket;
+    this.setupEventListeners(state);
+    this.sockets.set(namespaceKey, state);
+    return socket;
   }
 
-  private setupEventListeners() {
-    if (!this.socket) return;
+  private setupEventListeners(state: SocketState) {
+    const { socket, namespace } = state;
+    const config = this.getReconnectProfile(namespace);
 
-    this.socket.on('connect', () => {
-      console.log('✅ WebSocket connected:', this.socket?.id);
+    const clearQueue = () => {
+      if (!socket.connected || state.queue.length === 0) return;
+
+      while (state.queue.length > 0) {
+        const item = state.queue.shift();
+        if (!item) continue;
+        socket.emit(item.event, ...item.args);
+      }
+    };
+
+    socket.on('connect', () => {
+      state.reconnectAttempts = 0;
+      console.log(`✅ WebSocket connected: ${namespace} (${socket.id})`);
+      clearQueue();
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('👋 WebSocket disconnected:', reason);
+    socket.on('disconnect', (reason) => {
+      console.warn(`👋 WebSocket disconnected (${namespace}): ${reason}`);
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('❌ Connection error:', error.message);
+    socket.on('connect_error', (error) => {
+      console.error(`❌ WebSocket connect_error (${namespace}):`, error);
+      state.reconnectAttempts += 1;
+
+      if (state.reconnectAttempts >= config.maxAttempts) {
+        console.error(`❌ Max reconnection attempts reached for ${namespace}`);
+      }
     });
 
-    this.socket.on('error', (error) => {
-      console.error('❌ Socket error:', error);
+    socket.on('error', (error) => {
+      console.error(`❌ Socket error (${namespace}):`, error);
     });
 
-    this.socket.on('reconnect', (attemptNumber) => {
-      console.log(`🔄 Reconnected after ${attemptNumber} attempts`);
+    socket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 Reconnected (${namespace}) after ${attemptNumber} attempts`);
     });
 
-    this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`🔄 Reconnection attempt ${attemptNumber}...`);
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Reconnect attempt ${attemptNumber}/${config.maxAttempts} (${namespace})`);
     });
 
-    this.socket.on('reconnect_failed', () => {
-      console.error('❌ Reconnection failed after max attempts');
+    socket.on('reconnect_failed', () => {
+      console.error(`❌ Reconnection failed for ${namespace}`);
     });
   }
 
-  disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-  }
+  disconnect(namespace: string = 'chat') {
+    const namespaceKey = this.normalizeNamespace(namespace);
+    const state = this.sockets.get(namespaceKey);
+    if (!state) return;
 
-  emit(event: string, data: any): void {
-    if (!this.socket?.connected) {
-      console.warn('Socket not connected. Cannot emit event:', event);
+    state.refCount -= 1;
+    if (state.refCount > 0) {
       return;
     }
 
-    this.socket.emit(event, data);
+    state.socket.disconnect();
+    this.sockets.delete(namespaceKey);
   }
 
-  on(event: string, callback: (data: any) => void): void {
-    this.socket?.on(event, callback);
+  emit(namespace: string, event: string, ...args: unknown[]) {
+    const namespaceKey = this.normalizeNamespace(namespace);
+    const state = this.sockets.get(namespaceKey);
+    if (!state) return;
+
+    if (state.socket.connected) {
+      state.socket.emit(event, ...args);
+      return;
+    }
+
+    state.queue.push({ event, args });
+    if (state.queue.length > this.maxQueueSize) {
+      state.queue.shift();
+    }
   }
 
-  off(event: string, callback?: (data: any) => void): void {
-    this.socket?.off(event, callback);
+  on(namespace: string, event: string, callback: (...args: unknown[]) => void) {
+    const state = this.sockets.get(this.normalizeNamespace(namespace));
+    if (!state) return;
+    state.socket.on(event, callback);
   }
 
-  getSocket(): Socket | null {
-    return this.socket;
+  off(namespace: string, event: string, callback?: (...args: unknown[]) => void) {
+    const state = this.sockets.get(this.normalizeNamespace(namespace));
+    if (!state) return;
+    state.socket.off(event, callback);
+  }
+
+  getSocket(namespace: string = 'chat'): Socket | null {
+    return this.sockets.get(this.normalizeNamespace(namespace))?.socket ?? null;
+  }
+
+  private normalizeNamespace(namespace: string): string {
+    if (!namespace || namespace === '/') return '';
+    return namespace.startsWith('/') ? namespace.slice(1) : namespace;
+  }
+
+  private buildUrl(namespace: string): string {
+    if (!namespace) {
+      return SOCKET_URL;
+    }
+    return `${SOCKET_URL}/${namespace}`;
+  }
+
+  private getReconnectProfile(namespace: string): ReconnectProfile {
+    if (namespace === 'streaming') {
+      return RECONNECT_CONFIG.streaming;
+    }
+    if (namespace === 'chat') {
+      return RECONNECT_CONFIG.chat;
+    }
+    return RECONNECT_CONFIG.default;
   }
 }
 

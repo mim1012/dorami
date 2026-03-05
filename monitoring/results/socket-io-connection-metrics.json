@@ -1,0 +1,512 @@
+{
+  "totalConnections": 100,
+  "successfulConnections": 100,
+  "failedConnections": 0,
+  "disconnects": 100,
+  "reconnectAttempts": 0,
+  "pingPongTimes": [],
+  "errors": [
+    {
+      "userId": "user-5df81cee",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.775Z"
+    },
+    {
+      "userId": "user-89f509d9",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.854Z"
+    },
+    {
+      "userId": "user-74f2436b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.863Z"
+    },
+    {
+      "userId": "user-dc4d795f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.864Z"
+    },
+    {
+      "userId": "user-a7b7be58",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.865Z"
+    },
+    {
+      "userId": "user-19aabe81",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.866Z"
+    },
+    {
+      "userId": "user-fa76f716",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.867Z"
+    },
+    {
+      "userId": "user-229d6710",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.869Z"
+    },
+    {
+      "userId": "user-0bba61e4",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.871Z"
+    },
+    {
+      "userId": "user-6bdc894b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.882Z"
+    },
+    {
+      "userId": "user-601d1b0c",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.884Z"
+    },
+    {
+      "userId": "user-afaa89c6",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.972Z"
+    },
+    {
+      "userId": "user-b98632e3",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.978Z"
+    },
+    {
+      "userId": "user-b69c5a19",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.978Z"
+    },
+    {
+      "userId": "user-6e462a53",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.979Z"
+    },
+    {
+      "userId": "user-d4060ebd",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.981Z"
+    },
+    {
+      "userId": "user-029f02a8",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.981Z"
+    },
+    {
+      "userId": "user-b317766a",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.983Z"
+    },
+    {
+      "userId": "user-bf745559",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.988Z"
+    },
+    {
+      "userId": "user-e6b258b8",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.989Z"
+    },
+    {
+      "userId": "user-55a4d82f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:10.992Z"
+    },
+    {
+      "userId": "user-8701a8c4",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.083Z"
+    },
+    {
+      "userId": "user-27503d4d",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.084Z"
+    },
+    {
+      "userId": "user-95df8e1f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.085Z"
+    },
+    {
+      "userId": "user-a776e2a5",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.087Z"
+    },
+    {
+      "userId": "user-b929f893",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.087Z"
+    },
+    {
+      "userId": "user-8a56efd1",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.091Z"
+    },
+    {
+      "userId": "user-ea3d2135",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.092Z"
+    },
+    {
+      "userId": "user-ee85437d",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.097Z"
+    },
+    {
+      "userId": "user-9bf2a9c1",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.100Z"
+    },
+    {
+      "userId": "user-bfc4aa23",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.101Z"
+    },
+    {
+      "userId": "user-fff9e8cd",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.213Z"
+    },
+    {
+      "userId": "user-0f7f4627",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.214Z"
+    },
+    {
+      "userId": "user-3936da44",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.217Z"
+    },
+    {
+      "userId": "user-91121515",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.218Z"
+    },
+    {
+      "userId": "user-5b199017",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.218Z"
+    },
+    {
+      "userId": "user-ead3d83b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.219Z"
+    },
+    {
+      "userId": "user-9f3e33d7",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.220Z"
+    },
+    {
+      "userId": "user-143d09b4",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.222Z"
+    },
+    {
+      "userId": "user-561290ee",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.224Z"
+    },
+    {
+      "userId": "user-a34341b3",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.228Z"
+    },
+    {
+      "userId": "user-aaa0421b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.324Z"
+    },
+    {
+      "userId": "user-2fd486fb",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.325Z"
+    },
+    {
+      "userId": "user-2efbadb1",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.325Z"
+    },
+    {
+      "userId": "user-363e812d",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.326Z"
+    },
+    {
+      "userId": "user-7032b484",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.327Z"
+    },
+    {
+      "userId": "user-b6dd095f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.329Z"
+    },
+    {
+      "userId": "user-476f0bfa",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.330Z"
+    },
+    {
+      "userId": "user-470f696a",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.331Z"
+    },
+    {
+      "userId": "user-f50bee24",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.333Z"
+    },
+    {
+      "userId": "user-f40b172b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.338Z"
+    },
+    {
+      "userId": "user-1e75615d",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.439Z"
+    },
+    {
+      "userId": "user-a035c8fa",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.443Z"
+    },
+    {
+      "userId": "user-209a0470",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.444Z"
+    },
+    {
+      "userId": "user-41e1b388",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.444Z"
+    },
+    {
+      "userId": "user-e9f2f9f0",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.445Z"
+    },
+    {
+      "userId": "user-e6f813d9",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.445Z"
+    },
+    {
+      "userId": "user-5ebb1cd2",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.446Z"
+    },
+    {
+      "userId": "user-1ea32633",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.448Z"
+    },
+    {
+      "userId": "user-9bf53f91",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.448Z"
+    },
+    {
+      "userId": "user-5058742f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.451Z"
+    },
+    {
+      "userId": "user-a8d3c476",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.558Z"
+    },
+    {
+      "userId": "user-67ff07fd",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.559Z"
+    },
+    {
+      "userId": "user-a066d63c",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.562Z"
+    },
+    {
+      "userId": "user-3ef56888",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.563Z"
+    },
+    {
+      "userId": "user-dea79c11",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.566Z"
+    },
+    {
+      "userId": "user-8194fd4c",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.567Z"
+    },
+    {
+      "userId": "user-55cd511e",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.567Z"
+    },
+    {
+      "userId": "user-4dd45704",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.570Z"
+    },
+    {
+      "userId": "user-d54128ed",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.575Z"
+    },
+    {
+      "userId": "user-730056ed",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.580Z"
+    },
+    {
+      "userId": "user-dbe47ae3",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.668Z"
+    },
+    {
+      "userId": "user-84ab07fe",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.673Z"
+    },
+    {
+      "userId": "user-1c1dfb9d",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.684Z"
+    },
+    {
+      "userId": "user-d00e017a",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.686Z"
+    },
+    {
+      "userId": "user-0f8c62bf",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.686Z"
+    },
+    {
+      "userId": "user-8ecda2d4",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.687Z"
+    },
+    {
+      "userId": "user-485388c5",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.690Z"
+    },
+    {
+      "userId": "user-ed759ac7",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.691Z"
+    },
+    {
+      "userId": "user-88605f3c",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.691Z"
+    },
+    {
+      "userId": "user-4ce49aa6",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.702Z"
+    },
+    {
+      "userId": "user-0a8c2f3f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.794Z"
+    },
+    {
+      "userId": "user-a7df1027",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.795Z"
+    },
+    {
+      "userId": "user-857cfcca",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.797Z"
+    },
+    {
+      "userId": "user-3b6314d8",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.798Z"
+    },
+    {
+      "userId": "user-15119e57",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.799Z"
+    },
+    {
+      "userId": "user-3b7f180b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.799Z"
+    },
+    {
+      "userId": "user-bb3f5368",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.804Z"
+    },
+    {
+      "userId": "user-fd0faac5",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.807Z"
+    },
+    {
+      "userId": "user-6d985aac",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.808Z"
+    },
+    {
+      "userId": "user-1c7e8a6b",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.814Z"
+    },
+    {
+      "userId": "user-f3914863",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.918Z"
+    },
+    {
+      "userId": "user-30a77e93",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.919Z"
+    },
+    {
+      "userId": "user-72d8d6dd",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.919Z"
+    },
+    {
+      "userId": "user-62429694",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.920Z"
+    },
+    {
+      "userId": "user-873d8830",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.922Z"
+    },
+    {
+      "userId": "user-b67ec8d8",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.923Z"
+    },
+    {
+      "userId": "user-a879c87f",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.928Z"
+    },
+    {
+      "userId": "user-5c07c55e",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.928Z"
+    },
+    {
+      "userId": "user-20600493",
+      "error": "Authentication failed",
+      "timestamp": "2026-03-02T20:51:11.936Z"
+    }
+  ],
+  "startTime": 1772484670601,
+  "endTime": 1772503281779
+}

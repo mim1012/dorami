@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 interface ProductListProps {
   streamKey: string;
@@ -35,18 +36,14 @@ export default function ProductList({
   useEffect(() => {
     if (externalProducts) return;
 
-    const ws = io(
-      process.env.NEXT_PUBLIC_WS_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'),
-      {
-        transports: ['websocket', 'polling'],
-        withCredentials: true,
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 2000,
-        reconnectionDelayMax: 10000,
-      },
-    );
+    const ws = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+    });
 
     setSocket(ws);
 

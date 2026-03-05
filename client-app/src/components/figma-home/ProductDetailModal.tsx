@@ -9,6 +9,7 @@ interface Product {
   name: string;
   price: number;
   originalPrice: number;
+  stock?: number;
   discountRate?: number;
   image: string;
   images?: string[];
@@ -26,8 +27,13 @@ type ActionPayload = {
 interface ProductDetailModalProps {
   product: Product;
   onClose: () => void;
-  onAddToCart?: (payload: ActionPayload) => void;
-  onBuyNow?: (payload: ActionPayload) => void;
+  onAddToCart?: (
+    productId: string,
+    quantity: number,
+    color?: string,
+    size?: string,
+  ) => Promise<void>;
+  onBuyNow?: (productId: string, quantity: number, color?: string, size?: string) => Promise<void>;
 }
 
 export function ProductDetailModal({
@@ -43,6 +49,17 @@ export function ProductDetailModal({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
+  const stock = product.stock;
+  const isOutOfStock = stock !== undefined && stock <= 0;
+  const maxQuantity = stock !== undefined ? Math.min(stock, 10) : 10;
+  const stockDisplayClass =
+    stock === undefined
+      ? 'text-gray-900'
+      : stock <= 0
+        ? 'text-error'
+        : stock <= 5
+          ? 'text-warning'
+          : 'text-gray-900';
 
   const sizeOptions = product.sizeOptions ?? [];
   const colorOptions = product.colorOptions ?? [];
@@ -70,7 +87,8 @@ export function ProductDetailModal({
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
-    if (newQuantity >= 1 && newQuantity <= 10) {
+    const cappedMax = Math.max(1, maxQuantity);
+    if (newQuantity >= 1 && newQuantity <= cappedMax) {
       setQuantity(newQuantity);
     }
   };
@@ -95,23 +113,27 @@ export function ProductDetailModal({
   };
 
   const handlePurchase = () => {
+    if (isOutOfStock) return;
     if (!isSelectionValid()) return;
 
-    onBuyNow?.({
+    onBuyNow?.(
+      product.id,
       quantity,
-      ...(hasSizeOptions ? { size: selectedSize } : {}),
-      ...(hasColorOptions ? { color: selectedColor } : {}),
-    });
+      hasSizeOptions ? selectedSize : undefined,
+      hasColorOptions ? selectedColor : undefined,
+    );
   };
 
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
     if (!isSelectionValid()) return;
 
-    onAddToCart?.({
+    onAddToCart?.(
+      product.id,
       quantity,
-      ...(hasSizeOptions ? { size: selectedSize } : {}),
-      ...(hasColorOptions ? { color: selectedColor } : {}),
-    });
+      hasColorOptions ? selectedColor : undefined,
+      hasSizeOptions ? selectedSize : undefined,
+    );
   };
 
   const goPrevImage = (e: React.MouseEvent | React.TouchEvent) => {
@@ -303,12 +325,19 @@ export function ProductDetailModal({
                 <button
                   onClick={() => handleQuantityChange(1)}
                   className="w-12 h-12 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                  disabled={quantity >= 10}
+                  disabled={quantity >= Math.max(1, maxQuantity)}
                 >
                   <Plus className="w-4 h-4 text-gray-700" />
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="bg-gray-100 rounded-lg p-3">
+            <p className="text-sm text-gray-500">재고</p>
+            <p className={`text-sm font-semibold ${stockDisplayClass}`}>
+              {stock === undefined ? '확인 중' : stock > 5 ? `재고 ${stock}개` : `재고 ${stock}개`}
+            </p>
           </div>
 
           <div className="border-t border-gray-100" />
@@ -327,16 +356,22 @@ export function ProductDetailModal({
           <div className="flex gap-3">
             <button
               onClick={handleAddToCart}
-              className="flex-1 bg-white border-2 border-gray-300 text-gray-900 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+              disabled={isOutOfStock}
+              className={`flex-1 bg-white border-2 border-gray-300 text-gray-900 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 ${
+                isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               <ShoppingCart className="w-5 h-5" />
-              장바구니
+              {isOutOfStock ? '일시품절' : '장바구니'}
             </button>
             <button
               onClick={handlePurchase}
-              className="flex-[2] bg-gradient-to-r from-[#FF4D8D] to-[#FF6B9D] text-white py-4 rounded-2xl font-bold hover:shadow-lg transition-all"
+              disabled={isOutOfStock}
+              className={`flex-[2] bg-gradient-to-r from-[#FF4D8D] to-[#FF6B9D] text-white py-4 rounded-2xl font-bold transition-all ${
+                isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'
+              }`}
             >
-              구매하기
+              {isOutOfStock ? '일시품절' : '구매하기'}
             </button>
           </div>
         </div>

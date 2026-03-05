@@ -13,6 +13,7 @@ import { StreamingService } from './modules/streaming/streaming.service';
 import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -121,6 +122,19 @@ async function bootstrap() {
   );
   logger.log('Response compression enabled');
 
+  // Content-Type charset middleware - ensure UTF-8 encoding for all JSON responses
+  app.use(
+    (
+      _req: unknown,
+      res: { setHeader: (name: string, value: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      next();
+    },
+  );
+  logger.log('UTF-8 charset header enabled');
+
   // Manual CORS middleware removed - using NestJS built-in CORS instead
 
   // Global Validation Pipe - CRITICAL: Input validation
@@ -154,7 +168,11 @@ async function bootstrap() {
   }
 
   // CORS Configuration - Whitelist based
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+  // CORS_ORIGINS is validated by config.validation.ts: required in production/staging,
+  // defaults to localhost in development. No inline fallback needed here.
+  const allowedOrigins = (
+    process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002,http://localhost:3003'
+  )
     .split(',')
     .map((origin) => origin.trim());
 
@@ -162,6 +180,11 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) {
+        callback(null, true);
+        return;
+      }
+      // In development, allow all localhost/127.0.0.1 origins regardless of port
+      if (!isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         callback(null, true);
         return;
       }
@@ -187,7 +210,17 @@ async function bootstrap() {
   logger.log('📡 Creating Socket.IO server manually...');
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: isProduction
+        ? allowedOrigins
+        : (origin, callback) => {
+            if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+              callback(null, true);
+            } else if (allowedOrigins.includes(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error('Not allowed by CORS'));
+            }
+          },
       credentials: true,
     },
     transports: ['websocket', 'polling'],
@@ -197,7 +230,19 @@ async function bootstrap() {
 
   // Attach Redis adapter to Socket.IO
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
-  const pubClient = createClient({ url: process.env.REDIS_URL ?? 'redis://localhost:6379' });
+  // REDIS_URL is validated by config.validation.ts: required in production/staging,
+  // defaults to redis://localhost:6379 in development. Guard here for adapter safety.
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error('REDIS_URL must be set (config validation should have caught this)');
+  }
+  const pubClient = createClient({
+    url: redisUrl,
+    socket: {
+      connectTimeout: 30000, // 30 seconds
+      reconnectStrategy: (retries) => Math.min(retries * 100, 5000), // exponential backoff
+    },
+  });
   const subClient = pubClient.duplicate();
 
   await Promise.all([pubClient.connect(), subClient.connect()]);
@@ -455,7 +500,7 @@ async function bootstrap() {
         }
 
         const messageData = {
-          id: Date.now().toString(),
+          id: randomUUID(),
           liveId: payload.liveId,
           userId: authenticatedSocket.user.userId,
           username,
@@ -525,6 +570,24 @@ async function bootstrap() {
             timestamp: new Date().toISOString(),
           },
         });
+
+        // Remove message from Redis history so new joiners don't see it
+        const historyKey = `chat:${payload.liveId}:history`;
+        pubClient
+          .lRange(historyKey, 0, -1)
+          .then((entries) => {
+            const match = entries.find((entry) => {
+              try {
+                return (JSON.parse(entry) as { id: string }).id === payload.messageId;
+              } catch {
+                return false;
+              }
+            });
+            if (match) {
+              return pubClient.lRem(historyKey, 0, match);
+            }
+          })
+          .catch((err) => logger.warn(`Failed to remove deleted message from Redis: ${err}`));
 
         socket.emit('chat:delete-message:success', {
           type: 'chat:delete-message:success',
@@ -741,50 +804,81 @@ async function bootstrap() {
     })();
   });
 
-  // Listen for order:paid events from OrdersService and broadcast purchase notification
-  eventEmitter.on('order:paid', (payload: { orderId: string; userId: string; paidAt: Date }) => {
-    void (async () => {
-      try {
-        const [user, order] = await Promise.all([
-          prismaService.user.findUnique({
-            where: { id: payload.userId },
-            select: { instagramId: true, name: true },
-          }),
-          prismaService.order.findUnique({
-            where: { id: payload.orderId },
-            include: {
-              orderItems: {
-                include: {
-                  Product: {
-                    select: { streamKey: true },
-                  },
+  type OrderNotificationPayload = {
+    orderId: string;
+    userId: string;
+    streamKey?: string;
+    streamKeys?: string[];
+  };
+
+  const broadcastOrderNotification = async (
+    payload: OrderNotificationPayload,
+    action: '주문을 생성했습니다' | '결제했습니다',
+    rootEvent: 'order:new' | 'order:paid',
+  ) => {
+    try {
+      const [user, order] = await Promise.all([
+        prismaService.user.findUnique({
+          where: { id: payload.userId },
+          select: { instagramId: true, name: true },
+        }),
+        prismaService.order.findUnique({
+          where: { id: payload.orderId },
+          include: {
+            orderItems: {
+              include: {
+                Product: {
+                  select: { streamKey: true },
                 },
               },
             },
-          }),
-        ]);
+          },
+        }),
+      ]);
 
-        const displayName = user?.instagramId ?? user?.name ?? '익명';
-        const streamKey = order?.orderItems?.[0]?.Product?.streamKey;
+      const displayName = user?.instagramId ?? user?.name ?? '익명';
+      const eventStreamKeys = new Set<string>([
+        ...(payload.streamKey ? [payload.streamKey] : []),
+        ...(payload.streamKeys ?? []),
+        ...(order?.orderItems
+          ?.map((item) => item.Product?.streamKey)
+          ?.filter((streamKey): streamKey is string => Boolean(streamKey)) ?? []),
+      ]);
 
-        if (!streamKey) {
-          logger.warn(`order:paid — no streamKey found for order ${payload.orderId}`);
-          return;
+      if (eventStreamKeys.size === 0) {
+        logger.warn(`order:${rootEvent} — no streamKey found for order ${payload.orderId}`);
+      } else {
+        for (const streamKey of eventStreamKeys) {
+          rootNamespace.to(`stream:${streamKey}`).emit('order:purchase:notification', {
+            streamKey,
+            displayName,
+            message: `${displayName}님이 ${action}`,
+          });
+          logger.log(
+            `Broadcasted order:purchase:notification to stream:${streamKey} for user ${displayName}`,
+          );
         }
-
-        rootNamespace.to(`stream:${streamKey}`).emit('order:purchase:notification', {
-          streamKey,
-          displayName,
-          message: `${displayName}님이 결제했습니다`,
-        });
-
-        logger.log(
-          `Broadcasted order:purchase:notification to stream:${streamKey} for user ${displayName}`,
-        );
-      } catch (error) {
-        logger.warn(`Failed to broadcast order:purchase:notification: ${error}`);
       }
-    })();
+
+      rootNamespace.emit(rootEvent, {
+        orderId: payload.orderId,
+        userId: payload.userId,
+        streamKeys: [...eventStreamKeys],
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.warn(`Failed to broadcast order notification for event ${rootEvent}: ${error}`);
+    }
+  };
+
+  // Listen for order:created events from OrdersService and broadcast order notification
+  eventEmitter.on('order:created', (payload: OrderNotificationPayload) => {
+    void broadcastOrderNotification(payload, '주문을 생성했습니다', 'order:new');
+  });
+
+  // Listen for order:paid events from OrdersService and broadcast purchase notification
+  eventEmitter.on('order:paid', (payload: { orderId: string; userId: string; paidAt: Date }) => {
+    void broadcastOrderNotification(payload, '결제했습니다', 'order:paid');
   });
 
   // Create root namespace (/) with WebsocketGateway logic

@@ -1,13 +1,17 @@
+export interface OrderCreatedItem {
+  productId: string;
+  quantity: number;
+  priceAtPurchase: number;
+  streamKey?: string;
+}
+
 export class OrderCreatedEvent {
   constructor(
     public readonly orderId: string,
     public readonly userId: string,
     public readonly totalAmount: number,
-    public readonly items: {
-      productId: string;
-      quantity: number;
-      priceAtPurchase: number;
-    }[],
+    public readonly items: OrderCreatedItem[],
+    public readonly streamKeys: string[] = [],
     public readonly timestamp: Date = new Date(),
   ) {}
 }
