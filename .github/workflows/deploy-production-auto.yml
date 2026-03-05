@@ -114,7 +114,9 @@ jobs:
           REPO_OWNER: ${{ steps.prep.outputs.repo_owner }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          PROD_KAKAO_CLIENT_ID: ${{ secrets.PROD_KAKAO_CLIENT_ID }}
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
+          PROD_KAKAO_CALLBACK_URL: ${{ secrets.PROD_KAKAO_CALLBACK_URL }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_PROFILE_ENCRYPTION_KEY: ${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}
           PROD_GRAFANA_ADMIN_PASSWORD: ${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}
@@ -135,9 +137,15 @@ jobs:
             sed -i "s|^KAKAO_JS_KEY=.*|KAKAO_JS_KEY=${KAKAO_JS_KEY}|" .env.production || echo "KAKAO_JS_KEY=${KAKAO_JS_KEY}" >> .env.production
           fi
 
-          # Update PROD_* secrets if provided
+          # Update PROD_* Kakao secrets if provided
+          if [ -n "${PROD_KAKAO_CLIENT_ID}" ]; then
+            sed -i "s|^KAKAO_CLIENT_ID=.*|KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}|" .env.production || echo "KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}" >> .env.production
+          fi
           if [ -n "${PROD_KAKAO_CLIENT_SECRET}" ]; then
             sed -i "s|^KAKAO_CLIENT_SECRET=.*|KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}|" .env.production || echo "KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}" >> .env.production
+          fi
+          if [ -n "${PROD_KAKAO_CALLBACK_URL}" ]; then
+            sed -i "s|^KAKAO_CALLBACK_URL=.*|KAKAO_CALLBACK_URL=${PROD_KAKAO_CALLBACK_URL}|" .env.production || echo "KAKAO_CALLBACK_URL=${PROD_KAKAO_CALLBACK_URL}" >> .env.production
           fi
           if [ -n "${PROD_POSTGRES_PASSWORD}" ]; then
             sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}|" .env.production || echo "POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}" >> .env.production
