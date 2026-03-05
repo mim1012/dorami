@@ -325,7 +325,7 @@ jobs:
           fi
 
           for i in 1 2 3 4 5 6; do
-            status="$(curl -s -o /dev/null -w '%{http_code}' "${PRODUCTION_URL}/api/health/live" || echo 000)"
+            status="$(curl -sL -o /dev/null -w '%{http_code}' "${PRODUCTION_URL}/api/health/live" || echo 000)"
             if [ "$status" = "200" ]; then
               echo "backend health ok"
               break
