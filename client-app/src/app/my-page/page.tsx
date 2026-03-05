@@ -53,6 +53,12 @@ export default function MyPagePage() {
   const [isPhoneEditOpen, setIsPhoneEditOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isInstagramIdEditOpen, setIsInstagramIdEditOpen] = useState(false);
+  const [instagramIdInput, setInstagramIdInput] = useState('');
+  const [instagramIdError, setInstagramIdError] = useState<string | null>(null);
+  const [isDepositorNameEditOpen, setIsDepositorNameEditOpen] = useState(false);
+  const [depositorNameInput, setDepositorNameInput] = useState('');
+  const [depositorNameError, setDepositorNameError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
@@ -114,8 +120,8 @@ export default function MyPagePage() {
   };
 
   const handlePhoneSubmit = async () => {
-    if (!/^01[0-9]{8,9}$/.test(phoneInput)) {
-      setPhoneError('01012345678 형식으로 입력해주세요');
+    if (!/^\+[0-9\s\-()]{7,20}$/.test(phoneInput)) {
+      setPhoneError('국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)');
       return;
     }
     try {
@@ -228,12 +234,12 @@ export default function MyPagePage() {
                   setPhoneInput(e.target.value);
                   setPhoneError(null);
                 }}
-                placeholder="01012345678"
+                placeholder="+1 213-555-1234"
                 className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
               />
               {phoneError && <Body className="text-error text-caption mb-2">{phoneError}</Body>}
               <Body className="text-secondary-text text-caption mb-4">
-                하이픈(-) 없이 숫자만 입력해주세요
+                국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)
               </Body>
               <div className="flex gap-3">
                 <button
