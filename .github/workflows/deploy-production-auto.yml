@@ -288,7 +288,7 @@ jobs:
 
           echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
 
-          node scripts/streaming-blue-green-deploy.sh \
+          bash scripts/streaming-blue-green-deploy.sh \
             --image-tag "${IMAGE_TAG}" \
             --host "${HOST}" \
             --user "${USER}" \
