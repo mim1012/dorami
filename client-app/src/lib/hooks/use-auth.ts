@@ -68,7 +68,12 @@ export function useAuth() {
   // Authentication: user has a valid identity (kakaoId or email)
   const isUserAuthenticated = !!(user?.kakaoId || user?.email);
   // Profile completion: user has filled in required profile fields
-  const isProfileComplete = !!(user?.instagramId && user?.depositorName);
+  const isProfileComplete = !!(
+    user?.instagramId &&
+    user?.depositorName &&
+    user?.shippingAddress &&
+    (user.shippingAddress as Record<string, string>)?.fullName
+  );
   // Convenience: needs profile if authenticated but profile incomplete
   const needsProfileCompletion = isUserAuthenticated && !isProfileComplete;
 

@@ -48,6 +48,7 @@ import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/lib/store/auth';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -75,6 +76,15 @@ export default function LiveStreamPage() {
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
   useTokenAutoRefresh(streamKey);
+
+  const { needsProfileCompletion, isLoading: authLoading } = useAuth();
+
+  // Redirect to profile if incomplete
+  useEffect(() => {
+    if (!authLoading && needsProfileCompletion) {
+      router.replace('/profile/register');
+    }
+  }, [authLoading, needsProfileCompletion, router]);
 
   const isMobile = useIsMobile(1024);
 
