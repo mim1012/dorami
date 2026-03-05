@@ -93,20 +93,18 @@ log_success "Database connectivity verified"
 # ============================================
 log_step "STEP 3: Network Verification"
 
-REQUIRED_CONTAINERS=(
-  "dorami-postgres-1"
-  "dorami-redis-1"
-  "dorami-nginx-prod"
-)
 REQUIRED_SERVICES=(
   "backend-prod"
+  "postgres"
+  "redis"
+  "nginx"
 )
 
-for container in "${REQUIRED_CONTAINERS[@]}"; do
-  if ! docker network inspect "$DOCKER_NETWORK" | grep -q "$container"; then
-    log_warning "Container $container not found on network $DOCKER_NETWORK"
+for service in "${REQUIRED_SERVICES[@]}"; do
+  if docker-compose -f docker-compose.prod.yml ps "$service" 2>/dev/null | grep -q "running"; then
+    log_success "Service $service is running"
   else
-    log_success "Container $container verified on $DOCKER_NETWORK"
+    log_warning "Service $service is not running or not found"
   fi
 done
 
