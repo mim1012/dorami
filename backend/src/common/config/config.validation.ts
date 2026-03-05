@@ -153,6 +153,8 @@ export const configValidationSchema = Joi.object({
   // Operational Tuning
   PAGINATION_DEFAULT_LIMIT: Joi.number().default(24),
   PAGINATION_MAX_LIMIT: Joi.number().default(100),
+  PRISMA_CONNECTION_LIMIT: Joi.number().default(30),
+  PRISMA_POOL_TIMEOUT_SECONDS: Joi.number().default(30),
   PRISMA_TRANSACTION_TIMEOUT_MS: Joi.number().default(10000),
   VERY_SLOW_REQUEST_THRESHOLD_MS: Joi.number().default(3000),
   CSRF_MAX_AGE_HOURS: Joi.number().default(24),

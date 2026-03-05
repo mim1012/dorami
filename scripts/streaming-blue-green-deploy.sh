@@ -173,7 +173,7 @@ get_active_slot() {
     echo "green"
     return
   fi
-  if run_remote "docker ps --filter name=dorami-backend-prod --format '{{.Names}}' | grep -q '^dorami-backend-prod$'"; then
+  if run_remote "docker ps --filter name=backend-prod --format '{{.Names}}' | grep -q '^backend-prod$'"; then
     echo "legacy"
     return
   fi
@@ -280,7 +280,7 @@ elif [[ "$active_slot" == "green" ]]; then
   OLD_BACKEND="dorami-backend-green"
   OLD_FRONTEND="dorami-frontend-green"
 else
-  OLD_BACKEND="dorami-backend-prod"
+  OLD_BACKEND="backend-prod"
   OLD_FRONTEND="dorami-frontend-prod"
 fi
 

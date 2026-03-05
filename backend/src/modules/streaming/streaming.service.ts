@@ -957,7 +957,8 @@ export class StreamingService {
       .get<string>('RTMP_SERVER_URL')!
       .replace(/^(rtmp:\/\/[^/:]+)(\/|$)/, '$1:1935$2');
     const hlsBase = this.configService.get<string>('HLS_SERVER_URL')!;
-    const rtmpUrl = `${rtmpBase}/${session.streamKey}`;
+    // RTMP URL: 스트림 키 제외 (OBS는 서버 URL과 스트림 키를 별도로 입력)
+    const rtmpUrl = rtmpBase.endsWith('/') ? rtmpBase.slice(0, -1) : rtmpBase;
     const hlsUrl = `${hlsBase}/${session.streamKey}.m3u8`;
     const rtmpPortMatch = rtmpUrl.match(/rtmp:\/\/[^:/]+:(\d+)\//);
     const rtmpPort = rtmpPortMatch?.[1] ? parseInt(rtmpPortMatch[1], 10) : 1935;

@@ -90,8 +90,12 @@ export function isAuthError(error: Error): boolean {
     'jwt expired',
     'token expired',
     'unauthorized',
+    'authentication failed',
     'authentication error',
     'invalid token',
+    'no token provided',
+    'token has been revoked',
+    'account is suspended',
   ];
 
   if (tokenExpiredPatterns.some((pattern) => msg.includes(pattern))) {

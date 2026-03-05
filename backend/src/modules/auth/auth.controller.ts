@@ -258,22 +258,15 @@ export class AuthController {
    * Creates or finds a user by email and issues JWT tokens without Kakao OAuth.
    * Only available when NODE_ENV=development.
    */
+  @Post('dev-login')
   @Public()
   @SkipCsrf()
-  @Throttle({
-    short: { limit: 3, ttl: 10000 },
-    medium: { limit: 5, ttl: 60000 },
-    long: { limit: 10, ttl: 300000 },
-  })
-  @Post('dev-login')
-  @ApiOperation({
-    summary: '개발용 로그인 (개발/스테이징 환경)',
-    description: 'Kakao OAuth 없이 이메일로 로그인합니다. ENABLE_DEV_AUTH=true일 때만 동작합니다.',
-  })
   @ApiResponse({ status: 200, description: '개발 로그인 성공' })
   @ApiResponse({ status: 403, description: '개발 인증 비활성화됨' })
   async devLogin(@Body() body: DevLoginDto, @Res() res: Response) {
-    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH', 'false');
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    const devDefault = nodeEnv === 'development' ? 'true' : 'false';
+    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH', devDefault);
     if (enableDevAuth !== 'true') {
       throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }

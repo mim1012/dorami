@@ -103,7 +103,13 @@ export default function CartPage() {
     }
   };
 
-  const hasExpiredItems = cart?.items.some((item) => item.status === 'EXPIRED');
+  const hasExpiredItems = cart?.items.some(
+    (item) =>
+      item.status === 'EXPIRED' ||
+      (item.expiresAt &&
+        item.status === 'ACTIVE' &&
+        new Date(item.expiresAt).getTime() <= Date.now()),
+  );
 
   if (isLoading) {
     return (

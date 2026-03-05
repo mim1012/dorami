@@ -93,18 +93,18 @@ log_success "Database connectivity verified"
 # ============================================
 log_step "STEP 3: Network Verification"
 
-REQUIRED_CONTAINERS=(
-  "dorami-backend-prod"
-  "dorami-postgres-prod"
-  "dorami-redis-prod"
-  "dorami-nginx"
+REQUIRED_SERVICES=(
+  "backend-prod"
+  "postgres"
+  "redis"
+  "nginx"
 )
 
-for container in "${REQUIRED_CONTAINERS[@]}"; do
-  if ! docker network inspect "$DOCKER_NETWORK" | grep -q "$container"; then
-    log_warning "Container $container not found on network $DOCKER_NETWORK"
+for service in "${REQUIRED_SERVICES[@]}"; do
+  if docker-compose -f docker-compose.prod.yml ps "$service" 2>/dev/null | grep -q "running"; then
+    log_success "Service $service is running"
   else
-    log_success "Container $container verified on $DOCKER_NETWORK"
+    log_warning "Service $service is not running or not found"
   fi
 done
 
@@ -167,14 +167,14 @@ log_step "STEP 7: Deploy Backend Container"
 
 log_warning "Pulling latest backend image..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" pull backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production pull backend; then
   log_error "Failed to pull backend image"
   exit 1
 fi
 
 log_warning "Starting new backend container..."
 
-if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" up -d backend; then
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production up -d backend; then
   log_error "Failed to start backend container"
   exit 1
 fi
@@ -192,7 +192,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker ps | grep -q "dorami-backend-prod"; then
+  if docker-compose -f docker-compose.prod.yml ps backend-prod 2>/dev/null | grep -q "running"; then
     log_success "Backend container running"
     break
   fi
@@ -225,7 +225,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     log_error "API health check failed after $MAX_RETRIES retries"
-    log_warning "Backend may still be initializing. Check logs: docker logs dorami-backend-prod"
+    log_warning "Backend may still be initializing. Check logs: docker-compose -f docker-compose.prod.yml logs backend-prod"
     exit 1
   fi
 

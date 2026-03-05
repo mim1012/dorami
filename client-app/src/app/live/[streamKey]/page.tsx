@@ -159,7 +159,7 @@ export default function LiveStreamPage() {
     userCount,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey);
+  } = useChatConnection(streamKey, { forceLogoutOnAuthFailure: false });
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
 
@@ -998,10 +998,7 @@ export default function LiveStreamPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 bg-[#FF3B30] px-3.5 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,59,48,0.4)]">
-                        <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
-                        </span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
                         <span className="text-white text-xs font-black tracking-wider">
                           LIVE<span className="sr-only"> 현재 생방송 중</span>
                         </span>

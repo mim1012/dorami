@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRef } from 'react';
 import { Clock } from 'lucide-react';
 
 interface CartTimerProps {
@@ -10,6 +11,7 @@ interface CartTimerProps {
 
 export default function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const hasCalledExpiredRef = useRef(false);
 
   useEffect(() => {
     const calculateRemaining = () => {
@@ -19,10 +21,14 @@ export default function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
 
       if (diff <= 0) {
         setRemainingSeconds(0);
-        onExpired?.();
+        if (!hasCalledExpiredRef.current) {
+          onExpired?.();
+          hasCalledExpiredRef.current = true;
+        }
         return 0;
       }
 
+      hasCalledExpiredRef.current = false;
       return Math.floor(diff / 1000);
     };
 
@@ -58,11 +64,7 @@ export default function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
   }
 
   return (
-    <div
-      className={`flex items-center gap-2 ${
-        isLowTime ? 'text-warning' : 'text-hot-pink'
-      }`}
-    >
+    <div className={`flex items-center gap-2 ${isLowTime ? 'text-warning' : 'text-hot-pink'}`}>
       <Clock className="w-4 h-4" />
       <span className="font-mono font-bold">
         {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}

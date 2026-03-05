@@ -131,14 +131,14 @@ export default function LivePage() {
                       {/* 방송 카드 */}
                       <div
                         onClick={() => router.push(`/live/${stream.streamKey}`)}
-                        className="relative aspect-video bg-white rounded-t-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
+                        className="relative aspect-auto bg-white rounded-t-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
                       >
                         {/* 썸네일 이미지 */}
                         {stream.thumbnailUrl && (
                           <img
                             src={stream.thumbnailUrl}
                             alt={stream.title}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="absolute inset-0 w-full h-full object-contain"
                           />
                         )}
 

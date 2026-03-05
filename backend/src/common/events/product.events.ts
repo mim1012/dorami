@@ -4,6 +4,8 @@ export class ProductStockUpdatedEvent {
     public readonly oldStock: number,
     public readonly newStock: number,
     public readonly reason: 'purchase' | 'restock' | 'adjustment',
+    public readonly streamKey?: string,
+    public readonly product?: any,
     public readonly timestamp: Date = new Date(),
   ) {}
 }

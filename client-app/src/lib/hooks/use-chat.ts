@@ -38,12 +38,6 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
       return;
     }
 
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setError('No authentication token found');
-      return;
-    }
-
     setIsConnecting(true);
     setError(null);
 
@@ -51,7 +45,7 @@ export function useChat({ liveId, enabled = true }: UseChatOptions): UseChatRetu
     const wsUrl = SOCKET_URL.replace(/^http/, 'ws');
 
     const socket = io(`${wsUrl}/chat`, {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

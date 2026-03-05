@@ -50,6 +50,7 @@ export interface PopularProductDto {
   discountRate: number | null;
   imageUrl: string | null;
   images: string[];
+  stock?: number;
   isNew: boolean;
   soldCount: number;
   colorOptions?: string[];

@@ -55,6 +55,7 @@ export default function VideoPlayer({
   const flvRetryCountRef = useRef(0);
   const flvRetryInProgressRef = useRef(false);
   const flvRetryResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const flvRetryDelayTimerRef = useRef<NodeJS.Timeout | null>(null);
   const stallWatchdogRef = useRef<NodeJS.Timeout | null>(null);
   const lastCurrentTimeRef = useRef<number>(-1);
   const stallTicksRef = useRef<number>(0);
@@ -228,7 +229,17 @@ export default function VideoPlayer({
   const initializeFlvPlayer = useCallback(async () => {
     if (!videoRef.current) return;
 
+    if (mpegtsPlayerRef.current) {
+      mpegtsPlayerRef.current.destroy();
+      mpegtsPlayerRef.current = null;
+    }
+    if (latencyIntervalRef.current) {
+      clearInterval(latencyIntervalRef.current);
+      latencyIntervalRef.current = null;
+    }
+
     metricsRef.current.playStartTime = performance.now();
+    setError(null);
 
     try {
       const mpegts = await import('mpegts.js');
@@ -282,10 +293,17 @@ export default function VideoPlayer({
           flvRetryCountRef.current++;
           flvRetryInProgressRef.current = true;
           player.unload();
+
+          if (flvRetryDelayTimerRef.current) {
+            clearTimeout(flvRetryDelayTimerRef.current);
+            flvRetryDelayTimerRef.current = null;
+          }
+
           // Exponential backoff: 1s → 2s → 4s
-          setTimeout(
+          flvRetryDelayTimerRef.current = setTimeout(
             () => {
               flvRetryInProgressRef.current = false;
+              flvRetryDelayTimerRef.current = null;
               player.load();
             },
             1000 * Math.pow(2, flvRetryCountRef.current - 1),
@@ -303,6 +321,10 @@ export default function VideoPlayer({
           clearInterval(stallWatchdogRef.current);
           stallWatchdogRef.current = null;
         }
+        if (flvRetryDelayTimerRef.current) {
+          clearTimeout(flvRetryDelayTimerRef.current);
+          flvRetryDelayTimerRef.current = null;
+        }
         watchdogStartedRef.current = false;
         stallTicksRef.current = 0;
         if (flvRetryResetTimerRef.current) {
@@ -311,7 +333,7 @@ export default function VideoPlayer({
         }
         player.destroy();
         mpegtsPlayerRef.current = null;
-        setError(null);
+        setError('FLV 재생 불가. HLS로 전환합니다.');
         initializeHlsPlayer();
       });
 
@@ -524,6 +546,10 @@ export default function VideoPlayer({
       clearTimeout(flvRetryResetTimerRef.current);
       flvRetryResetTimerRef.current = null;
     }
+    if (flvRetryDelayTimerRef.current) {
+      clearTimeout(flvRetryDelayTimerRef.current);
+      flvRetryDelayTimerRef.current = null;
+    }
     if (reconnectResetTimerRef.current) {
       clearTimeout(reconnectResetTimerRef.current);
       reconnectResetTimerRef.current = null;
@@ -550,15 +576,19 @@ export default function VideoPlayer({
   const connectWebSocket = () => {
     const streamingConfig = RECONNECT_CONFIG.streaming;
     const socket = io(`${SOCKET_URL}/streaming`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
+      timeout: 20000,
       reconnectionAttempts: streamingConfig.maxAttempts,
       reconnectionDelay: streamingConfig.delays[0],
       reconnectionDelayMax: streamingConfig.delays[streamingConfig.delays.length - 1],
+      randomizationFactor: streamingConfig.jitterFactor,
     });
 
     socket.on('connect', () => {
+      if (streamEndedRef.current) return;
+
       if (!activeViewerKeys.has(streamKey)) {
         activeViewerKeys.add(streamKey);
         socket.emit('stream:viewer:join', { streamKey });
@@ -567,6 +597,8 @@ export default function VideoPlayer({
 
     // Re-join room after reconnection (WiFi switch, background recovery)
     socket.io.on('reconnect', () => {
+      if (streamEndedRef.current) return;
+
       metricsRef.current.reconnectCount++;
       syncKpi();
       if (!activeViewerKeys.has(streamKey)) {
@@ -577,6 +609,23 @@ export default function VideoPlayer({
       sendStreamMetrics(buildStreamMetrics(streamKey, metricsRef.current, 'RECONNECTING')).catch(
         () => {},
       );
+    });
+
+    socket.on('disconnect', (reason) => {
+      if (streamEndedRef.current) return;
+      console.log(`[Stream WebSocket] disconnected: ${reason}`);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[Stream WebSocket] connect error:', error);
+    });
+
+    socket.io.on('reconnect_error', (error) => {
+      console.warn('[Stream WebSocket] reconnect error:', error);
+    });
+
+    socket.io.on('reconnect_failed', () => {
+      setError('실시간 스트림 연결이 끊겼습니다. 네트워크 상태를 확인해 주세요.');
     });
 
     socket.on(

@@ -90,6 +90,8 @@ function resolvePlayableChromiumPaths(): Array<string | undefined> {
         candidates.push(...findChromiumExecutableFromPlaywrightDir(explicit));
       }
     }
+
+    // Avoid passing unknown/invalid external browser roots to Playwright internal fallback.
     delete process.env.PLAYWRIGHT_BROWSERS_PATH;
   }
 

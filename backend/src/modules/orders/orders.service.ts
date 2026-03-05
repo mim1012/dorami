@@ -247,16 +247,37 @@ export class OrdersService {
       },
     );
 
+    const productStreamKeys = await this.prisma.product.findMany({
+      where: { id: { in: order.orderItems.map((item) => item.productId!) } },
+      select: { id: true, streamKey: true },
+    });
+    const streamKeyByProductId = new Map(
+      productStreamKeys.map((product) => [product.id, product.streamKey ?? undefined]),
+    );
+    const createdOrderItems = order.orderItems.map((item) => {
+      const streamKey = streamKeyByProductId.get(item.productId ?? '');
+      return {
+        productId: item.productId!,
+        quantity: item.quantity,
+        priceAtPurchase: Number(item.price),
+        streamKey: streamKey ?? undefined,
+      };
+    });
+    const streamKeys = [
+      ...new Set(
+        createdOrderItems
+          .map((item) => item.streamKey)
+          .filter((streamKey): streamKey is string => Boolean(streamKey)),
+      ),
+    ];
+
     // Emit domain event
     const event = new OrderCreatedEvent(
       order.id,
       order.userId,
       Number(order.total),
-      order.orderItems.map((item) => ({
-        productId: item.productId!,
-        quantity: item.quantity,
-        priceAtPurchase: Number(item.price),
-      })),
+      createdOrderItems,
+      streamKeys,
     );
 
     this.eventEmitter.emit('order:created', event);
@@ -366,11 +387,18 @@ export class OrdersService {
       order.id,
       order.userId,
       Number(order.total),
-      order.orderItems.map((item) => ({
-        productId: item.productId!,
-        quantity: item.quantity,
-        priceAtPurchase: Number(item.price),
-      })),
+      order.orderItems.map((item) => {
+        const streamKey = productMap.get(item.productId!)?.streamKey ?? undefined;
+        return {
+          productId: item.productId!,
+          quantity: item.quantity,
+          priceAtPurchase: Number(item.price),
+          streamKey: streamKey === null ? undefined : streamKey,
+        };
+      }),
+      createOrderDto.items
+        .map((item) => productMap.get(item.productId)?.streamKey)
+        .filter((streamKey): streamKey is string => Boolean(streamKey)),
     );
 
     this.eventEmitter.emit('order:created', event);

@@ -17,6 +17,7 @@ type HomeProduct = {
   name: string;
   price: number;
   originalPrice: number;
+  stock?: number;
   discountRate?: number;
   image: string;
   images?: string[];
@@ -42,6 +43,7 @@ function mapPopularProduct(product: PopularProductDto | StoreProductDto): HomePr
     name: product.name,
     price: product.price,
     originalPrice: product.originalPrice ?? product.price,
+    stock: product.stock,
     discountRate: product.discountRate ?? 0,
     image: product.images?.[0] ?? product.imageUrl ?? PLACEHOLDER_IMAGE,
     images: product.images && product.images.length > 0 ? product.images : undefined,
@@ -338,10 +340,12 @@ export function PopularProducts({
 
       {selectedProduct && (
         <ProductDetailModal
-          product={{
-            ...selectedProduct,
-            imageUrl: selectedProduct.image,
-          } as any}
+          product={
+            {
+              ...selectedProduct,
+              imageUrl: selectedProduct.image,
+            } as any
+          }
           onClose={() => setSelectedProduct(null)}
           onAddToCart={async (productId, quantity, color, size) => {
             try {

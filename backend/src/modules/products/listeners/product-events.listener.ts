@@ -41,9 +41,12 @@ export class ProductEventsListener {
 
       const newQuantity = product.quantity - item.quantity;
 
-      await this.prisma.product.update({
+      const updatedProduct = await this.prisma.product.update({
         where: { id: item.productId },
-        data: { quantity: newQuantity },
+        data: {
+          quantity: newQuantity,
+          status: newQuantity <= 0 ? 'SOLD_OUT' : product.status,
+        },
       });
 
       // Emit product stock updated event
@@ -54,6 +57,8 @@ export class ProductEventsListener {
           product.quantity,
           newQuantity,
           'purchase',
+          item.streamKey ?? product.streamKey ?? undefined,
+          this.toProductEventPayload(updatedProduct),
         ),
       );
 
@@ -119,33 +124,63 @@ export class ProductEventsListener {
   @OnEvent('product:stock:updated')
   async handleStockUpdated(payload: {
     productId: string;
-    streamKey: string;
+    streamKey?: string;
     oldStock: number;
     newStock: number;
-    product: any;
+    product?: any;
   }) {
+    const streamKey = payload.streamKey;
+    const fallbackProduct = payload.product
+      ? null
+      : await this.prisma.product.findUnique({
+          where: { id: payload.productId },
+          select: { streamKey: true },
+        });
+
     this.logger.log(
       `Stock updated: Product ${payload.productId} from ${payload.oldStock} to ${payload.newStock}`,
     );
+    const targetStreamKey = streamKey ?? fallbackProduct?.streamKey;
+    if (!targetStreamKey) {
+      this.logger.warn(`Cannot determine stream key for product ${payload.productId}`);
+      return;
+    }
 
     // Broadcast updated product to stream viewers
-    this.socketIo.server.to(`stream:${payload.streamKey}`).emit('live:product:updated', {
+    const updatedProduct =
+      payload.product ??
+      (await this.prisma.product.findUnique({
+        where: { id: payload.productId },
+      }));
+
+    if (!updatedProduct) {
+      this.logger.warn(`Product ${payload.productId} not found for stock update broadcast`);
+      return;
+    }
+
+    const stockPayload = this.isProductEventPayload(updatedProduct)
+      ? updatedProduct
+      : this.toProductEventPayload(updatedProduct);
+
+    this.socketIo.server.to(`stream:${targetStreamKey}`).emit('live:product:updated', {
       type: 'live:product:updated',
-      data: payload.product,
+      data: stockPayload,
     });
 
     // Send low stock warning if stock is low (< 5)
     if (payload.newStock > 0 && payload.newStock < 5) {
-      this.socketIo.server.to(`stream:${payload.streamKey}`).emit('product:low-stock', {
+      this.socketIo.server.to(`stream:${targetStreamKey}`).emit('product:low-stock', {
         type: 'product:low-stock',
         data: {
           productId: payload.productId,
-          productName: payload.product.name,
+          productName: (stockPayload as { name?: string }).name,
           remainingStock: payload.newStock,
         },
       });
 
-      this.logger.warn(`Low stock warning: Product ${payload.productId} has only ${payload.newStock} left`);
+      this.logger.warn(
+        `Low stock warning: Product ${payload.productId} has only ${payload.newStock} left`,
+      );
     }
   }
 
@@ -165,4 +200,36 @@ export class ProductEventsListener {
     }
   }
 
+  private isProductEventPayload(product: unknown): product is { stock: number; name: string } {
+    return typeof product === 'object' && product !== null && 'stock' in product;
+  }
+
+  private toProductEventPayload(product: any) {
+    return {
+      id: product.id,
+      streamKey: product.streamKey,
+      name: product.name,
+      price: parseFloat(product.price.toString()),
+      stock: product.quantity,
+      colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
+      sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
+      shippingFee: parseFloat(product.shippingFee.toString()),
+      freeShippingMessage: product.freeShippingMessage ?? undefined,
+      timerEnabled: product.timerEnabled,
+      timerDuration: product.timerDuration,
+      imageUrl: product.imageUrl ?? undefined,
+      images: Array.isArray(product.images) ? product.images : [],
+      sortOrder: product.sortOrder ?? 0,
+      isNew: product.isNew ?? false,
+      discountRate: product.discountRate ? parseFloat(product.discountRate.toString()) : undefined,
+      originalPrice: product.originalPrice
+        ? parseFloat(product.originalPrice.toString())
+        : undefined,
+      status: product.status,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      description: undefined,
+      metadata: undefined,
+    };
+  }
 }

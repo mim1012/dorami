@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -13,6 +13,8 @@ import { Display, Body } from '@/components/common/Typography';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 import { Download } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 interface OrderItem {
   productName: string;
@@ -128,7 +130,7 @@ function AdminOrdersContent() {
     router,
   ]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user || user.role !== 'ADMIN') return;
 
     setIsLoading(true);
@@ -157,7 +159,17 @@ function AdminOrdersContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    user,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+    debouncedSearch,
+    dateFrom,
+    dateTo,
+    orderStatusFilter,
+  ]);
 
   useEffect(() => {
     fetchOrders();
@@ -172,6 +184,26 @@ function AdminOrdersContent() {
     dateTo,
     orderStatusFilter,
   ]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'ADMIN') return;
+
+    const socket = io(SOCKET_URL, { withCredentials: true });
+    const handleRefreshOrders = () => {
+      void fetchOrders();
+    };
+
+    socket.on('order:new', handleRefreshOrders);
+    socket.on('order:paid', handleRefreshOrders);
+    socket.on('order:cancelled', handleRefreshOrders);
+
+    return () => {
+      socket.off('order:new', handleRefreshOrders);
+      socket.off('order:paid', handleRefreshOrders);
+      socket.off('order:cancelled', handleRefreshOrders);
+      socket.disconnect();
+    };
+  }, [user, fetchOrders]);
 
   const handleSort = (key: string) => {
     if (key === sortBy) {
