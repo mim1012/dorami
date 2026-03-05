@@ -314,16 +314,11 @@ jobs:
           ENDSSH
 
       - name: Deploy observability stack
-        env:
-          HOST: ${{ steps.prep.outputs.host }}
-          USER: ${{ steps.prep.outputs.user }}
+        # Observability stack disabled for demo hotfix - will be re-enabled after demo
+        # Monitoring services (Grafana, Prometheus, Loki) are optional
+        # Core stack (nginx, backend, frontend, postgres, redis, srs) is deployed above
         run: |
-          ssh "$USER@$HOST" bash << ENDSSH
-          set -euo pipefail
-          cd /opt/dorami
-          docker compose -f docker-compose.observability.yml --env-file .env.production up -d
-          docker compose -f docker-compose.observability.yml --env-file .env.production ps
-          ENDSSH
+          echo "⏭️  Observability stack deployment skipped (optional service for demo)"
 
       - name: Production health check + active slot
         env:
