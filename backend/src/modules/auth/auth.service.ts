@@ -38,12 +38,16 @@ export class AuthService {
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
     // Find existing user by kakaoId OR email (preserve existing user profiles)
+    const whereConditions: Array<{ kakaoId?: string; email?: string }> = [
+      { kakaoId: profile.kakaoId },
+    ];
+    if (profile.email) {
+      whereConditions.push({ email: profile.email });
+    }
+
     let user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { kakaoId: profile.kakaoId },
-          profile.email ? { email: profile.email } : undefined,
-        ].filter(Boolean),
+        OR: whereConditions,
       },
     });
 
