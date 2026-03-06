@@ -117,7 +117,7 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/mim1012/dorami-frontend:sha-827438945d57cc0200aaff93a9c47b0c8bbb275a
+    image: ghcr.io/mim1012/dorami-frontend:sha-3400d56
     container_name: dorami-frontend-prod
     restart: always
     expose:
