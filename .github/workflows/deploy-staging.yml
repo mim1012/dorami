@@ -242,41 +242,28 @@ jobs:
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Recreating .env.staging (deleted by git reset) ==="
-            cat > /opt/dorami/.env.staging << ENVEOF
-# Database & Cache (localhost - docker internal)
-DATABASE_URL="postgresql://postgres:postgres@postgres:5432/live_commerce_staging"
-REDIS_URL="redis://redis:6379"
-
-# JWT & Security
-JWT_SECRET="dev-jwt-secret-change-in-production"
-PROFILE_ENCRYPTION_KEY="012345678901234567890123456789ab012345678901234567890123456789ab"
-
-# Kakao OAuth
-KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
-KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
-KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
-
-# Admin Emails
-ADMIN_EMAILS="${ADMIN_EMAILS}"
-
-# Server Configuration
-APP_ENV="staging"
-NODE_ENV="production"
-PORT="3001"
-CORS_ORIGINS="http://staging.doremi-live.com,http://localhost:3000,http://localhost:8080"
-CSRF_ENABLED="true"
-
-# Streaming (SRS local service)
-RTMP_SERVER_URL="rtmp://staging.doremi-live.com:1935/live"
-HLS_SERVER_URL="http://staging.doremi-live.com/hls"
-MEDIA_SERVER_URL="http://localhost:8080"
-
-# Development & Debugging
-ENABLE_DEV_AUTH="true"
-LOG_LEVEL="debug"
-ENVEOF
+            {
+              echo "DATABASE_URL=\"postgresql://postgres:postgres@postgres:5432/live_commerce_staging\""
+              echo "REDIS_URL=\"redis://redis:6379\""
+              echo "JWT_SECRET=\"dev-jwt-secret-change-in-production\""
+              echo "PROFILE_ENCRYPTION_KEY=\"012345678901234567890123456789ab012345678901234567890123456789ab\""
+              echo "KAKAO_CLIENT_ID=\"${KAKAO_CLIENT_ID}\""
+              echo "KAKAO_CLIENT_SECRET=\"${KAKAO_CLIENT_SECRET}\""
+              echo "KAKAO_CALLBACK_URL=\"${KAKAO_CALLBACK_URL}\""
+              echo "ADMIN_EMAILS=\"${ADMIN_EMAILS}\""
+              echo "APP_ENV=\"staging\""
+              echo "NODE_ENV=\"production\""
+              echo "PORT=\"3001\""
+              echo "CORS_ORIGINS=\"http://staging.doremi-live.com,http://localhost:3000,http://localhost:8080\""
+              echo "CSRF_ENABLED=\"true\""
+              echo "RTMP_SERVER_URL=\"rtmp://staging.doremi-live.com:1935/live\""
+              echo "HLS_SERVER_URL=\"http://staging.doremi-live.com/hls\""
+              echo "MEDIA_SERVER_URL=\"http://localhost:8080\""
+              echo "ENABLE_DEV_AUTH=\"true\""
+              echo "LOG_LEVEL=\"debug\""
+            } > /opt/dorami/.env.staging
             echo "✓ .env.staging recreated from deployment variables"
-            cat /opt/dorami/.env.staging | grep -v "=" | head -5
+            head -3 /opt/dorami/.env.staging
 
             echo "=== Cleaning up old images ==="
             # Only prune dangling images and ghcr.io images (with repo filter)
