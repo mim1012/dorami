@@ -78,12 +78,12 @@ export default function ProfileRegisterPage() {
     }
   }, [user, authLoading, router]);
 
-  // Step 2: Profile already complete → go to home
+  // Step 2: Profile already complete → go to live
   useEffect(() => {
     if (authLoading) return;
     const isProfileComplete = !!(user?.instagramId && user?.depositorName);
     if (user && isProfileComplete) {
-      router.replace('/');
+      router.replace('/live');
     }
   }, [user, authLoading, router]);
 
@@ -175,7 +175,7 @@ export default function ProfileRegisterPage() {
         setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      router.push('/');
+      router.push('/live');
     } catch (error: any) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Profile completion error:', error);
