@@ -21,7 +21,7 @@ export function Input({
   const hasError = !!error;
 
   const baseStyles =
-    'rounded-button bg-content-bg text-primary-text px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink focus:ring-offset-2 focus:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
+    'rounded-button bg-content-bg text-primary-text px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink focus:ring-offset-2 focus:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
 
   const errorStyles = hasError
     ? 'border-2 border-error focus:ring-error'

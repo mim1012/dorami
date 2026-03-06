@@ -119,16 +119,18 @@ export default function UpcomingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-primary-black">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+      <div className="sticky top-0 z-10 bg-primary-black border-b border-gray-800">
         <div className="max-w-screen-2xl mx-auto px-4 py-6 md:py-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Calendar className="w-6 h-6 text-[#B084CC]" />
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">곧 시작하는 라이브</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-primary-text">
+                곧 시작하는 라이브
+              </h1>
             </div>
-            <p className="text-sm md:text-base text-gray-600">
+            <p className="text-sm md:text-base text-gray-400">
               놓치지 마세요! 알림을 설정하고 특가 혜택을 받으세요
             </p>
           </div>
@@ -141,7 +143,7 @@ export default function UpcomingPage() {
           <div className="flex justify-center items-center py-16">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF4D8D] mx-auto mb-4"></div>
-              <p className="text-gray-600">예정 라이브를 불러오는 중입니다...</p>
+              <p className="text-gray-400">예정 라이브를 불러오는 중입니다...</p>
             </div>
           </div>
         )}
@@ -154,8 +156,8 @@ export default function UpcomingPage() {
 
         {!isLoading && upcomingLives.length === 0 && (
           <div className="text-center py-16">
-            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">현재 예정된 라이브가 없습니다.</p>
+            <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 text-lg">현재 예정된 라이브가 없습니다.</p>
           </div>
         )}
 
@@ -178,9 +180,9 @@ export default function UpcomingPage() {
                     }}
                     role="button"
                     tabIndex={0}
-                    className="group w-full text-left bg-gradient-to-br from-white to-[#FFF9FC] rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-[#FFE5EE] cursor-pointer"
+                    className="group w-full text-left bg-content-bg rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-[#FFE5EE]/20 cursor-pointer"
                   >
-                    <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
+                    <div className="relative aspect-[3/4] overflow-hidden bg-content-bg">
                       <ImageWithFallback
                         src={show.thumbnailUrl ?? PLACEHOLDER_IMAGE}
                         alt={show.title}
@@ -212,7 +214,7 @@ export default function UpcomingPage() {
                       </div>
                     </div>
 
-                    <div className="p-4 space-y-3 h-[180px] flex flex-col">
+                    <div className="p-4 space-y-3 flex flex-col min-h-[120px]">
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs font-medium text-[#B084CC]">
                           {show.host?.name ?? '라이브'}
@@ -220,17 +222,17 @@ export default function UpcomingPage() {
                       </div>
 
                       <div className="flex-1 min-h-0 overflow-hidden">
-                        <h4 className="font-bold text-gray-900 text-base mb-1.5 line-clamp-2">
+                        <h4 className="font-bold text-primary-text text-base mb-1.5 line-clamp-2">
                           {show.title}
                         </h4>
-                        <p className="text-sm text-gray-600 line-clamp-2">
+                        <p className="text-sm text-gray-400 line-clamp-2">
                           {show.description ?? '라이브 방송 미리보기'}
                         </p>
                       </div>
 
                       <button
                         onClick={() => goLiveDetail(show.streamKey)}
-                        className="w-full py-2.5 bg-white border-2 border-[#FF4D8D] text-[#FF4D8D] rounded-full font-bold text-sm hover:bg-[#FF4D8D] hover:text-white transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shrink-0"
+                        className="w-full py-2.5 bg-transparent border-2 border-[#FF4D8D] text-[#FF4D8D] rounded-full font-bold text-sm hover:bg-[#FF4D8D] hover:text-white transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shrink-0"
                       >
                         <Bell className="w-4 h-4 group-hover/btn:animate-bounce" />
                         <span>라이브 보기</span>
@@ -247,7 +249,7 @@ export default function UpcomingPage() {
                 <button
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-300 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-lg border border-gray-700 text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
                   aria-label="이전 페이지"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -264,7 +266,7 @@ export default function UpcomingPage() {
                       className={`px-3 py-2 rounded-lg font-medium transition-colors ${
                         page === currentPage
                           ? 'bg-[#FF4D8D] text-white'
-                          : 'border border-gray-300 text-gray-600 hover:bg-gray-100'
+                          : 'border border-gray-700 text-gray-400 hover:bg-gray-800'
                       }`}
                     >
                       {page}
@@ -275,7 +277,7 @@ export default function UpcomingPage() {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-300 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-lg border border-gray-700 text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
                   aria-label="다음 페이지"
                 >
                   <ChevronRight className="w-5 h-5" />

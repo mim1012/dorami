@@ -222,7 +222,7 @@ export default function MyPagePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-primary-black py-12 px-4 pb-bottom-nav">
+      <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4 pb-bottom-nav">
         <div className="w-full md:max-w-4xl md:mx-auto">
           <div className="text-center mb-8">
             <Display className="text-hot-pink mb-2">마이페이지</Display>
@@ -277,7 +277,7 @@ export default function MyPagePage() {
 
         {isPhoneEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
               <Body className="text-primary-text font-semibold mb-4">전화번호 등록</Body>
               <input
                 type="tel"
@@ -313,7 +313,7 @@ export default function MyPagePage() {
 
         {isInstagramIdEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
               <Body className="text-primary-text font-semibold mb-4">인스타그램 ID 등록</Body>
               <input
                 type="text"
@@ -351,7 +351,7 @@ export default function MyPagePage() {
 
         {isDepositorNameEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-content-bg border border-border-color rounded-button p-6 w-full max-w-sm">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
               <Body className="text-primary-text font-semibold mb-4">입금자명 등록</Body>
               <input
                 type="text"

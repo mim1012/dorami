@@ -233,7 +233,7 @@ export default function OrdersPage() {
                         <Body className="text-sm font-semibold">{paymentStatus.text}</Body>
                       </div>
                     </div>
-                    <Body className="text-secondary-text text-xs font-mono">
+                    <Body className="text-secondary-text text-xs font-mono truncate">
                       주문번호: {order.id}
                     </Body>
                   </div>
@@ -286,7 +286,7 @@ export default function OrdersPage() {
 
                   {/* Actions */}
                   <div className="p-4 border-t border-border-color bg-content-bg/50">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Button
                         variant="outline"
                         size="sm"
