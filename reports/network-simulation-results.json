@@ -1,0 +1,317 @@
+{
+  "timestamp": "2026-03-05T20:44:24.382Z",
+  "baseUrl": "http://localhost:3001",
+  "requestsPerCondition": 10,
+  "conditions": [
+    {
+      "condition": "Normal",
+      "description": "No degradation",
+      "results": [
+        {
+          "endpoint": "Health (Liveness)",
+          "path": "/api/health/live",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 1,
+            "min": 1,
+            "max": 2,
+            "p95": 2,
+            "p99": 2
+          }
+        },
+        {
+          "endpoint": "Health (Readiness)",
+          "path": "/api/health/ready",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 2,
+            "min": 1,
+            "max": 3,
+            "p95": 3,
+            "p99": 3
+          }
+        },
+        {
+          "endpoint": "Product List",
+          "path": "/api/products",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 7,
+            "p95": 7,
+            "p99": 7
+          }
+        },
+        {
+          "endpoint": "Active Streams",
+          "path": "/api/streaming/active",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 1,
+            "max": 7,
+            "p95": 7,
+            "p99": 7
+          }
+        }
+      ]
+    },
+    {
+      "condition": "3G (1Mbps)",
+      "description": "Simulated 3G with ~200ms latency per request",
+      "results": [
+        {
+          "endpoint": "Health (Liveness)",
+          "path": "/api/health/live",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 2,
+            "min": 1,
+            "max": 2,
+            "p95": 2,
+            "p99": 2
+          }
+        },
+        {
+          "endpoint": "Health (Readiness)",
+          "path": "/api/health/ready",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 4,
+            "p95": 4,
+            "p99": 4
+          }
+        },
+        {
+          "endpoint": "Product List",
+          "path": "/api/products",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 4,
+            "min": 3,
+            "max": 5,
+            "p95": 5,
+            "p99": 5
+          }
+        },
+        {
+          "endpoint": "Active Streams",
+          "path": "/api/streaming/active",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 4,
+            "min": 3,
+            "max": 7,
+            "p95": 7,
+            "p99": 7
+          }
+        }
+      ]
+    },
+    {
+      "condition": "High Latency (500ms)",
+      "description": "500ms added latency per request",
+      "results": [
+        {
+          "endpoint": "Health (Liveness)",
+          "path": "/api/health/live",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 2,
+            "min": 1,
+            "max": 2,
+            "p95": 2,
+            "p99": 2
+          }
+        },
+        {
+          "endpoint": "Health (Readiness)",
+          "path": "/api/health/ready",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 4,
+            "p95": 4,
+            "p99": 4
+          }
+        },
+        {
+          "endpoint": "Product List",
+          "path": "/api/products",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 5,
+            "p95": 5,
+            "p99": 5
+          }
+        },
+        {
+          "endpoint": "Active Streams",
+          "path": "/api/streaming/active",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 4,
+            "min": 2,
+            "max": 6,
+            "p95": 6,
+            "p99": 6
+          }
+        }
+      ]
+    },
+    {
+      "condition": "Packet Loss (5%)",
+      "description": "5% of requests simulated as dropped",
+      "results": [
+        {
+          "endpoint": "Health (Liveness)",
+          "path": "/api/health/live",
+          "successRate": "90%",
+          "successCount": 9,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 2,
+            "min": 1,
+            "max": 3,
+            "p95": 3,
+            "p99": 3
+          }
+        },
+        {
+          "endpoint": "Health (Readiness)",
+          "path": "/api/health/ready",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 3,
+            "p95": 3,
+            "p99": 3
+          }
+        },
+        {
+          "endpoint": "Product List",
+          "path": "/api/products",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 3,
+            "max": 4,
+            "p95": 4,
+            "p99": 4
+          }
+        },
+        {
+          "endpoint": "Active Streams",
+          "path": "/api/streaming/active",
+          "successRate": "90%",
+          "successCount": 9,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 5,
+            "p95": 5,
+            "p99": 5
+          }
+        }
+      ]
+    },
+    {
+      "condition": "Variable (Jitter)",
+      "description": "Random delay 0-800ms simulating unstable connection",
+      "results": [
+        {
+          "endpoint": "Health (Liveness)",
+          "path": "/api/health/live",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 2,
+            "min": 2,
+            "max": 2,
+            "p95": 2,
+            "p99": 2
+          }
+        },
+        {
+          "endpoint": "Health (Readiness)",
+          "path": "/api/health/ready",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 3,
+            "p95": 3,
+            "p99": 3
+          }
+        },
+        {
+          "endpoint": "Product List",
+          "path": "/api/products",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 4,
+            "min": 3,
+            "max": 4,
+            "p95": 4,
+            "p99": 4
+          }
+        },
+        {
+          "endpoint": "Active Streams",
+          "path": "/api/streaming/active",
+          "successRate": "100%",
+          "successCount": 10,
+          "totalRequests": 10,
+          "responseTime": {
+            "avg": 3,
+            "min": 2,
+            "max": 6,
+            "p95": 6,
+            "p99": 6
+          }
+        }
+      ]
+    }
+  ]
+}

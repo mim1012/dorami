@@ -32,10 +32,10 @@ export function KakaoInAppBrowserGuard() {
         window.location.href = intentUrl;
       }, 100);
     }
-    // iOS: location.href로 자동 리다이렉트
+    // iOS: window.open()으로 외부 브라우저에서 열기 (무한 새로고침 방지)
     else {
       setTimeout(() => {
-        window.location.href = currentUrl;
+        window.open(currentUrl, '_blank');
       }, 100);
     }
   }, []);

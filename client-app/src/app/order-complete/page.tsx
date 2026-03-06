@@ -224,7 +224,7 @@ function OrderCompleteContent() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/')}>
               홈으로 이동
             </Button>

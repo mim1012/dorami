@@ -158,7 +158,7 @@ export default function CartPage() {
               <>
                 {/* Earliest Timer Warning */}
                 {cart.earliestExpiration && (
-                  <div className="bg-hot-pink/10 border border-hot-pink/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+                  <div className="bg-hot-pink/10 border border-hot-pink/20 rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-2">
                     <div>
                       <Body className="text-hot-pink font-bold mb-1">
                         예약 시간이 얼마 남지 않았습니다!
@@ -195,9 +195,13 @@ export default function CartPage() {
                 <div className="space-y-4">
                   <Button
                     variant="primary"
-                    size="lg"
+                    size="md"
                     fullWidth
-                    onClick={() => router.push('/checkout')}
+                    onClick={() => {
+                      if (!hasExpiredItems) {
+                        router.push('/checkout');
+                      }
+                    }}
                     disabled={hasExpiredItems}
                   >
                     {hasExpiredItems

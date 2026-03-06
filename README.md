@@ -9,6 +9,7 @@
 ## 기술 스택
 
 ### Frontend (Client App)
+
 - **Framework**: Next.js 16.1+ with Turbopack
 - **React**: 19.0.0
 - **Language**: TypeScript 5.7+ (strict mode)
@@ -19,6 +20,7 @@
 - **Admin Tools**: React Datepicker, ExcelJS (for `/admin` routes)
 
 ### Backend API
+
 - **Framework**: NestJS 11.1.12+
 - **Language**: TypeScript 5.7+ (strict mode)
 - **Database ORM**: Prisma 6.19.0+
@@ -27,6 +29,7 @@
 - **Logging**: Winston, nest-winston
 
 ### Infrastructure
+
 - **Database**: PostgreSQL 16
 - **Cache**: Redis 7
 - **Container**: Docker & Docker Compose
@@ -94,43 +97,51 @@ npm run dev:backend
 ## NPM Scripts
 
 ### 개발
+
 - `npm run dev:all` - 모든 앱 동시 실행 (concurrently)
 - `npm run dev:client` - 클라이언트 앱 실행 (일반 사용자 + 관리자 대시보드)
 - `npm run dev:backend` - 백엔드 API 실행
 
 ### 빌드
+
 - `npm run build:all` - 모든 워크스페이스 빌드
 - `npm run build:client` - 클라이언트 앱 빌드
 - `npm run build:backend` - 백엔드 API 빌드
 - `npm run build:shared` - 공유 타입 빌드
 
 ### 타입 체크
+
 - `npm run type-check:all` - 모든 워크스페이스 타입 체크
 - `npm run type-check:client` - 클라이언트 타입 체크
 - `npm run type-check:backend` - 백엔드 타입 체크
 - `npm run type-check:shared` - 공유 타입 체크
 
 ### 테스트
+
 - `npm run test:all` - 모든 테스트 실행
 - `npm run test:backend` - 백엔드 유닛 테스트
 - `npm run test:e2e` - E2E 테스트
 
 ### Lint
+
 - `npm run lint:all` - 모든 워크스페이스 린트
 - `npm run lint:client` - 클라이언트 린트
 - `npm run lint:backend` - 백엔드 린트
 
 ### Docker
+
 - `npm run docker:up` - Docker 서비스 시작 (백그라운드)
 - `npm run docker:down` - Docker 서비스 중지
 - `npm run docker:logs` - Docker 로그 확인
 
 ### Prisma
+
 - `npm run prisma:generate` - Prisma Client 생성
 - `npm run prisma:migrate` - 마이그레이션 실행
 - `npm run prisma:studio` - Prisma Studio 실행
 
 ### 기타
+
 - `npm run clean` - node_modules 및 빌드 아티팩트 삭제
 
 ## 포트 구성
@@ -144,6 +155,7 @@ npm run dev:backend
 ## 디자인 시스템
 
 ### 컬러 팔레트 (Hot Pink Theme)
+
 - **Hot Pink**: `#FF007A` - Primary accent
 - **Primary Black**: `#121212` - Background
 - **Content BG**: `#1E1E1E` - Cards, panels
@@ -153,6 +165,7 @@ npm run dev:backend
 - **Error**: `#FF3B30` - Error states
 
 ### 타이포그래피
+
 - **Font**: Pretendard (via CDN)
 - **Display**: 28px / Bold
 - **H1**: 22px / Bold
@@ -163,6 +176,7 @@ npm run dev:backend
 ## 개발 가이드라인
 
 ### 코딩 스타일
+
 - TypeScript strict mode 사용
 - Feature-based 컴포넌트 구조
 - 테스트 파일은 소스 파일과 함께 위치
@@ -172,6 +186,7 @@ npm run dev:backend
 - 상수: UPPER_SNAKE_CASE
 
 ### Prisma 네이밍 규칙
+
 - **Models**: PascalCase (User, Product)
 - **Fields**: camelCase (userId, productName)
 - **DB Tables**: snake_case plural (users, products)
@@ -179,6 +194,7 @@ npm run dev:backend
 - `@@map()` 및 `@map()` 사용하여 매핑
 
 ### Git 커밋 규칙
+
 ```
 feat(scope): 새로운 기능 추가
 fix(scope): 버그 수정
@@ -189,9 +205,66 @@ test(scope): 테스트 추가/수정
 chore(scope): 빌드/설정 변경
 ```
 
+## 테스트 가이드
+
+### Unit Tests (Backend)
+
+```bash
+npm run test:backend                          # 전체 유닛 테스트
+cd backend && npx jest --watch                # Watch 모드
+cd backend && npx jest --coverage             # 커버리지 리포트
+cd backend && npx jest path/to/file.spec.ts   # 단일 파일
+```
+
+### E2E Tests (Playwright)
+
+```bash
+cd client-app && npx playwright test                  # 전체 E2E
+cd client-app && npx playwright test --project=user   # 사용자 테스트만
+cd client-app && npx playwright test --project=admin  # 관리자 테스트만
+cd client-app && npx playwright test --ui             # 인터랙티브 모드
+cd client-app && npx playwright test load-test.spec.ts  # 부하 테스트 (5명 동시)
+```
+
+### Load & Network Tests
+
+```bash
+node scripts/network-simulation-test.js               # 네트워크 시뮬레이션 (3G/고지연/패킷손실)
+node scripts/load-test.js                              # WebSocket 부하 테스트 (100 동시접속)
+```
+
+### Monitoring Scripts
+
+```bash
+bash scripts/health-check.sh --once                    # Health check (1회)
+bash scripts/health-check.sh                           # 30초 간격 지속 모니터링
+bash scripts/monitor-resources.sh --once               # Docker 리소스 모니터링
+bash scripts/check-db-connections.sh --once            # DB 연결 수 확인
+bash scripts/aggregate-logs.sh --since 1h              # ERROR/CRITICAL 로그 수집
+```
+
+### Deployment Scripts
+
+```bash
+bash scripts/preflight-check.sh                        # 배포 가능 여부 확인
+IMAGE_TAG=sha-xxx bash scripts/deploy-prod.sh          # 프로덕션 배포
+bash scripts/rollback.sh                               # 롤백 (54dd099)
+bash scripts/rollback.sh --tag sha-xxx                 # 특정 버전 롤백
+```
+
+### Test Report
+
+```bash
+node scripts/generate-comprehensive-report.js          # 종합 리포트 생성
+```
+
+결과 해석 방법은 [TEST_RESULTS_GUIDE.md](./TEST_RESULTS_GUIDE.md)를 참고하세요.
+배포 체크리스트는 [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)를 참고하세요.
+
 ## 문서
 
 상세한 프로젝트 문서는 `/docs` 폴더를 참고하세요:
+
 - PRD (Product Requirements Document)
 - 아키텍처 문서
 - API 설계 문서

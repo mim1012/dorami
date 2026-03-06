@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './use-auth';
+import { isProfileComplete } from '../utils/profile';
 
 /**
  * Hook to guard routes that require completed profile.
@@ -28,14 +29,14 @@ export function useProfileGuard() {
     if (user?.role === 'ADMIN') return;
 
     // Step 3: Profile completion check
-    const isProfileComplete = !!(user?.instagramId && user?.depositorName);
-    if (!isProfileComplete) {
+    const userProfileComplete = isProfileComplete(user);
+    if (!userProfileComplete) {
       router.replace('/profile/register');
     }
   }, [user, isLoading, router, pathname]);
 
   return {
     isLoading,
-    isProfileComplete: !!(user?.instagramId && user?.depositorName),
+    isProfileComplete: isProfileComplete(user),
   };
 }

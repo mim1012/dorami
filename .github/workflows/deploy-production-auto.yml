@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'client-app/**'
       - 'packages/shared-types/**'
       - 'docker-compose*.yml'
       - 'infrastructure/**'
@@ -119,6 +120,7 @@ jobs:
           PROD_KAKAO_CALLBACK_URL: ${{ secrets.PROD_KAKAO_CALLBACK_URL }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_PROFILE_ENCRYPTION_KEY: ${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}
+          PROD_PROFILE_LEGACY_ENCRYPTION_KEYS: ${{ secrets.PROD_PROFILE_LEGACY_ENCRYPTION_KEYS }}
           PROD_GRAFANA_ADMIN_PASSWORD: ${{ secrets.PROD_GRAFANA_ADMIN_PASSWORD }}
         run: |
           ssh "$USER@$HOST" bash << ENDSSH
@@ -152,6 +154,9 @@ jobs:
           fi
           if [ -n "${PROD_PROFILE_ENCRYPTION_KEY}" ]; then
             sed -i "s|^PROFILE_ENCRYPTION_KEY=.*|PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}|" .env.production || echo "PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}" >> .env.production
+          fi
+          if [ -n "${PROD_PROFILE_LEGACY_ENCRYPTION_KEYS}" ]; then
+            sed -i "s|^PROFILE_LEGACY_ENCRYPTION_KEYS=.*|PROFILE_LEGACY_ENCRYPTION_KEYS=${PROD_PROFILE_LEGACY_ENCRYPTION_KEYS}|" .env.production || echo "PROFILE_LEGACY_ENCRYPTION_KEYS=${PROD_PROFILE_LEGACY_ENCRYPTION_KEYS}" >> .env.production
           fi
           if [ -n "${PROD_GRAFANA_ADMIN_PASSWORD}" ]; then
             sed -i "s|^GRAFANA_ADMIN_PASSWORD=.*|GRAFANA_ADMIN_PASSWORD=${PROD_GRAFANA_ADMIN_PASSWORD}|" .env.production || echo "GRAFANA_ADMIN_PASSWORD=${PROD_GRAFANA_ADMIN_PASSWORD}" >> .env.production
@@ -227,3 +232,4 @@ jobs:
           echo "❌ Health check failed after 6 retries"
           exit 1
           ENDSSH
+# Production deployment at Thu Mar  5 22:11:31     2026

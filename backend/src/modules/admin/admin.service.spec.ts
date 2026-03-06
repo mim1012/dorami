@@ -67,6 +67,7 @@ describe('AdminService', () => {
           useValue: {
             decryptAddress: jest.fn(),
             encryptAddress: jest.fn(),
+            tryDecryptAddress: jest.fn(),
           },
         },
         {
@@ -343,7 +344,7 @@ describe('AdminService', () => {
 
     it('should return user detail with decrypted address', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'decryptAddress').mockReturnValue(mockDecryptedAddress);
+      jest.spyOn(encryptionService, 'tryDecryptAddress').mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getUserDetail(userId);
 
@@ -351,7 +352,7 @@ describe('AdminService', () => {
       expect(result.email).toBe('test@example.com');
       expect(result.shippingAddress).toEqual(mockDecryptedAddress);
       expect(result.statistics.totalOrders).toBe(0);
-      expect(encryptionService.decryptAddress).toHaveBeenCalledWith('encrypted-address');
+      expect(encryptionService.tryDecryptAddress).toHaveBeenCalledWith('encrypted-address');
     });
 
     it('should throw NotFoundException when user not found', async () => {

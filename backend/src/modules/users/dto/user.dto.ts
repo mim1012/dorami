@@ -26,11 +26,11 @@ export class UpdateUserDto {
   @IsOptional()
   profileImage?: string;
 
-  @ApiPropertyOptional({ description: '전화번호 (01012345678 형식)', example: '01012345678' })
+  @ApiPropertyOptional({ description: '전화번호 (국제 형식)', example: '+1 213-555-1234' })
   @IsOptional()
   @IsString()
-  @Matches(/^01[0-9]{8,9}$/, {
-    message: '전화번호는 01012345678 형식이어야 합니다',
+  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
+    message: '전화번호는 +국가코드 번호 형식이어야 합니다 (예: +1 213-555-1234)',
   })
   phone?: string;
 }
@@ -62,6 +62,17 @@ export class UserResponseDto {
 
   @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
   phone?: string;
+
+  @ApiPropertyOptional({ description: '배송지 (복호화됨)' })
+  shippingAddress?: {
+    fullName?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    phone?: string;
+  };
 
   @ApiProperty({ description: '계정 생성일' })
   createdAt!: Date;

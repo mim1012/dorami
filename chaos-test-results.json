@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-03-05T20:43:57.919Z",
+  "target": "http://localhost:3001",
+  "baselineResponseMs": 2,
+  "scenarios": [
+    {
+      "name": "Network Latency",
+      "impact": "MINIMAL",
+      "recoveryTime": 0,
+      "description": "Simulated 500ms latency via concurrent request bursts with timeout pressure",
+      "chatImpact": "2ms response — within acceptable range",
+      "streamBufferingNote": "Latency within bounds — minimal stream buffering impact"
+    },
+    {
+      "name": "Database Connection Stress",
+      "impact": "MINIMAL",
+      "recoveryTime": 7,
+      "description": "Simulate ~80% max_connections usage (16 concurrent hold for 3000ms)",
+      "errorsDetected": 0,
+      "avgResponseMs": 3,
+      "newConnectionResponseMs": 2
+    },
+    {
+      "name": "Memory Pressure",
+      "impact": "SEVERE",
+      "recoveryTime": 0,
+      "description": "Write 200 keys (~2MB) to Redis to approach memory ceiling",
+      "chatCacheWorking": true,
+      "evictionDetected": false
+    },
+    {
+      "name": "Error Injection",
+      "impact": "MINIMAL",
+      "recoveryTime": 0,
+      "description": "Simulate 5000ms timeouts on API calls; verify client retry behaviour",
+      "gracefulDegradation": true,
+      "successAfterRetry": 3
+    }
+  ],
+  "resilience_score": "80%",
+  "verdict": "RESILIENT"
+}

@@ -217,16 +217,18 @@ export class AdminService {
     }
 
     if (typeof addressValue === 'string') {
-      try {
-        const decrypted = this.encryptionService.decryptAddress(addressValue);
+      // Try decryption with legacy key fallback
+      const decrypted = this.encryptionService.tryDecryptAddress(addressValue);
+      if (decrypted) {
         return decrypted as unknown as Record<string, unknown>;
+      }
+
+      // Try parsing as plain JSON (pre-encryption data)
+      try {
+        const parsed = JSON.parse(addressValue);
+        return parsed as Record<string, unknown>;
       } catch {
-        try {
-          const parsed = JSON.parse(addressValue);
-          return parsed as Record<string, unknown>;
-        } catch {
-          return null;
-        }
+        return null;
       }
     }
 
@@ -351,6 +353,21 @@ export class AdminService {
       }),
     ]);
 
+    // Get raw encrypted shippingAddress strings (bypass JSON parsing)
+    const shippingAddressMap = new Map<string, string | null>();
+    if (users.length > 0) {
+      const rawAddresses = await this.prisma.$queryRaw<
+        Array<{ id: string; shippingAddress: string | null }>
+      >`
+        SELECT id, CAST("shippingAddress" AS TEXT) as "shippingAddress"
+        FROM users
+        WHERE id = ANY(${users.map((u) => u.id)})
+      `;
+      rawAddresses.forEach((row) => {
+        shippingAddressMap.set(row.id, row.shippingAddress);
+      });
+    }
+
     // Batch fetch order stats for all users in this page
     const userIds = users.map((u) => u.id);
     const orderStats = await this.prisma.order.groupBy({
@@ -364,8 +381,9 @@ export class AdminService {
 
     // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => {
-      const decryptedAddress = user.shippingAddress
-        ? this.encryptionService.tryDecryptAddress(user.shippingAddress as string)
+      const rawAddress = shippingAddressMap.get(user.id);
+      const decryptedAddress = rawAddress
+        ? this.encryptionService.tryDecryptAddress(rawAddress)
         : null;
 
       return {

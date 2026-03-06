@@ -187,12 +187,154 @@ describe('EncryptionService', () => {
     it('should accept valid 64-character hex key', () => {
       const validKey = 'a'.repeat(64);
       const configService = {
-        get: jest.fn(() => validKey),
+        get: jest.fn((key: string) => {
+          if (key === 'PROFILE_ENCRYPTION_KEY') {
+            return validKey;
+          }
+          return null;
+        }),
       };
 
       expect(() => {
         new EncryptionService(configService as any);
       }).not.toThrow();
+    });
+  });
+
+  describe('legacy key fallback', () => {
+    const currentKey = 'b'.repeat(64);
+    const legacyKey = testEncryptionKey; // Use original test key as legacy
+    let legacyService: EncryptionService;
+    let currentService: EncryptionService;
+
+    beforeEach(async () => {
+      // Service with legacy key as the primary key (simulates old production)
+      const legacyModule: TestingModule = await Test.createTestingModule({
+        providers: [
+          EncryptionService,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                if (key === 'PROFILE_ENCRYPTION_KEY') {
+                  return legacyKey;
+                }
+                return null;
+              }),
+            },
+          },
+        ],
+      }).compile();
+      legacyService = legacyModule.get<EncryptionService>(EncryptionService);
+
+      // Service with new key + legacy key as fallback
+      const currentModule: TestingModule = await Test.createTestingModule({
+        providers: [
+          EncryptionService,
+          {
+            provide: ConfigService,
+            useValue: {
+              get: jest.fn((key: string) => {
+                if (key === 'PROFILE_ENCRYPTION_KEY') {
+                  return currentKey;
+                }
+                if (key === 'PROFILE_LEGACY_ENCRYPTION_KEYS') {
+                  return legacyKey;
+                }
+                return null;
+              }),
+            },
+          },
+        ],
+      }).compile();
+      currentService = currentModule.get<EncryptionService>(EncryptionService);
+    });
+
+    it('should decrypt data encrypted with legacy key using tryDecryptAddress', () => {
+      const address: ShippingAddress = {
+        fullName: 'Legacy User',
+        address1: '100 Old St',
+        city: 'Legacy City',
+        state: 'CA',
+        zip: '90001',
+        phone: '(310) 555-0000',
+      };
+
+      // Encrypt with legacy key
+      const encrypted = legacyService.encryptAddress(address);
+
+      // Decrypt with current service (should fall back to legacy key)
+      const decrypted = currentService.tryDecryptAddress(encrypted);
+      expect(decrypted).toEqual(address);
+    });
+
+    it('should return null when no key can decrypt', () => {
+      // Service with completely different keys, no legacy
+      const isolatedService = new EncryptionService({
+        get: (key: string) => {
+          if (key === 'PROFILE_ENCRYPTION_KEY') {
+            return 'c'.repeat(64);
+          }
+          return null;
+        },
+      } as any);
+
+      const address: ShippingAddress = {
+        fullName: 'Test',
+        address1: '1 St',
+        city: 'City',
+        state: 'CA',
+        zip: '90001',
+        phone: '(310) 555-0000',
+      };
+      const encrypted = legacyService.encryptAddress(address);
+
+      expect(isolatedService.tryDecryptAddress(encrypted)).toBeNull();
+    });
+
+    it('should decrypt plain JSON addresses via tryDecryptAddress', () => {
+      const address: ShippingAddress = {
+        fullName: 'Plain User',
+        address1: '200 Plain St',
+        city: 'Plain City',
+        state: 'NY',
+        zip: '10001',
+        phone: '(212) 555-1111',
+      };
+
+      const plainJson = JSON.stringify(address);
+      const decrypted = currentService.tryDecryptAddress(plainJson);
+      expect(decrypted).toEqual(address);
+    });
+
+    it('should return keyIndex info via tryDecryptWithKeyInfo', () => {
+      const address: ShippingAddress = {
+        fullName: 'Info User',
+        address1: '300 Info St',
+        city: 'Info City',
+        state: 'TX',
+        zip: '75001',
+        phone: '(214) 555-2222',
+      };
+
+      // Encrypted with current key -> keyIndex 0
+      const encCurrent = currentService.encryptAddress(address);
+      const infoCurrent = currentService.tryDecryptWithKeyInfo(encCurrent);
+      expect(infoCurrent).not.toBeNull();
+      expect(infoCurrent!.keyIndex).toBe(0);
+      expect(infoCurrent!.address).toEqual(address);
+
+      // Encrypted with legacy key -> keyIndex 1
+      const encLegacy = legacyService.encryptAddress(address);
+      const infoLegacy = currentService.tryDecryptWithKeyInfo(encLegacy);
+      expect(infoLegacy).not.toBeNull();
+      expect(infoLegacy!.keyIndex).toBe(1);
+      expect(infoLegacy!.address).toEqual(address);
+
+      // Plain JSON -> keyIndex -1
+      const infoPlain = currentService.tryDecryptWithKeyInfo(JSON.stringify(address));
+      expect(infoPlain).not.toBeNull();
+      expect(infoPlain!.keyIndex).toBe(-1);
     });
   });
 

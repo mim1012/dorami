@@ -99,6 +99,8 @@ export const configValidationSchema = Joi.object({
     'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
     'any.required': 'PROFILE_ENCRYPTION_KEY is required',
   }),
+  // Legacy encryption keys for fallback decryption (comma-separated 64-char hex strings)
+  PROFILE_LEGACY_ENCRYPTION_KEYS: Joi.string().optional().allow(''),
 
   // Cart/Order Settings
   CART_TIMER_MINUTES: Joi.number().default(10),

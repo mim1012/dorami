@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   const { data: cartData } = useCart();
   const queryClient = useQueryClient();
   const items = cartData?.items ?? [];
-  const { user } = useAuth();
+  const { user, needsProfileCompletion, isLoading: authLoading } = useAuth();
   const { data: balance } = usePointBalance();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +44,13 @@ export default function CheckoutPage() {
       router.push('/cart');
     }
   }, [cartData, items, router, orderCompleted]);
+
+  // Redirect to profile if incomplete
+  useEffect(() => {
+    if (!authLoading && needsProfileCompletion) {
+      router.replace('/profile/register');
+    }
+  }, [authLoading, needsProfileCompletion, router]);
 
   // Load points config
   useEffect(() => {
@@ -147,7 +154,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
+    <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4 pb-24">
       <div className="w-full md:max-w-3xl md:mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -164,7 +171,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Order Summary */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+        <div className="bg-content-bg rounded-2xl p-4 sm:p-6 border border-border-color mb-6">
           <Heading2 className="text-hot-pink mb-4">주문 상품</Heading2>
           <div className="space-y-3">
             {items.map((item) => (
@@ -215,7 +222,7 @@ export default function CheckoutPage() {
 
         {/* Points Usage Section */}
         {canUsePoints && (
-          <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+          <div className="bg-content-bg rounded-2xl p-4 sm:p-6 border border-border-color mb-6">
             <div className="flex items-center gap-2 mb-4">
               <Coins className="w-5 h-5 text-hot-pink" />
               <Heading2 className="text-hot-pink">포인트 사용</Heading2>
@@ -275,7 +282,7 @@ export default function CheckoutPage() {
 
         {/* Shipping Address */}
         {user?.shippingAddress && (
-          <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+          <div className="bg-content-bg rounded-2xl p-4 sm:p-6 border border-border-color mb-6">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="w-5 h-5 text-hot-pink" />
               <Heading2 className="text-hot-pink">배송지</Heading2>
@@ -306,7 +313,7 @@ export default function CheckoutPage() {
         )}
 
         {/* Payment Method - Zelle */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+        <div className="bg-content-bg rounded-2xl p-4 sm:p-6 border border-border-color mb-6">
           <div className="flex items-center gap-2 mb-4">
             <DollarSign className="w-5 h-5 text-hot-pink" />
             <Heading2 className="text-hot-pink">결제 방법 — Zelle</Heading2>
@@ -319,7 +326,7 @@ export default function CheckoutPage() {
               <Heading2 className="text-primary-text">Zelle 송금</Heading2>
             </div>
             {zelleEmail && (
-              <div className="space-y-1 pl-9">
+              <div className="space-y-1 pl-4 sm:pl-9">
                 <Body className="text-secondary-text text-sm">
                   수신인:{' '}
                   <span className="text-primary-text font-semibold">{zelleRecipientName}</span>
@@ -329,14 +336,14 @@ export default function CheckoutPage() {
                 </Body>
               </div>
             )}
-            <Body className="text-secondary-text text-sm leading-relaxed pl-9">
+            <Body className="text-secondary-text text-sm leading-relaxed pl-4 sm:pl-9">
               주문 완료 후 위 Zelle 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로 전송해주세요.
             </Body>
           </div>
         </div>
 
         {/* Terms Agreement */}
-        <div className="bg-content-bg rounded-2xl p-6 border border-border-color mb-6">
+        <div className="bg-content-bg rounded-2xl p-4 sm:p-6 border border-border-color mb-6">
           <div className="space-y-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -370,7 +377,7 @@ export default function CheckoutPage() {
             size="lg"
             fullWidth
             onClick={handleSubmitOrder}
-            disabled={isSubmitting || !termsAgreed || !privacyAgreed}
+            disabled={isSubmitting || !termsAgreed || !privacyAgreed || needsProfileCompletion}
           >
             {isSubmitting ? '주문 처리 중...' : `${formatPrice(finalTotal)} 주문하기`}
           </Button>

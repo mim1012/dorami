@@ -1,0 +1,79 @@
+name: Load Test CI
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '22 23 * * *'
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install socket.io-client
+
+      - name: Run load test
+        run: node scripts/load-test.js
+        continue-on-error: true
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: load-test-results.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Generate GitHub Summary
+        if: always()
+        run: |
+          if [ -f load-test-results.json ]; then
+            SUCCESS_RATE=$(node -e "const r=require('./load-test-results.json'); console.log(r.successRate ?? r.success_rate ?? 0)")
+            TOTAL=$(node -e "const r=require('./load-test-results.json'); console.log(r.total ?? r.totalRequests ?? 0)")
+            FAILED=$(node -e "const r=require('./load-test-results.json'); console.log(r.failed ?? r.failedRequests ?? 0)")
+            AVG_LATENCY=$(node -e "const r=require('./load-test-results.json'); console.log(r.avgLatency ?? r.averageLatency ?? 'N/A')")
+
+            if (( $(echo "$SUCCESS_RATE >= 85" | bc -l) )); then
+              STATUS="✅ PASSED"
+            else
+              STATUS="❌ FAILED"
+            fi
+
+            echo "## Load Test Results $STATUS" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_STEP_SUMMARY
+            echo "| Total Requests | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed Requests | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Avg Latency | ${AVG_LATENCY}ms |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Load Test Results ⚠️ NO RESULTS FILE" >> $GITHUB_STEP_SUMMARY
+            echo "load-test-results.json was not generated." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check success rate threshold
+        if: always()
+        run: |
+          if [ ! -f load-test-results.json ]; then
+            echo "No results file found — failing job"
+            exit 1
+          fi
+          SUCCESS_RATE=$(node -e "const r=require('./load-test-results.json'); console.log(r.successRate ?? r.success_rate ?? 0)")
+          echo "Success rate: ${SUCCESS_RATE}%"
+          if (( $(echo "$SUCCESS_RATE < 85" | bc -l) )); then
+            echo "❌ FAILED: Success rate ${SUCCESS_RATE}% is below 85% threshold"
+            exit 1
+          fi
+          echo "✅ PASSED: Success rate ${SUCCESS_RATE}% meets threshold"

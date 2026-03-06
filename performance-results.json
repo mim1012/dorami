@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-03-05T20:43:41.694Z",
+  "config": {
+    "backendUrl": "http://localhost:3001",
+    "clientUrl": "http://localhost:3000",
+    "wsUrl": "http://localhost:3001",
+    "mediaUrl": "http://localhost:8080",
+    "thresholds": {
+      "products": 200,
+      "orders": 500,
+      "profile": 100,
+      "chatLatency50": 100,
+      "chatLatency100": 200,
+      "hls": 3000,
+      "pageProducts": 2000,
+      "pageOrders": 2000
+    }
+  },
+  "apiTests": {
+    "/api/products": {
+      "avgTime": 11,
+      "p50": 7,
+      "p95": 26,
+      "status": "PASS"
+    },
+    "/api/users/profile": {
+      "avgTime": 11,
+      "p50": 11,
+      "p95": 11,
+      "status": "PASS"
+    },
+    "/api/orders": {
+      "avgTime": 12,
+      "p50": 13,
+      "p95": 14,
+      "status": "PASS"
+    }
+  },
+  "chatLatency": {
+    "50users": 10000,
+    "100users": 10000,
+    "status": "FAIL"
+  },
+  "streamPerformance": {
+    "firstFrame": null,
+    "bufferingIncidents": 0,
+    "skipped": true,
+    "status": "SKIPPED"
+  },
+  "pageLoadTime": {
+    "products": 754,
+    "orders": 113,
+    "status": "PASS"
+  },
+  "overallVerdict": "FAIL"
+}

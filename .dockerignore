@@ -12,3 +12,23 @@ coverage
 docs
 .claude
 .omc
+
+# 빌드 결과물 제외 (컨텍스트 크기 절감 — .next/는 수백 MB)
+client-app/.next
+backend/dist
+packages/*/dist
+
+# 테스트 파일 제외 (빌드 불필요)
+**/__tests__
+**/*.spec.ts
+**/*.test.ts
+**/e2e
+
+# 기타 불필요 파일
+*.md
+!README.md
+Makefile
+.prettier*
+.eslint*
+.husky
+

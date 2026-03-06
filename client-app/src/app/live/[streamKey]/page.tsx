@@ -48,6 +48,7 @@ import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/lib/store/auth';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -75,6 +76,15 @@ export default function LiveStreamPage() {
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
   useTokenAutoRefresh(streamKey);
+
+  const { needsProfileCompletion, isLoading: authLoading } = useAuth();
+
+  // Redirect to profile if incomplete
+  useEffect(() => {
+    if (!authLoading && needsProfileCompletion) {
+      router.replace('/profile/register');
+    }
+  }, [authLoading, needsProfileCompletion, router]);
 
   const isMobile = useIsMobile(1024);
 
@@ -434,6 +444,11 @@ export default function LiveStreamPage() {
     }
   };
 
+  // Profile completion guard: prevent rendering while redirecting
+  if (!authLoading && needsProfileCompletion) {
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -523,6 +538,15 @@ export default function LiveStreamPage() {
       showToast('로그인 후 이용해주세요', 'error', {
         label: '로그인',
         onClick: () => router.push('/login'),
+      });
+      return;
+    }
+
+    // Check profile completion
+    if (needsProfileCompletion) {
+      showToast('프로필 완성 후 이용 가능합니다', 'error', {
+        label: '프로필 완성',
+        onClick: () => router.push('/profile/register'),
       });
       return;
     }

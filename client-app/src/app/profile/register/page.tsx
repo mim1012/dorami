@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
 import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
+import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
@@ -78,12 +79,13 @@ export default function ProfileRegisterPage() {
     }
   }, [user, authLoading, router]);
 
-  // Step 2: Profile already complete → go to home
+  // Step 2: Profile already complete → go to live or admin
   useEffect(() => {
     if (authLoading) return;
-    const isProfileComplete = !!(user?.instagramId && user?.depositorName);
-    if (user && isProfileComplete) {
-      router.replace('/');
+    if (user && isProfileComplete(user)) {
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = user.role === 'ADMIN' ? '/admin' : '/live';
+      router.replace(redirectPath);
     }
   }, [user, authLoading, router]);
 
@@ -140,16 +142,11 @@ export default function ProfileRegisterPage() {
       newErrors.state = 'State를 선택해주세요';
     }
 
-    if (!formData.zip) {
-      newErrors.zip = 'ZIP Code를 입력해주세요';
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-      newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
-    }
+    // ZIP: 검증 제거 (아무거나 입력 가능)
 
-    if (!formData.phone) {
+    // 전화번호: 아무거나 입력 가능 (유효성 검증 제거)
+    if (!formData.phone.trim()) {
       newErrors.phone = '전화번호를 입력해주세요';
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
     }
 
     setErrors(newErrors);
@@ -171,11 +168,13 @@ export default function ProfileRegisterPage() {
       await refreshProfile();
       // refreshProfile은 실패해도 throw하지 않으므로, 스토어 상태를 직접 확인
       const updatedUser = useAuthStore.getState().user;
-      if (!updatedUser?.instagramId || !updatedUser?.depositorName) {
+      if (!isProfileComplete(updatedUser)) {
         setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      router.push('/');
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = updatedUser?.role === 'ADMIN' ? '/admin' : '/live';
+      router.push(redirectPath);
     } catch (error: any) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Profile completion error:', error);
@@ -197,7 +196,7 @@ export default function ProfileRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
+    <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">프로필 등록</Display>
@@ -212,7 +211,7 @@ export default function ProfileRegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 기본 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">기본 정보</Heading2>
 
             <Input
@@ -257,7 +256,7 @@ export default function ProfileRegisterPage() {
           </div>
 
           {/* 미국 배송지 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">미국 배송지</Heading2>
 
             <Input
@@ -332,12 +331,12 @@ export default function ProfileRegisterPage() {
               />
 
               <Input
-                label="전화번호 (미국)"
+                label="전화번호 (국제)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
-                placeholder="(123) 456-7890"
+                placeholder="+1 213-555-1234"
                 fullWidth
                 required
               />
@@ -348,7 +347,7 @@ export default function ProfileRegisterPage() {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="md"
             fullWidth
             disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >
