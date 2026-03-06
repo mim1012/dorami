@@ -99,6 +99,8 @@ export class UsersService {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
+        email: dto.email,
+        phone: dto.phone,
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
         shippingAddress: encryptedAddress as string, // Store encrypted string as Json

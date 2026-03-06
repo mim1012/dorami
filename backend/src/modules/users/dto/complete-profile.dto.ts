@@ -1,9 +1,15 @@
-import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, IsOptional, Length, IsEmail } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsUSState } from '../../../common/validators/us-state.validator';
 
 export class CompleteProfileDto {
+  @ApiProperty({ description: '이메일', example: 'user@example.com', maxLength: 255 })
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email!: string;
+
   @ApiProperty({ description: '입금자명', example: '홍길동', maxLength: 100 })
   @IsString()
   @IsNotEmpty()

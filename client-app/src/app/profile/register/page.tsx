@@ -15,6 +15,7 @@ import { Select } from '@/components/common/Select';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
 
 interface FormData {
+  email: string;
   depositorName: string;
   instagramId: string;
   fullName: string;
@@ -27,6 +28,7 @@ interface FormData {
 }
 
 interface FormErrors {
+  email?: string;
   depositorName?: string;
   instagramId?: string;
   fullName?: string;
@@ -42,6 +44,7 @@ export default function ProfileRegisterPage() {
   const { user, isLoading: authLoading, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
+    email: user?.email || '',
     depositorName: '',
     instagramId: '',
     fullName: '',
@@ -89,6 +92,13 @@ export default function ProfileRegisterPage() {
     }
   }, [user, authLoading, router]);
 
+  // Step 3: Pre-fill email from Kakao when user loads
+  useEffect(() => {
+    if (user?.email && !formData.email) {
+      setFormData((prev) => ({ ...prev, email: user.email }));
+    }
+  }, [user?.email]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
@@ -113,6 +123,12 @@ export default function ProfileRegisterPage() {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = '이메일을 입력해주세요';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = '올바른 이메일 형식이 아닙니다';
+    }
 
     if (!formData.depositorName.trim()) {
       newErrors.depositorName = '입금자명을 입력해주세요';
@@ -213,6 +229,18 @@ export default function ProfileRegisterPage() {
           {/* 기본 정보 */}
           <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">기본 정보</Heading2>
+
+            <Input
+              label="이메일"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={errors.email}
+              placeholder="user@example.com"
+              fullWidth
+              required
+            />
 
             <Input
               label="입금자명"

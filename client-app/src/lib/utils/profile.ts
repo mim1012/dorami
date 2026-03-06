@@ -12,17 +12,23 @@ export interface ShippingAddress {
 
 /**
  * Unified profile completion check across the app
- * Returns true only if user has ALL required profile fields:
- * - instagramId (string)
- * - depositorName (string)
- * - shippingAddress (object with fullName)
+ * Returns true only if user has ALL 4 required profile fields:
+ * 1. phone (string)
+ * 2. email (string)
+ * 3. instagramId (string)
+ * 4. shippingAddress (object with fullName)
+ *
+ * This ensures comprehensive user data capture for live commerce service.
  */
 export function isProfileComplete(user: User | null): boolean {
   if (!user) return false;
 
-  const hasBasicInfo = !!(user.instagramId && user.depositorName);
+  // Check all 4 required fields
+  const hasPhone = !!user.phone;
+  const hasEmail = !!user.email;
+  const hasInstagramId = !!user.instagramId;
 
-  if (!hasBasicInfo) return false;
+  if (!hasPhone || !hasEmail || !hasInstagramId) return false;
 
   const shippingAddress = user.shippingAddress as ShippingAddress | undefined;
   const hasShippingAddress = !!shippingAddress?.fullName;
