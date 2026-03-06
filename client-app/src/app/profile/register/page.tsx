@@ -78,7 +78,7 @@ export default function ProfileRegisterPage() {
     }
   }, [user, authLoading, router]);
 
-  // Step 2: Profile already complete → go to live
+  // Step 2: Profile already complete → go to live or admin
   useEffect(() => {
     if (authLoading) return;
     const isProfileComplete = !!(
@@ -88,7 +88,9 @@ export default function ProfileRegisterPage() {
       (user.shippingAddress as Record<string, string>)?.fullName
     );
     if (user && isProfileComplete) {
-      router.replace('/live');
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = user.role === 'ADMIN' ? '/admin' : '/live';
+      router.replace(redirectPath);
     }
   }, [user, authLoading, router]);
 
