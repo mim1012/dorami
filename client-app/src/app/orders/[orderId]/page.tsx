@@ -6,6 +6,7 @@ import { getOrderById } from '@/lib/api/orders';
 import { Order, OrderStatus } from '@/lib/types/order';
 import { apiClient } from '@/lib/api/client';
 import { CheckCircle, Clock, Package, Truck, Home } from 'lucide-react';
+import { Button } from '@/components/common/Button';
 
 export default function OrderConfirmationPage() {
   const params = useParams();
@@ -136,9 +137,9 @@ export default function OrderConfirmationPage() {
           <h2 className="text-xl font-semibold text-primary-text mb-6">주문 상태</h2>
           <div className="relative">
             <div className="absolute top-5 left-0 right-0 h-0.5 bg-border-color"></div>
-            <div className="relative flex justify-between">
+            <div className="relative flex flex-nowrap overflow-x-auto gap-2">
               {statusSteps.map((step, index) => (
-                <div key={index} className="flex flex-col items-center" style={{ flex: 1 }}>
+                <div key={index} className="flex flex-col items-center min-w-0 flex-1">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
                       step.completed
@@ -155,7 +156,7 @@ export default function OrderConfirmationPage() {
                     />
                   </div>
                   <p
-                    className={`text-xs mt-2 text-center ${
+                    className={`text-xs mt-2 text-center break-words ${
                       step.completed || step.current
                         ? 'text-primary-text font-medium'
                         : 'text-secondary-text'
@@ -174,15 +175,15 @@ export default function OrderConfirmationPage() {
           <div className="bg-hot-pink/10 rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30">
             <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 결제 방법 — Zelle</h2>
             <div className="bg-content-bg rounded-lg p-4 space-y-3">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-1">
                 <span className="text-secondary-text">수신자</span>
                 <span className="font-semibold text-primary-text">{zelleRecipientName}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-1">
                 <span className="text-secondary-text">Zelle 이메일</span>
                 <span className="font-semibold text-hot-pink">{zelleEmail}</span>
               </div>
-              <div className="flex justify-between items-center pt-3 border-t border-border-color">
+              <div className="flex flex-wrap justify-between items-center gap-1 pt-3 border-t border-border-color">
                 <span className="text-primary-text font-semibold">송금 금액</span>
                 <span className="text-2xl font-bold text-hot-pink">{formatPrice(order.total)}</span>
               </div>
@@ -218,15 +219,15 @@ export default function OrderConfirmationPage() {
             ))}
           </div>
           <div className="mt-4 pt-4 border-t border-border-color space-y-2">
-            <div className="flex justify-between text-secondary-text">
+            <div className="flex flex-wrap justify-between gap-1 text-secondary-text">
               <span>소계</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-secondary-text">
+            <div className="flex flex-wrap justify-between gap-1 text-secondary-text">
               <span>배송비</span>
               <span>{formatPrice(order.shippingFee)}</span>
             </div>
-            <div className="flex justify-between text-xl font-bold text-primary-text pt-2">
+            <div className="flex flex-wrap justify-between gap-1 text-xl font-bold text-primary-text pt-2">
               <span>합계</span>
               <span>{formatPrice(order.total)}</span>
             </div>
@@ -235,18 +236,12 @@ export default function OrderConfirmationPage() {
 
         {/* Actions */}
         <div className="flex justify-center gap-4">
-          <button
-            onClick={() => router.push('/orders')}
-            className="px-6 py-3 bg-content-bg text-primary-text rounded-lg hover:bg-border-color font-medium transition-colors"
-          >
+          <Button variant="secondary" onClick={() => router.push('/orders')}>
             내 주문 보기
-          </button>
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 bg-info text-white rounded-lg hover:bg-info/80 font-medium transition-colors"
-          >
+          </Button>
+          <Button variant="primary" onClick={() => router.push('/')}>
             쇼핑 계속하기
-          </button>
+          </Button>
         </div>
       </div>
     </div>

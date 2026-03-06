@@ -197,7 +197,7 @@ export default function ProfileRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
+    <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">프로필 등록</Display>
@@ -212,7 +212,7 @@ export default function ProfileRegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 기본 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">기본 정보</Heading2>
 
             <Input
@@ -257,7 +257,7 @@ export default function ProfileRegisterPage() {
           </div>
 
           {/* 미국 배송지 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">미국 배송지</Heading2>
 
             <Input
@@ -348,7 +348,7 @@ export default function ProfileRegisterPage() {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="md"
             fullWidth
             disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >

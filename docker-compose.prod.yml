@@ -67,7 +67,7 @@ services:
       - dorami-internal
 
   backend:
-    image: ghcr.io/mim1012/dorami-backend:sha-827438945d57cc0200aaff93a9c47b0c8bbb275a
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-backend:${IMAGE_TAG}
     restart: always
     ports:
       - '127.0.0.1:3001:3001'  # Nginx container proxy only
@@ -117,7 +117,7 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/mim1012/dorami-frontend:sha-3400d56
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-frontend:${IMAGE_TAG}
     container_name: dorami-frontend-prod
     restart: always
     expose:
