@@ -241,30 +241,6 @@ jobs:
             rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
             git reset --hard origin/${GITHUB_REF_NAME}
 
-            echo "=== Recreating .env.staging (deleted by git reset) ==="
-            {
-              echo "DATABASE_URL=\"postgresql://postgres:postgres@postgres:5432/live_commerce_staging\""
-              echo "REDIS_URL=\"redis://redis:6379\""
-              echo "JWT_SECRET=\"dev-jwt-secret-change-in-production\""
-              echo "PROFILE_ENCRYPTION_KEY=\"012345678901234567890123456789ab012345678901234567890123456789ab\""
-              echo "KAKAO_CLIENT_ID=\"${KAKAO_CLIENT_ID}\""
-              echo "KAKAO_CLIENT_SECRET=\"${KAKAO_CLIENT_SECRET}\""
-              echo "KAKAO_CALLBACK_URL=\"${KAKAO_CALLBACK_URL}\""
-              echo "ADMIN_EMAILS=\"${ADMIN_EMAILS}\""
-              echo "APP_ENV=\"staging\""
-              echo "NODE_ENV=\"production\""
-              echo "PORT=\"3001\""
-              echo "CORS_ORIGINS=\"http://staging.doremi-live.com,http://localhost:3000,http://localhost:8080\""
-              echo "CSRF_ENABLED=\"true\""
-              echo "RTMP_SERVER_URL=\"rtmp://staging.doremi-live.com:1935/live\""
-              echo "HLS_SERVER_URL=\"http://staging.doremi-live.com/hls\""
-              echo "MEDIA_SERVER_URL=\"http://localhost:8080\""
-              echo "ENABLE_DEV_AUTH=\"true\""
-              echo "LOG_LEVEL=\"debug\""
-            } > /opt/dorami/.env.staging
-            echo "✓ .env.staging recreated from deployment variables"
-            head -3 /opt/dorami/.env.staging
-
             echo "=== Cleaning up old images ==="
             # Only prune dangling images and ghcr.io images (with repo filter)
             docker image prune -af --filter "until=72h" --filter "label=org.opencontainers.image.source=https://github.com/mim1012/dorami" || true
