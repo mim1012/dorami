@@ -189,6 +189,8 @@ volumes:
   certbot_www:
     name: dorami_certbot_www
   postgres_data:
+    external: true
     name: dorami_postgres_data
   redis_data:
+    external: true
     name: dorami_redis_data
