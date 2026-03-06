@@ -1,14 +1,23 @@
 /**
- * Format phone number to (123) 456-7890 format
+ * Format international phone number with country code (e.g. +1, +82)
+ * Preserves country code format if present, otherwise allows flexible input
  */
 export function formatPhoneNumber(value: string): string {
-  // Remove all non-digits
+  // If starts with +, preserve country code format
+  if (value.startsWith('+')) {
+    // Allow + followed by country code and flexible spacing/hyphens
+    return value.replace(/[^\d+\-() ]/g, '');
+  }
+
+  // For US numbers without +, try to format as (123) 456-7890
   const digits = value.replace(/\D/g, '');
+  if (digits.length > 10) {
+    // If more than 10 digits, assume it's international format - return as-is
+    return value.replace(/[^\d+\-() ]/g, '');
+  }
 
-  // Limit to 10 digits
+  // Standard US formatting for 10 digits or less
   const limited = digits.slice(0, 10);
-
-  // Format based on length
   if (limited.length === 0) return '';
   if (limited.length <= 3) return `(${limited}`;
   if (limited.length <= 6) return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
