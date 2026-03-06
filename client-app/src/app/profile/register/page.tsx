@@ -145,16 +145,11 @@ export default function ProfileRegisterPage() {
       newErrors.state = 'State를 선택해주세요';
     }
 
-    if (!formData.zip) {
-      newErrors.zip = 'ZIP Code를 입력해주세요';
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-      newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
-    }
+    // ZIP: 검증 제거 (아무거나 입력 가능)
 
-    if (!formData.phone) {
+    // 전화번호: 아무거나 입력 가능 (유효성 검증 제거)
+    if (!formData.phone.trim()) {
       newErrors.phone = '전화번호를 입력해주세요';
-    } else if (!/^\+[0-9\s\-()]{7,20}$/.test(formData.phone)) {
-      newErrors.phone = '국제 전화번호 형식: +1 213-555-1234';
     }
 
     setErrors(newErrors);
