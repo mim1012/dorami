@@ -444,6 +444,11 @@ export default function LiveStreamPage() {
     }
   };
 
+  // Profile completion guard: prevent rendering while redirecting
+  if (!authLoading && needsProfileCompletion) {
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
