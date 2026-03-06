@@ -81,7 +81,12 @@ export default function ProfileRegisterPage() {
   // Step 2: Profile already complete → go to live
   useEffect(() => {
     if (authLoading) return;
-    const isProfileComplete = !!(user?.instagramId && user?.depositorName);
+    const isProfileComplete = !!(
+      user?.instagramId &&
+      user?.depositorName &&
+      user?.shippingAddress &&
+      (user.shippingAddress as Record<string, string>)?.fullName
+    );
     if (user && isProfileComplete) {
       router.replace('/live');
     }

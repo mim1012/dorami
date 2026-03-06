@@ -63,6 +63,17 @@ export class UserResponseDto {
   @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
   phone?: string;
 
+  @ApiPropertyOptional({ description: '배송지 (복호화됨)' })
+  shippingAddress?: {
+    fullName?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    phone?: string;
+  };
+
   @ApiProperty({ description: '계정 생성일' })
   createdAt!: Date;
 
