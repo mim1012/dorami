@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'client-app/**'
       - 'packages/shared-types/**'
       - 'docker-compose*.yml'
       - 'infrastructure/**'
