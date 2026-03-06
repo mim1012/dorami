@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { apiClient } from '../api/client';
+import { isProfileComplete } from '../utils/profile';
 
 export function useAuth() {
   const { user, isAuthenticated, isLoading, setUser, setLoading, logout } = useAuthStore();
@@ -68,14 +69,9 @@ export function useAuth() {
   // Authentication: user has a valid identity (kakaoId or email)
   const isUserAuthenticated = !!(user?.kakaoId || user?.email);
   // Profile completion: user has filled in required profile fields
-  const isProfileComplete = !!(
-    user?.instagramId &&
-    user?.depositorName &&
-    user?.shippingAddress &&
-    (user.shippingAddress as Record<string, string>)?.fullName
-  );
+  const isUserProfileComplete = isProfileComplete(user);
   // Convenience: needs profile if authenticated but profile incomplete
-  const needsProfileCompletion = isUserAuthenticated && !isProfileComplete;
+  const needsProfileCompletion = isUserAuthenticated && !isUserProfileComplete;
 
   return {
     user,
@@ -84,7 +80,7 @@ export function useAuth() {
     logout: handleLogout,
     refreshProfile: fetchProfile,
     isUserAuthenticated,
-    isProfileComplete,
+    isProfileComplete: isUserProfileComplete,
     needsProfileCompletion,
   };
 }

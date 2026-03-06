@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
 import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
+import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
@@ -81,13 +82,7 @@ export default function ProfileRegisterPage() {
   // Step 2: Profile already complete → go to live or admin
   useEffect(() => {
     if (authLoading) return;
-    const isProfileComplete = !!(
-      user?.instagramId &&
-      user?.depositorName &&
-      user?.shippingAddress &&
-      (user.shippingAddress as Record<string, string>)?.fullName
-    );
-    if (user && isProfileComplete) {
+    if (user && isProfileComplete(user)) {
       // Admin goes to admin dashboard, users go to live
       const redirectPath = user.role === 'ADMIN' ? '/admin' : '/live';
       router.replace(redirectPath);
@@ -173,11 +168,13 @@ export default function ProfileRegisterPage() {
       await refreshProfile();
       // refreshProfile은 실패해도 throw하지 않으므로, 스토어 상태를 직접 확인
       const updatedUser = useAuthStore.getState().user;
-      if (!updatedUser?.instagramId || !updatedUser?.depositorName) {
+      if (!isProfileComplete(updatedUser)) {
         setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      router.push('/live');
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = updatedUser?.role === 'ADMIN' ? '/admin' : '/live';
+      router.push(redirectPath);
     } catch (error: any) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Profile completion error:', error);
