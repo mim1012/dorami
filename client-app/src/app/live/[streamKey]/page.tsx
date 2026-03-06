@@ -538,7 +538,6 @@ export default function LiveStreamPage() {
     }
 
     // Check profile completion
-    const { needsProfileCompletion } = useAuth();
     if (needsProfileCompletion) {
       showToast('프로필 완성 후 이용 가능합니다', 'error', {
         label: '프로필 완성',
