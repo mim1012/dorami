@@ -195,9 +195,13 @@ export default function CartPage() {
                 <div className="space-y-4">
                   <Button
                     variant="primary"
-                    size="lg"
+                    size="md"
                     fullWidth
-                    onClick={() => router.push('/checkout')}
+                    onClick={() => {
+                      if (!hasExpiredItems) {
+                        router.push('/checkout');
+                      }
+                    }}
                     disabled={hasExpiredItems}
                   >
                     {hasExpiredItems
