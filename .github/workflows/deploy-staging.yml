@@ -242,7 +242,7 @@ jobs:
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Recreating .env.staging (deleted by git reset) ==="
-            cat > /opt/dorami/.env.staging << 'ENVEOF'
+            cat > /opt/dorami/.env.staging << ENVEOF
 # Database & Cache (localhost - docker internal)
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/live_commerce_staging"
 REDIS_URL="redis://redis:6379"
