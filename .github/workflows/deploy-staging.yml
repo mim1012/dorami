@@ -256,30 +256,30 @@ jobs:
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
             echo "=== Loading environment for staging compose ==="
-            # CRITICAL: IMAGE_TAG must come from deployment, never from .env.staging
-            echo "Using deployment IMAGE_TAG: ${IMAGE_TAG}"
-            export IMAGE_TAG=${IMAGE_TAG}
-            export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
-            export STAGING_HOST=${HOST}
-            export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
-            export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
-            export KAKAO_CALLBACK_URL=${KAKAO_CALLBACK_URL}
-            export ADMIN_EMAILS=${ADMIN_EMAILS}
+            # CRITICAL: Save deployment values BEFORE sourcing .env.staging (which overwrites them)
+            _DEPLOY_IMAGE_TAG="${IMAGE_TAG}"
+            _DEPLOY_REPO_OWNER="${GITHUB_REPOSITORY_OWNER}"
+            _DEPLOY_STAGING_HOST="${HOST}"
+            _DEPLOY_KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
+            _DEPLOY_KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
+            _DEPLOY_KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
+            _DEPLOY_ADMIN_EMAILS="${ADMIN_EMAILS}"
+            echo "Using deployment IMAGE_TAG: ${_DEPLOY_IMAGE_TAG}"
 
             if [ -f .env.staging ]; then
-              # Load .env.staging but PRESERVE deployment values by exporting them AFTER
               set -a
               . ./.env.staging
               set +a
-              # FINAL RESTORATION: Ensure deployment values override file values
-              export IMAGE_TAG=${IMAGE_TAG}
-              export GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}
-              export STAGING_HOST=${HOST}
-              export KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
-              export KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
-              export KAKAO_CALLBACK_URL=${KAKAO_CALLBACK_URL}
-              export ADMIN_EMAILS=${ADMIN_EMAILS}
             fi
+
+            # RESTORE: deployment values always win over .env.staging
+            export IMAGE_TAG="${_DEPLOY_IMAGE_TAG}"
+            export GITHUB_REPOSITORY_OWNER="${_DEPLOY_REPO_OWNER}"
+            export STAGING_HOST="${_DEPLOY_STAGING_HOST}"
+            export KAKAO_CLIENT_ID="${_DEPLOY_KAKAO_CLIENT_ID}"
+            export KAKAO_CLIENT_SECRET="${_DEPLOY_KAKAO_CLIENT_SECRET}"
+            export KAKAO_CALLBACK_URL="${_DEPLOY_KAKAO_CALLBACK_URL}"
+            export ADMIN_EMAILS="${_DEPLOY_ADMIN_EMAILS}"
 
             echo "=== Fixing staging environment variables ==="
             bash scripts/fix-staging-env.sh
