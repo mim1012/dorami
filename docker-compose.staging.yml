@@ -42,7 +42,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: staging
+      NODE_ENV: production
       APP_ENV: staging
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-dorami}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-live_commerce}?schema=public&connection_limit=20&pool_timeout=30
