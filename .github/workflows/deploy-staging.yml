@@ -285,7 +285,7 @@ jobs:
             bash scripts/fix-staging-env.sh
 
             echo "Final IMAGE_TAG: ${IMAGE_TAG}"
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml pull || true
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging pull || true
             echo "=== Verifying pulled staging image tags are immutable sha ==="
             # Images were successfully pulled above, so they already exist with immutable sha tags
             if [[ "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
@@ -306,7 +306,7 @@ jobs:
 
             echo "=== Restarting services ==="
             # Stop containers WITHOUT removing volumes (preserves database)
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml down --remove-orphans || true
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging down --remove-orphans || true
             sleep 2
 
             # Kill anything remaining on port 8080
@@ -314,13 +314,13 @@ jobs:
             sleep 1
 
             # Start services
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
 
             echo "=== Resolving any failed migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
 
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml run --rm -T backend npx prisma migrate deploy < /dev/null
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate deploy < /dev/null
 
             echo "=== Cleaning up old images ==="
             docker image prune -af --filter "until=1h"
@@ -333,7 +333,7 @@ jobs:
               fi
               if [ "\$i" = "6" ]; then
                 echo "Backend health check failed after 6 attempts"
-                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs backend --tail=50
+                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=50
                 exit 1
               fi
               echo "Waiting for backend... (attempt \$i/6)"
@@ -347,7 +347,7 @@ jobs:
               fi
               if [ "\$i" = "6" ]; then
                 echo "Frontend health check failed after 6 attempts"
-                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml logs frontend --tail=50
+                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs frontend --tail=50
                 exit 1
               fi
               echo "Waiting for frontend... (attempt \$i/6)"
