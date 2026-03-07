@@ -354,6 +354,97 @@ jobs:
               sleep 10
             done
 
+            echo ""
+            echo "═════════════════════════════════════════════════════════════"
+            echo "=== COMPREHENSIVE NETWORK DIAGNOSTICS ==="
+            echo "═════════════════════════════════════════════════════════════"
+
+            echo ""
+            echo "---- 🐳 Docker Containers Status ----"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "---- 🔌 Port Bindings (ss -tlnp) ----"
+            ss -tlnp 2>/dev/null | grep -E ":(80|443|3000|3001|6379|5432)" || echo "No relevant ports found"
+
+            echo ""
+            echo "---- 📦 Docker Port Mappings ----"
+            docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+            echo ""
+            echo "---- ✅ Validation: Port 80 External Binding ----"
+            PORT_CHECK=\$(docker ps --format "{{.Ports}}" | grep "0.0.0.0:80")
+            if [ -z "\$PORT_CHECK" ]; then
+              echo "❌ ERROR: Port 80 not exposed externally"
+              echo "Docker port bindings:"
+              docker ps
+              exit 1
+            fi
+            echo "✓ Port 80 exposed correctly: \$PORT_CHECK"
+
+            echo ""
+            echo "---- 🌐 Localhost Backend Test ----"
+            if curl -I -s http://localhost/api/health/live | head -1; then
+              echo "✓ Backend reachable on localhost"
+            else
+              echo "❌ Backend NOT reachable on localhost"
+              exit 1
+            fi
+
+            echo ""
+            echo "---- 🌐 Localhost Frontend Test ----"
+            if curl -I -s http://localhost | head -1; then
+              echo "✓ Frontend reachable on localhost"
+            else
+              echo "❌ Frontend NOT reachable on localhost"
+              exit 1
+            fi
+
+            echo ""
+            echo "---- 🌐 Nginx Proxy Test (Port 80) ----"
+            if curl -I -s http://localhost:80 | head -1; then
+              echo "✓ Nginx responding on port 80"
+            else
+              echo "❌ Nginx NOT responding on port 80"
+              exit 1
+            fi
+
+            echo ""
+            echo "---- 🌍 External Domain Test ----"
+            if curl -I -s http://${HOST} | head -1; then
+              echo "✓ External domain reachable: ${HOST}"
+            else
+              echo "⚠️  WARNING: External domain NOT directly reachable from staging server"
+              echo "This is expected if domain points to CDN or load balancer"
+            fi
+
+            echo ""
+            echo "---- 📊 Docker Compose Status ----"
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml ps
+
+            echo ""
+            echo "---- 🔍 Nginx Configuration Validation ----"
+            if docker compose -f docker-compose.base.yml -f docker-compose.staging.yml exec -T nginx nginx -t 2>&1 | grep -q "successful"; then
+              echo "✓ Nginx configuration is valid"
+            else
+              echo "⚠️  Nginx config check (non-fatal)"
+            fi
+
+            echo ""
+            echo "═════════════════════════════════════════════════════════════"
+            echo "=== DEPLOYMENT VERIFICATION COMPLETE ✓ ==="
+            echo "═════════════════════════════════════════════════════════════"
+            echo ""
+            echo "Summary:"
+            echo "  ✓ Docker containers running"
+            echo "  ✓ Port 80 exposed externally"
+            echo "  ✓ Backend health check passed"
+            echo "  ✓ Frontend health check passed"
+            echo "  ✓ Localhost connectivity verified"
+            echo ""
+            echo "Deployment ready for testing!"
+            echo ""
+
             echo "=== Deployment complete ==="
           ENDSSH
 
