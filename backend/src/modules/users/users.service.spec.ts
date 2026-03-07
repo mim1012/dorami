@@ -130,7 +130,7 @@ describe('UsersService - Profile Completion', () => {
 
       const result = await service.completeProfile(userId, completeProfileDto);
 
-      // Verify encryption was called with correct address
+      // Verify encryption was called with correct address (phone normalized to +1XXXXXXXXXX)
       expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
         fullName: 'Minji Kim',
         address1: '123 Main St',
@@ -138,15 +138,15 @@ describe('UsersService - Profile Completion', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0123',
+        phone: '+13105550123',
       });
 
-      // Verify user was updated with encrypted address
+      // Verify user was updated with encrypted address (phone normalized to +1XXXXXXXXXX)
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: {
           email: 'user@test.com',
-          phone: '(310) 555-0123',
+          phone: '+13105550123',
           depositorName: 'Kim MinJi',
           instagramId: '@minji_official',
           shippingAddress: mockEncryptedAddress,
@@ -242,7 +242,7 @@ describe('UsersService - Profile Completion', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0123',
+        phone: '+13105550123',
       });
     });
 
