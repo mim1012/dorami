@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
@@ -13,6 +14,7 @@ export class ReservationService {
     private prisma: PrismaService,
     private redisService: RedisService,
     private eventEmitter: EventEmitter2,
+    private configService: ConfigService,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('ReservationService');
@@ -57,7 +59,9 @@ export class ReservationService {
       },
     });
 
-    this.logger.log(`User ${userId} added to queue for product ${productId} at position ${position}`);
+    this.logger.log(
+      `User ${userId} added to queue for product ${productId} at position ${position}`,
+    );
 
     return { position: position !== null ? position + 1 : reservationNumber };
   }
@@ -91,7 +95,10 @@ export class ReservationService {
         data: {
           status: 'PROMOTED',
           promotedAt: new Date(),
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min to complete order
+          expiresAt: new Date(
+            Date.now() +
+              this.configService.get<number>('RESERVATION_TIMEOUT_MINUTES', 10) * 60 * 1000,
+          ),
         },
       });
 
