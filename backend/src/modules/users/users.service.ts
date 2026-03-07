@@ -1,4 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
@@ -11,6 +13,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private encryptionService: EncryptionService,
+    private configService: ConfigService,
   ) {}
 
   async findById(id: string): Promise<UserResponseDto> {
@@ -99,7 +102,7 @@ export class UsersService {
     const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
 
     // Update user with profile data
-    const user = await this.prisma.user.update({
+    let user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         email: dto.email,
@@ -110,6 +113,22 @@ export class UsersService {
         profileCompletedAt: new Date(), // Mark profile as completed
       },
     });
+
+    // Auto-promote to ADMIN if email matches ADMIN_EMAILS env var
+    const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
+    const adminEmailSet = new Set(
+      adminEmails
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean),
+    );
+    if (dto.email && adminEmailSet.has(dto.email) && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'ADMIN' },
+      });
+      user = (await this.prisma.user.findUnique({ where: { id: userId } }))!;
+    }
 
     return this.mapToResponseDto(user);
   }
@@ -161,7 +180,10 @@ export class UsersService {
       depositorName: user.depositorName ?? undefined,
       instagramId: user.instagramId ?? undefined,
       phone: user.phone ?? undefined,
+      kakaoPhone: user.kakaoPhone ?? undefined,
       shippingAddress,
+      profileComplete: Boolean(user.profileCompletedAt),
+      profileCompletedAt: user.profileCompletedAt ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
@@ -240,8 +262,11 @@ export class UsersService {
     depositorName?: string | null;
     instagramId?: string | null;
     phone?: string | null;
+    kakaoPhone?: string | null;
     createdAt: Date;
     updatedAt: Date;
+    shippingAddress?: Prisma.JsonValue | null;
+    profileCompletedAt?: Date | null;
   }): UserResponseDto {
     return {
       id: user.id,
@@ -253,6 +278,9 @@ export class UsersService {
       depositorName: user.depositorName ?? undefined,
       instagramId: user.instagramId ?? undefined,
       phone: user.phone ?? undefined,
+      kakaoPhone: user.kakaoPhone ?? undefined,
+      profileComplete: Boolean(user.profileCompletedAt),
+      profileCompletedAt: user.profileCompletedAt ?? undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
