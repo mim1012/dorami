@@ -62,8 +62,8 @@ jobs:
       # Centralized staging service URLs — avoids scattering raw localhost strings
       # throughout shell steps. These are correct for SSH-context health checks
       # (commands run ON the staging host via SSH, so localhost resolves there).
-      STAGING_BACKEND_URL: http://localhost:3001
-      STAGING_FRONTEND_URL: http://localhost:3000
+      STAGING_BACKEND_URL: http://localhost
+      STAGING_FRONTEND_URL: http://localhost
       STAGING_SRS_API_URL: http://localhost:1985
       STAGING_NGINX_URL: http://localhost
 
