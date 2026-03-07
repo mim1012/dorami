@@ -169,24 +169,18 @@ describe('AuthService', () => {
       nickname: 'Test User',
     };
 
-    it('should find existing user by email and link real kakaoId', async () => {
-      const existingUser = { ...mockUser, kakaoId: 'dev_placeholder', email: 'test@example.com' };
-      const updatedUser = { ...existingUser, kakaoId: 'kakao-real-456' };
-
-      jest
-        .spyOn(prismaService.user, 'findUnique')
-        .mockResolvedValueOnce(existingUser as any) // email lookup
-        .mockResolvedValueOnce(null); // conflict check
-      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser as any);
+    it('should NOT find users by email (email no longer collected from Kakao)', async () => {
+      // As of Task #5, email is not collected from Kakao OAuth per privacy policy.
+      // Users must provide their own email when completing their profile.
+      // This test verifies that validateKakaoUser only looks up by kakaoId, not email.
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null); // no user with this kakaoId
+      jest.spyOn(prismaService.user, 'create').mockResolvedValue(mockUser as any);
 
       const result = await service.validateKakaoUser(kakaoProfile);
 
-      expect(result.kakaoId).toBe('kakao-real-456');
-      expect(prismaService.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ kakaoId: 'kakao-real-456' }),
-        }),
-      );
+      // User should be created (not found by email, since email isn't collected)
+      expect(result.id).toBe(mockUser.id);
+      expect(prismaService.user.create).toHaveBeenCalled();
     });
 
     it('should find existing user by kakaoId when email not provided', async () => {

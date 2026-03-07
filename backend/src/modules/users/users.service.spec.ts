@@ -145,6 +145,8 @@ describe('UsersService - Profile Completion', () => {
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: {
+          email: 'user@test.com',
+          phone: '(310) 555-0123',
           depositorName: 'Kim MinJi',
           instagramId: '@minji_official',
           shippingAddress: mockEncryptedAddress,
