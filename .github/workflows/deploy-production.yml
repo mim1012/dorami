@@ -406,6 +406,7 @@ jobs:
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
           PROD_ADMIN_EMAILS: ${{ secrets.PROD_ADMIN_EMAILS }}
           PROD_SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
+          KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Write .env.production locally (GitHub Actions runner is ephemeral & isolated).
@@ -433,6 +434,7 @@ jobs:
 
           KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
           KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}
+          NEXT_PUBLIC_KAKAO_JS_KEY=${KAKAO_JS_KEY}
           KAKAO_CALLBACK_URL=https://www.doremi-live.com/api/auth/kakao/callback
 
           RTMP_SERVER_URL=rtmp://www.doremi-live.com:1935/live

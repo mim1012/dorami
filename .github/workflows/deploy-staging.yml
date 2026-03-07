@@ -184,6 +184,11 @@ jobs:
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
           ADMIN_EMAILS: ${{ secrets.STAGING_ADMIN_EMAILS }}
+          STAGING_JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+          STAGING_PROFILE_ENCRYPTION_KEY: ${{ secrets.STAGING_PROFILE_ENCRYPTION_KEY }}
+          STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_POSTGRES_PASSWORD }}
+          STAGING_REDIS_PASSWORD: ${{ secrets.STAGING_REDIS_PASSWORD }}
+          KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
         run: |
           # Validate variables are available before SSH
           echo "Pre-SSH validation:"
@@ -205,6 +210,11 @@ jobs:
             export KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
             export KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
             export ADMIN_EMAILS="${ADMIN_EMAILS}"
+            export STAGING_JWT_SECRET="${STAGING_JWT_SECRET}"
+            export STAGING_PROFILE_ENCRYPTION_KEY="${STAGING_PROFILE_ENCRYPTION_KEY}"
+            export STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
+            export STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
+            export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
 
             echo "SSH connection successful"
             echo "PWD: \$(pwd)"
@@ -243,6 +253,37 @@ jobs:
             echo "=== Attempting to remove uploads directory ==="
             rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
             git reset --hard origin/${GITHUB_REF_NAME}
+
+            echo "=== Creating .env.staging from GitHub Secrets ==="
+            cat > /opt/dorami/.env.staging << ENVEOF
+DATABASE_URL="postgresql://postgres:${STAGING_POSTGRES_PASSWORD}@postgres:5432/live_commerce_staging"
+POSTGRES_USER="postgres"
+POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
+POSTGRES_DB="live_commerce_staging"
+REDIS_URL="redis://:${STAGING_REDIS_PASSWORD}@redis:6379"
+REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
+JWT_SECRET="${STAGING_JWT_SECRET}"
+PROFILE_ENCRYPTION_KEY="${STAGING_PROFILE_ENCRYPTION_KEY}"
+KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
+KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
+KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
+ADMIN_EMAILS="${ADMIN_EMAILS}"
+IMAGE_TAG="${IMAGE_TAG}"
+GITHUB_REPOSITORY_OWNER="${GITHUB_REPOSITORY_OWNER}"
+APP_ENV="staging"
+NODE_ENV="production"
+PORT="3001"
+CORS_ORIGINS="https://staging.doremi-live.com,http://localhost:3000"
+CSRF_ENABLED="false"
+RTMP_SERVER_URL="rtmp://staging.doremi-live.com:1935/live"
+HLS_SERVER_URL="http://staging.doremi-live.com/hls"
+MEDIA_SERVER_URL="http://localhost:8080"
+ENABLE_DEV_AUTH="true"
+NEXT_PUBLIC_KAKAO_JS_KEY="${KAKAO_JS_KEY}"
+LOG_LEVEL="debug"
+ENVEOF
+            chmod 600 /opt/dorami/.env.staging
+            echo "✓ .env.staging created from GitHub Secrets"
 
             echo "=== Cleaning up old images ==="
             # Only prune dangling images and ghcr.io images (with repo filter)
