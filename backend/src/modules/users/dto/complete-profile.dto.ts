@@ -73,12 +73,11 @@ export class CompleteProfileDto {
   })
   zip!: string;
 
-  @ApiProperty({ description: '국제 전화번호', example: '+1 213-555-1234 or +82-10-1234-5678' })
+  @ApiProperty({ description: '미국 전화번호', example: '(213) 555-1234' })
   @IsString()
   @IsNotEmpty()
   @Matches(/^\+?[0-9\s\-()]{7,20}$/, {
-    message:
-      'Phone number must be in international format (e.g., +1 213-555-1234 or +82-10-1234-5678)',
+    message: 'Phone number must be in US format (e.g., (213) 555-1234 or +1 (213) 555-1234)',
   })
   phone!: string;
 }

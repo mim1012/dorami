@@ -359,12 +359,12 @@ export default function ProfileRegisterPage() {
               />
 
               <Input
-                label="전화번호 (국제)"
+                label="전화번호 (미국)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
-                placeholder="+1 213-555-1234"
+                placeholder="(213) 555-1234"
                 fullWidth
                 required
               />

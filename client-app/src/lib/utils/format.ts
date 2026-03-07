@@ -1,11 +1,34 @@
 /**
- * Format international phone number with country code (e.g. +1, +82)
- * Accepts + character and flexible spacing/hyphens/parentheses
+ * Format phone number to US format: (123) 456-7890 or +1 (123) 456-7890
+ * Optimized for Korean Americans using US phone numbers
  */
 export function formatPhoneNumber(value: string): string {
-  // Allow all characters: digits, +, -, (), and spaces
-  // Just clean up any other special characters
-  return value.replace(/[^\d+\-() ]/g, '');
+  // Extract only digits and + sign
+  const cleaned = value.replace(/[^\d+]/g, '');
+
+  // Handle empty input
+  if (!cleaned) return '';
+
+  // Check if it has country code (+1 for US)
+  let hasCountryCode = false;
+  let digits = cleaned;
+
+  if (cleaned.startsWith('+1')) {
+    hasCountryCode = true;
+    digits = cleaned.slice(2); // Remove +1
+  } else if (cleaned.startsWith('+')) {
+    // Other country codes - return as is
+    return cleaned;
+  }
+
+  // Limit to 10 digits (US phone number length)
+  digits = digits.slice(0, 10);
+
+  // Format: (123) 456-7890
+  if (digits.length === 0) return '';
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 /**
