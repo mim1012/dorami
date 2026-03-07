@@ -1,5 +1,6 @@
 /**
- * Format phone number to US format: (123) 456-7890 or +1 (123) 456-7890
+ * Format phone number to US format: (123) 456-7890
+ * Only accepts US +1 numbers (no international numbers)
  * Optimized for Korean Americans using US phone numbers
  */
 export function formatPhoneNumber(value: string): string {
@@ -10,15 +11,13 @@ export function formatPhoneNumber(value: string): string {
   if (!cleaned) return '';
 
   // Check if it has country code (+1 for US)
-  let hasCountryCode = false;
   let digits = cleaned;
 
   if (cleaned.startsWith('+1')) {
-    hasCountryCode = true;
     digits = cleaned.slice(2); // Remove +1
   } else if (cleaned.startsWith('+')) {
-    // Other country codes - return as is
-    return cleaned;
+    // Other country codes not supported
+    return '';
   }
 
   // Limit to 10 digits (US phone number length)

@@ -73,11 +73,14 @@ export class CompleteProfileDto {
   })
   zip!: string;
 
-  @ApiProperty({ description: '미국 전화번호', example: '(213) 555-1234' })
+  @ApiProperty({
+    description: '미국 전화번호 (US +1 only)',
+    example: '(213) 555-1234',
+  })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+?[0-9\s\-()]{7,20}$/, {
-    message: 'Phone number must be in US format (e.g., (213) 555-1234 or +1 (213) 555-1234)',
+  @Matches(/^(\+1)?[0-9\s\-()]{10,14}$/, {
+    message: 'Phone number must be US format (e.g., (213) 555-1234 or +1 213 555 1234)',
   })
   phone!: string;
 }

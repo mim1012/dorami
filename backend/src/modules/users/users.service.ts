@@ -81,6 +81,9 @@ export class UsersService {
       throw new ConflictException('This Instagram ID is already registered');
     }
 
+    // Normalize phone number to +1XXXXXXXXXX format
+    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+
     // Prepare shipping address for encryption
     const shippingAddress: ShippingAddress = {
       fullName: dto.fullName,
@@ -89,7 +92,7 @@ export class UsersService {
       city: dto.city,
       state: dto.state,
       zip: dto.zip,
-      phone: dto.phone,
+      phone: normalizedPhone,
     };
 
     // Encrypt shipping address
@@ -100,7 +103,7 @@ export class UsersService {
       where: { id: userId },
       data: {
         email: dto.email,
-        phone: dto.phone,
+        phone: normalizedPhone,
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
         shippingAddress: encryptedAddress as string, // Store encrypted string as Json
@@ -190,6 +193,42 @@ export class UsersService {
     });
 
     return this.getProfile(userId);
+  }
+
+  /**
+   * Normalize phone number to +1XXXXXXXXXX format (US only)
+   * Validates and normalizes user input to consistent format
+   */
+  normalizePhoneNumber(phone: string): string {
+    if (!phone) {
+      return '';
+    }
+
+    // Extract only digits and + sign
+    const cleaned = phone.replace(/[^\d+]/g, '');
+
+    if (!cleaned) {
+      throw new Error('Phone number must contain at least 10 digits');
+    }
+
+    // Remove country code if present
+    let digits = cleaned;
+    if (cleaned.startsWith('+1')) {
+      digits = cleaned.slice(2);
+    } else if (cleaned.startsWith('+')) {
+      throw new Error('Only US phone numbers (+1) are supported');
+    }
+
+    // Take first 10 digits
+    digits = digits.slice(0, 10);
+
+    // Validate exactly 10 digits
+    if (digits.length !== 10) {
+      throw new Error('Phone number must be exactly 10 digits');
+    }
+
+    // Return normalized format: +12135551234
+    return `+1${digits}`;
   }
 
   private mapToResponseDto(user: {
