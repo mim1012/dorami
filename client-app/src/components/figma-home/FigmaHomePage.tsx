@@ -3,16 +3,13 @@
 import { Header } from './Header';
 import { LiveBanner } from './LiveBanner';
 import { UpcomingLives } from './UpcomingLives';
-import { PopularProducts } from './PopularProducts';
 import { Footer } from './Footer';
 import { useMainPageData } from '@/lib/hooks/queries/use-mainpage';
 
 export function FigmaHomePage() {
-  const { data, isLoading, isError } = useMainPageData();
+  const { data, isLoading } = useMainPageData();
   const currentLive = data?.currentLive ?? null;
   const upcomingLives = data?.upcomingLives ?? [];
-  const featuredProducts = data?.popularProducts ?? [];
-  const pastProducts = data?.storeProducts ?? [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,14 +21,6 @@ export function FigmaHomePage() {
         </section>
         <section>
           <UpcomingLives upcomingLives={upcomingLives} isLoading={isLoading} />
-        </section>
-        <section>
-          <PopularProducts
-            featuredProducts={featuredProducts}
-            pastProducts={pastProducts}
-            isLoading={isLoading}
-            isError={isError}
-          />
         </section>
       </main>
 

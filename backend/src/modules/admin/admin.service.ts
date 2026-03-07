@@ -353,21 +353,6 @@ export class AdminService {
       }),
     ]);
 
-    // Get raw encrypted shippingAddress strings (bypass JSON parsing)
-    const shippingAddressMap = new Map<string, string | null>();
-    if (users.length > 0) {
-      const rawAddresses = await this.prisma.$queryRaw<
-        Array<{ id: string; shippingAddress: string | null }>
-      >`
-        SELECT id, CAST("shippingAddress" AS TEXT) as "shippingAddress"
-        FROM users
-        WHERE id = ANY(${users.map((u) => u.id)})
-      `;
-      rawAddresses.forEach((row) => {
-        shippingAddressMap.set(row.id, row.shippingAddress);
-      });
-    }
-
     // Batch fetch order stats for all users in this page
     const userIds = users.map((u) => u.id);
     const orderStats = await this.prisma.order.groupBy({
@@ -381,20 +366,13 @@ export class AdminService {
 
     // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => {
-      const rawAddress = shippingAddressMap.get(user.id);
-      const decryptedAddress = rawAddress
-        ? this.encryptionService.tryDecryptAddress(rawAddress)
-        : null;
-
       return {
         id: user.id,
         email: user.email ?? '',
         name: user.name,
         phone: user.phone,
         instagramId: user.instagramId,
-        shippingAddressSummary: decryptedAddress
-          ? this.formatShippingAddressSummary(decryptedAddress)
-          : '-',
+        shippingAddressSummary: this.formatShippingAddressSummary(user.shippingAddress),
         createdAt: user.createdAt.toISOString(),
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         status: user.status,

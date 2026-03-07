@@ -28,10 +28,10 @@ export function useProfileGuard() {
     // Step 2: Admin users skip profile completion
     if (user?.role === 'ADMIN') return;
 
-    // Step 3: Profile completion check
+    // Step 3: Profile completion check — redirect to /my-page so user can fill in missing fields
     const userProfileComplete = isProfileComplete(user);
     if (!userProfileComplete) {
-      router.replace('/profile/register');
+      router.replace('/my-page');
     }
   }, [user, isLoading, router, pathname]);
 

@@ -14,6 +14,7 @@ import {
   OrderHistoryCard,
   PointsBalanceCard,
   AddressEditModal,
+  ProfileCompletionBanner,
   type AddressFormData,
 } from '@/components/my-page';
 
@@ -197,9 +198,8 @@ export default function MyPagePage() {
     );
   }
 
-  // useProfileGuard handles redirect for non-authenticated and incomplete profile
-  // Admin users skip profile completion requirement
-  if (!user || (user.role !== 'ADMIN' && !isProfileComplete)) {
+  // useProfileGuard handles redirect for unauthenticated users
+  if (!user) {
     return null;
   }
 
@@ -234,6 +234,8 @@ export default function MyPagePage() {
               <Body className="text-success">{successMessage}</Body>
             </div>
           )}
+
+          <ProfileCompletionBanner user={user} />
 
           <ProfileInfoCard
             instagramId={profile.instagramId}

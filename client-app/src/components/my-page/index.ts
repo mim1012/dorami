@@ -5,3 +5,4 @@ export { OrderHistoryCard } from './OrderHistoryCard';
 export { PointsBalanceCard } from './PointsBalanceCard';
 export { AddressEditModal, type AddressFormData } from './AddressEditModal';
 export { LoginRequiredModal } from './LoginRequiredModal';
+export { ProfileCompletionBanner } from './ProfileCompletionBanner';

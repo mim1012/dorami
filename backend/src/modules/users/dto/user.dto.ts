@@ -1,4 +1,5 @@
-import { IsString, IsEmail, IsOptional, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, Matches, Length } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
@@ -33,6 +34,26 @@ export class UpdateUserDto {
     message: '전화번호는 +국가코드 번호 형식이어야 합니다 (예: +1 213-555-1234)',
   })
   phone?: string;
+
+  @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^@?[a-zA-Z0-9._]+$/, {
+    message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
+  })
+  @Transform(({ value }: { value: string }) => {
+    if (!value) {
+      return value;
+    }
+    return value.startsWith('@') ? value : `@${value}`;
+  })
+  instagramId?: string;
+
+  @ApiPropertyOptional({ description: '입금자명', example: '홍길동' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  depositorName?: string;
 }
 
 export class UserResponseDto {
