@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
@@ -41,7 +41,6 @@ interface FormErrors {
 
 export default function ProfileRegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, isLoading: authLoading, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
@@ -99,15 +98,6 @@ export default function ProfileRegisterPage() {
       setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
     }
   }, [user?.email]);
-
-  // Step 4: Pre-fill fullName from kakaoName query param (passed after Kakao OAuth)
-  useEffect(() => {
-    const kakaoName = searchParams.get('kakaoName');
-    if (kakaoName && !formData.fullName) {
-      setFormData((prev) => ({ ...prev, fullName: kakaoName }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

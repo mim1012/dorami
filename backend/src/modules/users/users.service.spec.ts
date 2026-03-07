@@ -95,6 +95,7 @@ describe('UsersService - Profile Completion', () => {
   describe('completeProfile', () => {
     const userId = 'user-123';
     const completeProfileDto: CompleteProfileDto = {
+      email: 'user@test.com',
       depositorName: 'Kim MinJi',
       instagramId: '@minji_official',
       fullName: 'Minji Kim',
