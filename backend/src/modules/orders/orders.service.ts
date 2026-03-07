@@ -332,6 +332,24 @@ export class OrdersService {
       productIds,
     );
 
+    // Apply point discount with validation
+    const pointsToUse = createOrderDto.pointsToUse;
+    let effectivePointsUsed = 0;
+    if (pointsToUse && pointsToUse > 0) {
+      await this.pointsService.validateRedemption(userId, pointsToUse, totals.total);
+      effectivePointsUsed = pointsToUse;
+    }
+
+    // Ensure final total is never negative
+    const finalTotal = Math.max(0, totals.total - effectivePointsUsed);
+    if (finalTotal === 0 && totals.total > 0) {
+      throw new BusinessException(
+        'INVALID_ORDER_TOTAL',
+        { total: finalTotal, pointsUsed: effectivePointsUsed },
+        'Order total cannot be zero after points redemption',
+      );
+    }
+
     // Generate unique order ID outside transaction (uses Redis, not transactional)
     const orderId = await this.generateOrderId();
 
@@ -347,7 +365,7 @@ export class OrdersService {
           })),
         );
 
-        return tx.order.create({
+        const createdOrder = await tx.order.create({
           data: {
             id: orderId,
             userId,
@@ -358,7 +376,8 @@ export class OrdersService {
             status: 'PENDING_PAYMENT',
             subtotal: new Decimal(totals.subtotal),
             shippingFee: new Decimal(totals.totalShippingFee),
-            total: new Decimal(totals.total),
+            total: new Decimal(finalTotal),
+            pointsUsed: effectivePointsUsed,
             orderItems: {
               create: orderItemsData,
             },
@@ -367,6 +386,18 @@ export class OrdersService {
             orderItems: true,
           },
         });
+
+        if (pointsToUse && pointsToUse > 0) {
+          await this.pointsService.deductPointsTx(
+            tx,
+            userId,
+            pointsToUse,
+            PointTransactionType.USED_ORDER,
+            createdOrder.id,
+          );
+        }
+
+        return createdOrder;
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -538,6 +569,15 @@ export class OrdersService {
 
     if (!order) {
       throw new OrderNotFoundException(orderId);
+    }
+
+    const CANCELLABLE_STATUSES: string[] = ['PENDING_PAYMENT'];
+    if (!CANCELLABLE_STATUSES.includes(order.status)) {
+      throw new BusinessException(
+        'ORDER_CANNOT_BE_CANCELLED',
+        { orderId, currentStatus: order.status },
+        `Order cannot be cancelled in status: ${order.status}`,
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -755,8 +795,8 @@ export class OrdersService {
             order.depositorName,
           );
 
-          // Mark as sent, expire after 24 hours
-          await this.redisService.set(reminderKey, '1', 60 * 60 * 24);
+          // Mark as sent, expire after 7 days
+          await this.redisService.set(reminderKey, '1', 60 * 60 * 24 * 7);
 
           this.logger.log(`Payment reminder sent for order ${order.id}`);
         } catch (error) {
