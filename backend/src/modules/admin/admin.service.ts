@@ -831,16 +831,42 @@ export class AdminService {
           orderBy: { [sortBy]: sortOrder } as Record<string, string>,
           take: MAX_EXPORT_ROWS,
           include: {
-            orderItems: true,
-            user: { select: { phone: true } },
+            orderItems: {
+              include: {
+                Product: {
+                  select: { streamKey: true },
+                },
+              },
+            },
+            user: { select: { phone: true, email: true } },
           },
         });
 
+    // Batch-fetch LiveStream titles for all unique streamKeys found in order items
+    const allStreamKeys = new Set<string>();
+    for (const order of orders) {
+      for (const item of order.orderItems) {
+        if (item.Product?.streamKey) {
+          allStreamKeys.add(item.Product.streamKey);
+        }
+      }
+    }
+    const liveStreams =
+      allStreamKeys.size > 0
+        ? await this.prisma.liveStream.findMany({
+            where: { streamKey: { in: Array.from(allStreamKeys) } },
+            select: { streamKey: true, title: true },
+          })
+        : [];
+    const streamTitleMap = new Map<string, string>(
+      liveStreams.map((ls) => [ls.streamKey, ls.title]),
+    );
+
     const ORDER_STATUS_KO: Record<string, string> = {
-      PENDING_PAYMENT: '입금대기',
-      PAYMENT_CONFIRMED: '결제완료',
-      SHIPPED: '배송중',
-      DELIVERED: '배송완료',
+      PENDING_PAYMENT: '입금 대기',
+      PAYMENT_CONFIRMED: '결제 완료',
+      SHIPPED: '배송 중',
+      DELIVERED: '배송 완료',
       CANCELLED: '취소',
     };
 
@@ -860,19 +886,17 @@ export class AdminService {
     const sheet = workbook.addWorksheet('주문 목록');
 
     sheet.columns = [
-      { header: '주문번호', key: 'id', width: 28 },
-      { header: '이메일', key: 'userEmail', width: 28 },
-      { header: '인스타그램ID', key: 'instagramId', width: 18 },
-      { header: '입금자명', key: 'depositorName', width: 14 },
-      { header: '전화번호', key: 'phone', width: 16 },
+      { header: '방송제목', key: 'broadcastTitle', width: 30 },
       { header: '주문상태', key: 'status', width: 12 },
+      { header: '인스타그램ID', key: 'instagramId', width: 18 },
       { header: '상품명', key: 'productName', width: 30 },
       { header: '색상', key: 'color', width: 12 },
       { header: '사이즈', key: 'size', width: 10 },
-      { header: '배송지', key: 'shippingAddress', width: 40 },
-      { header: '소계', key: 'subtotal', width: 12 },
       { header: '배송비', key: 'shippingFee', width: 10 },
       { header: '합계', key: 'total', width: 12 },
+      { header: '배송지', key: 'shippingAddress', width: 40 },
+      { header: '전화번호', key: 'phone', width: 16 },
+      { header: '이메일', key: 'userEmail', width: 28 },
       { header: '주문일', key: 'createdAt', width: 22 },
       { header: '결제일', key: 'paidAt', width: 22 },
     ];
@@ -887,47 +911,50 @@ export class AdminService {
     headerRow.alignment = { horizontal: 'center' };
 
     orders.forEach((order) => {
-      // 배송지 정보 추출
-      let shippingAddressStr = '-';
-      shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
-
-      const phone = order.user.phone ?? '-';
-      const baseRow = {
-        id: order.id,
-        userEmail: order.userEmail,
-        instagramId: order.instagramId?.replace(/^@/, ''),
-        depositorName: order.depositorName,
-        phone,
-        status: ORDER_STATUS_KO[order.status] ?? order.status,
-        shippingAddress: shippingAddressStr,
-        subtotal: Number(order.subtotal),
-        shippingFee: Number(order.shippingFee),
-        total: Number(order.total),
-        createdAt: toKST(order.createdAt),
-        paidAt: order.paidAt ? toKST(order.paidAt) : '',
-      };
+      const shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
+      const shippingAddr = this.normalizeShippingAddress(order.shippingAddress);
+      const phone = order.user.phone ?? shippingAddr?.phone ?? '-';
 
       if (order.orderItems && order.orderItems.length > 0) {
-        order.orderItems.forEach((item) => {
+        order.orderItems.forEach((item, itemIndex) => {
+          const itemStreamKey = item.Product?.streamKey ?? null;
+          const broadcastTitle = itemStreamKey ? (streamTitleMap.get(itemStreamKey) ?? null) : null;
           sheet.addRow({
-            ...baseRow,
+            broadcastTitle: broadcastTitle ?? '',
+            status: ORDER_STATUS_KO[order.status] ?? order.status,
+            instagramId: order.instagramId?.replace(/^@/, ''),
             productName: item.productName,
             color: item.color ?? '-',
             size: item.size ?? '-',
+            shippingFee: itemIndex === 0 ? Number(order.shippingFee) : '',
+            total: itemIndex === 0 ? Number(order.total) : '',
+            shippingAddress: shippingAddressStr,
+            phone,
+            userEmail: order.userEmail,
+            createdAt: toKST(order.createdAt),
+            paidAt: order.paidAt ? toKST(order.paidAt) : '',
           });
         });
       } else {
         sheet.addRow({
-          ...baseRow,
+          broadcastTitle: '',
+          status: ORDER_STATUS_KO[order.status] ?? order.status,
+          instagramId: order.instagramId?.replace(/^@/, ''),
           productName: '-',
           color: '-',
           size: '-',
+          shippingFee: Number(order.shippingFee),
+          total: Number(order.total),
+          shippingAddress: shippingAddressStr,
+          phone,
+          userEmail: order.userEmail,
+          createdAt: toKST(order.createdAt),
+          paidAt: order.paidAt ? toKST(order.paidAt) : '',
         });
       }
     });
 
     const moneyFmt = '#,##0';
-    sheet.getColumn('subtotal').numFmt = moneyFmt;
     sheet.getColumn('shippingFee').numFmt = moneyFmt;
     sheet.getColumn('total').numFmt = moneyFmt;
 
@@ -1210,6 +1237,19 @@ export class AdminService {
   /**
    * Get system settings (cart timer, bank info, shipping fee, notifications)
    */
+  async getPublicFooterConfig() {
+    const config = await this.prisma.systemConfig.upsert({
+      where: { id: 'system' },
+      update: {},
+      create: { id: 'system' },
+    });
+    return {
+      businessRegistrationNumber: config.businessRegistrationNumber,
+      businessAddress: config.businessAddress,
+      onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
+    };
+  }
+
   async getSystemSettings() {
     const config = await this.prisma.systemConfig.upsert({
       where: { id: 'system' },
@@ -1232,6 +1272,11 @@ export class AdminService {
       bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
+      venmoEmail: config.venmoEmail,
+      venmoRecipientName: config.venmoRecipientName,
+      businessRegistrationNumber: config.businessRegistrationNumber,
+      businessAddress: config.businessAddress,
+      onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
@@ -1284,6 +1329,21 @@ export class AdminService {
     if (dto.zelleRecipientName !== undefined) {
       updateData.zelleRecipientName = dto.zelleRecipientName;
     }
+    if (dto.venmoEmail !== undefined) {
+      updateData.venmoEmail = dto.venmoEmail;
+    }
+    if (dto.venmoRecipientName !== undefined) {
+      updateData.venmoRecipientName = dto.venmoRecipientName;
+    }
+    if (dto.businessRegistrationNumber !== undefined) {
+      updateData.businessRegistrationNumber = dto.businessRegistrationNumber;
+    }
+    if (dto.businessAddress !== undefined) {
+      updateData.businessAddress = dto.businessAddress;
+    }
+    if (dto.onlineSalesRegistrationNumber !== undefined) {
+      updateData.onlineSalesRegistrationNumber = dto.onlineSalesRegistrationNumber;
+    }
     if (dto.freeShippingEnabled !== undefined) {
       updateData.freeShippingEnabled = dto.freeShippingEnabled;
     }
@@ -1313,6 +1373,11 @@ export class AdminService {
       bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
+      venmoEmail: config.venmoEmail,
+      venmoRecipientName: config.venmoRecipientName,
+      businessRegistrationNumber: config.businessRegistrationNumber,
+      businessAddress: config.businessAddress,
+      onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
@@ -1598,8 +1663,8 @@ export class AdminService {
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
-          paymentStatus: 'CONFIRMED',
-          status: 'PAYMENT_CONFIRMED',
+          paymentStatus: PaymentStatus.CONFIRMED,
+          status: OrderStatus.PAYMENT_CONFIRMED,
           paidAt: new Date(),
         },
       });
@@ -1638,48 +1703,60 @@ export class AdminService {
     }
 
     if (
-      !['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(
-        status,
-      )
+      !(
+        [
+          OrderStatus.PENDING_PAYMENT,
+          OrderStatus.PAYMENT_CONFIRMED,
+          OrderStatus.SHIPPED,
+          OrderStatus.DELIVERED,
+          OrderStatus.CANCELLED,
+        ] as string[]
+      ).includes(status)
     ) {
       throw new BadRequestException('지원하지 않는 주문 상태입니다');
     }
 
-    if (order.status === 'CANCELLED' && status !== 'CANCELLED') {
+    if (order.status === OrderStatus.CANCELLED && status !== OrderStatus.CANCELLED) {
       throw new BadRequestException('취소된 주문의 상태는 변경할 수 없습니다');
     }
 
     const data: Record<string, unknown> = { status };
 
     // Sync related fields based on status
-    if (status === 'PENDING_PAYMENT') {
-      data.status = 'PENDING_PAYMENT';
-      data.paymentStatus = 'PENDING';
+    if (status === OrderStatus.PENDING_PAYMENT) {
+      data.status = OrderStatus.PENDING_PAYMENT;
+      data.paymentStatus = PaymentStatus.PENDING;
       data.paidAt = null;
-      data.shippingStatus = 'PENDING';
+      data.shippingStatus = ShippingStatus.PENDING;
       data.shippedAt = null;
       data.deliveredAt = null;
-    } else if (status === 'PAYMENT_CONFIRMED') {
-      data.paymentStatus = 'CONFIRMED';
+    } else if (status === OrderStatus.PAYMENT_CONFIRMED) {
+      data.paymentStatus = PaymentStatus.CONFIRMED;
       data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus = order.shippingStatus === 'DELIVERED' ? 'DELIVERED' : 'PENDING';
-    } else if (status === 'SHIPPED') {
-      data.status = 'SHIPPED';
-      data.paymentStatus = 'CONFIRMED';
+      data.shippingStatus =
+        order.shippingStatus === ShippingStatus.DELIVERED
+          ? ShippingStatus.DELIVERED
+          : ShippingStatus.PENDING;
+    } else if (status === OrderStatus.SHIPPED) {
+      data.status = OrderStatus.SHIPPED;
+      data.paymentStatus = PaymentStatus.CONFIRMED;
       data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus = 'SHIPPED';
+      data.shippingStatus = ShippingStatus.SHIPPED;
       data.shippedAt = order.shippedAt ?? new Date();
-    } else if (status === 'DELIVERED') {
-      data.status = 'DELIVERED';
-      data.paymentStatus = 'CONFIRMED';
+    } else if (status === OrderStatus.DELIVERED) {
+      data.status = OrderStatus.DELIVERED;
+      data.paymentStatus = PaymentStatus.CONFIRMED;
       data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus = 'DELIVERED';
+      data.shippingStatus = ShippingStatus.DELIVERED;
       data.shippedAt = order.shippedAt ?? order.paidAt ?? new Date();
       data.deliveredAt = order.deliveredAt ?? new Date();
-    } else if (status === 'CANCELLED') {
-      data.paymentStatus = 'FAILED';
+    } else if (status === OrderStatus.CANCELLED) {
+      data.paymentStatus = PaymentStatus.FAILED;
       data.paidAt = order.paidAt;
-      data.shippingStatus = order.shippingStatus === 'DELIVERED' ? 'DELIVERED' : 'SHIPPED';
+      data.shippingStatus =
+        order.shippingStatus === ShippingStatus.DELIVERED
+          ? ShippingStatus.DELIVERED
+          : ShippingStatus.SHIPPED;
 
       // Restore stock for each order item
       for (const item of order.orderItems) {
@@ -1701,7 +1778,7 @@ export class AdminService {
     });
 
     // Emit cancellation event for point refund + notifications
-    if (status === 'CANCELLED') {
+    if (status === OrderStatus.CANCELLED) {
       this.eventEmitter.emit('order:cancelled', { orderId });
     }
 
@@ -1734,15 +1811,15 @@ export class AdminService {
 
     const data: Record<string, unknown> = { shippingStatus };
 
-    if (shippingStatus === 'SHIPPED') {
+    if (shippingStatus === ShippingStatus.SHIPPED) {
       data.shippedAt = order.shippedAt ?? new Date();
-      data.status = 'SHIPPED';
+      data.status = OrderStatus.SHIPPED;
       if (trackingNumber) {
         data.trackingNumber = trackingNumber;
       }
-    } else if (shippingStatus === 'DELIVERED') {
+    } else if (shippingStatus === ShippingStatus.DELIVERED) {
       data.deliveredAt = order.deliveredAt ?? new Date();
-      data.status = 'DELIVERED';
+      data.status = OrderStatus.DELIVERED;
     }
 
     const updated = await this.prisma.order.update({
@@ -1786,15 +1863,17 @@ export class AdminService {
       throw new BadRequestException('Payment reminder can only be sent for pending payments');
     }
 
-    // Send alimtalk if user has phone number, otherwise fall back to web push
+    // 전화번호 조회: phone(직접 입력) 없으면 kakaoPhone(카카오 수집) fallback
     const user = await this.prisma.user.findUnique({
       where: { id: order.userId },
-      select: { phone: true },
+      select: { phone: true, kakaoPhone: true },
     });
 
-    if (user?.phone) {
+    const effectivePhone = user?.phone ?? user?.kakaoPhone ?? null;
+
+    if (effectivePhone) {
       await this.alimtalkService.sendPaymentReminderAlimtalk(
-        user.phone,
+        effectivePhone,
         order.id,
         Number(order.total),
       );
@@ -2031,7 +2110,7 @@ export class AdminService {
     };
 
     // If setting to SUSPENDED, set suspendedAt timestamp
-    if (dto.status === 'SUSPENDED') {
+    if (dto.status === UserStatus.SUSPENDED) {
       updateData.suspendedAt = new Date();
       if (dto.suspensionReason) {
         updateData.suspensionReason = dto.suspensionReason;
@@ -2049,7 +2128,7 @@ export class AdminService {
 
     // Set/clear Redis suspended flag for WebSocket auth check
     try {
-      if (dto.status === 'SUSPENDED') {
+      if (dto.status === UserStatus.SUSPENDED) {
         await this.redisService.set(`suspended:${userId}`, '1');
         // Also blacklist all existing tokens for this user
         await this.redisService.set(`blacklist:${userId}`, '1', 86400 * 30); // 30 days

@@ -32,15 +32,17 @@ export class NotificationEventsListener {
         this.logger.log(`Order ${payload.orderId} used ${order.pointsUsed} points`);
       }
 
-      // Send alimtalk if user has phone number
+      // 전화번호 조회: phone(직접 입력) 없으면 kakaoPhone(카카오 수집) fallback
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
-        select: { phone: true },
+        select: { phone: true, kakaoPhone: true },
       });
 
-      if (user?.phone && order) {
+      const effectivePhone = user?.phone ?? user?.kakaoPhone ?? null;
+
+      if (effectivePhone && order) {
         await this.alimtalkService.sendOrderAlimtalk(
-          user.phone,
+          effectivePhone,
           payload.orderId,
           Number(order.total),
         );
