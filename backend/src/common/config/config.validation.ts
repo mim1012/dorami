@@ -88,9 +88,9 @@ export const configValidationSchema = Joi.object({
   }),
 
   // Bank Transfer (Optional)
-  BANK_NAME: Joi.string().optional(),
-  BANK_ACCOUNT_NUMBER: Joi.string().optional(),
-  BANK_ACCOUNT_HOLDER: Joi.string().optional(),
+  BANK_NAME: Joi.string().optional().allow(''),
+  BANK_ACCOUNT_NUMBER: Joi.string().optional().allow(''),
+  BANK_ACCOUNT_HOLDER: Joi.string().optional().allow(''),
 
   // Admin
   ADMIN_EMAILS: Joi.string().optional().allow(''),
