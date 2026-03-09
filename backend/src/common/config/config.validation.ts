@@ -136,9 +136,9 @@ export const configValidationSchema = Joi.object({
   SOLAPI_API_URL: Joi.string().uri().default('https://api.solapi.com/messages/v4/send-many'),
 
   // Web Push (VAPID) - Optional
-  VAPID_PUBLIC_KEY: Joi.string().optional(),
-  VAPID_PRIVATE_KEY: Joi.string().optional(),
-  VAPID_SUBJECT: Joi.string().optional(),
+  VAPID_PUBLIC_KEY: Joi.string().optional().allow(''),
+  VAPID_PRIVATE_KEY: Joi.string().optional().allow(''),
+  VAPID_SUBJECT: Joi.string().optional().allow(''),
 
   // WebSocket / Redis Timeouts
   REDIS_CONNECTION_TIMEOUT_MS: Joi.number().default(10000),
