@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
 import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
 import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, ApiError } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
@@ -39,12 +39,73 @@ interface FormErrors {
   phone?: string;
 }
 
+interface ProfileResponse {
+  email?: string;
+  depositorName?: string;
+  instagramId?: string;
+  phone?: string;
+  shippingAddress?: {
+    fullName?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    phone?: string;
+  };
+}
+
+const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
+const ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
+const PHONE_PATTERN = /^\(\d{3}\) \d{3}-\d{4}$/;
+
+const sanitizeReturnPath = (raw: string | null): string | null => {
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (!decoded.startsWith('/')) return null;
+    if (decoded.startsWith('//')) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+};
+
+const consumeStoredReturnTo = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(POST_LOGIN_RETURN_KEY);
+  if (!stored) return null;
+  window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
+  return sanitizeReturnPath(stored);
+};
+
+const mapProfileToFormData = (profile: ProfileResponse, fallbackEmail?: string): FormData => {
+  const shipping = profile.shippingAddress;
+  return {
+    email: profile.email ?? fallbackEmail ?? '',
+    depositorName: profile.depositorName ?? '',
+    instagramId: profile.instagramId ?? '',
+    fullName: shipping?.fullName ?? '',
+    address1: shipping?.address1 ?? '',
+    address2: shipping?.address2 ?? '',
+    city: shipping?.city ?? '',
+    state: shipping?.state ? shipping.state.toUpperCase() : '',
+    zip: shipping?.zip ? formatZipCode(shipping.zip) : '',
+    phone: shipping?.phone ? formatPhoneNumber(shipping.phone) : '',
+  };
+};
+
 export default function ProfileRegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryReturnTo = useMemo(
+    () => sanitizeReturnPath(searchParams.get('returnTo')),
+    [searchParams],
+  );
   const { user, isLoading: authLoading, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
-    email: user?.email || '',
+    email: '',
     depositorName: '',
     instagramId: '',
     fullName: '',
@@ -59,7 +120,15 @@ export default function ProfileRegisterPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
+  const [profilePrefetching, setProfilePrefetching] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
+  const isEditMode = !!(user && isProfileComplete(user));
+  const headingText = isEditMode ? '프로필 정보 수정' : '프로필 등록';
+  const subheadingText = isEditMode
+    ? '저장된 프로필 정보를 업데이트할 수 있습니다'
+    : '서비스 이용을 위해 추가 정보를 입력해주세요';
 
   useEffect(() => {
     if (submitError && errorRef.current) {
@@ -82,22 +151,33 @@ export default function ProfileRegisterPage() {
     }
   }, [user, authLoading, router]);
 
-  // Step 2: Profile already complete → go to live or admin
+  // Step 2: Pre-fill profile data when editing or email for new users
   useEffect(() => {
-    if (authLoading) return;
-    if (user && isProfileComplete(user)) {
-      // Admin goes to admin dashboard, users go to live
-      const redirectPath = user.role === 'ADMIN' ? '/admin' : '/live';
-      router.replace(redirectPath);
-    }
-  }, [user, authLoading, router]);
+    if (!user || prefilled) return;
 
-  // Step 3: Pre-fill email from Kakao when user loads
-  useEffect(() => {
-    if (user?.email && !formData.email) {
-      setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
+    if (isEditMode) {
+      setProfilePrefetching(true);
+      apiClient
+        .get<ProfileResponse>('/users/profile/me')
+        .then((response) => {
+          setFormData(mapProfileToFormData(response.data, user.email ?? undefined));
+        })
+        .catch((error) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Failed to load profile data:', error);
+          }
+          setSubmitError('프로필 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+        })
+        .finally(() => {
+          setProfilePrefetching(false);
+          setPrefilled(true);
+        });
+      return;
     }
-  }, [user?.email]);
+
+    setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
+    setPrefilled(true);
+  }, [user, isEditMode, prefilled]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -115,6 +195,10 @@ export default function ProfileRegisterPage() {
     }
 
     setFormData((prev) => ({ ...prev, [name]: formattedValue }));
+
+    if (successMessage) {
+      setSuccessMessage(null);
+    }
 
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
@@ -134,12 +218,13 @@ export default function ProfileRegisterPage() {
       newErrors.depositorName = '입금자명을 입력해주세요';
     }
 
-    if (!formData.instagramId.trim() || formData.instagramId === '@') {
-      newErrors.instagramId = '인스타그램 ID를 입력해주세요';
-    } else if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
-      newErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
-    } else if (instagramAvailable === false) {
-      newErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
+    // 인스타그램 ID: 선택 입력 (값이 있을 때만 형식 검증)
+    if (formData.instagramId.trim() && formData.instagramId !== '@') {
+      if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
+        newErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
+      } else if (instagramAvailable === false) {
+        newErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
+      }
     }
 
     if (!formData.fullName.trim()) {
@@ -158,15 +243,66 @@ export default function ProfileRegisterPage() {
       newErrors.state = 'State를 선택해주세요';
     }
 
-    // ZIP: 검증 제거 (아무거나 입력 가능)
+    if (!formData.zip.trim()) {
+      newErrors.zip = 'ZIP Code를 입력해주세요';
+    } else if (!ZIP_PATTERN.test(formData.zip)) {
+      newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
+    }
 
-    // 전화번호: 아무거나 입력 가능 (유효성 검증 제거)
-    if (!formData.phone.trim()) {
-      newErrors.phone = '전화번호를 입력해주세요';
+    // 전화번호: 선택 입력 (값이 있을 때만 형식 검증)
+    if (formData.phone.trim() && !PHONE_PATTERN.test(formData.phone)) {
+      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const applyServerValidationErrors = (apiError: ApiError): boolean => {
+    const detail = apiError.details as { message?: unknown } | undefined;
+    const messages: string[] = [];
+    if (detail) {
+      if (Array.isArray(detail.message)) {
+        messages.push(...detail.message.map((msg) => String(msg)));
+      } else if (typeof detail.message === 'string') {
+        messages.push(detail.message);
+      }
+    }
+
+    const normalizedErrors: FormErrors = {};
+    messages.forEach((msg) => {
+      const lower = msg.toLowerCase();
+      if (lower.includes('email')) {
+        normalizedErrors.email = '올바른 이메일 형식이 아닙니다';
+      } else if (lower.includes('instagram')) {
+        normalizedErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
+      } else if (lower.includes('depositor')) {
+        normalizedErrors.depositorName = '입금자명을 입력해주세요';
+      } else if (lower.includes('fullname') || lower.includes('full name')) {
+        normalizedErrors.fullName = '수령인 이름을 입력해주세요';
+      } else if (lower.includes('address1')) {
+        normalizedErrors.address1 = '주소를 입력해주세요';
+      } else if (lower.includes('city')) {
+        normalizedErrors.city = '도시명을 입력해주세요';
+      } else if (lower.includes('state')) {
+        normalizedErrors.state = 'State를 선택해주세요';
+      } else if (lower.includes('zip')) {
+        normalizedErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
+      } else if (lower.includes('phone')) {
+        normalizedErrors.phone = '미국 전화번호 형식: (123) 456-7890';
+      }
+    });
+
+    if (apiError.statusCode === 409 || apiError.message.includes('Instagram ID')) {
+      normalizedErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
+    }
+
+    if (Object.keys(normalizedErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...normalizedErrors }));
+      return true;
+    }
+
+    return false;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,32 +314,81 @@ export default function ProfileRegisterPage() {
 
     setIsSubmitting(true);
     setSubmitError(null);
+    setSuccessMessage(null);
+
+    const igTrimmed = formData.instagramId.trim();
+    const phoneTrimmed = formData.phone.trim();
+    const payload = {
+      email: formData.email.trim(),
+      depositorName: formData.depositorName.trim(),
+      // 선택 필드: 빈 문자열은 undefined로 변환 (백엔드 @IsOptional 처리)
+      instagramId: igTrimmed && igTrimmed !== '@' ? igTrimmed : undefined,
+      fullName: formData.fullName.trim(),
+      address1: formData.address1.trim(),
+      address2: formData.address2.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim(),
+      zip: formData.zip.trim(),
+      phone: phoneTrimmed || undefined,
+    };
 
     try {
-      await apiClient.post('/users/complete-profile', formData);
+      if (isEditMode) {
+        await apiClient.patch('/users/me', {
+          email: payload.email,
+          depositorName: payload.depositorName,
+          instagramId: payload.instagramId,
+          phone: payload.phone,
+        });
+        const addressResponse = await apiClient.patch<ProfileResponse>('/users/profile/address', {
+          fullName: payload.fullName,
+          address1: payload.address1,
+          address2: payload.address2,
+          city: payload.city,
+          state: payload.state,
+          zip: payload.zip,
+          phone: payload.phone,
+        });
+        setFormData(mapProfileToFormData(addressResponse.data, payload.email));
+        await refreshProfile();
+        setSuccessMessage('프로필 정보가 저장되었습니다.');
+        return;
+      }
+
+      await apiClient.post('/users/complete-profile', payload);
+      await apiClient.post('/auth/refresh');
       await refreshProfile();
-      // refreshProfile은 실패해도 throw하지 않으므로, 스토어 상태를 직접 확인
       const updatedUser = useAuthStore.getState().user;
       if (!isProfileComplete(updatedUser)) {
         setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      // Admin goes to admin dashboard, users go to live
-      const redirectPath = updatedUser?.role === 'ADMIN' ? '/admin' : '/live';
+
+      const storedReturnTo = consumeStoredReturnTo();
+      const redirectPath =
+        updatedUser?.role === 'ADMIN' ? '/admin' : storedReturnTo || queryReturnTo || '/live';
       router.push(redirectPath);
-    } catch (error: any) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Profile completion error:', error);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const handled = applyServerValidationErrors(error);
+        if (!handled) {
+          setSubmitError(
+            error.message || '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
+          );
+        }
+      } else if (error instanceof Error) {
+        setSubmitError(
+          error.message || '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
+        );
+      } else {
+        setSubmitError('프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.');
       }
-      setSubmitError(
-        error.message || '프로필 등록에 실패했습니다. 정보를 확인 후 다시 시도해주세요.',
-      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (authLoading) {
+  if (authLoading || profilePrefetching) {
     return (
       <div className="min-h-screen bg-primary-black flex items-center justify-center">
         <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
@@ -215,13 +400,19 @@ export default function ProfileRegisterPage() {
     <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
-          <Display className="text-hot-pink mb-2">프로필 등록</Display>
-          <Body className="text-secondary-text">서비스 이용을 위해 추가 정보를 입력해주세요</Body>
+          <Display className="text-hot-pink mb-2">{headingText}</Display>
+          <Body className="text-secondary-text">{subheadingText}</Body>
         </div>
 
         {submitError && (
           <div ref={errorRef} className="bg-error/10 border border-error rounded-lg p-4 mb-6">
             <Body className="text-error">{submitError}</Body>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-success/10 border border-success rounded-lg p-4 mb-6">
+            <Body className="text-success">{successMessage}</Body>
           </div>
         )}
 
@@ -255,14 +446,13 @@ export default function ProfileRegisterPage() {
 
             <div>
               <Input
-                label="인스타그램 ID"
+                label="인스타그램 ID (선택)"
                 name="instagramId"
                 value={formData.instagramId}
                 onChange={handleChange}
                 error={errors.instagramId}
                 placeholder="@username"
                 fullWidth
-                required
               />
               {checkingInstagram && (
                 <Body className="text-secondary-text text-xs mt-1">확인 중...</Body>
@@ -359,14 +549,13 @@ export default function ProfileRegisterPage() {
               />
 
               <Input
-                label="전화번호 (미국)"
+                label="전화번호 (미국, 선택)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
                 placeholder="(213) 555-1234"
                 fullWidth
-                required
               />
             </div>
           </div>
@@ -380,12 +569,16 @@ export default function ProfileRegisterPage() {
             disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >
             {isSubmitting
-              ? '등록 중...'
+              ? isEditMode
+                ? '저장 중...'
+                : '등록 중...'
               : checkingInstagram
                 ? 'ID 확인 중...'
                 : instagramAvailable === false
                   ? '사용 불가 ID'
-                  : '프로필 등록 완료'}
+                  : isEditMode
+                    ? '프로필 저장'
+                    : '프로필 등록 완료'}
           </Button>
         </form>
       </div>

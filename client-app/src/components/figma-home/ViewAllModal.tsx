@@ -2,6 +2,7 @@
 
 import { X, TrendingUp, Sparkles } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { formatPrice } from '@/lib/utils/price';
 
 interface Product {
   id: string;
@@ -82,12 +83,12 @@ export function ViewAllModal({
                       </h4>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-base md:text-lg font-bold text-gray-900">
-                          ₩{product.price.toLocaleString()}
+                          {formatPrice(product.price)}
                         </span>
                       </div>
                       {product.originalPrice != null && (
                         <span className="text-xs text-gray-400 line-through">
-                          ₩{product.originalPrice.toLocaleString()}
+                          {formatPrice(product.originalPrice)}
                         </span>
                       )}
                     </div>
@@ -113,7 +114,7 @@ export function ViewAllModal({
                         {product.name}
                       </h4>
                       <p className="text-base md:text-lg font-bold text-gray-900">
-                        ₩{product.price.toLocaleString()}
+                        {formatPrice(product.price)}
                       </p>
                     </div>
                   </>

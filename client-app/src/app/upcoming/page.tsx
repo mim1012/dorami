@@ -6,28 +6,15 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import type { UpcomingLiveDto } from '@live-commerce/shared-types';
 import { ImageWithFallback } from '@/components/figma-home/figma/ImageWithFallback';
+import { formatStreamSchedule } from '@/lib/utils/format';
 
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1749448621946-5dd68de99664?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&auto=format';
 
 function formatLiveSchedule(isoDate: string) {
-  const date = new Date(isoDate);
-
-  if (Number.isNaN(date.getTime())) {
-    return { dayLabel: '예약', timeLabel: '시간 미정' };
-  }
-
-  const dayLabel = date.toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    weekday: 'short',
-  });
-  const timeLabel = date.toLocaleTimeString('ko-KR', {
-    hour: 'numeric',
-    minute: 'numeric',
-  });
-
-  return { dayLabel, timeLabel };
+  const { dayLabel, timeLabel, kstLabel } = formatStreamSchedule(isoDate);
+  if (!timeLabel) return { dayLabel: '예약', timeLabel: '시간 미정', kstLabel: '' };
+  return { dayLabel, timeLabel, kstLabel };
 }
 
 function CountdownBadge({ scheduledAt }: { scheduledAt: string }) {
@@ -166,7 +153,7 @@ export default function UpcomingPage() {
             {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {paginatedLives.map((show) => {
-                const { dayLabel, timeLabel } = formatLiveSchedule(show.scheduledAt);
+                const { dayLabel, timeLabel, kstLabel } = formatLiveSchedule(show.scheduledAt);
 
                 return (
                   <div
@@ -215,10 +202,18 @@ export default function UpcomingPage() {
                     </div>
 
                     <div className="p-4 space-y-3 flex flex-col min-h-[120px]">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-medium text-[#B084CC]">
+                      <div className="flex items-center justify-between gap-2 shrink-0">
+                        <span className="text-xs font-medium text-[#B084CC] shrink-0">
                           {show.host?.name ?? '라이브'}
                         </span>
+                        {timeLabel && timeLabel !== '시간 미정' && (
+                          <span className="text-xs text-gray-400 text-right leading-tight">
+                            {timeLabel}
+                            {kstLabel && (
+                              <span className="block text-[10px] text-gray-500">{kstLabel}</span>
+                            )}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex-1 min-h-0 overflow-hidden">
@@ -255,7 +250,7 @@ export default function UpcomingPage() {
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 min-w-0">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
@@ -263,11 +258,12 @@ export default function UpcomingPage() {
                         setCurrentPage(page);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                      className={`px-3 py-2 min-w-[44px] rounded-lg font-medium transition-colors flex-shrink-0 ${
                         page === currentPage
                           ? 'bg-[#FF4D8D] text-white'
                           : 'border border-gray-700 text-gray-400 hover:bg-gray-800'
                       }`}
+                      aria-label={`${page}페이지로 이동`}
                     >
                       {page}
                     </button>

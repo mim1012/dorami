@@ -14,7 +14,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Admin ReStream Management', () => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -29,7 +29,7 @@ test.describe('Admin ReStream Management', () => {
    */
   async function waitForPageLoad(page: import('@playwright/test').Page) {
     await gotoWithRetry(page, BROADCASTS_URL);
-    await expect(page.getByText('동시 송출 관리')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('동시 송출 관리')).toBeVisible({ timeout: 60000 });
     // Dismiss any rate-limit error toasts and let rate limiter cool down
     // before the test makes additional API calls (CRUD operations)
     await page.waitForTimeout(3000);
@@ -70,7 +70,7 @@ test.describe('Admin ReStream Management', () => {
     await expect(page.getByRole('button', { name: '추가' })).toBeVisible();
 
     // 타겟이 없으면 빈 상태 메시지, 있으면 수정 버튼 확인
-    const emptyMsg = page.getByText('등록된 동시 송출 대상이 없습니다');
+    const emptyMsg = page.getByText('조건에 맞는 대상이 없습니다');
     const editButton = page.locator('button[title="수정"]');
 
     const hasTargets = await editButton

@@ -14,7 +14,7 @@ set -euo pipefail
 # Configuration
 S3_BUCKET="${S3_BUCKET}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
-BACKUP_DIR="/opt/dorami/backups"
+BACKUP_DIR="/opt/doremi/backups"
 
 # Defaults
 SHOW_LOCAL="${1:-all}"
@@ -152,3 +152,4 @@ main() {
 }
 
 main "$@"
+

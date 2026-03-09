@@ -43,7 +43,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' }),
+          body: JSON.stringify({ email: 'admin@doremi.shop', name: 'E2E ADMIN' }),
         });
         if (!loginRes.ok) return null;
 
@@ -94,7 +94,7 @@ test.describe('Live Stream Cart Pickup (주워담기)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
   });

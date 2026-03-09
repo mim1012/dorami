@@ -5,6 +5,11 @@ import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
+type PendingMessage = {
+  message: string;
+  clientMessageId: string;
+};
+
 export function useChatConnection(
   streamKey: string,
   options: { forceLogoutOnAuthFailure?: boolean } = {},
@@ -23,19 +28,24 @@ export function useChatConnection(
       chatConfig.circuitBreakerCooldownMs,
     ),
   );
-  const pendingSendQueue = useRef<string[]>([]);
+  const pendingSendQueue = useRef<PendingMessage[]>([]);
 
   // 마지막 connect_error가 인증(토큰 만료) 에러였는지 추적
   const lastAuthErrorRef = useRef(false);
 
+  const generateMessageId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
   useEffect(() => {
     // WebSocket connection - connect to /chat namespace
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-
+    // Auth is handled via httpOnly cookie (withCredentials: true); localStorage is never used.
     const socket = io(`${SOCKET_URL}/chat`, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
-      ...(token ? { auth: { token } } : {}),
       reconnection: true,
       reconnectionAttempts: chatConfig.maxAttempts,
       reconnectionDelay: chatConfig.delays[0],
@@ -59,8 +69,12 @@ export function useChatConnection(
       // Join chat room (gateway expects liveId)
       socket.emit('chat:join-room', { liveId: streamKey });
       if (pendingSendQueue.current.length > 0) {
-        for (const msg of pendingSendQueue.current) {
-          socket.emit('chat:send-message', { liveId: streamKey, message: msg });
+        for (const pendingMessage of pendingSendQueue.current) {
+          socket.emit('chat:send-message', {
+            liveId: streamKey,
+            message: pendingMessage.message,
+            clientMessageId: pendingMessage.clientMessageId,
+          });
         }
         pendingSendQueue.current = [];
       }
@@ -166,6 +180,7 @@ export function useChatConnection(
       if (socketRef.current) {
         socketRef.current.emit('chat:leave-room', { liveId: streamKey });
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
 
       socket.off('connect');
@@ -178,19 +193,36 @@ export function useChatConnection(
       socket.io.off('reconnect_error');
       socket.io.off('reconnect_failed');
     };
-  }, [streamKey]);
+  }, [streamKey, forceLogoutOnAuthFailure]);
 
   const sendMessage = (message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const clientMessageId = generateMessageId();
+
     if (socketRef.current && isConnected) {
       socketRef.current.emit('chat:send-message', {
         liveId: streamKey,
-        message,
+        message: trimmed,
+        clientMessageId,
       });
       return;
     }
 
-    if (message?.trim()) {
-      pendingSendQueue.current = [...pendingSendQueue.current, message].slice(-20);
+    pendingSendQueue.current = [
+      ...pendingSendQueue.current.slice(-19),
+      {
+        message: trimmed,
+        clientMessageId,
+      },
+    ];
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Chat] send queued', {
+        queuedCount: pendingSendQueue.current.length,
+      });
     }
   };
 

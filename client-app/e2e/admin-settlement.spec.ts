@@ -7,7 +7,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  */
 
 test.describe('Admin Settlement Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');

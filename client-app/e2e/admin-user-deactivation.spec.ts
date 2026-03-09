@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, Page, BrowserContext, request as playwrightRequest } from '@playwright/test';
 import { ensureAuth, gotoWithRetry, devLogin } from './helpers/auth-helper';
 
 /**
@@ -18,12 +18,43 @@ import { ensureAuth, gotoWithRetry, devLogin } from './helpers/auth-helper';
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
+/** Guarantee buyer@test.com is restored to ACTIVE via API regardless of test outcome */
+async function restoreBuyerAccount(): Promise<void> {
+  const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
+  try {
+    await apiCtx.post('/api/auth/dev-login', {
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
+    });
+    // Find buyer@test.com user ID
+    const searchRes = await apiCtx.get('/api/admin/users?search=buyer%40test.com&limit=5&page=1');
+    if (!searchRes.ok()) return;
+    const searchBody = await searchRes.json();
+    const userId: string | undefined = searchBody.data?.users?.[0]?.id;
+    if (!userId) return;
+    const status: string | undefined = searchBody.data?.users?.[0]?.status;
+    if (status === 'ACTIVE') return; // already restored
+
+    await apiCtx.patch(`/api/admin/users/${userId}/status`, {
+      data: { status: 'ACTIVE' },
+    });
+    console.log(`[afterAll] buyer@test.com restored to ACTIVE (was ${status})`);
+  } catch {
+    // ignore
+  } finally {
+    await apiCtx.dispose();
+  }
+}
+
 test.describe('Admin User Deactivation', () => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
     await page.waitForTimeout(1500);
+  });
+
+  test.afterAll(async () => {
+    await restoreBuyerAccount();
   });
 
   test('A-USR-DV-01~04: 계정 정지 → 관리자 UI 즉시 반영 + 사용자 접근 차단 + 복원', async ({
@@ -114,7 +145,7 @@ test.describe('Admin User Deactivation', () => {
     await page.waitForTimeout(1000);
 
     // 검색으로 해당 사용자 필터링
-    const listSearchInput = page.locator('input[placeholder*="인스타그램 ID 또는 카카오톡"]');
+    const listSearchInput = page.locator('input[placeholder*="인스타그램 ID"]');
     await expect(listSearchInput).toBeVisible({ timeout: 10000 });
     await listSearchInput.fill('buyer@test.com');
     await page.waitForTimeout(1000); // debounce

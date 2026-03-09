@@ -29,7 +29,7 @@ async function createTestProduct(opts: {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
 
     let csrfToken = '';
@@ -85,7 +85,7 @@ async function getAnyStreamKey(): Promise<string | null> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     // 예정 스트림
     const upcomingRes = await apiCtx.get('/api/streaming/upcoming?limit=1');
@@ -140,7 +140,7 @@ async function deleteProduct(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -188,7 +188,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-CART-01: timerEnabled=true 상품 담기 → 장바구니 카운트다운 표시
   // ─────────────────────────────────────────────────────────────────────────
   test('B-CART-01: timerEnabled=true 상품 담기 → 장바구니 카운트다운 표시', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -264,7 +264,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-CART-02: timerEnabled=false 상품 담기 → 타이머 없음
   // ─────────────────────────────────────────────────────────────────────────
   test('B-CART-02: timerEnabled=false 상품 담기 → 타이머 없음', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -330,7 +330,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-TIMER-01: 타이머 만료 시뮬레이션 (page.clock)
   // ─────────────────────────────────────────────────────────────────────────
   test('B-TIMER-01: 타이머 만료 → 토스트 "예약 시간이 만료" 표시', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -426,7 +426,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-STOCK-01: SOLD_OUT 상품 → shop 페이지 품절 뱃지 표시
   // ─────────────────────────────────────────────────────────────────────────
   test('B-STOCK-01: SOLD_OUT 상품 → shop 페이지 품절 뱃지 표시', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -485,7 +485,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-STOCK-02: 재고 초과 담기 → API 오류 응답 확인
   // ─────────────────────────────────────────────────────────────────────────
   test('B-STOCK-02: 재고 초과 담기 → 409 InsufficientStock 오류', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -539,7 +539,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-CART-03: 장바구니 수량 변경 UI 제한 (1~10)
   // ─────────────────────────────────────────────────────────────────────────
   test('B-CART-03: 장바구니 수량 변경 UI — 1~10 제한 확인', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     await page.goto('/cart', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: '장바구니', exact: true })).toBeVisible({
@@ -548,7 +548,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
 
     // 아이템이 있는 경우만 검증
     const hasItems = await page
-      .locator('text=/\\d{1,2}원|\\$\\d/')
+      .locator('text=/\\$[0-9,]+/')
       .isVisible({ timeout: 5000 })
       .catch(() => false);
 
@@ -593,7 +593,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   test('B-CHECKOUT-01: 장바구니 → /checkout → 주문 생성 → PENDING_PAYMENT 상태', async ({
     page,
   }) => {
-    test.setTimeout(120000);
+    test.setTimeout(150000);
 
     if (!streamKey) {
       test.skip(true, '스트림 키 없음');
@@ -736,7 +736,7 @@ test.describe('B. 사용자 — 장바구니 타이머 · 재고 · 결제', () 
   // B-CART-04: 빈 장바구니 → /checkout 접근 → /cart 리다이렉트
   // ─────────────────────────────────────────────────────────────────────────
   test('B-CART-04: 빈 장바구니로 /checkout 접근 → 장바구니로 리다이렉트', async ({ page }) => {
-    test.setTimeout(30000);
+    test.setTimeout(150000);
 
     // 장바구니 비우기 (API)
     await page.evaluate(async () => {

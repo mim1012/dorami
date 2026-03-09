@@ -7,11 +7,11 @@
 #   ./backend-metrics.sh [--container NAME] [--output DIR] [--since DURATION]
 #
 # Example:
-#   ./backend-metrics.sh --container dorami-backend --output results/ --since 1h
+#   ./backend-metrics.sh --container doremi-backend --output results/ --since 1h
 
 set -euo pipefail
 
-CONTAINER_NAME="dorami-backend"
+CONTAINER_NAME="doremi-backend"
 OUTPUT_DIR="$(pwd)/monitoring"
 SINCE="1h"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -286,3 +286,4 @@ print(f"App errors           : {app.get('errors', 0):,}")
 print()
 print(f"Output: $OUTPUT_FILE")
 PYEOF
+

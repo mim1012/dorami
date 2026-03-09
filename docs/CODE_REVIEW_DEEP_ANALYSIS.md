@@ -1,4 +1,4 @@
-# Dorami 심층 코드 리뷰 보고서
+# Doremi 심층 코드 리뷰 보고서
 
 **분석 일시**: 2026-02-03
 **분석 유형**: 심층 분석 (보안/성능/비즈니스 로직)
@@ -27,6 +27,7 @@
 **비교**: `chat.gateway.ts`는 올바르게 설정됨
 
 **수정 방안**:
+
 ```typescript
 @WebSocketGateway({
   cors: {
@@ -60,6 +61,7 @@ async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
 **문제**: 토큰 갱신 시 이전 토큰이 Redis에 남아있어 공격자가 탈취한 토큰 계속 사용 가능
 
 **수정 방안**:
+
 ```typescript
 async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
   // ... 검증 로직 ...
@@ -80,15 +82,17 @@ async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
 
 ```typescript
 const payload = await jwtService.verifyAsync(token, {
-  secret: process.env.JWT_SECRET,  // 환경변수 직접 접근
+  secret: process.env.JWT_SECRET, // 환경변수 직접 접근
 });
 ```
 
 **문제**: HTTP 요청과 다른 방식으로 JWT 검증
+
 - HTTP: `JwtModule.register()`의 설정 사용
 - WebSocket: `process.env` 직접 접근
 
 **수정 방안**:
+
 ```typescript
 constructor(
   private jwtService: JwtService,
@@ -106,27 +110,28 @@ const payload = await this.jwtService.verifyAsync(token, {
 
 ### 2.1 인증 플로우 검토 결과
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Kakao OAuth | ✅ | 구현 완료 |
-| JWT Access Token | ✅ | HTTP-only 쿠키 |
-| JWT Refresh Token | ⚠️ | Rotation 미구현 |
-| Token Blacklist | ✅ | Redis 사용 |
-| WebSocket 인증 | ⚠️ | 검증 방식 불일치 |
+| 항목              | 상태 | 비고             |
+| ----------------- | ---- | ---------------- |
+| Kakao OAuth       | ✅   | 구현 완료        |
+| JWT Access Token  | ✅   | HTTP-only 쿠키   |
+| JWT Refresh Token | ⚠️   | Rotation 미구현  |
+| Token Blacklist   | ✅   | Redis 사용       |
+| WebSocket 인증    | ⚠️   | 검증 방식 불일치 |
 
 ### 2.2 CORS 설정 현황
 
-| Gateway | origin 설정 | 상태 |
-|---------|------------|------|
-| HTTP (main.ts) | 화이트리스트 | ✅ |
-| WebSocketGateway | `'*'` | 🔴 |
-| ChatGateway | 화이트리스트 | ✅ |
+| Gateway          | origin 설정  | 상태 |
+| ---------------- | ------------ | ---- |
+| HTTP (main.ts)   | 화이트리스트 | ✅   |
+| WebSocketGateway | `'*'`        | 🔴   |
+| ChatGateway      | 화이트리스트 | ✅   |
 
 ### 2.3 OAuth 콜백 응답 방식
 
 **위치**: `backend/src/modules/auth/auth.controller.ts:107-130`
 
 **현재**: 리다이렉트 방식
+
 ```typescript
 return res.redirect(redirectUrl);
 ```
@@ -134,6 +139,7 @@ return res.redirect(redirectUrl);
 **문제**: SPA에서 리다이렉트 처리 어려움
 
 **권장**: JSON 응답 방식
+
 ```typescript
 return res.json({
   success: true,
@@ -172,9 +178,12 @@ model Order {
 ### 3.2 트랜잭션 사용 패턴 (양호)
 
 **InventoryService** - Serializable 격리 수준 사용
+
 ```typescript
 await this.prisma.$transaction(
-  async (tx) => { /* ... */ },
+  async (tx) => {
+    /* ... */
+  },
   {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     timeout: 3000,
@@ -195,6 +204,7 @@ model User {
 ```
 
 **권장**:
+
 ```prisma
 model User {
   shippingAddress     String?   @db.Text
@@ -210,6 +220,7 @@ model User {
 **위치**: `backend/src/modules/websocket/websocket.gateway.ts:51-88`
 
 **현재 구현**:
+
 ```typescript
 handleDisconnect(client: Socket) {
   const rooms = Array.from(client.rooms).filter((room) => room !== client.id);
@@ -221,6 +232,7 @@ handleDisconnect(client: Socket) {
 **문제**: `client.data.userId`, `client.data.role` 메모리에 유지
 
 **수정 방안**:
+
 ```typescript
 handleDisconnect(client: Socket) {
   // 데이터 정리
@@ -268,11 +280,13 @@ EventEmitterModule.forRoot({
 ### 5.1 재고 관리 (양호)
 
 **InventoryService** 분석:
+
 - ✅ Serializable 격리 수준
 - ✅ 3초 타임아웃
 - ✅ 예외 처리
 
 **개선 제안**: 상태 변경 로직 추상화
+
 ```typescript
 private determineProductStatus(newQuantity: number, currentStatus: string) {
   if (newQuantity === 0) return 'SOLD_OUT';
@@ -316,6 +330,7 @@ function getCsrfToken(): string | null {
 ```
 
 **수정 방안**:
+
 ```typescript
 async function ensureCsrfToken(): Promise<string> {
   let token = getCsrfToken();
@@ -331,6 +346,7 @@ async function ensureCsrfToken(): Promise<string> {
 ### 6.2 useEffect 의존성 (양호)
 
 **VideoPlayer.tsx** 분석:
+
 - ✅ 모바일 감지 의존성 올바름
 - ✅ 방향 전환 의존성 올바름
 - ✅ 플레이어 초기화 의존성 올바름
@@ -346,25 +362,25 @@ async function ensureCsrfToken(): Promise<string> {
 
 ### 이전 리뷰 대비 개선된 항목
 
-| 항목 | 이전 | 현재 |
-|------|------|------|
-| HTTP CORS | `'*'` | 화이트리스트 ✅ |
-| ValidationPipe | 미흡 | 강화됨 ✅ |
-| Rate Limiting | 없음 | 구현됨 ✅ |
-| CSRF 보호 | 없음 | 구현됨 ✅ |
-| N+1 쿼리 | 일부 문제 | 대부분 해결 ✅ |
-| 중복 코드 | 있음 | 리팩토링됨 ✅ |
+| 항목           | 이전      | 현재            |
+| -------------- | --------- | --------------- |
+| HTTP CORS      | `'*'`     | 화이트리스트 ✅ |
+| ValidationPipe | 미흡      | 강화됨 ✅       |
+| Rate Limiting  | 없음      | 구현됨 ✅       |
+| CSRF 보호      | 없음      | 구현됨 ✅       |
+| N+1 쿼리       | 일부 문제 | 대부분 해결 ✅  |
+| 중복 코드      | 있음      | 리팩토링됨 ✅   |
 
 ### 새로 발견된 문제
 
-| 심각도 | 항목 | 파일 |
-|--------|------|------|
-| Critical | WebSocket CORS `'*'` | websocket.gateway.ts:20 |
-| High | JWT Refresh Token Rotation | auth.service.ts:141 |
-| High | WebSocket JWT 검증 불일치 | ws-jwt-auth.middleware.ts:24 |
-| Medium | 암호화 필드 타입 | schema.prisma:24 |
-| Medium | 클라이언트 메모리 정리 | websocket.gateway.ts:80 |
-| Medium | CSRF 토큰 자동 갱신 | client.ts |
+| 심각도   | 항목                       | 파일                         |
+| -------- | -------------------------- | ---------------------------- |
+| Critical | WebSocket CORS `'*'`       | websocket.gateway.ts:20      |
+| High     | JWT Refresh Token Rotation | auth.service.ts:141          |
+| High     | WebSocket JWT 검증 불일치  | ws-jwt-auth.middleware.ts:24 |
+| Medium   | 암호화 필드 타입           | schema.prisma:24             |
+| Medium   | 클라이언트 메모리 정리     | websocket.gateway.ts:80      |
+| Medium   | CSRF 토큰 자동 갱신        | client.ts                    |
 
 ---
 
@@ -372,38 +388,39 @@ async function ensureCsrfToken(): Promise<string> {
 
 ### Priority 1 (이번 주)
 
-| # | 작업 | 파일 | 예상 시간 |
-|---|------|------|----------|
-| 1 | WebSocket CORS 수정 | websocket.gateway.ts | 30분 |
-| 2 | JWT Refresh Token Rotation | auth.service.ts | 1시간 |
-| 3 | WebSocket JWT 검증 통일 | ws-jwt-auth.middleware.ts | 30분 |
+| #   | 작업                       | 파일                      | 예상 시간 |
+| --- | -------------------------- | ------------------------- | --------- |
+| 1   | WebSocket CORS 수정        | websocket.gateway.ts      | 30분      |
+| 2   | JWT Refresh Token Rotation | auth.service.ts           | 1시간     |
+| 3   | WebSocket JWT 검증 통일    | ws-jwt-auth.middleware.ts | 30분      |
 
 ### Priority 2 (2주 내)
 
-| # | 작업 | 파일 | 예상 시간 |
-|---|------|------|----------|
-| 4 | 암호화 필드 타입 수정 | schema.prisma | 1시간 |
-| 5 | 클라이언트 메모리 정리 | websocket.gateway.ts | 30분 |
-| 6 | CSRF 토큰 자동 갱신 | client.ts | 1시간 |
+| #   | 작업                   | 파일                 | 예상 시간 |
+| --- | ---------------------- | -------------------- | --------- |
+| 4   | 암호화 필드 타입 수정  | schema.prisma        | 1시간     |
+| 5   | 클라이언트 메모리 정리 | websocket.gateway.ts | 30분      |
+| 6   | CSRF 토큰 자동 갱신    | client.ts            | 1시간     |
 
 ---
 
 ## 9. 품질 점수 업데이트
 
-| 카테고리 | 초기 | v1 리뷰 후 | 현재 |
-|---------|------|-----------|------|
-| 보안 | 4/10 | 6/10 | 6/10 (새 이슈 발견) |
-| 성능 | 6/10 | 7/10 | 7/10 |
-| 아키텍처 | 7/10 | 7/10 | 7/10 |
-| 타입 안전성 | 5/10 | 6/10 | 6/10 |
-| 테스트 | 4/10 | 5/10 | 5/10 |
-| **전체** | **6/10** | **6.5/10** | **6.5/10** |
+| 카테고리    | 초기     | v1 리뷰 후 | 현재                |
+| ----------- | -------- | ---------- | ------------------- |
+| 보안        | 4/10     | 6/10       | 6/10 (새 이슈 발견) |
+| 성능        | 6/10     | 7/10       | 7/10                |
+| 아키텍처    | 7/10     | 7/10       | 7/10                |
+| 타입 안전성 | 5/10     | 6/10       | 6/10                |
+| 테스트      | 4/10     | 5/10       | 5/10                |
+| **전체**    | **6/10** | **6.5/10** | **6.5/10**          |
 
 ---
 
 ## 10. 결론
 
 ### 강점
+
 1. ✅ NestJS 아키텍처 견고함
 2. ✅ Prisma 인덱스 최적화 양호
 3. ✅ 재고 관리 동시성 처리 양호
@@ -411,20 +428,21 @@ async function ensureCsrfToken(): Promise<string> {
 5. ✅ 이벤트 시스템 메모리 관리
 
 ### 즉시 수정 필요
+
 1. 🔴 WebSocket CORS 설정
 2. 🔴 JWT Refresh Token Rotation
 3. 🔴 WebSocket JWT 검증 통일
 
 ### 권장 목표 (3개월)
 
-| 메트릭 | 현재 | 목표 |
-|--------|------|------|
-| 보안 점수 | 6/10 | 8/10 |
-| 테스트 커버리지 | 47% | 70% |
-| any 타입 | 36개 | 0개 |
-| 전체 품질 | 6.5/10 | 8/10 |
+| 메트릭          | 현재   | 목표 |
+| --------------- | ------ | ---- |
+| 보안 점수       | 6/10   | 8/10 |
+| 테스트 커버리지 | 47%    | 70%  |
+| any 타입        | 36개   | 0개  |
+| 전체 품질       | 6.5/10 | 8/10 |
 
 ---
 
-*심층 분석 완료: 2026-02-03*
-*다음 리뷰: 2주 후 Priority 1 항목 수정 확인*
+_심층 분석 완료: 2026-02-03_
+_다음 리뷰: 2주 후 Priority 1 항목 수정 확인_

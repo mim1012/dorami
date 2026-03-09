@@ -41,6 +41,12 @@ lerna-debug.log*
 prisma/migrations/*.sql
 !prisma/migrations/migration_lock.toml
 
+# Database backups (never commit production data)
+db_backup*.sql
+db_backup*.dump
+*.dump
+backups/
+
 # OS
 Thumbs.db
 .DS_Store

@@ -1,4 +1,4 @@
-# Dorami 라이브 커머스 - 코드 리뷰 보고서 v2
+# Doremi 라이브 커머스 - 코드 리뷰 보고서 v2
 
 **분석 일시**: 2026-02-03
 **분석 범위**: Backend (13,869줄) + Frontend (15,048줄)
@@ -10,15 +10,15 @@
 
 ### 전체 품질 스코어: 6/10 (개선 필요)
 
-| 카테고리 | 점수 | 상태 | 설명 |
-|---------|------|------|------|
-| 코드 품질 | 5/10 | ⚠️ | any 타입 과다, 함수 복잡도 높음 |
-| 보안 | 4/10 | 🔴 | Rate Limiting 부재, CSP 약함 |
-| 성능 | 6/10 | ⚠️ | N+1 쿼리 일부, 캐싱 제한적 |
-| 아키텍처 | 7/10 | ✅ | NestJS 모듈 구조 양호 |
-| 에러 처리 | 6/10 | ⚠️ | 패턴 존재하나 일관성 부족 |
-| 테스트 | 4/10 | 🔴 | 커버리지 47%, Auth 테스트 없음 |
-| 유지보수성 | 6/10 | ⚠️ | 문서화 부족, 설정 분산 |
+| 카테고리   | 점수 | 상태 | 설명                            |
+| ---------- | ---- | ---- | ------------------------------- |
+| 코드 품질  | 5/10 | ⚠️   | any 타입 과다, 함수 복잡도 높음 |
+| 보안       | 4/10 | 🔴   | Rate Limiting 부재, CSP 약함    |
+| 성능       | 6/10 | ⚠️   | N+1 쿼리 일부, 캐싱 제한적      |
+| 아키텍처   | 7/10 | ✅   | NestJS 모듈 구조 양호           |
+| 에러 처리  | 6/10 | ⚠️   | 패턴 존재하나 일관성 부족       |
+| 테스트     | 4/10 | 🔴   | 커버리지 47%, Auth 테스트 없음  |
+| 유지보수성 | 6/10 | ⚠️   | 문서화 부족, 설정 분산          |
 
 ---
 
@@ -31,6 +31,7 @@
 **문제**: 로그인/회원가입 엔드포인트에 Rate Limiting이 없어 Brute Force 공격에 취약
 
 **현재 상태**:
+
 ```typescript
 // auth.controller.ts
 @Post('login')
@@ -41,6 +42,7 @@ async login(@Body() loginDto: LoginDto) {
 ```
 
 **권장 수정**:
+
 ```typescript
 @Post('login')
 @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } }) // 15분에 5회
@@ -64,6 +66,7 @@ async register(@Body() registerDto: RegisterDto) {
 **문제**: Content Security Policy에서 `unsafe-inline`, `unsafe-eval` 허용으로 XSS 공격 가능
 
 **현재 상태**:
+
 ```typescript
 helmet({
   contentSecurityPolicy: {
@@ -77,6 +80,7 @@ helmet({
 ```
 
 **권장 수정**:
+
 ```typescript
 helmet({
   contentSecurityPolicy: {
@@ -101,6 +105,7 @@ helmet({
 **문제**: 개발 환경에서 JWT_SECRET이 선택사항이라 보안 취약
 
 **현재 상태**:
+
 ```typescript
 JWT_SECRET: Joi.string()
   .min(32)
@@ -112,6 +117,7 @@ JWT_SECRET: Joi.string()
 ```
 
 **권장 수정**:
+
 ```typescript
 JWT_SECRET: Joi.string()
   .min(32)
@@ -131,6 +137,7 @@ JWT_SECRET: Joi.string()
 **문제**: CSRF 토큰이 JavaScript에서 접근 가능하여 XSS로 탈취 가능
 
 **현재 상태**:
+
 ```typescript
 response.cookie('csrf-token', newToken, {
   httpOnly: false, // 🔴 XSS로 탈취 가능
@@ -141,6 +148,7 @@ response.cookie('csrf-token', newToken, {
 ```
 
 **권장 수정** (Double Cookie Pattern):
+
 ```typescript
 // HTTP-only 쿠키 (서버 검증용)
 response.cookie('csrf-token-server', newToken, {
@@ -168,17 +176,18 @@ response.cookie('csrf-token-client', newToken, {
 
 **현재 테스트 현황**:
 
-| 모듈 | 테스트 파일 | 상태 |
-|------|-----------|------|
-| Auth | 없음 | 🔴 |
-| Orders | `orders.service.spec.ts` | ⚠️ 부분 |
-| Products | `products.service.spec.ts` | ⚠️ 부분 |
-| Cart | 없음 | 🔴 |
-| Admin | `admin.service.spec.ts` | ⚠️ 부분 |
-| Controllers | 없음 | 🔴 |
-| Guards | 없음 | 🔴 |
+| 모듈        | 테스트 파일                | 상태    |
+| ----------- | -------------------------- | ------- |
+| Auth        | 없음                       | 🔴      |
+| Orders      | `orders.service.spec.ts`   | ⚠️ 부분 |
+| Products    | `products.service.spec.ts` | ⚠️ 부분 |
+| Cart        | 없음                       | 🔴      |
+| Admin       | `admin.service.spec.ts`    | ⚠️ 부분 |
+| Controllers | 없음                       | 🔴      |
+| Guards      | 없음                       | 🔴      |
 
 **필수 추가 테스트**:
+
 - `auth.service.spec.ts` - 로그인, 토큰 갱신, 권한 검증
 - `auth.controller.spec.ts` - 엔드포인트 테스트
 - `roles.guard.spec.ts` - Role 검증 테스트
@@ -193,14 +202,15 @@ response.cookie('csrf-token-client', newToken, {
 **심각도**: 🟠 High
 **발견 위치**: 36개 인스턴스
 
-| 파일 | 라인 | 코드 |
-|------|------|------|
-| `streaming.service.ts` | 34 | `Promise<any[]>` |
-| `cart/page.tsx` | 54 | `catch (err: any)` |
-| `users.service.ts` | 106 | `as any` |
-| `admin.service.ts` | 다수 | JSON 타입 처리 |
+| 파일                   | 라인 | 코드               |
+| ---------------------- | ---- | ------------------ |
+| `streaming.service.ts` | 34   | `Promise<any[]>`   |
+| `cart/page.tsx`        | 54   | `catch (err: any)` |
+| `users.service.ts`     | 106  | `as any`           |
+| `admin.service.ts`     | 다수 | JSON 타입 처리     |
 
 **권장 수정 예시**:
+
 ```typescript
 // Before
 async getUpcomingStreams(limit: number = 3): Promise<any[]>
@@ -224,6 +234,7 @@ async getUpcomingStreams(limit: number = 3): Promise<UpcomingStreamDto[]>
 **위치**: `backend/src/modules/admin/admin.service.ts:124-141`
 
 **현재 상태**:
+
 ```typescript
 const users = await this.prisma.user.findMany({
   where,
@@ -237,6 +248,7 @@ const users = await this.prisma.user.findMany({
 ```
 
 **권장 수정**:
+
 ```typescript
 const users = await this.prisma.user.findMany({
   where,
@@ -245,8 +257,8 @@ const users = await this.prisma.user.findMany({
     email: true,
     name: true,
     _count: {
-      select: { orders: true }
-    }
+      select: { orders: true },
+    },
   },
 });
 ```
@@ -261,6 +273,7 @@ const users = await this.prisma.user.findMany({
 **문제**: 주문 취소 로직이 `cancelOrder()`와 `cancelExpiredOrders()`에서 중복
 
 **현재 상태**:
+
 ```typescript
 // 중복 1: cancelOrder() (라인 364-388)
 async cancelOrder(orderId: string) {
@@ -288,6 +301,7 @@ async cancelExpiredOrders() {
 ```
 
 **권장 수정**:
+
 ```typescript
 private async restoreOrderStock(
   tx: PrismaTransaction,
@@ -320,6 +334,7 @@ async cancelOrder(orderId: string) {
 **위치**: `backend/src/modules/chat/chat.gateway.ts` 등 7개 파일
 
 **현재 상태**:
+
 ```typescript
 // chat.gateway.ts
 console.log('✅ Chat Gateway initialized');
@@ -328,6 +343,7 @@ console.error('❌ Connection failed:', error.message);
 ```
 
 **권장 수정**:
+
 ```typescript
 private readonly logger = new Logger(ChatGateway.name);
 
@@ -350,6 +366,7 @@ handleConnection(client: Socket) {
 **문제**: `createOrderFromCart()` 함수가 119줄로 Single Responsibility Principle 위반
 
 **권장 리팩토링**:
+
 ```typescript
 async createOrderFromCart(userId: string): Promise<OrderResponseDto> {
   return this.prisma.$transaction(async (tx) => {
@@ -395,6 +412,7 @@ forbidUnknownValues: true, // 추가
 모든 함수에서 동일한 try-catch 패턴 반복 (9회)
 
 **권장**: 데코레이터로 추상화
+
 ```typescript
 @CatchAndLog()
 async create(dto: CreateProductDto): Promise<ProductResponseDto> {
@@ -461,42 +479,42 @@ AppModule
 
 ### 인증/인가
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| OAuth 2.0 (Kakao) | ✅ | 구현됨 |
-| JWT Access Token | ✅ | 15분 만료 |
-| JWT Refresh Token | ✅ | 7일 만료 |
-| Token Blacklist | ✅ | Redis 사용 |
-| HTTP-only Cookie | ✅ | Refresh Token |
-| Role-based Access | ⚠️ | 단순함, 개선 필요 |
+| 항목              | 상태 | 비고              |
+| ----------------- | ---- | ----------------- |
+| OAuth 2.0 (Kakao) | ✅   | 구현됨            |
+| JWT Access Token  | ✅   | 15분 만료         |
+| JWT Refresh Token | ✅   | 7일 만료          |
+| Token Blacklist   | ✅   | Redis 사용        |
+| HTTP-only Cookie  | ✅   | Refresh Token     |
+| Role-based Access | ⚠️   | 단순함, 개선 필요 |
 
 ### 입력 검증
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Global ValidationPipe | ✅ | 설정됨 |
-| DTO Validation | ✅ | class-validator |
-| Whitelist | ✅ | unknown 속성 제거 |
-| Path Parameter 검증 | ⚠️ | 일부 부재 |
+| 항목                  | 상태 | 비고              |
+| --------------------- | ---- | ----------------- |
+| Global ValidationPipe | ✅   | 설정됨            |
+| DTO Validation        | ✅   | class-validator   |
+| Whitelist             | ✅   | unknown 속성 제거 |
+| Path Parameter 검증   | ⚠️   | 일부 부재         |
 
 ### 보안 헤더
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Helmet | ✅ | 기본 설정 |
-| CSP | 🔴 | unsafe-inline 허용 |
-| HSTS | ⚠️ | 프로덕션만 |
-| X-Frame-Options | ✅ | SAMEORIGIN |
-| X-Content-Type-Options | ✅ | nosniff |
+| 항목                   | 상태 | 비고               |
+| ---------------------- | ---- | ------------------ |
+| Helmet                 | ✅   | 기본 설정          |
+| CSP                    | 🔴   | unsafe-inline 허용 |
+| HSTS                   | ⚠️   | 프로덕션만         |
+| X-Frame-Options        | ✅   | SAMEORIGIN         |
+| X-Content-Type-Options | ✅   | nosniff            |
 
 ### 공격 방어
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| SQL Injection | ✅ | Prisma ORM |
-| XSS | ⚠️ | CSP 개선 필요 |
-| CSRF | ⚠️ | httpOnly 개선 필요 |
-| Rate Limiting | 🔴 | 엔드포인트별 없음 |
+| 항목          | 상태 | 비고               |
+| ------------- | ---- | ------------------ |
+| SQL Injection | ✅   | Prisma ORM         |
+| XSS           | ⚠️   | CSP 개선 필요      |
+| CSRF          | ⚠️   | httpOnly 개선 필요 |
+| Rate Limiting | 🔴   | 엔드포인트별 없음  |
 
 ---
 
@@ -504,14 +522,15 @@ AppModule
 
 ### 7.1 데이터베이스
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Connection Pooling | ✅ | Prisma 기본 |
-| N+1 Query 방지 | ⚠️ | 일부 문제 |
-| Index | ⚠️ | 추가 필요 |
-| Transaction | ✅ | 적절히 사용 |
+| 항목               | 상태 | 비고        |
+| ------------------ | ---- | ----------- |
+| Connection Pooling | ✅   | Prisma 기본 |
+| N+1 Query 방지     | ⚠️   | 일부 문제   |
+| Index              | ⚠️   | 추가 필요   |
+| Transaction        | ✅   | 적절히 사용 |
 
 **권장 인덱스**:
+
 ```prisma
 model User {
   @@index([email])
@@ -532,20 +551,20 @@ model Product {
 
 ### 7.2 캐싱
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Redis 활용 | ✅ | Token, Timer |
-| Product 캐싱 | ❌ | 미구현 |
-| User 캐싱 | ❌ | 미구현 |
-| API Response 캐싱 | ❌ | 미구현 |
+| 항목              | 상태 | 비고         |
+| ----------------- | ---- | ------------ |
+| Redis 활용        | ✅   | Token, Timer |
+| Product 캐싱      | ❌   | 미구현       |
+| User 캐싱         | ❌   | 미구현       |
+| API Response 캐싱 | ❌   | 미구현       |
 
 ### 7.3 비동기 처리
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Promise.all | ✅ | Cart, Inventory |
-| Event-driven | ✅ | Order Events |
-| Background Jobs | ✅ | Cron 사용 |
+| 항목            | 상태 | 비고            |
+| --------------- | ---- | --------------- |
+| Promise.all     | ✅   | Cart, Inventory |
+| Event-driven    | ✅   | Order Events    |
+| Background Jobs | ✅   | Cron 사용       |
 
 ---
 
@@ -553,26 +572,29 @@ model Product {
 
 ### 8.1 커버리지
 
-| 카테고리 | 파일 수 | 테스트 | 커버리지 |
-|---------|--------|--------|---------|
-| Services | 15+ | 7 | ~47% |
-| Controllers | 10+ | 0 | 0% |
-| Guards | 3 | 0 | 0% |
-| Utils | 5 | 1 | ~20% |
+| 카테고리    | 파일 수 | 테스트 | 커버리지 |
+| ----------- | ------- | ------ | -------- |
+| Services    | 15+     | 7      | ~47%     |
+| Controllers | 10+     | 0      | 0%       |
+| Guards      | 3       | 0      | 0%       |
+| Utils       | 5       | 1      | ~20%     |
 
 ### 8.2 필수 추가 테스트
 
 **Priority 1 - Critical**:
+
 - `auth.service.spec.ts`
 - `auth.controller.spec.ts`
 - `roles.guard.spec.ts`
 
 **Priority 2 - High**:
+
 - `orders.controller.spec.ts`
 - `cart.service.spec.ts`
 - `csrf.guard.spec.ts`
 
 **Priority 3 - Medium**:
+
 - E2E 테스트 확장
 - Integration 테스트
 
@@ -582,32 +604,32 @@ model Product {
 
 ### Phase 1: Critical (Week 1-2)
 
-| 작업 | 파일 | 예상 시간 |
-|------|------|----------|
-| Rate Limiting 추가 | `auth.controller.ts` | 4h |
-| CSP 강화 | `main.ts` | 4h |
-| JWT Secret 필수화 | `config.validation.ts` | 1h |
-| CSRF 토큰 개선 | `csrf.guard.ts` | 4h |
-| Auth 테스트 작성 | `auth.service.spec.ts` | 8h |
+| 작업               | 파일                   | 예상 시간 |
+| ------------------ | ---------------------- | --------- |
+| Rate Limiting 추가 | `auth.controller.ts`   | 4h        |
+| CSP 강화           | `main.ts`              | 4h        |
+| JWT Secret 필수화  | `config.validation.ts` | 1h        |
+| CSRF 토큰 개선     | `csrf.guard.ts`        | 4h        |
+| Auth 테스트 작성   | `auth.service.spec.ts` | 8h        |
 
 ### Phase 2: High (Week 3-4)
 
-| 작업 | 파일 | 예상 시간 |
-|------|------|----------|
-| any 타입 제거 | 다수 | 8h |
-| N+1 쿼리 수정 | `admin.service.ts` | 4h |
-| 중복 코드 리팩토링 | `orders.service.ts` | 6h |
-| console.log 제거 | 7개 파일 | 2h |
-| Controller 테스트 | 다수 | 12h |
+| 작업               | 파일                | 예상 시간 |
+| ------------------ | ------------------- | --------- |
+| any 타입 제거      | 다수                | 8h        |
+| N+1 쿼리 수정      | `admin.service.ts`  | 4h        |
+| 중복 코드 리팩토링 | `orders.service.ts` | 6h        |
+| console.log 제거   | 7개 파일            | 2h        |
+| Controller 테스트  | 다수                | 12h       |
 
 ### Phase 3: Medium (Month 2)
 
-| 작업 | 예상 시간 |
-|------|----------|
-| 테스트 커버리지 70% | 20h |
-| 캐싱 전략 구현 | 12h |
-| 인덱스 최적화 | 4h |
-| 문서화 | 8h |
+| 작업                | 예상 시간 |
+| ------------------- | --------- |
+| 테스트 커버리지 70% | 20h       |
+| 캐싱 전략 구현      | 12h       |
+| 인덱스 최적화       | 4h        |
+| 문서화              | 8h        |
 
 ---
 
@@ -615,36 +637,38 @@ model Product {
 
 ### Backend
 
-| 파일 | 라인 | 점수 | 주요 이슈 |
-|------|------|------|----------|
-| `main.ts` | 237 | 6/10 | CSP, ValidationPipe |
-| `app.module.ts` | 98 | 6/10 | 모듈 의존성 |
-| `auth.service.ts` | 160 | 7/10 | Rate Limiting 필요 |
-| `orders.service.ts` | 512 | 5/10 | 함수 길이, 중복 |
-| `products.service.ts` | 501 | 5/10 | 에러 로깅 중복 |
-| `cart.service.ts` | 414 | 7/10 | Promise.all 사용 |
-| `admin.service.ts` | 800+ | 5/10 | N+1, 복잡도 |
-| `streaming.service.ts` | 300+ | 6/10 | any 타입 |
+| 파일                   | 라인 | 점수 | 주요 이슈           |
+| ---------------------- | ---- | ---- | ------------------- |
+| `main.ts`              | 237  | 6/10 | CSP, ValidationPipe |
+| `app.module.ts`        | 98   | 6/10 | 모듈 의존성         |
+| `auth.service.ts`      | 160  | 7/10 | Rate Limiting 필요  |
+| `orders.service.ts`    | 512  | 5/10 | 함수 길이, 중복     |
+| `products.service.ts`  | 501  | 5/10 | 에러 로깅 중복      |
+| `cart.service.ts`      | 414  | 7/10 | Promise.all 사용    |
+| `admin.service.ts`     | 800+ | 5/10 | N+1, 복잡도         |
+| `streaming.service.ts` | 300+ | 6/10 | any 타입            |
 
 ### Frontend
 
-| 파일 | 라인 | 점수 | 주요 이슈 |
-|------|------|------|----------|
-| `cart/page.tsx` | 209 | 6/10 | any 에러 타입 |
-| `lib/api/client.ts` | 106 | 7/10 | CSRF 처리 양호 |
-| `layout.tsx` | 36 | 8/10 | 구조 깔끔 |
+| 파일                | 라인 | 점수 | 주요 이슈      |
+| ------------------- | ---- | ---- | -------------- |
+| `cart/page.tsx`     | 209  | 6/10 | any 에러 타입  |
+| `lib/api/client.ts` | 106  | 7/10 | CSRF 처리 양호 |
+| `layout.tsx`        | 36   | 8/10 | 구조 깔끔      |
 
 ---
 
 ## 11. 결론
 
 ### 강점
+
 1. 견고한 NestJS 아키텍처
 2. JWT + OAuth 인증 체계
 3. 이벤트 기반 설계
 4. Prisma ORM 활용
 
 ### 즉시 개선 필요
+
 1. 🔴 Rate Limiting 추가
 2. 🔴 CSP 정책 강화
 3. 🔴 테스트 커버리지 확대
@@ -652,13 +676,13 @@ model Product {
 
 ### 권장 목표
 
-| 메트릭 | 현재 | 목표 (3개월) |
-|--------|------|-------------|
-| 테스트 커버리지 | 47% | 70% |
-| any 타입 사용 | 36개 | 0개 |
-| 보안 점수 | 4/10 | 8/10 |
-| 전체 품질 | 6/10 | 8/10 |
+| 메트릭          | 현재 | 목표 (3개월) |
+| --------------- | ---- | ------------ |
+| 테스트 커버리지 | 47%  | 70%          |
+| any 타입 사용   | 36개 | 0개          |
+| 보안 점수       | 4/10 | 8/10         |
+| 전체 품질       | 6/10 | 8/10         |
 
 ---
 
-*이 문서는 자동화된 코드 분석과 수동 검토를 기반으로 작성되었습니다.*
+_이 문서는 자동화된 코드 분석과 수동 검토를 기반으로 작성되었습니다._

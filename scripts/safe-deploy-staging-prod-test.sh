@@ -15,12 +15,12 @@ NC='\033[0m'
 BACKUP_DIR="${BACKUP_DIR:-.backups/staging}"
 IMAGE_TAG="${IMAGE_TAG:?ERROR: IMAGE_TAG environment variable required}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-ghcr.io/your-org}"
-BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${IMAGE_TAG}"
-DOCKER_NETWORK="${DOCKER_NETWORK:-dorami-internal}"
+BACKEND_IMAGE="${DOCKER_REGISTRY}/doremi-backend:${IMAGE_TAG}"
+DOCKER_NETWORK="${DOCKER_NETWORK:-doremi-internal}"
 COMPOSE_BASE="${COMPOSE_BASE:-docker-compose.base.yml}"
 COMPOSE_STAGING="${COMPOSE_STAGING:-docker-compose.staging.yml}"
 DB_HOST="${DB_HOST:-postgres}"
-DB_USER="${DB_USER:-dorami}"
+DB_USER="${DB_USER:-doremi}"
 DB_NAME="${DB_NAME:-live_commerce}"
 
 mkdir -p "$BACKUP_DIR"
@@ -147,7 +147,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker ps | grep -q "dorami-backend"; then
+  if docker ps | grep -q "doremi-backend"; then
     log_success "Backend container running"
     break
   fi
@@ -180,7 +180,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     log_error "API health check failed after $MAX_RETRIES retries"
-    log_warning "Check logs: docker logs dorami-backend"
+    log_warning "Check logs: docker logs doremi-backend"
     exit 1
   fi
 
@@ -222,3 +222,4 @@ echo "════════════════════════�
 echo ""
 
 exit 0
+

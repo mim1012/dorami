@@ -658,7 +658,7 @@ export default function LivePreviewPage() {
                       </span>
                     )}
                     <span className="text-white text-[11px] font-medium">
-                      {activeProduct.price.toLocaleString()}원
+                      {formatPrice(activeProduct.price)}
                     </span>
                   </div>
                 </div>

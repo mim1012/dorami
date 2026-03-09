@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { X, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { formatPrice } from '@/lib/utils/price';
 
 interface Product {
   id: string;
@@ -251,11 +252,9 @@ export function ProductDetailModal({
             </div>
             <p className="text-sm text-gray-500">판매자: {product.host ?? '도레미'}</p>
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-gray-900">
-                ₩{product.price.toLocaleString()}
-              </span>
+              <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
               <span className="text-lg text-gray-400 line-through">
-                ₩{product.originalPrice.toLocaleString()}
+                {formatPrice(product.originalPrice)}
               </span>
             </div>
           </div>
@@ -344,9 +343,7 @@ export function ProductDetailModal({
 
           <div className="flex items-center justify-between py-2">
             <span className="text-lg font-semibold text-gray-900">총 금액</span>
-            <span className="text-2xl font-bold text-[#FF4D8D]">
-              ₩{totalPrice.toLocaleString()}
-            </span>
+            <span className="text-2xl font-bold text-[#FF4D8D]">{formatPrice(totalPrice)}</span>
           </div>
 
           {validationMessage && (

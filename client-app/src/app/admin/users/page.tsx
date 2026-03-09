@@ -13,9 +13,12 @@ import { Display, Body } from '@/components/common/Typography';
 interface UserListItem {
   id: string;
   email: string;
+  name: string;
+  depositorName: string | null;
   phone: string | null;
   instagramId: string | null;
   shippingAddressSummary?: string | null;
+  profileCompletedAt: string | null;
   createdAt: string;
   totalOrders: number;
   totalPurchaseAmount: number;
@@ -72,7 +75,7 @@ function AdminUsersContent() {
       setError(null);
 
       try {
-        const params: Record<string, unknown> = {
+        const params: Record<string, string | number | boolean | string[]> = {
           page,
           limit: pageSize,
           sortBy,
@@ -130,9 +133,9 @@ function AdminUsersContent() {
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('ko-KR', {
+    new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(amount);
 
@@ -141,19 +144,39 @@ function AdminUsersContent() {
       key: 'instagramId',
       label: '인스타아이디',
       sortable: false,
-      render: (user) => user.instagramId || '-',
+      render: (user) =>
+        user.instagramId || <span className="text-secondary-text text-xs">미설정</span>,
+    },
+    {
+      key: 'depositorName',
+      label: '입금자명',
+      sortable: false,
+      render: (user) =>
+        user.depositorName || <span className="text-secondary-text text-xs">미설정</span>,
     },
     {
       key: 'phone',
       label: '전화번호',
       sortable: false,
-      render: (user) => user.phone || '-',
+      render: (user) => user.phone || <span className="text-secondary-text text-xs">미설정</span>,
     },
     {
       key: 'shippingAddress',
       label: '배송지',
       sortable: false,
-      render: (user) => user.shippingAddressSummary || '-',
+      render: (user) =>
+        user.shippingAddressSummary || <span className="text-secondary-text text-xs">미설정</span>,
+    },
+    {
+      key: 'profileCompletedAt',
+      label: '프로필',
+      sortable: false,
+      render: (user) =>
+        user.profileCompletedAt ? (
+          <span className="text-xs text-green-600 font-medium">완성</span>
+        ) : (
+          <span className="text-xs text-orange-500 font-medium">미완성</span>
+        ),
     },
     {
       key: 'totalOrders',
@@ -175,9 +198,9 @@ function AdminUsersContent() {
     },
     {
       key: 'email',
-      label: '카카오톡 이메일',
+      label: '이메일',
       sortable: true,
-      render: (user) => user.email || '-',
+      render: (user) => user.email || <span className="text-secondary-text text-xs">미설정</span>,
     },
   ];
 
@@ -201,7 +224,7 @@ function AdminUsersContent() {
       <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <Input
-            placeholder="인스타그램 ID 또는 카카오톡 이메일 검색..."
+            placeholder="인스타그램 ID 또는 이메일 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             fullWidth

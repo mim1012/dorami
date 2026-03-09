@@ -34,7 +34,7 @@ fi
 
 # 2. Required containers
 for container in postgres redis; do
-  if docker ps --format '{{.Names}}' | grep -qi "dorami.*${container}"; then
+  if docker ps --format '{{.Names}}' | grep -qi "doremi.*${container}"; then
     check_pass "${container} container running"
   else
     check_warn "${container} container not found (may be external)"
@@ -127,3 +127,4 @@ else
   echo -e "${GREEN}PREFLIGHT PASSED: Ready to deploy.${NC}"
   exit 0
 fi
+

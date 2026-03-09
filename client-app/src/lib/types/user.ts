@@ -1,17 +1,9 @@
 import { Role } from '@live-commerce/shared-types';
+import type { ShippingAddress } from '@live-commerce/shared-types';
 
 // Re-export for convenience
 export { Role } from '@live-commerce/shared-types';
-
-export interface ShippingAddress {
-  fullName?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  phone?: string;
-}
+export type { ShippingAddress } from '@live-commerce/shared-types';
 
 export interface User {
   id: string;
@@ -25,6 +17,8 @@ export interface User {
   depositorName?: string;
   instagramId?: string;
   shippingAddress?: ShippingAddress | object;
+  profileComplete?: boolean;
+  profileCompletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

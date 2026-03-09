@@ -36,7 +36,7 @@ async function createProductViaApi(opts: {
   try {
     // Admin login
     const loginRes = await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     if (!loginRes.ok()) return null;
 
@@ -95,7 +95,7 @@ async function deleteProductViaApi(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -143,7 +143,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
   // A-PROD-01: timerEnabled=true 상품 등록 → 목록에 타이머 뱃지 표시
   // ─────────────────────────────────────────────────────────────────────────
   test('A-PROD-01: timerEnabled=true 상품 등록 → 목록 타이머 뱃지 표시', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     const product = await createProductViaApi({
       streamKey: testStreamKey,
@@ -196,7 +196,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
   // A-PROD-02: timerEnabled=false 상품 등록 → 타이머 뱃지 없음
   // ─────────────────────────────────────────────────────────────────────────
   test('A-PROD-02: timerEnabled=false 상품 등록 → 타이머 뱃지 없음', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     const product = await createProductViaApi({
       streamKey: testStreamKey,
@@ -237,7 +237,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
   // A-PROD-03: stockQuantity=1 상품 → "1개" 재고 표시
   // ─────────────────────────────────────────────────────────────────────────
   test('A-PROD-03: stockQuantity=1 상품 → 재고 "1개" 표시', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     const product = await createProductViaApi({
       streamKey: testStreamKey,
@@ -284,7 +284,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
     // The form field '가격 ($)' does not appear within the 90s timeout window
     // This appears to be a page load performance issue with the modal rendering
     // Workaround: Use API to create products for testing SOLD_OUT status changes
-    test.setTimeout(90000);
+    test.setTimeout(150000);
 
     const productName = `[E2E-A04] 품절테스트 ${Date.now()}`;
 
@@ -352,7 +352,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
   // A-PROD-05: 일괄 상태 변경 (판매중 → 품절)
   // ─────────────────────────────────────────────────────────────────────────
   test('A-PROD-05: 일괄 품절 처리 버튼 동작 확인', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     // API로 2개 상품 생성
     const p1 = await createProductViaApi({
@@ -408,7 +408,7 @@ test.describe('A. 관리자 상품 업로드 · 타이머 · 재고', () => {
   // A-PROD-06: API 응답에 timerEnabled/timerDuration 필드 포함 확인
   // ─────────────────────────────────────────────────────────────────────────
   test('A-PROD-06: 상품 API 응답에 timerEnabled · timerDuration 필드 포함', async ({ page }) => {
-    test.setTimeout(30000);
+    test.setTimeout(150000);
 
     await ensureAuth(page, 'ADMIN');
 

@@ -133,7 +133,7 @@ export function ImageGallery({
                 e.stopPropagation();
                 goPrev();
               }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 min-w-11 min-h-11 p-2 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10"
               aria-label="이전 이미지"
             >
               <ChevronLeft className="w-5 h-5 text-white" />
@@ -143,7 +143,7 @@ export function ImageGallery({
                 e.stopPropagation();
                 goNext();
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 min-w-11 min-h-11 p-2 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10"
               aria-label="다음 이미지"
             >
               <ChevronRight className="w-5 h-5 text-white" />
@@ -160,8 +160,8 @@ export function ImageGallery({
                   }}
                   className={`rounded-full transition-all duration-200 ${
                     idx === currentIndex
-                      ? 'bg-hot-pink w-5 h-2'
-                      : 'bg-white/50 hover:bg-white/80 w-2 h-2'
+                      ? 'bg-hot-pink w-6 h-2'
+                      : 'bg-white/50 hover:bg-white/80 w-2.5 h-2.5'
                   }`}
                   aria-label={`이미지 ${idx + 1}`}
                   aria-current={idx === currentIndex}

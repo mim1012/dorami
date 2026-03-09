@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Performance benchmark script for Dorami live commerce platform.
+ * Performance benchmark script for Doremi live commerce platform.
  *
  * Measures:
  *  - API response times (products, orders, profile)
@@ -107,7 +107,7 @@ let devAuthCookie = null;
 
 const devLogin = async () => {
   try {
-    const email = process.env.DEV_EMAIL || 'perf-test@dorami.internal';
+    const email = process.env.DEV_EMAIL || 'perf-test@doremi.internal';
     const res = await fetchWithTimeout(`${BACKEND_URL}/api/auth/dev-login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -520,3 +520,5 @@ main().catch((err) => {
   console.error('[perf] fatal error:', err);
   process.exit(2);
 });
+
+

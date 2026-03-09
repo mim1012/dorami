@@ -6,6 +6,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { LiveDealProductDto } from '@live-commerce/shared-types';
 import { useAuthStore } from '@/lib/store/auth';
 import { useToast } from '@/components/common/Toast';
+import { formatPrice } from '@/lib/utils/price';
 
 type LiveExclusiveDealsProps = {
   liveDeals: LiveDealProductDto[];
@@ -89,12 +90,12 @@ export function LiveExclusiveDeals({ liveDeals, isLoading = false }: LiveExclusi
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-gray-400 line-through">
-                        {deal.originalPrice ? `${deal.originalPrice.toLocaleString()}원` : ''}
+                        {deal.originalPrice ? formatPrice(deal.originalPrice) : ''}
                       </span>
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-lg font-bold text-[#FF4D8D]">
-                        {deal.price.toLocaleString()}원
+                        {formatPrice(deal.price)}
                       </span>
                     </div>
                   </div>

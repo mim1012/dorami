@@ -1,4 +1,4 @@
-# Dorami 코드베이스 분석 보고서
+# Doremi 코드베이스 분석 보고서
 
 ## 목차
 
@@ -20,7 +20,7 @@
 
 ### 프로젝트 정의
 
-Dorami는 **1인 셀러 라이브 커머스 MVP 플랫폼**이다. 셀러가 실시간 방송으로 상품을 시연하고, 시청자가 방송 중 바로 구매할 수 있는 한국어 기반 e-커머스 애플리케이션이다.
+Doremi는 **1인 셀러 라이브 커머스 MVP 플랫폼**이다. 셀러가 실시간 방송으로 상품을 시연하고, 시청자가 방송 중 바로 구매할 수 있는 한국어 기반 e-커머스 애플리케이션이다.
 
 - **프로덕션 도메인**: `https://www.doremi-live.com`
 - **타겟 시장**: 한국어 사용자 (US 배송 기반)
@@ -47,7 +47,7 @@ Dorami는 **1인 셀러 라이브 커머스 MVP 플랫폼**이다. 셀러가 실
 ### 모노레포 구조
 
 ```
-dorami/
+doremi/
 ├── backend/              # NestJS API 서버 (port 3001)
 ├── client-app/           # Next.js 프론트엔드 (port 3000)
 ├── packages/
@@ -469,7 +469,7 @@ Redis 설정: AOF 영속화, 256MB 메모리 제한, allkeys-lru 정책.
 - **Nginx**: 프록시 + ACME 인증서 경로
 - **SRS**: 동일 v6 미디어 서버
 
-네트워크: `dorami-internal` (bridge)
+네트워크: `doremi-internal` (bridge)
 
 #### 프로덕션 (`docker-compose.prod.yml`)
 
@@ -690,7 +690,7 @@ chore:    빌드, 설정, 의존성 변경
 
 # 2. 저장소 클론
 git clone <repository-url>
-cd dorami
+cd doremi
 
 # 3. 인프라 실행 (PostgreSQL, Redis, SRS)
 npm run docker:up
@@ -764,7 +764,7 @@ npm run type-check:all       # tsc --noEmit 전체
 
 ### 핵심 요약
 
-Dorami는 NestJS + Next.js + SRS를 핵심으로 하는 라이브 커머스 MVP 플랫폼이다. 모노레포(npm workspaces)로 관리되며, `@live-commerce/shared-types` 패키지로 프론트엔드-백엔드 간 타입 안전성을 보장한다.
+Doremi는 NestJS + Next.js + SRS를 핵심으로 하는 라이브 커머스 MVP 플랫폼이다. 모노레포(npm workspaces)로 관리되며, `@live-commerce/shared-types` 패키지로 프론트엔드-백엔드 간 타입 안전성을 보장한다.
 
 **핵심 강점**:
 

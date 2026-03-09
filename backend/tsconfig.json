@@ -16,5 +16,6 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true
-  }
+  },
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "test"]
 }

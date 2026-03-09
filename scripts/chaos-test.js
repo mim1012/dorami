@@ -270,7 +270,7 @@ async function scenarioDbConnectionStress() {
 
   // Introspect current max_connections if docker is available
   const maxConns = shell(
-    'docker exec dorami-postgres-1 psql -U postgres -d live_commerce -t -c "SHOW max_connections;" 2>/dev/null || docker exec dorami_postgres_1 psql -U postgres -d live_commerce -t -c "SHOW max_connections;" 2>/dev/null',
+    'docker exec doremi-postgres-1 psql -U postgres -d live_commerce -t -c "SHOW max_connections;" 2>/dev/null || docker exec doremi_postgres_1 psql -U postgres -d live_commerce -t -c "SHOW max_connections;" 2>/dev/null',
   );
   if (maxConns) {
     const parsed = parseInt(maxConns.trim(), 10);
@@ -367,7 +367,7 @@ async function scenarioMemoryPressure() {
 
   // Introspect Redis state
   const redisBefore = shell(
-    'docker exec dorami-redis-1 redis-cli info memory 2>/dev/null || docker exec dorami_redis_1 redis-cli info memory 2>/dev/null',
+    'docker exec doremi-redis-1 redis-cli info memory 2>/dev/null || docker exec doremi_redis_1 redis-cli info memory 2>/dev/null',
   );
   if (redisBefore) {
     const match = redisBefore.match(/used_memory_human:([^\r\n]+)/);
@@ -394,8 +394,8 @@ async function scenarioMemoryPressure() {
     }).join('\n');
 
     const result = shell(
-      `printf '${cmds.replace(/'/g, "'\\''")}\n' | docker exec -i dorami-redis-1 redis-cli --pipe 2>/dev/null || ` +
-      `printf '${cmds.replace(/'/g, "'\\''")}\n' | docker exec -i dorami_redis_1 redis-cli --pipe 2>/dev/null`,
+      `printf '${cmds.replace(/'/g, "'\\''")}\n' | docker exec -i doremi-redis-1 redis-cli --pipe 2>/dev/null || ` +
+      `printf '${cmds.replace(/'/g, "'\\''")}\n' | docker exec -i doremi_redis_1 redis-cli --pipe 2>/dev/null`,
       10000,
     );
 
@@ -410,7 +410,7 @@ async function scenarioMemoryPressure() {
 
   // Check Redis state after writes
   const redisAfter = shell(
-    'docker exec dorami-redis-1 redis-cli info memory 2>/dev/null || docker exec dorami_redis_1 redis-cli info memory 2>/dev/null',
+    'docker exec doremi-redis-1 redis-cli info memory 2>/dev/null || docker exec doremi_redis_1 redis-cli info memory 2>/dev/null',
   );
   if (redisAfter) {
     const match = redisAfter.match(/used_memory_human:([^\r\n]+)/);
@@ -426,8 +426,8 @@ async function scenarioMemoryPressure() {
 
   // Cleanup chaos keys
   const cleanResult = shell(
-    `docker exec dorami-redis-1 redis-cli --scan --pattern "chaos:pressure:*" | xargs -r docker exec -i dorami-redis-1 redis-cli DEL 2>/dev/null || ` +
-    `docker exec dorami_redis_1 redis-cli --scan --pattern "chaos:pressure:*" | xargs -r docker exec -i dorami_redis_1 redis-cli DEL 2>/dev/null`,
+    `docker exec doremi-redis-1 redis-cli --scan --pattern "chaos:pressure:*" | xargs -r docker exec -i doremi-redis-1 redis-cli DEL 2>/dev/null || ` +
+    `docker exec doremi_redis_1 redis-cli --scan --pattern "chaos:pressure:*" | xargs -r docker exec -i doremi_redis_1 redis-cli DEL 2>/dev/null`,
     15000,
   );
   log(`Cleanup result: ${cleanResult !== null ? 'OK' : 'skipped (keys will expire via TTL)'}`);
@@ -666,3 +666,4 @@ main().catch((err) => {
   console.error('[chaos] Fatal error:', err);
   process.exit(1);
 });
+

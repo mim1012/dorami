@@ -7,11 +7,11 @@
 #   ./srs-metrics.sh [--container NAME] [--output DIR] [--since DURATION]
 #
 # Example:
-#   ./srs-metrics.sh --container dorami-srs --output results/ --since 1h
+#   ./srs-metrics.sh --container doremi-srs --output results/ --since 1h
 
 set -euo pipefail
 
-CONTAINER_NAME="dorami-srs"
+CONTAINER_NAME="doremi-srs"
 OUTPUT_DIR="$(pwd)/monitoring"
 SINCE="1h"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -228,3 +228,4 @@ print(f"  Max bandwidth        : {cap.get('bandwidth_max_kbps', 0):,} kbps")
 print()
 print(f"Output: $OUTPUT_FILE")
 PYEOF
+

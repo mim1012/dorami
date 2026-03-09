@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import type { UpcomingLiveDto } from '@live-commerce/shared-types';
+import { formatStreamSchedule } from '@/lib/utils/format';
 
 type UpcomingLivesProps = {
   upcomingLives: UpcomingLiveDto[];
@@ -15,23 +16,9 @@ const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1749448621946-5dd68de99664?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&auto=format';
 
 function formatLiveSchedule(isoDate: string) {
-  const date = new Date(isoDate);
-
-  if (Number.isNaN(date.getTime())) {
-    return { dayLabel: '예약', timeLabel: '시간 미정' };
-  }
-
-  const dayLabel = date.toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    weekday: 'short',
-  });
-  const timeLabel = date.toLocaleTimeString('ko-KR', {
-    hour: 'numeric',
-    minute: 'numeric',
-  });
-
-  return { dayLabel, timeLabel };
+  const { dayLabel, timeLabel, kstLabel } = formatStreamSchedule(isoDate);
+  if (!timeLabel) return { dayLabel: '예약', timeLabel: '시간 미정', kstLabel: '' };
+  return { dayLabel, timeLabel, kstLabel };
 }
 
 function CountdownBadge({ scheduledAt }: { scheduledAt: string }) {
@@ -96,7 +83,7 @@ export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLive
         {upcomingLives.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
             {upcomingLives.map((show) => {
-              const { dayLabel, timeLabel } = formatLiveSchedule(show.scheduledAt);
+              const { dayLabel, timeLabel, kstLabel } = formatLiveSchedule(show.scheduledAt);
 
               return (
                 <div key={show.id} className="w-full">
@@ -145,10 +132,18 @@ export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLive
                     </div>
 
                     <div className="p-4 space-y-3 h-[180px] flex flex-col">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-medium text-[#B084CC]">
+                      <div className="flex items-center justify-between gap-2 shrink-0">
+                        <span className="text-xs font-medium text-[#B084CC] shrink-0">
                           {show.host?.name ?? '라이브'}
                         </span>
+                        {timeLabel && (
+                          <span className="text-xs text-gray-500 text-right leading-tight">
+                            {timeLabel}
+                            {kstLabel && (
+                              <span className="block text-[10px] text-gray-400">{kstLabel}</span>
+                            )}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex-1 min-h-0 overflow-hidden">

@@ -5,11 +5,11 @@ services:
   postgres:
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-dorami}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-live_commerce}
+      POSTGRES_DB: ${POSTGRES_DB:-live_commerce_staging}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dorami} -d ${POSTGRES_DB:-live_commerce}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-live_commerce_staging}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,7 +45,7 @@ services:
       NODE_ENV: production
       APP_ENV: staging
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-dorami}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-live_commerce}?schema=public&connection_limit=20&pool_timeout=30
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-live_commerce_staging}?schema=public&connection_limit=20&pool_timeout=30
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       REDIS_ADAPTER_ENABLED: "true"
@@ -54,21 +54,25 @@ services:
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
-      CORS_ORIGINS: http://staging.doremi-live.com
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://staging.doremi-live.com}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-true}
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
       ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@dorami.shop}
       CSRF_ENABLED: "${CSRF_ENABLED:-false}"
-      FRONTEND_URL: http://staging.doremi-live.com
+      FRONTEND_URL: ${FRONTEND_URL:-http://staging.doremi-live.com}
       BANK_NAME: ${BANK_NAME:-KB국민은행}
-      BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER}
-      BANK_ACCOUNT_HOLDER: ${BANK_ACCOUNT_HOLDER}
+      BANK_ACCOUNT_NUMBER: ${BANK_ACCOUNT_NUMBER:-}
+      BANK_ACCOUNT_HOLDER: ${BANK_ACCOUNT_HOLDER:-}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
       RTMP_SERVER_URL: rtmp://srs:1935/live
       HLS_SERVER_URL: ${CDN_URL:-http://srs:8080/hls}
       SRS_API_URL: http://srs:1985
+      SRS_WEBHOOK_SECRET: ${SRS_WEBHOOK_SECRET:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@live-commerce.com}
     expose:
       - 3001
     volumes:
@@ -129,7 +133,7 @@ services:
     restart: always
     depends_on:
       frontend:
-        condition: service_healthy
+        condition: service_started
       backend:
         condition: service_healthy
     ports:

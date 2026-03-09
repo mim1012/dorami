@@ -147,7 +147,7 @@ SSH_CONFIG
 
   ssh -i ~/.ssh/deploy_key "$PRODUCTION_USER@$PRODUCTION_HOST" << 'DEPLOY_CMDS'
     set -e
-    cd /dorami || cd ~/dorami || exit 1
+    cd /doremi || cd ~/doremi || exit 1
 
     echo "Pulling latest code..."
     git fetch origin main
@@ -258,3 +258,4 @@ main() {
 }
 
 main "$@"
+

@@ -15,11 +15,12 @@ function KakaoCallbackHandler() {
     if (profileComplete) {
       router.replace('/');
     } else {
-      const params = new URLSearchParams({ incomplete: 'true' });
+      const params = new URLSearchParams();
       if (kakaoName) {
         params.set('kakaoName', kakaoName);
       }
-      router.replace(`/my-page?${params.toString()}`);
+      const target = params.toString() ? `/profile/register?${params}` : '/profile/register';
+      router.replace(target);
     }
   }, [router, searchParams]);
 

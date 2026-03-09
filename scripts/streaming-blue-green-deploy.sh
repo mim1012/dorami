@@ -21,11 +21,11 @@ Required:
 
 Optional:
   --ssh-port <port>                     default 22
-  --workdir /opt/dorami
+  --workdir /opt/doremi
   --compose-base docker-compose.base.yml
   --compose-overlay docker-compose.prod-blue-green.yml
   --target-slot blue|green (auto-detect opposite)
-  --state-file /opt/dorami/.dorami-active-slot
+  --state-file /opt/doremi/.doremi-active-slot
   --canary-url http://127.0.0.1:13080
   --canary-port 13080
   --soak-duration 1200
@@ -43,10 +43,10 @@ HOST=""
 USER=""
 SSH_KEY=""
 SSH_PORT="22"
-WORKDIR="/opt/dorami"
+WORKDIR="/opt/doremi"
 COMPOSE_BASE="docker-compose.base.yml"
 COMPOSE_OVERLAY="docker-compose.prod-blue-green.yml"
-STATE_FILE="/opt/dorami/.dorami-active-slot"
+STATE_FILE="/opt/doremi/.doremi-active-slot"
 TARGET_SLOT=""
 CANARY_URL="http://127.0.0.1:13080"
 CANARY_PORT="13080"
@@ -117,7 +117,7 @@ run_compose() {
 }
 
 SCRIPT_TMP_DIR="${TMPDIR:-/tmp}"
-RENDERED_ROUTE_LOCAL="$(mktemp "$SCRIPT_TMP_DIR/dorami-streaming-route-XXXXXX.conf")"
+RENDERED_ROUTE_LOCAL="$(mktemp "$SCRIPT_TMP_DIR/doremi-streaming-route-XXXXXX.conf")"
 CANARY_ROUTE_LOCAL="$SCRIPT_DIR/../nginx/streaming-routing.blue-green.template.conf"
 CANARY_ROUTE_REMOTE="$WORKDIR/nginx/streaming-routing.blue-green.conf"
 ACTIVE_ROUTE_REMOTE="$WORKDIR/nginx/streaming-routing.conf"
@@ -137,7 +137,7 @@ cleanup() {
   fi
 
   if [ -n "$WORKDIR" ]; then
-    if run_remote "docker ps --filter name=dorami-nginx-blue-green-canary --format '{{.Names}}' | grep -q 'dorami-nginx-blue-green-canary'" ; then
+    if run_remote "docker ps --filter name=doremi-nginx-blue-green-canary --format '{{.Names}}' | grep -q 'doremi-nginx-blue-green-canary'" ; then
       run_compose "--profile canary down nginx_blue_green_canary" || true
     fi
     if [ -f "$CANARY_ROUTE_BACKUP" ]; then
@@ -165,11 +165,11 @@ get_active_slot() {
     blue|green) echo "$from_state"; return ;;
   esac
 
-  if run_remote "docker ps --filter name=dorami-backend-blue --format '{{.Names}}' | grep -q '^dorami-backend-blue$'"; then
+  if run_remote "docker ps --filter name=doremi-backend-blue --format '{{.Names}}' | grep -q '^doremi-backend-blue$'"; then
     echo "blue"
     return
   fi
-  if run_remote "docker ps --filter name=dorami-backend-green --format '{{.Names}}' | grep -q '^dorami-backend-green$'"; then
+  if run_remote "docker ps --filter name=doremi-backend-green --format '{{.Names}}' | grep -q '^doremi-backend-green$'"; then
     echo "green"
     return
   fi
@@ -218,8 +218,8 @@ fi
 
 backend_slot="backend_${TARGET_SLOT}"
 frontend_slot="frontend_${TARGET_SLOT}"
-TARGET_BACKEND_CONTAINER="dorami-${backend_slot}"
-TARGET_FRONTEND_CONTAINER="dorami-${frontend_slot}"
+TARGET_BACKEND_CONTAINER="doremi-${backend_slot}"
+TARGET_FRONTEND_CONTAINER="doremi-${frontend_slot}"
 
 sed -e "s/__BACKEND_SLOT__/${backend_slot}/g" -e "s/__FRONTEND_SLOT__/${frontend_slot}/g" "$CANARY_ROUTE_LOCAL" > "$RENDERED_ROUTE_LOCAL"
 
@@ -251,7 +251,7 @@ if [[ "$SKIP_SOAK" != "1" ]]; then
     --ssh-workdir "$WORKDIR" \
     --compose-base "$COMPOSE_BASE" \
     --compose-overlay "$COMPOSE_OVERLAY" \
-    --nginx-container "dorami-nginx-blue-green-canary"
+    --nginx-container "doremi-nginx-blue-green-canary"
   soak_status=$?
   if [[ $soak_status -ne 0 ]]; then
     echo "Soak test failed for ${TARGET_SLOT}. Keeping existing slot ${active_slot}."
@@ -274,14 +274,14 @@ run_remote "cd '$WORKDIR' && docker compose -f docker-compose.base.yml -f docker
 SWITCH_COMPLETED="1"
 
 if [[ "$active_slot" == "blue" ]]; then
-  OLD_BACKEND="dorami-backend-blue"
-  OLD_FRONTEND="dorami-frontend-blue"
+  OLD_BACKEND="doremi-backend-blue"
+  OLD_FRONTEND="doremi-frontend-blue"
 elif [[ "$active_slot" == "green" ]]; then
-  OLD_BACKEND="dorami-backend-green"
-  OLD_FRONTEND="dorami-frontend-green"
+  OLD_BACKEND="doremi-backend-green"
+  OLD_FRONTEND="doremi-frontend-green"
 else
   OLD_BACKEND="backend-prod"
-  OLD_FRONTEND="dorami-frontend-prod"
+  OLD_FRONTEND="doremi-frontend-prod"
 fi
 
 echo "Stopping old slot containers: ${OLD_BACKEND}, ${OLD_FRONTEND}"
@@ -289,3 +289,4 @@ run_remote "docker rm -f '$OLD_BACKEND' '$OLD_FRONTEND' >/dev/null 2>&1 || true"
 set_slot_state "$TARGET_SLOT"
 
 echo "Blue/Green switch complete. Active slot=${TARGET_SLOT}"
+

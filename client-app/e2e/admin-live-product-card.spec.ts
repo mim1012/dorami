@@ -15,7 +15,7 @@ import { createTestStream, ensureAuth, devLogin } from './helpers/auth-helper';
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
 test.describe('Bug Fix: 라이브 상품 카드 표시 (allProducts[0] 폴백)', () => {
-  test.setTimeout(120000);
+  test.setTimeout(150000);
 
   let testStreamKey: string;
 

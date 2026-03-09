@@ -10,6 +10,7 @@ import { Modal } from '@/components/common/Modal';
 import { apiClient } from '@/lib/api/client';
 import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
+import { formatPrice } from '@/lib/utils/price';
 import {
   Plus,
   Edit,
@@ -48,12 +49,15 @@ import type { Product as BaseProduct } from '@/lib/types';
 interface Product extends BaseProduct {
   images?: string[];
   sortOrder?: number;
+  expiresAt?: string | null;
 }
 
 interface ProductFormData {
   streamKey: string;
   name: string;
-  price: string;
+  originalPrice: string; // 정가 (항상 입력)
+  discountEnabled: boolean; // 할인 토글
+  discountPrice: string; // 할인가 (discountEnabled=true 일 때만)
   stock: string;
   colorOptions: string;
   sizeOptions: string;
@@ -61,9 +65,8 @@ interface ProductFormData {
   timerDurationHours: string;
   imageUrl: string;
   images: string[];
-  discountRate: string;
-  originalPrice: string;
   isNew: boolean;
+  expiresAtHours?: string;
 }
 
 const MIN_TIMER_HOURS = 1;
@@ -85,6 +88,43 @@ const formatDate = (dateString: string) => {
     day: '2-digit',
   });
 };
+
+function calcDiscountRate(originalPrice: string, discountPrice: string): number | null {
+  const orig = parseFloat(originalPrice);
+  const disc = parseFloat(discountPrice);
+  if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc <= 0 || disc >= orig) return null;
+  return Math.round(((orig - disc) / orig) * 1000) / 10;
+}
+
+async function resizeImage(file: File, maxWidth = 800, maxHeight = 800): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(
+        (blob) => {
+          resolve(
+            new File([blob!], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }),
+          );
+        },
+        'image/webp',
+        0.85,
+      );
+    };
+    img.src = url;
+  });
+}
 
 // --- Sortable Row Component ---
 function SortableRow({
@@ -126,7 +166,7 @@ function SortableRow({
     >
       <td className="px-2 py-4 w-8">
         <button
-          className="cursor-grab active:cursor-grabbing p-1 text-secondary-text hover:text-primary-text"
+          className="inline-flex cursor-grab active:cursor-grabbing min-h-[44px] min-w-[44px] items-center justify-center p-2 text-secondary-text hover:text-primary-text"
           {...attributes}
           {...listeners}
         >
@@ -138,7 +178,7 @@ function SortableRow({
           type="checkbox"
           checked={selectedIds.has(product.id)}
           onChange={() => toggleSelect(product.id)}
-          className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+          className="w-5 h-5 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
         />
       </td>
       <td className="px-4 py-4">
@@ -176,26 +216,64 @@ function SortableRow({
                   {minutesToHours(product.timerDuration)}시간
                 </span>
               )}
+              {product.expiresAt &&
+                (() => {
+                  const expiresAt = new Date(product.expiresAt!);
+                  const diffMs = expiresAt.getTime() - Date.now();
+                  if (diffMs <= 0) return null;
+                  const isSoon = diffMs < 60 * 60 * 1000;
+                  const label =
+                    expiresAt.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) +
+                    ' ' +
+                    expiresAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <span
+                      key="expiry"
+                      className={`text-xs px-2 py-0.5 rounded ${isSoon ? 'bg-error/20 text-error' : 'bg-orange-500/20 text-orange-400'}`}
+                    >
+                      {label}
+                    </span>
+                  );
+                })()}
             </div>
           </div>
         </div>
       </td>
       <td className="px-4 py-4 text-right">
-        <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
-        {product.shippingFee > 0 && (
-          <Body className="text-xs text-secondary-text">
-            +배송비 {formatPrice(product.shippingFee)}
-          </Body>
+        {product.originalPrice != null && product.originalPrice > product.price ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-xs text-secondary-text line-through">
+              {formatPrice(product.originalPrice)}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
+              {(() => {
+                const rate =
+                  Math.round(
+                    ((product.originalPrice - product.price) / product.originalPrice) * 1000,
+                  ) / 10;
+                return (
+                  <span className="text-xs bg-error/20 text-error px-1.5 py-0.5 rounded font-semibold">
+                    -{rate}%
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Body className="text-primary-text font-bold">{formatPrice(product.price)}</Body>
+            {product.shippingFee > 0 && (
+              <Body className="text-xs text-secondary-text">
+                +배송비 {formatPrice(product.shippingFee)}
+              </Body>
+            )}
+          </div>
         )}
       </td>
       <td className="px-4 py-4 text-center">
         <Body className={`font-semibold ${product.stock < 5 ? 'text-error' : 'text-primary-text'}`}>
           {product.stock}개
-        </Body>
-      </td>
-      <td className="px-4 py-4 text-center">
-        <Body className="text-primary-text">
-          {product.discountRate != null ? `${product.discountRate}%` : '-'}
         </Body>
       </td>
       <td className="px-4 py-4 text-center">
@@ -212,7 +290,7 @@ function SortableRow({
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => handleOpenModal(product)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-hot-pink"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-lg transition-colors text-hot-pink"
             title="수정"
           >
             <Edit className="w-4 h-4" />
@@ -221,7 +299,7 @@ function SortableRow({
           {product.status === 'AVAILABLE' && (
             <button
               onClick={() => handleMarkAsSoldOut(product.id)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-warning"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-lg transition-colors text-warning"
               title="품절 처리"
             >
               <CheckCircle className="w-4 h-4" />
@@ -230,7 +308,7 @@ function SortableRow({
           )}
           <button
             onClick={() => handleDelete(product.id)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-error"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-lg transition-colors text-error"
             title="삭제"
           >
             <Trash2 className="w-4 h-4" />
@@ -254,7 +332,7 @@ export default function AdminProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterStreamKey, setFilterStreamKey] = useState<string>('');
 
-  // Search & Filter state (Feature 5)
+  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'' | 'AVAILABLE' | 'SOLD_OUT'>('');
   const [priceMin, setPriceMin] = useState('');
@@ -272,14 +350,16 @@ export default function AdminProductsPage() {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Gallery images state (Feature 3)
+  // Gallery images state
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
     name: '',
-    price: '',
+    originalPrice: '',
+    discountEnabled: false,
+    discountPrice: '',
     stock: '',
     colorOptions: '',
     sizeOptions: '',
@@ -287,12 +367,11 @@ export default function AdminProductsPage() {
     timerDurationHours: '1',
     imageUrl: '',
     images: [],
-    discountRate: '',
-    originalPrice: '',
     isNew: false,
+    expiresAtHours: undefined,
   });
 
-  // DnD sensors (Feature 2)
+  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -319,7 +398,7 @@ export default function AdminProductsPage() {
     fetchActiveLiveKey();
   }, []);
 
-  // Client-side filtered products (Feature 5)
+  // Client-side filtered products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -334,10 +413,11 @@ export default function AdminProductsPage() {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
+      params.set('includeExpired', 'true');
       if (filterStreamKey) {
         params.set('streamKey', filterStreamKey);
       }
-      const url = `/products${params.toString() ? `?${params}` : ''}`;
+      const url = `/products/admin${params.toString() ? `?${params}` : ''}`;
       const response = await apiClient.get(url);
       setProducts((response.data as Product[]) || []);
     } catch (err: any) {
@@ -348,15 +428,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
-  // --- Feature 2: DnD Reorder ---
+  // --- DnD Reorder ---
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -394,7 +466,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  // --- Feature 4: Bulk Status Change ---
+  // --- Bulk Status Change ---
   const handleBulkStatusChange = async (status: 'AVAILABLE' | 'SOLD_OUT') => {
     if (selectedIds.size === 0) return;
     const label = status === 'AVAILABLE' ? '판매중' : '품절';
@@ -422,12 +494,13 @@ export default function AdminProductsPage() {
   };
 
   // --- Image Upload ---
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-      setSelectedFile(file);
-      const objectUrl = URL.createObjectURL(file);
+      const resized = await resizeImage(file);
+      setSelectedFile(resized);
+      const objectUrl = URL.createObjectURL(resized);
       setPreviewUrl(objectUrl);
     }
   };
@@ -462,11 +535,12 @@ export default function AdminProductsPage() {
     setFormData((prev) => ({ ...prev, imageUrl: '' }));
   };
 
-  // --- Feature 3: Gallery Image Upload ---
-  const handleGalleryFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- Gallery Image Upload ---
+  const handleGalleryFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setGalleryFiles(files);
+      const resized = await Promise.all(files.map((f) => resizeImage(f)));
+      setGalleryFiles(resized);
     }
   };
 
@@ -513,10 +587,14 @@ export default function AdminProductsPage() {
   const handleOpenModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
+      const hasDiscount = product.originalPrice != null && product.originalPrice > product.price;
       setFormData({
         streamKey: product.streamKey || '',
         name: product.name,
-        price: product.price.toString(),
+        // originalPrice = 정가 (할인 있으면 originalPrice, 없으면 price)
+        originalPrice: hasDiscount ? product.originalPrice!.toString() : product.price.toString(),
+        discountEnabled: hasDiscount,
+        discountPrice: hasDiscount ? product.price.toString() : '',
         stock: product.stock.toString(),
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
@@ -524,9 +602,15 @@ export default function AdminProductsPage() {
         timerDurationHours: minutesToHours(product.timerDuration).toString(),
         imageUrl: product.imageUrl || '',
         images: product.images || [],
-        discountRate: product.discountRate?.toString() || '',
-        originalPrice: product.originalPrice?.toString() || '',
         isNew: product.isNew || false,
+        expiresAtHours: product.expiresAt
+          ? String(
+              Math.max(
+                1,
+                Math.ceil((new Date(product.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60)),
+              ),
+            )
+          : undefined,
       });
       setPreviewUrl(product.imageUrl || '');
     } else {
@@ -534,7 +618,9 @@ export default function AdminProductsPage() {
       setFormData({
         streamKey: activeLiveStreamKey,
         name: '',
-        price: '',
+        originalPrice: '',
+        discountEnabled: false,
+        discountPrice: '',
         stock: '',
         colorOptions: '',
         sizeOptions: '',
@@ -542,9 +628,8 @@ export default function AdminProductsPage() {
         timerDurationHours: '1',
         imageUrl: '',
         images: [],
-        discountRate: '',
-        originalPrice: '',
         isNew: false,
+        expiresAtHours: undefined,
       });
       setPreviewUrl('');
     }
@@ -557,7 +642,14 @@ export default function AdminProductsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const errors = validateProductForm(formData);
+    // Build schema-compatible data for validation
+    const dataForValidation = {
+      ...formData,
+      // schema expects discountPrice optional when discountEnabled=false
+      discountPrice: formData.discountEnabled ? formData.discountPrice : undefined,
+    };
+
+    const errors = validateProductForm(dataForValidation as any);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -606,9 +698,26 @@ export default function AdminProductsPage() {
         }
       }
 
+      // Build API payload from new form shape
+      let apiPrice: number;
+      let apiOriginalPrice: number | undefined;
+      let apiDiscountRate: number | undefined;
+
+      if (formData.discountEnabled && formData.discountPrice) {
+        const orig = parseFloat(formData.originalPrice);
+        const disc = parseFloat(formData.discountPrice);
+        apiPrice = disc;
+        apiOriginalPrice = orig;
+        apiDiscountRate = Math.round(((orig - disc) / orig) * 1000) / 10;
+      } else {
+        apiPrice = parseFloat(formData.originalPrice);
+        apiOriginalPrice = undefined;
+        apiDiscountRate = undefined;
+      }
+
       const basePayload = {
         name: formData.name,
-        price: parseFloat(formData.price),
+        price: apiPrice,
         stock: parseInt(formData.stock),
         colorOptions: formData.colorOptions
           .split(',')
@@ -629,9 +738,14 @@ export default function AdminProductsPage() {
           ) * MINUTES_PER_HOUR,
         imageUrl: finalImageUrl || undefined,
         images: finalImages,
-        discountRate: formData.discountRate ? parseFloat(formData.discountRate) : undefined,
-        originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
+        discountRate: apiDiscountRate,
+        originalPrice: apiOriginalPrice,
         isNew: formData.isNew,
+        ...(formData.expiresAtHours && {
+          expiresAt: new Date(
+            Date.now() + parseInt(formData.expiresAtHours, 10) * 60 * 60 * 1000,
+          ).toISOString(),
+        }),
       };
 
       if (editingProduct) {
@@ -756,6 +870,11 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Compute live discount rate for form preview
+  const liveDiscountRate = formData.discountEnabled
+    ? calcDiscountRate(formData.originalPrice, formData.discountPrice)
+    : null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -772,12 +891,13 @@ export default function AdminProductsPage() {
           <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedIds.size > 0 && (
             <>
               <Button
                 variant="outline"
                 onClick={() => handleBulkStatusChange('AVAILABLE')}
+                size="sm"
                 className="flex items-center gap-2 border-success text-success hover:bg-success/10"
               >
                 판매중으로 변경
@@ -785,6 +905,7 @@ export default function AdminProductsPage() {
               <Button
                 variant="outline"
                 onClick={() => handleBulkStatusChange('SOLD_OUT')}
+                size="sm"
                 className="flex items-center gap-2 border-warning text-warning hover:bg-warning/10"
               >
                 품절로 변경
@@ -793,6 +914,7 @@ export default function AdminProductsPage() {
                 variant="outline"
                 onClick={handleBulkDelete}
                 disabled={isBulkDeleting}
+                size="sm"
                 className="flex items-center gap-2 border-error text-error hover:bg-error/10"
               >
                 <Trash2 className="w-4 h-4" />
@@ -811,7 +933,7 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Search & Filter (Feature 5) */}
+      {/* Search & Filter */}
       <div className="bg-content-bg border border-gray-200 rounded-card p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
           <div className="flex-1 relative">
@@ -861,7 +983,7 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Products Table with DnD (Feature 2) */}
+      {/* Products Table with DnD */}
       <div className="bg-content-bg border border-gray-200 rounded-card overflow-hidden">
         {filteredProducts.length === 0 ? (
           <div className="text-center py-16">
@@ -896,7 +1018,7 @@ export default function AdminProductsPage() {
                           filteredProducts.length > 0
                         }
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                        className="w-5 h-5 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
                       />
                     </th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
@@ -907,9 +1029,6 @@ export default function AdminProductsPage() {
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       재고
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      할인율
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
                       등록일
@@ -981,17 +1100,18 @@ export default function AdminProductsPage() {
             error={formErrors.name}
           />
 
+          {/* 가격 섹션 */}
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="가격"
-              name="price"
+              label="가격 (정가)"
+              name="originalPrice"
               type="number"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              value={formData.originalPrice}
+              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
               placeholder="29000"
               required
               fullWidth
-              error={formErrors.price}
+              error={formErrors.originalPrice}
             />
             <Input
               label="재고"
@@ -1006,30 +1126,53 @@ export default function AdminProductsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="할인율 (%)"
-              name="discountRate"
-              type="number"
-              value={formData.discountRate}
-              onChange={(e) => setFormData({ ...formData, discountRate: e.target.value })}
-              placeholder="예: 15 (15% 할인)"
-              min="0"
-              max="100"
-              fullWidth
-              error={formErrors.discountRate}
-            />
-            <Input
-              label="정가(할인 전 가격)"
-              name="originalPrice"
-              type="number"
-              value={formData.originalPrice}
-              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-              placeholder="예: 35"
-              fullWidth
-              error={formErrors.originalPrice}
-            />
+          {/* 할인 토글 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formData.discountEnabled}
+                onChange={(e) =>
+                  setFormData({ ...formData, discountEnabled: e.target.checked, discountPrice: '' })
+                }
+                className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+              />
+              <span className="text-sm font-medium text-primary-text">할인 적용</span>
+            </label>
           </div>
+
+          {/* 할인 가격 입력 (할인 활성 시만 표시) */}
+          {formData.discountEnabled && (
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input
+                    label="할인 가격"
+                    name="discountPrice"
+                    type="number"
+                    value={formData.discountPrice}
+                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
+                    placeholder="24000"
+                    required
+                    fullWidth
+                    error={formErrors.discountPrice}
+                  />
+                </div>
+                {liveDiscountRate !== null && (
+                  <div className="mt-5">
+                    <span className="inline-block px-2.5 py-1.5 rounded-lg bg-error/15 text-error text-sm font-bold whitespace-nowrap">
+                      할인율: {liveDiscountRate}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              {formData.discountPrice &&
+                formData.originalPrice &&
+                parseFloat(formData.discountPrice) >= parseFloat(formData.originalPrice) && (
+                  <p className="text-xs text-error mt-1">할인 가격은 정가보다 작아야 합니다</p>
+                )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -1085,6 +1228,27 @@ export default function AdminProductsPage() {
             )}
           </div>
 
+          {/* Expiry Time */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              만료까지 시간 <span className="text-gray-500">(선택, 시간 단위)</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="8760"
+              placeholder="예: 24 (24시간 후 자동 삭제)"
+              value={formData.expiresAtHours ?? ''}
+              onChange={(e) =>
+                setFormData({ ...formData, expiresAtHours: e.target.value || undefined })
+              }
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-hot-pink/30 focus:border-hot-pink"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              입력한 시간 후 자동으로 삭제됩니다 (예: 24 = 24시간 후)
+            </p>
+          </div>
+
           {/* Main Image Upload Section */}
           <div>
             <label className="block text-sm font-medium text-secondary-text mb-2">
@@ -1101,7 +1265,7 @@ export default function AdminProductsPage() {
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 p-2 bg-error text-white rounded-full hover:bg-error/90 transition-colors"
+                  className="absolute top-2 right-2 inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center bg-error text-white rounded-full hover:bg-error/90 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1138,7 +1302,7 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          {/* Gallery Images Section (Feature 3) */}
+          {/* Gallery Images Section */}
           <div>
             <label className="block text-sm font-medium text-secondary-text mb-2">
               추가 이미지 (갤러리)
@@ -1156,7 +1320,7 @@ export default function AdminProductsPage() {
                     <button
                       type="button"
                       onClick={() => handleRemoveGalleryImage(idx)}
-                      className="absolute top-1 right-1 p-1 bg-error text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 inline-flex h-8 w-8 min-h-[44px] min-w-[44px] items-center justify-center bg-error text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="w-3 h-3" />
                     </button>

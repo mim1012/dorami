@@ -66,6 +66,12 @@ export async function deleteReStreamTarget(id: string) {
   await apiClient.delete(`/restream/targets/${id}`);
 }
 
+export async function deleteReStreamTargets(ids: string[]) {
+  if (ids.length === 0) return { deletedCount: 0 };
+  const response = await apiClient.post('/restream/targets/bulk-delete', { ids });
+  return response.data;
+}
+
 export async function getReStreamStatuses(liveStreamId: string) {
   const res = await apiClient.get<ReStreamLog[]>(`/restream/status/${liveStreamId}`);
   return res.data;

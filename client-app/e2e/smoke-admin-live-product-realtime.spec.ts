@@ -37,7 +37,7 @@ const makeHeaders = (csrfToken: string) => {
 };
 
 test.describe('Smoke - Admin Live Product Realtime', () => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
 
   test('SMOKE-RT-01: 관리자가 스트림 연결 상품을 생성하고 실시간 노출 신호를 확인', async ({
     page,

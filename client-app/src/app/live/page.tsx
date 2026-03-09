@@ -4,20 +4,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag } from 'lucide-react';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { getActiveStreams, type LiveStream as Stream } from '@/lib/api/streaming';
+import {
+  getActiveStreams,
+  getUpcomingStreams,
+  type LiveStream as Stream,
+  type UpcomingStream,
+} from '@/lib/api/streaming';
 import { getProductsByStreamKey, type Product } from '@/lib/api/products';
 import { StreamProductsModal } from '@/components/live/StreamProductsModal';
+import { formatStreamSchedule } from '@/lib/utils/format';
 
 const formatPrice = (price: number) =>
-  new Intl.NumberFormat('ko-KR', {
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'KRW',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(price);
 
 export default function LivePage() {
   const router = useRouter();
   const [streams, setStreams] = useState<Stream[]>([]);
+  const [upcomingStreams, setUpcomingStreams] = useState<UpcomingStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [streamProducts, setStreamProducts] = useState<Record<string, Product[]>>({});
@@ -27,11 +34,15 @@ export default function LivePage() {
     async function fetchStreams() {
       try {
         setLoading(true);
-        const data = await getActiveStreams();
-        setStreams(data);
+        const [activeStreams, scheduled] = await Promise.all([
+          getActiveStreams(),
+          getUpcomingStreams(6),
+        ]);
+        setStreams(activeStreams);
+        setUpcomingStreams(scheduled);
 
         // Fetch products for each LIVE stream that has a streamKey
-        const liveStreams = data.filter((s) => s.status === 'LIVE' && s.streamKey);
+        const liveStreams = activeStreams.filter((s) => s.isLive && s.streamKey);
         if (liveStreams.length > 0) {
           const results = await Promise.allSettled(
             liveStreams.map((s) => getProductsByStreamKey(s.streamKey!)),
@@ -103,8 +114,7 @@ export default function LivePage() {
     );
   }
 
-  const liveStreams = streams.filter((stream) => stream.status === 'LIVE');
-  const scheduledStreams = streams.filter((stream) => stream.status === 'SCHEDULED');
+  const liveStreams = streams.filter((stream) => stream.isLive);
 
   return (
     <>
@@ -125,13 +135,22 @@ export default function LivePage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {liveStreams.map((stream) => {
+                  const canNavigateToStream = Boolean(stream.streamKey);
                   const products = streamProducts[stream.streamKey ?? ''] ?? [];
                   return (
                     <div key={stream.id} className="flex flex-col gap-0">
                       {/* 방송 카드 */}
                       <div
-                        onClick={() => router.push(`/live/${stream.streamKey}`)}
-                        className="relative aspect-auto bg-white rounded-t-[12px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity group"
+                        onClick={() => {
+                          if (canNavigateToStream) {
+                            router.push(`/live/${stream.streamKey}`);
+                          }
+                        }}
+                        className={`relative aspect-auto bg-white rounded-t-[12px] overflow-hidden transition-opacity group ${
+                          canNavigateToStream
+                            ? 'cursor-pointer hover:opacity-90'
+                            : 'cursor-not-allowed opacity-70'
+                        }`}
                       >
                         {/* 썸네일 이미지 */}
                         {stream.thumbnailUrl && (
@@ -186,7 +205,11 @@ export default function LivePage() {
                                   <div
                                     key={product.id}
                                     className="flex-shrink-0 flex flex-col items-center cursor-pointer"
-                                    onClick={() => setSelectedStream(stream)}
+                                    onClick={() => {
+                                      if (canNavigateToStream) {
+                                        setSelectedStream(stream);
+                                      }
+                                    }}
                                   >
                                     <div className="w-14 h-14 bg-primary-black rounded-lg overflow-hidden mb-1">
                                       {product.imageUrl ? (
@@ -228,11 +251,11 @@ export default function LivePage() {
           )}
 
           {/* 예정된 라이브 */}
-          {scheduledStreams.length > 0 && (
+          {upcomingStreams.length > 0 && (
             <div className="mb-12">
               <h2 className="text-h2 text-primary-text font-semibold mb-4">예정된 라이브</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {scheduledStreams.map((stream) => (
+                {upcomingStreams.map((stream) => (
                   <div key={stream.id} className="bg-content-bg rounded-[12px] p-4">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-body text-primary-text font-bold">{stream.title}</h3>
@@ -245,9 +268,21 @@ export default function LivePage() {
                         {stream.description}
                       </p>
                     )}
-                    {stream.scheduledAt && (
-                      <p className="text-caption text-secondary-text">
-                        📅 {new Date(stream.scheduledAt).toLocaleString('ko-KR')}
+                    {stream.scheduledAt &&
+                      (() => {
+                        const { dayLabel, timeLabel, kstLabel } = formatStreamSchedule(
+                          stream.scheduledAt,
+                        );
+                        return (
+                          <p className="text-caption text-secondary-text">
+                            📅 {dayLabel} {timeLabel}
+                            {kstLabel ? ` (${kstLabel})` : ''}
+                          </p>
+                        );
+                      })()}
+                    {!stream.streamKey && (
+                      <p className="text-[11px] text-secondary-text mt-2">
+                        방송 시작 전까지 시청/구매가 활성화되지 않습니다
                       </p>
                     )}
                   </div>
@@ -257,7 +292,7 @@ export default function LivePage() {
           )}
 
           {/* 라이브 방송이 없을 때 */}
-          {liveStreams.length === 0 && scheduledStreams.length === 0 && (
+          {liveStreams.length === 0 && upcomingStreams.length === 0 && (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <p className="text-h2 text-primary-text mb-2">진행 중인 라이브가 없습니다</p>

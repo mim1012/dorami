@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DEPLOY_DIR="/opt/dorami"
+DEPLOY_DIR="/opt/doremi"
 ENV_FILE=".env.production"
 
 cd "$DEPLOY_DIR"
@@ -61,3 +61,4 @@ docker compose \
   --env-file "$ENV_FILE" \
   exec -T backend wget -qO- http://localhost:3001/api/health/live 2>/dev/null && \
   echo "✅ Backend healthy" || echo "⚠️ Backend health check pending"
+

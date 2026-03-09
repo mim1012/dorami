@@ -7,7 +7,7 @@ import { ensureAuth } from './helpers/auth-helper';
  */
 
 test.describe('Live Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');

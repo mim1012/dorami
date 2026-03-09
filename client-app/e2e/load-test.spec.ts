@@ -55,7 +55,7 @@ async function runUserFlow(userIndex: number): Promise<UserResult> {
     const loginStep = await measureStep('login', async () => {
       const res = await apiCtx.post('/api/auth/dev-login', {
         data: {
-          email: `loadtest-user-${userIndex}@test.dorami.shop`,
+          email: `loadtest-user-${userIndex}@test.doremi.shop`,
           name: `LoadTest User ${userIndex}`,
         },
       });

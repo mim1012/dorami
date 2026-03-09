@@ -40,10 +40,10 @@ interface DashboardStats {
   optionSales?: OptionSalesItem[];
 }
 
-function formatKRW(value: number): string {
-  return new Intl.NumberFormat('ko-KR', {
+function formatUSD(value: number): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'KRW',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -128,9 +128,7 @@ export default function AdminAnalyticsPage() {
           </div>
           <p className="text-sm text-secondary-text mb-1">라이브 세션</p>
           <p className="text-2xl font-bold text-primary-text">{stats.activeLiveStreams.value}</p>
-          <p className="text-xs text-secondary-text mt-2">
-            진행중/예정 스트림 수 (최근 지표)
-          </p>
+          <p className="text-xs text-secondary-text mt-2">진행중/예정 스트림 수 (최근 지표)</p>
         </div>
 
         <div className="bg-content-bg rounded-card border border-gray-200 p-6">
@@ -166,7 +164,9 @@ export default function AdminAnalyticsPage() {
         <div className="bg-content-bg rounded-card border border-gray-200 p-6">
           <h2 className="font-semibold text-primary-text mb-4">일별 결제완료 주문</h2>
           <div className="space-y-3">
-            {stats.dailyRevenue.length === 0 && <Body className="text-secondary-text">데이터 없음</Body>}
+            {stats.dailyRevenue.length === 0 && (
+              <Body className="text-secondary-text">데이터 없음</Body>
+            )}
             {stats.dailyRevenue.map((daily) => {
               const barWidth = Math.max(10, (daily.orderCount / maxRevenueDay) * 100);
               return (
@@ -176,7 +176,9 @@ export default function AdminAnalyticsPage() {
                       <p className="font-medium text-primary-text text-sm">{daily.date}</p>
                       <p className="text-xs text-secondary-text">{daily.orderCount}건 주문</p>
                     </div>
-                    <p className="text-sm font-semibold text-primary-text">{formatKRW(daily.revenue)}</p>
+                    <p className="text-sm font-semibold text-primary-text">
+                      {formatUSD(daily.revenue)}
+                    </p>
                   </div>
                   <div className="w-full h-2 bg-gray-100/20 rounded-full overflow-hidden">
                     <div
@@ -200,8 +202,12 @@ export default function AdminAnalyticsPage() {
                 <div key={item.option} className="flex items-center justify-between">
                   <div className="flex-1 min-w-0 pr-4">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium text-primary-text truncate">{item.option}</span>
-                      <span className="text-sm font-semibold text-primary-text">{item.sales}개</span>
+                      <span className="text-sm font-medium text-primary-text truncate">
+                        {item.option}
+                      </span>
+                      <span className="text-sm font-semibold text-primary-text">
+                        {item.sales}개
+                      </span>
                     </div>
                     <div className="w-full h-2 bg-gray-100/20 rounded-full overflow-hidden">
                       <div
@@ -243,7 +249,9 @@ export default function AdminAnalyticsPage() {
               {topProducts.map((product) => (
                 <tr key={product.productId} className="border-t border-white/10">
                   <td className="py-3 pr-4 text-primary-text">{product.productName || '-'}</td>
-                  <td className="py-3 pr-4 font-semibold text-primary-text">{product.totalSold}개</td>
+                  <td className="py-3 pr-4 font-semibold text-primary-text">
+                    {product.totalSold}개
+                  </td>
                 </tr>
               ))}
             </tbody>

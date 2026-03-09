@@ -1,34 +1,23 @@
 import type { User } from '@/lib/types/user';
-
-export interface ShippingAddress {
-  fullName?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  phone?: string;
-}
+import type { ShippingAddress } from '@live-commerce/shared-types';
+export type { ShippingAddress };
 
 /**
  * Unified profile completion check across the app
- * Returns true only if user has ALL 4 required profile fields:
- * 1. phone (string)
- * 2. email (string)
- * 3. instagramId (string)
- * 4. shippingAddress (object with fullName)
- *
- * This ensures comprehensive user data capture for live commerce service.
+ * Returns true only if user has ALL required profile fields.
+ * Prefers the boolean `profileComplete` flag from the server (JWT/API).
+ * Fallback check uses: email + shippingAddress.fullName (instagramId and phone are optional).
  */
 export function isProfileComplete(user: User | null): boolean {
   if (!user) return false;
+  if (typeof user.profileComplete === 'boolean') {
+    return user.profileComplete;
+  }
 
-  // Check all 4 required fields
-  const hasPhone = !!user.phone;
+  // Fallback: check required fields only (instagramId and phone are optional)
   const hasEmail = !!user.email;
-  const hasInstagramId = !!user.instagramId;
 
-  if (!hasPhone || !hasEmail || !hasInstagramId) return false;
+  if (!hasEmail) return false;
 
   const shippingAddress = user.shippingAddress as ShippingAddress | undefined;
   const hasShippingAddress = !!shippingAddress?.fullName;
@@ -43,5 +32,11 @@ export function isProfileComplete(user: User | null): boolean {
 export function needsProfileCompletion(user: User | null): boolean {
   if (!user) return false;
   const isAuthenticated = !!(user.kakaoId || user.email);
-  return isAuthenticated && !isProfileComplete(user);
+  if (!isAuthenticated) {
+    return false;
+  }
+  if (typeof user.profileComplete === 'boolean') {
+    return !user.profileComplete;
+  }
+  return !isProfileComplete(user);
 }

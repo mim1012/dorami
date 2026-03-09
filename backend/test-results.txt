@@ -526,8 +526,9 @@ Time:        69.368 s
 Ran all test suites.
 npm error Lifecycle script `test:e2e` failed with error:
 npm error code 1
-npm error path D:\Project\dorami\backend
+npm error path D:\Project\doremi\backend
 npm error workspace backend@1.0.0
-npm error location D:\Project\dorami\backend
+npm error location D:\Project\doremi\backend
 npm error command failed
 npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest --config ./test/jest-e2e.json
+

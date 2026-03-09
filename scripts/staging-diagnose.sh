@@ -19,10 +19,10 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-PROJECT_DIR="${PROJECT_DIR:-/opt/dorami}"
+PROJECT_DIR="${PROJECT_DIR:-/opt/doremi}"
 COMPOSE_CMD="docker compose -f ${PROJECT_DIR}/docker-compose.base.yml -f ${PROJECT_DIR}/docker-compose.staging.yml"
 ENV_FILE="${PROJECT_DIR}/.env.staging"
-NETWORK_NAME="dorami-internal"
+NETWORK_NAME="doremi-internal"
 AUTO_FIX=false
 
 # ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ info "Testing PostgreSQL connectivity from within Docker network..."
 PG_USER=$(grep "^POSTGRES_USER=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-)
 PG_PASS=$(grep "^POSTGRES_PASSWORD=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-)
 PG_DB=$(grep "^POSTGRES_DB=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-)
-PG_TEST=$(docker run --rm --network "$NETWORK_NAME" -e PGPASSWORD="$PG_PASS" postgres:16-alpine psql -h postgres -U "${PG_USER:-dorami}" -d "${PG_DB:-live_commerce}" -c "SELECT 1;" 2>&1 || echo "FAIL")
+PG_TEST=$(docker run --rm --network "$NETWORK_NAME" -e PGPASSWORD="$PG_PASS" postgres:16-alpine psql -h postgres -U "${PG_USER:-doremi}" -d "${PG_DB:-live_commerce}" -c "SELECT 1;" 2>&1 || echo "FAIL")
 if echo "$PG_TEST" | grep -q "1"; then
   pass "PostgreSQL connection from Docker network: OK"
 else
@@ -419,10 +419,11 @@ else
   echo -e "  ${RED}${BOLD}$ERRORS FAILURE(S), $WARNINGS WARNING(S)${RESET}"
   echo ""
   echo -e "  Common fixes:"
-  echo -e "    1. Recreate network:  docker network rm dorami-internal && docker compose ... up -d"
+  echo -e "    1. Recreate network:  docker network rm doremi-internal && docker compose ... up -d"
   echo -e "    2. Restart backend:   docker compose ... restart backend"
-  echo -e "    3. Check Redis DNS:   docker run --rm --network dorami-internal busybox nslookup redis"
+  echo -e "    3. Check Redis DNS:   docker run --rm --network doremi-internal busybox nslookup redis"
   echo -e "    4. Full restart:      bash scripts/staging-diagnose.sh --fix"
 fi
 echo ""
 exit $ERRORS
+

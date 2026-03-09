@@ -4,19 +4,10 @@ import { useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import type { UpcomingLiveDto } from '@live-commerce/shared-types';
+import { formatStreamSchedule } from '@/lib/utils/format';
 
 interface UpcomingLiveSliderProps {
   liveStreams: UpcomingLiveDto[];
-}
-
-function formatScheduledAt(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const month = d.getMonth() + 1;
-  const day = d.getDate();
-  const hours = d.getHours().toString().padStart(2, '0');
-  const mins = d.getMinutes().toString().padStart(2, '0');
-  return `${month}/${day} ${hours}:${mins}`;
 }
 
 export function UpcomingLiveSlider({ liveStreams }: UpcomingLiveSliderProps) {
@@ -112,11 +103,16 @@ export function UpcomingLiveSlider({ liveStreams }: UpcomingLiveSliderProps) {
                 <div className="w-full h-full bg-gradient-to-br from-[#7928CA]/20 to-pink-500/20" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              {stream.scheduledAt && (
-                <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-mono">
-                  {formatScheduledAt(stream.scheduledAt)}
-                </div>
-              )}
+              {stream.scheduledAt &&
+                (() => {
+                  const { timeLabel, kstLabel } = formatStreamSchedule(stream.scheduledAt);
+                  return (
+                    <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-mono text-right">
+                      <div>{timeLabel}</div>
+                      {kstLabel && <div className="text-[10px] text-white/70">{kstLabel}</div>}
+                    </div>
+                  );
+                })()}
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <p className="text-white/70 text-[10px] mb-0.5">{stream.host.name}</p>
                 <h3 className="text-white font-bold text-sm line-clamp-1">{stream.title}</h3>

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Dorami Stress Test Script
+ * Doremi Stress Test Script
  *
  * 점진적 부하 증가로 서버 한계점을 측정합니다.
  * 단계: 100 → 200 → 500 → 1000 사용자
@@ -67,7 +67,7 @@ function httpGet(urlStr) {
         hostname: url.hostname,
         port: url.port || (url.protocol === 'https:' ? 443 : 80),
         path: url.pathname + url.search,
-        headers: { 'User-Agent': 'dorami-stress-test/1.0', Accept: 'application/json' },
+        headers: { 'User-Agent': 'doremi-stress-test/1.0', Accept: 'application/json' },
         timeout: REQUEST_TIMEOUT_MS,
         // Reuse connections
         agent: url.protocol === 'https:'
@@ -286,7 +286,7 @@ function getMemoryMB() {
 
 async function main() {
   console.log('='.repeat(60));
-  console.log('  Dorami Stress Test');
+  console.log('  Doremi Stress Test');
   console.log('='.repeat(60));
   console.log(`  Target   : ${TARGET_URL}`);
   console.log(`  Stages   : ${STAGES.join(' -> ')} users`);
@@ -387,3 +387,5 @@ main().catch((err) => {
   console.error('Stress test failed:', err);
   process.exit(1);
 });
+
+

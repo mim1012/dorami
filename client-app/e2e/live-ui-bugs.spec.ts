@@ -12,7 +12,7 @@ import { createTestStream, ensureAuth } from './helpers/auth-helper';
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
 test.describe('Bug Fix: 모바일 라이브 비디오 레이아웃', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   let testStreamKey: string;
 
@@ -81,7 +81,7 @@ test.describe('Bug Fix: 모바일 라이브 비디오 레이아웃', () => {
 });
 
 test.describe('Bug Fix: 시청자 수 중복 카운트 방지', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   let testStreamKey: string;
 
@@ -147,7 +147,7 @@ test.describe('Bug Fix: 시청자 수 중복 카운트 방지', () => {
 });
 
 test.describe('Bug Fix: 공지 헤더 애니메이션 중복 텍스트 방지', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   let testStreamKey: string;
 

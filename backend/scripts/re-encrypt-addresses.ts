@@ -24,18 +24,9 @@
 
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
+import type { ShippingAddress } from '@live-commerce/shared-types';
 
 const ALGORITHM = 'aes-256-gcm';
-
-interface ShippingAddress {
-  fullName: string;
-  address1: string;
-  address2?: string;
-  city: string;
-  state: string;
-  zip: string;
-  phone: string;
-}
 
 function decryptWithKey(encrypted: string, key: Buffer): ShippingAddress {
   const [ivHex, authTagHex, ciphertext] = encrypted.split(':');

@@ -36,7 +36,7 @@
 
 - [x] nginx service added with:
   - [x] Image: nginx:alpine
-  - [x] Container name: dorami-nginx-prod
+  - [x] Container name: doremi-nginx-prod
   - [x] Ports: 80:80, 443:443
   - [x] Volume mounts:
     - [x] ./nginx/production.conf → /etc/nginx/conf.d/default.conf (ro)
@@ -63,7 +63,7 @@
 
 #### prod-maintenance.yml
 
-- [x] logs-proxy command renamed to use dorami-nginx-prod
+- [x] logs-proxy command renamed to use doremi-nginx-prod
 - [x] diagnose command updated to reference nginx (not nginx-proxy)
 - [x] fix-ssl command updated to use nginx container and host /etc/letsencrypt mount
 
@@ -77,12 +77,12 @@
 # Run after deployment
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-# Verify dorami-nginx-prod container:
+# Verify doremi-nginx-prod container:
 # - Status: healthy
 # - Ports: 0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
 ```
 
-**Expected Result:** dorami-nginx-prod container is running and healthy
+**Expected Result:** doremi-nginx-prod container is running and healthy
 
 ---
 
@@ -90,12 +90,12 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 ```bash
 # Verify Docker internal networking
-docker inspect dorami-nginx-prod --format '{{json .NetworkSettings.Networks}}'
+docker inspect doremi-nginx-prod --format '{{json .NetworkSettings.Networks}}'
 
-# Should show dorami-internal network with IP assignment
+# Should show doremi-internal network with IP assignment
 ```
 
-**Expected Result:** nginx container is on dorami-internal network
+**Expected Result:** nginx container is on doremi-internal network
 
 ---
 
@@ -310,7 +310,7 @@ cat /etc/nginx/sites-enabled/doremi-live.com | head -5
 
 | Issue                        | Symptom                         | Fix                                                              |
 | ---------------------------- | ------------------------------- | ---------------------------------------------------------------- |
-| nginx not starting           | Container exits or unhealthy    | Check `/opt/dorami/nginx/production.conf` syntax with `nginx -t` |
+| nginx not starting           | Container exits or unhealthy    | Check `/opt/doremi/nginx/production.conf` syntax with `nginx -t` |
 | SSL certs not mounted        | HTTPS returns 502               | Verify `/etc/letsencrypt/live/doremi-live.com/` exists on host   |
 | SRS port conflict            | nginx → SRS returns 502         | Verify SRS port is 127.0.0.1:8080:8080 (internal only)           |
 | uploads directory permission | nginx returns 403 for /uploads/ | Ensure uploads_data volume exists and nginx has read access      |
@@ -337,9 +337,9 @@ cat /etc/nginx/sites-enabled/doremi-live.com | head -5
 - [ ] Host nginx stopped and disabled
 - [ ] Rollback plan ready
 
-**Approved By:** ********\_********
-**Date:** ********\_********
-**Notes:** ****************\_****************
+**Approved By:** **\*\*\*\***\_**\*\*\*\***
+**Date:** **\*\*\*\***\_**\*\*\*\***
+**Notes:** ******\*\*\*\*******\_******\*\*\*\*******
 
 ---
 
@@ -351,30 +351,30 @@ Monitor these logs during first 24 hours:
 
 ```bash
 # nginx error/access logs
-docker logs dorami-nginx-prod -f --tail=100
+docker logs doremi-nginx-prod -f --tail=100
 
 # Backend API logs
-docker logs dorami-backend-prod -f --tail=50
+docker logs doremi-backend-prod -f --tail=50
 
 # Check metrics
-docker stats dorami-nginx-prod
+docker stats doremi-nginx-prod
 ```
 
 ### Common Troubleshooting
 
 **503 Service Unavailable**
 
-- Check backend/frontend containers are running: `docker ps | grep dorami`
+- Check backend/frontend containers are running: `docker ps | grep doremi`
 - Check container health: `docker ps --format "table {{.Names}}\t{{.Status}}"`
 
 **SSL Certificate Error**
 
 - Check cert files exist: `ls -la /etc/letsencrypt/live/doremi-live.com/`
-- Check nginx config syntax: `docker exec dorami-nginx-prod nginx -t`
+- Check nginx config syntax: `docker exec doremi-nginx-prod nginx -t`
 
 **Upload endpoint returns 413**
 
-- Verify `client_max_body_size 10M;` in `/opt/dorami/nginx/production.conf`
+- Verify `client_max_body_size 10M;` in `/opt/doremi/nginx/production.conf`
 
 **Real-time features don't work**
 

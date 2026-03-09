@@ -137,7 +137,7 @@ function AdminOrdersContent() {
     setError(null);
 
     try {
-      const params: Record<string, unknown> = {
+      const params: Record<string, string | number | boolean | string[]> = {
         page,
         limit: pageSize,
         sortBy,
@@ -390,7 +390,7 @@ function AdminOrdersContent() {
               type="button"
               onClick={() => handleStatusChange(order, option.value)}
               disabled={isUpdating === order.id}
-              className={`px-2 py-1 text-xs rounded border ${
+              className={`inline-flex min-h-[44px] items-center justify-center px-2.5 py-2 text-xs rounded border ${
                 order.status === option.value
                   ? 'bg-hot-pink text-white border-hot-pink'
                   : 'bg-transparent text-secondary-text hover:bg-content-bg'
@@ -487,7 +487,7 @@ function AdminOrdersContent() {
                   <button
                     key={value}
                     onClick={() => handleStatusToggle(value)}
-                    className={`px-4 py-2 rounded-button text-caption transition-colors ${
+                    className={`inline-flex min-h-[44px] items-center justify-center px-4 py-2.5 rounded-button text-caption transition-colors ${
                       orderStatusFilter.includes(value)
                         ? 'bg-hot-pink text-white'
                         : 'bg-white text-secondary-text hover:bg-gray-100'

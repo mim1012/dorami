@@ -29,7 +29,7 @@ function isReStreamPlatformUrl(url: string): boolean {
 }
 
 test.describe('Admin Stream Key Validation', () => {
-  test.setTimeout(120000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');

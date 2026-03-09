@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { ArrowLeft, Minus, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProductById } from '@/lib/api/products';
 import type { Product } from '@/lib/types';
-import { ProductStatus } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cartKeys } from '@/lib/hooks/queries/use-cart';
@@ -14,23 +13,6 @@ import { Display, Heading2, Body } from '@/components/common/Typography';
 import { formatPrice } from '@/lib/utils/price';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-
-const MOCK_PRODUCT: Product = {
-  id: 'mock-1',
-  streamKey: '',
-  name: '샘플 상품',
-  price: 29900,
-  stock: 10,
-  imageUrl: undefined,
-  status: ProductStatus.AVAILABLE,
-  colorOptions: [],
-  sizeOptions: [],
-  shippingFee: 0,
-  timerEnabled: false,
-  timerDuration: 0,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -49,6 +31,7 @@ export default function ProductDetailPage() {
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [notFoundError, setNotFoundError] = useState<string | null>(null);
   const autoBuyHandled = useRef(false);
 
   const colors = product?.colorOptions ?? [];
@@ -94,8 +77,10 @@ export default function ProductDetailPage() {
         setLoading(true);
         const data = await getProductById(id);
         setProduct(data);
+        setNotFoundError(null);
       } catch {
-        setProduct({ ...MOCK_PRODUCT, id });
+        setProduct(null);
+        setNotFoundError('요청하신 상품을 찾을 수 없습니다.');
       } finally {
         setLoading(false);
       }
@@ -191,7 +176,34 @@ export default function ProductDetailPage() {
     );
   }
 
-  if (!product) return null;
+  if (!product) {
+    return (
+      <>
+        <div className="min-h-screen bg-primary-black pb-24">
+          <div className="px-4 py-20">
+            <div className="text-center">
+              <div className="text-6xl mb-4">😢</div>
+              <Heading2 className="text-secondary-text mb-3">
+                {notFoundError ?? '상품을 찾을 수 없습니다'}
+              </Heading2>
+              <Body className="text-secondary-text mb-6">
+                링크가 잘못되었거나 상품이 삭제되었을 수 있습니다.
+              </Body>
+              <div className="flex flex-col gap-3">
+                <Button variant="primary" size="lg" onClick={() => router.push('/store')}>
+                  스토어로 이동
+                </Button>
+                <Button variant="outline" size="lg" onClick={() => router.push('/')}>
+                  홈으로 가기
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <BottomTabBar />
+      </>
+    );
+  }
 
   return (
     <>
@@ -199,7 +211,8 @@ export default function ProductDetailPage() {
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="fixed top-4 left-4 z-30 w-10 h-10 bg-content-bg backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-border-color transition-colors"
+          className="fixed top-4 left-4 z-30 w-11 h-11 bg-content-bg backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-border-color transition-colors"
+          aria-label="상품 상세로 돌아가기"
         >
           <ArrowLeft className="w-5 h-5 text-primary-text" />
         </button>
@@ -241,6 +254,7 @@ export default function ProductDetailPage() {
                     setImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
                   }}
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                  aria-label="이전 이미지"
                 >
                   <ChevronLeft className="w-5 h-5 text-white" />
                 </button>
@@ -254,6 +268,7 @@ export default function ProductDetailPage() {
                     setImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                  aria-label="다음 이미지"
                 >
                   <ChevronRight className="w-5 h-5 text-white" />
                 </button>
@@ -310,7 +325,8 @@ export default function ProductDetailPage() {
               />
               <button
                 onClick={() => setExpandedImageIndex(null)}
-                className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30"
+                className="absolute top-4 right-4 w-11 h-11 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30"
+                aria-label="이미지 확대 모달 닫기"
               >
                 ✕
               </button>

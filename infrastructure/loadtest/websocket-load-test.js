@@ -68,7 +68,7 @@ function authenticate(vuId) {
   const loginRes = http.post(
     `${BASE_URL}/api/auth/dev-login`,
     JSON.stringify({
-      email: `loadtest-ws-${vuId}@dorami.test`,
+      email: `loadtest-ws-${vuId}@doremi.test`,
       name: `LoadTest User ${vuId}`,
     }),
     {
@@ -242,3 +242,4 @@ export function teardown() {
   console.log(`  Stream Key: ${STREAM_KEY}`);
   console.log(`  Max VUs: ${MAX_VUS}`);
 }
+

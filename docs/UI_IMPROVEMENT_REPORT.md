@@ -1,4 +1,4 @@
-# 🎨 DoRaMi UI 개선 보고서 v2
+# 🎨 Doremi UI 개선 보고서 v2
 
 > 작성일: 2026-02-07  
 > 목표: eunimarket.com을 뛰어넘는 프리미엄 라이브 커머스 UI
@@ -7,13 +7,13 @@
 
 ## 📋 작업 요약
 
-| # | 작업 | 상태 |
-|---|------|------|
-| 1 | recharts 설치 | ✅ 완료 |
-| 2 | Admin 인증 조건부 처리 | ✅ 완료 |
-| 3 | UI 전면 개선 (홈/라이브/샵) | ✅ 완료 |
-| 4 | 장바구니 실시간 표시 | ✅ 완료 (기존 구현 검증 + 개선) |
-| 5 | 빌드 확인 + 스크린샷 | ✅ 완료 |
+| #   | 작업                        | 상태                            |
+| --- | --------------------------- | ------------------------------- |
+| 1   | recharts 설치               | ✅ 완료                         |
+| 2   | Admin 인증 조건부 처리      | ✅ 완료                         |
+| 3   | UI 전면 개선 (홈/라이브/샵) | ✅ 완료                         |
+| 4   | 장바구니 실시간 표시        | ✅ 완료 (기존 구현 검증 + 개선) |
+| 5   | 빌드 확인 + 스크린샷        | ✅ 완료                         |
 
 ---
 
@@ -22,6 +22,7 @@
 ```bash
 cd client-app && npm install recharts
 ```
+
 - Admin 대시보드 차트에서 사용 가능
 
 ---
@@ -29,6 +30,7 @@ cd client-app && npm install recharts
 ## 2. Admin 인증 — 환경별 조건부 처리
 
 ### 현재 구조 (변경 불필요, 이미 올바르게 작동)
+
 - `JwtAuthGuard` 내부에서 `NODE_ENV !== 'production'`일 때 mock admin 유저 자동 주입
 - `AdminController`는 `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('ADMIN')` 적용
 - **Development**: 인증 자동 bypass → mock admin (`dev-admin`, `ADMIN` 역할) 주입
@@ -36,6 +38,7 @@ cd client-app && npm install recharts
 - 관련 파일에 명확한 한국어 주석 추가
 
 ### 관련 파일
+
 - `backend/src/modules/auth/guards/jwt-auth.guard.ts` — 핵심 bypass 로직
 - `backend/src/modules/admin/admin.controller.ts` — 가드 적용 + 주석 개선
 
@@ -44,6 +47,7 @@ cd client-app && npm install recharts
 ## 3. UI 대폭 개선
 
 ### 🎨 디자인 시스템
+
 - **메인 컬러**: Hot Pink (#FF007A) + Purple (#7928CA) + Orange (#FF4500) 그라디언트
 - **다크 모드**: #0A0A0A (primary-black), #1A1A1A (content-bg)
 - **라이트 모드**: 화이트 베이스, 따뜻한 그레이 톤
@@ -52,6 +56,7 @@ cd client-app && npm install recharts
 ### 🏠 홈 페이지 (`src/app/page.tsx`)
 
 #### 개선 사항
+
 - **히어로 섹션 임팩트 강화**
   - 멀티 레이어 그라디언트 배경 (pink → purple → orange)
   - Floating orbs 효과 (blur + pulse 애니메이션)
@@ -76,6 +81,7 @@ cd client-app && npm install recharts
 ### 🛒 상품 목록 (`src/app/shop/page.tsx`)
 
 #### 개선 사항
+
 - **2열 매거진 카드 레이아웃** (모바일), 4열 (데스크톱)
 - **SALE / NEW 뱃지 강화**
   - NEW: `✨ NEW` — purple → pink 그라디언트
@@ -89,6 +95,7 @@ cd client-app && npm install recharts
 ### 📺 라이브 화면 (`src/app/live/[streamKey]/page.tsx`)
 
 #### 인스타 라이브 느낌 구현
+
 - **세로 풀스크린** (9:16 비율, 데스크톱에서 최대 480px)
 - **강화된 그라디언트 오버레이**
   - 상단: black/70 → transparent (40px 높이)
@@ -100,6 +107,7 @@ cd client-app && npm install recharts
 - **뒤로가기/공유 버튼**: glass morphism + white border
 
 #### 🛒 장바구니 실시간 피드 (`CartActivityFeed`)
+
 - **toast-in / toast-out 애니메이션**
   - 입장: translateY(40px) → 0 + scale(0.95→1)
   - 퇴장 (5초 후): translateY(0→-20px) + fade out
@@ -108,6 +116,7 @@ cd client-app && npm install recharts
 - **텍스트**: `OOO님이 [상품명] 담았어요! 🛒`
 
 #### ❤️ 하트 애니메이션 (`HeartAnimation`)
+
 - **다양한 이모지**: ❤️ 💖 💗 💕 🩷 💜 🧡 (7종)
 - **확장된 컬러 팔레트**: 8종 (pink, purple, orange 계열)
 - **탭 → 3연발 burst**: 80ms 간격 3개 동시 생성
@@ -119,15 +128,17 @@ cd client-app && npm install recharts
 ## 4. 장바구니 실시간 표시 (검증)
 
 ### 백엔드 (이미 완벽 구현됨)
+
 - `CartService.addToCart()` → `EventEmitter.emit('cart:added', { ... })`
 - `WebsocketGateway.handleCartItemAdded()` → `cart:item-added` 브로드캐스트
 - **유저 컬러**: 16색 팔레트에서 userId 해시 기반 선택
 - **데이터**: userId, userName, userColor, productName, quantity, streamKey
 
 ### 프론트엔드 (이미 구현 + 개선)
+
 - `useCartActivity` 훅: WebSocket `cart:item-added` 이벤트 수신
 - `CartActivityFeed`: 실시간 토스트 표시
-- **이번 개선**: 
+- **이번 개선**:
   - fade-in/fade-out 애니메이션 추가
   - glass morphism 배경
   - 유저 아바타 glow 효과
@@ -137,28 +148,28 @@ cd client-app && npm install recharts
 
 ## 5. 추가된 CSS 애니메이션
 
-| 애니메이션 | 용도 |
-|-----------|------|
-| `animate-cart-toast-in` | 장바구니 토스트 입장 |
-| `animate-cart-toast-out` | 장바구니 토스트 퇴장 |
-| `animate-hero-glow` | 히어로 섹션 글로우 |
-| `animate-bounce-in` | 에러/빈 상태 등장 |
-| `animate-stagger-fade` | 카드 순차 등장 |
-| `.glass` / `.glass-light` | Glass morphism |
-| `.text-glow-pink` | 핑크 텍스트 글로우 |
-| `.neon-border` | 네온 테두리 |
-| `.card-magazine` | 매거진 카드 호버 |
+| 애니메이션                | 용도                 |
+| ------------------------- | -------------------- |
+| `animate-cart-toast-in`   | 장바구니 토스트 입장 |
+| `animate-cart-toast-out`  | 장바구니 토스트 퇴장 |
+| `animate-hero-glow`       | 히어로 섹션 글로우   |
+| `animate-bounce-in`       | 에러/빈 상태 등장    |
+| `animate-stagger-fade`    | 카드 순차 등장       |
+| `.glass` / `.glass-light` | Glass morphism       |
+| `.text-glow-pink`         | 핑크 텍스트 글로우   |
+| `.neon-border`            | 네온 테두리          |
+| `.card-magazine`          | 매거진 카드 호버     |
 
 ---
 
 ## 📸 스크린샷
 
-| 화면 | 파일 |
-|------|------|
-| 홈 (데스크톱) | `docs/screenshots/v2/01-home-page.jpg` |
-| 상품 목록 (데스크톱) | `docs/screenshots/v2/02-shop-page.png` |
-| 라이브 에러 화면 | `docs/screenshots/v2/03-live-error-page.png` |
-| 홈 (모바일) | `docs/screenshots/v2/04-home-mobile.jpg` |
+| 화면                 | 파일                                         |
+| -------------------- | -------------------------------------------- |
+| 홈 (데스크톱)        | `docs/screenshots/v2/01-home-page.jpg`       |
+| 상품 목록 (데스크톱) | `docs/screenshots/v2/02-shop-page.png`       |
+| 라이브 에러 화면     | `docs/screenshots/v2/03-live-error-page.png` |
+| 홈 (모바일)          | `docs/screenshots/v2/04-home-mobile.jpg`     |
 
 > 라이브 화면의 실제 스트리밍 UI는 백엔드에 LIVE 상태 스트림이 있어야 표시됩니다.
 > 에러 화면에서도 그라디언트 버튼, glass morphism 등 개선된 스타일을 확인할 수 있습니다.

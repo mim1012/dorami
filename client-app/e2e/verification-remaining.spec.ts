@@ -204,10 +204,10 @@ test.describe('가격 표기 일치', () => {
     await page.goto(`/products/${target.id}`, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-    // 가격 텍스트 수집 (₩ 또는 숫자 패턴)
+    // 가격 텍스트 수집 (달러 또는 숫자 패턴)
     const priceLocators = page
       .locator('[class*="price"], [class*="Price"]')
-      .or(page.locator('span, p, div').filter({ hasText: /₩|원/ }));
+      .or(page.locator('span, p, div').filter({ hasText: /\$\d/ }));
 
     const priceTexts: string[] = [];
     const count = await priceLocators.count();
@@ -222,13 +222,13 @@ test.describe('가격 표기 일치', () => {
     console.log(`[V-PRICE-01] 상품 상세 가격 텍스트: ${priceTexts.slice(0, 5).join(' | ')}`);
 
     // 예상 가격이 어딘가에 표시돼야 함
-    const formattedPrice = expectedPrice.toLocaleString('ko-KR');
+    const formattedPrice = expectedPrice.toLocaleString('en-US');
     const priceDisplayed = priceTexts.some(
       (t) => t.includes(formattedPrice) || t.replace(/[^0-9]/g, '') === String(expectedPrice),
     );
 
     if (priceDisplayed) {
-      console.log(`✅ V-PRICE-01: 상품 상세 가격 ${formattedPrice}원 표시 확인`);
+      console.log(`✅ V-PRICE-01: 상품 상세 가격 $${formattedPrice} 표시 확인`);
     } else {
       console.log(
         `⚠️ V-PRICE-01: 가격 ${formattedPrice} 상세 페이지에서 직접 확인 불가 (UI 구조 차이일 수 있음)`,
@@ -263,7 +263,7 @@ test.describe('가격 표기 일치', () => {
         const cartUnitPrice: number =
           cartItem.price ?? cartItem.unitPrice ?? cartItem.product?.price;
         if (cartUnitPrice) {
-          expect(cartUnitPrice).toBe(expectedPrice);
+          expect(parseFloat(String(cartUnitPrice))).toBeCloseTo(expectedPrice, 2);
           console.log(
             `✅ V-PRICE-01: 카트 단가 ${cartUnitPrice} === API 가격 ${expectedPrice} 일치`,
           );

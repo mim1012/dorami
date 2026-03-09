@@ -13,14 +13,23 @@ export function useProfileGuard() {
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
 
+  const normalizedPath = pathname && pathname.startsWith('/') ? pathname : '/';
+  const shouldSkipGuard = (() => {
+    const prefixSkips = ['/login', '/auth', '/profile/register', '/terms', '/privacy', '/403'];
+    if (normalizedPath === '/') return true;
+    return prefixSkips.some(
+      (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
+    );
+  })();
+
   useEffect(() => {
     if (isLoading) return;
+    if (shouldSkipGuard) return;
 
     // Step 1: Authentication check
     const isAuthenticated = !!(user?.kakaoId || user?.email);
     if (!isAuthenticated) {
-      const returnTo = pathname || '/';
-      const safeReturnTo = returnTo.startsWith('/') ? returnTo : '/';
+      const safeReturnTo = normalizedPath.startsWith('/') ? normalizedPath : '/';
       router.replace(`/login?reason=session_expired&returnTo=${encodeURIComponent(safeReturnTo)}`);
       return;
     }
@@ -28,12 +37,14 @@ export function useProfileGuard() {
     // Step 2: Admin users skip profile completion
     if (user?.role === 'ADMIN') return;
 
-    // Step 3: Profile completion check — redirect to /my-page so user can fill in missing fields
+    // Step 3: Profile completion check — redirect to /profile/register so user can fill in missing fields
     const userProfileComplete = isProfileComplete(user);
     if (!userProfileComplete) {
-      router.replace('/my-page');
+      const returnTo =
+        normalizedPath !== '/' ? `?returnTo=${encodeURIComponent(normalizedPath)}` : '';
+      router.replace(`/profile/register${returnTo}`);
     }
-  }, [user, isLoading, router, pathname]);
+  }, [user, isLoading, router, normalizedPath, shouldSkipGuard]);
 
   return {
     isLoading,

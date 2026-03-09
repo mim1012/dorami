@@ -115,7 +115,7 @@ collect_redis_info() {
     mem_usage_pct="0"
   fi
 
-  # Get Dorami-specific key counts
+  # Get Doremi-specific key counts
   local chat_keys stream_keys socket_keys
   chat_keys=$(redis_cmd KEYS 'chat:*' 2>/dev/null | wc -l || echo "0")
   stream_keys=$(redis_cmd KEYS 'stream:*' 2>/dev/null | wc -l || echo "0")
@@ -166,7 +166,7 @@ collect_redis_info() {
     "sys": ${used_cpu_sys:-0},
     "user": ${used_cpu_user:-0}
   },
-  "dorami_keys": {
+  "doremi_keys": {
     "chat_keys": ${chat_keys:-0},
     "stream_keys": ${stream_keys:-0},
     "socketio_keys": ${socket_keys:-0}
@@ -202,7 +202,7 @@ clients = data.get("clients", {})
 tp = data.get("throughput", {})
 ks = data.get("keyspace", {})
 ev = data.get("eviction", {})
-dorami = data.get("dorami_keys", {})
+doremi = data.get("doremi_keys", {})
 alerts = data.get("alerts", {})
 
 print()
@@ -228,10 +228,10 @@ print("Eviction:")
 print(f"  Evicted keys       : {ev.get('evicted_keys', 0):,}")
 print(f"  Expired keys       : {ev.get('expired_keys', 0):,}")
 print()
-print("Dorami Keys:")
-print(f"  Chat               : {dorami.get('chat_keys', 0):,}")
-print(f"  Stream             : {dorami.get('stream_keys', 0):,}")
-print(f"  Socket.IO          : {dorami.get('socketio_keys', 0):,}")
+print("Doremi Keys:")
+print(f"  Chat               : {doremi.get('chat_keys', 0):,}")
+print(f"  Stream             : {doremi.get('stream_keys', 0):,}")
+print(f"  Socket.IO          : {doremi.get('socketio_keys', 0):,}")
 print()
 
 alert_flags = []
@@ -246,3 +246,5 @@ else:
 print()
 print(f"Output: $OUTPUT_FILE")
 PYEOF
+
+

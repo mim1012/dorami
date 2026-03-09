@@ -86,6 +86,11 @@ npm run clean                # Delete all node_modules and dist directories
 - `@AdminOnly()` — combines JWT + Role guard for admin routes
 - `@Public()` — marks route as auth-exempt
 - `@CurrentUser()` — extracts user from JWT context
+- `@AllowIncompleteProfile()` — bypasses `ProfileCompleteGuard` for routes accessible before profile setup (e.g., profile registration)
+
+**Guards (applied globally):**
+
+- `ProfileCompleteGuard` — after JWT auth, verifies `profileCompletedAt` is set in DB; throws `ProfileIncompleteException` if not. Skipped for `@Public()` and `@AllowIncompleteProfile()` routes; ADMIN role always bypasses.
 
 **Error handling:** `BusinessException` with named error codes (`business.exception.ts`). Predefined subclasses: `InsufficientStockException`, `CartExpiredException`, `OrderNotFoundException`, etc.
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ================================
-# Dorami Staging Deployment Script
+# Doremi Staging Deployment Script
 # ================================
 
 set -e
@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo -e "${GREEN}================================${NC}"
-echo -e "${GREEN}Dorami Staging Deployment${NC}"
+echo -e "${GREEN}Doremi Staging Deployment${NC}"
 echo -e "${GREEN}================================${NC}"
 
 # Check if .env.staging exists
@@ -206,3 +206,4 @@ case "$1" in
         show_help
         ;;
 esac
+

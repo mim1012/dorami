@@ -23,7 +23,7 @@ async function getOrCreateActiveStream(): Promise<{ streamKey: string; liveId: s
   try {
     // Login as admin
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
 
     let csrfToken = '';
@@ -86,7 +86,7 @@ async function getViewerCount(streamKey: string): Promise<number> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     const res = await apiCtx.get(`/api/streaming/${streamKey}/viewers`);
     if (!res.ok()) return -1;
@@ -322,7 +322,7 @@ test.describe('CCU Viewer Simulation — 5 concurrent viewers', () => {
       let streamEndEmitted = false;
       try {
         await adminCtx.post('/api/auth/dev-login', {
-          data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+          data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
         });
         let csrfToken = '';
         try {

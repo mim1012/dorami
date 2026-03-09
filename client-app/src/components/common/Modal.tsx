@@ -43,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
           </h2>
           <button
             onClick={onClose}
-            className="text-secondary-text hover:text-hot-pink transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink rounded-button p-1"
+            className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center text-secondary-text hover:text-hot-pink transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink rounded-button"
             aria-label="모달 닫기"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

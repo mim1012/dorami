@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
-import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
 import { apiClient } from '@/lib/api/client';
 import { Display, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -46,7 +45,6 @@ interface ProfileData {
 export default function MyPagePage() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
-  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -187,7 +185,7 @@ export default function MyPagePage() {
   };
 
   // Loading state (auth + profile guard + profile data)
-  if (authLoading || guardLoading || (user && isLoadingProfile)) {
+  if (authLoading || (user && isLoadingProfile)) {
     return (
       <>
         <div className="min-h-screen bg-primary-black flex items-center justify-center">
@@ -198,7 +196,6 @@ export default function MyPagePage() {
     );
   }
 
-  // useProfileGuard handles redirect for unauthenticated users
   if (!user) {
     return null;
   }

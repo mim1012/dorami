@@ -12,6 +12,7 @@ interface ProductCardProps {
   imageUrl: string;
   isNew?: boolean;
   discount?: number;
+  onQuickAdd?: () => void;
   onClick?: () => void;
   size?: 'normal' | 'small';
 }
@@ -23,6 +24,7 @@ export function ProductCard({
   imageUrl,
   isNew = false,
   discount,
+  onQuickAdd,
   onClick,
   size = 'normal',
 }: ProductCardProps) {
@@ -66,13 +68,14 @@ export function ProductCard({
         </div>
 
         {/* Quick add button — scale + slide on hover */}
-        <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-3 group-hover:translate-y-0">
+        <div className="absolute bottom-3 right-3 transition-all duration-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-y-3 md:group-hover:translate-y-0">
           <button
-            className="w-11 h-11 rounded-full bg-hot-pink text-white flex items-center justify-center shadow-hot-pink hover:scale-110 active:scale-95 transition-transform"
+            className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-hot-pink text-white flex items-center justify-center shadow-hot-pink hover:scale-110 active:scale-95 transition-transform"
             onClick={(e) => {
               e.stopPropagation();
+              onQuickAdd?.();
             }}
-            aria-label={`${name} 빠른 추가`}
+            aria-label={onQuickAdd ? `${name} 빠른 담기` : `${name} 상세 보기`}
           >
             <svg
               width="18"
