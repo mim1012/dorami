@@ -332,6 +332,9 @@ jobs:
             sudo fuser -k 8080/tcp 2>/dev/null || true
             sleep 1
 
+            # Ensure external postgres volume exists (may have been removed by previous failed deploy)
+            docker volume create dorami_postgres_data 2>/dev/null && echo "✓ Volume ensured" || echo "  Volume already exists"
+
             # Start postgres and redis first so we can sync the password
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
             echo "Waiting for postgres to accept connections..."
