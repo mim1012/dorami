@@ -354,6 +354,7 @@ jobs:
               echo "⚠ Cannot sync passwords - recreating postgres volume (staging data non-critical)"
               docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging rm -fs postgres || true
               docker volume rm dorami_postgres_data && echo "✓ Volume removed" || echo "⚠ Volume remove failed, continuing"
+              docker volume create dorami_postgres_data && echo "✓ Fresh volume created"
               docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
               echo "Waiting for postgres to fully initialize (fresh volume)..."
               for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
