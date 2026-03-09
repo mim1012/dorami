@@ -340,7 +340,12 @@ export function PopularProducts({
 
       {selectedProduct && (
         <ProductDetailModal
-          product={selectedProduct}
+          product={
+            {
+              ...selectedProduct,
+              imageUrl: selectedProduct.image,
+            } as any
+          }
           onClose={() => setSelectedProduct(null)}
           onAddToCart={async (productId, quantity, color, size) => {
             try {

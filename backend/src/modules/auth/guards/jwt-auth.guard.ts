@@ -1,6 +1,7 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
+import { ExtractJwt } from 'passport-jwt';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -16,9 +17,24 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     ]);
 
     if (isPublic) {
-      return true;
+      const request = context.switchToHttp().getRequest();
+      const token = this.extractTokenFromRequest(request);
+      if (!token) {
+        return true;
+      }
     }
 
     return super.canActivate(context);
+  }
+
+  private extractTokenFromRequest(request: {
+    cookies?: { accessToken?: string };
+    headers?: Record<string, string | string[] | undefined>;
+  }): string | null {
+    if (request.cookies?.accessToken) {
+      return request.cookies.accessToken;
+    }
+
+    return ExtractJwt.fromAuthHeaderAsBearerToken()(request as never);
   }
 }

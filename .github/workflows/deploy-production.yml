@@ -237,7 +237,6 @@ jobs:
     # GitHub's success() evaluates the full upstream graph and returns false.
     if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -284,7 +283,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
         run: |
-          ssh $USER@$HOST bash -s << 'ENDSSH'
+          ssh $USER@$HOST bash -s << ENDSSH
             set -e
 
             export POSTGRES_USER="dorami_prod"
@@ -334,8 +333,8 @@ jobs:
     name: Deploy to Production
     needs: [validate, build, backup]
     # always() avoids transitive skip propagation. Handles both normal deploy and rollback.
-    # backup has continue-on-error so its result is always 'success' when it runs.
-    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && needs.backup.result != 'cancelled'
+    # backup must succeed (no continue-on-error) — a failed backup blocks the deploy.
+    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && needs.backup.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -393,7 +392,7 @@ jobs:
         # IMAGE_TAG is set to a placeholder here; the deploy script updates it with the actual tag.
         # Required GitHub Secrets: PROD_POSTGRES_PASSWORD, PROD_REDIS_PASSWORD, PROD_JWT_SECRET,
         #   PROD_PROFILE_ENCRYPTION_KEY, PROD_KAKAO_CLIENT_ID, PROD_KAKAO_CLIENT_SECRET
-        # Optional GitHub Secrets: PROD_ADMIN_EMAILS, PROD_SENTRY_DSN
+        # Optional GitHub Secrets: PROD_ADMIN_EMAILS, PROD_SENTRY_DSN, PROD_PROFILE_LEGACY_ENCRYPTION_KEYS
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
@@ -401,10 +400,19 @@ jobs:
           PROD_REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}
           PROD_JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           PROD_PROFILE_ENCRYPTION_KEY: ${{ secrets.PROD_PROFILE_ENCRYPTION_KEY }}
+          PROD_PROFILE_LEGACY_ENCRYPTION_KEYS: ${{ secrets.PROD_PROFILE_LEGACY_ENCRYPTION_KEYS }}
           PROD_KAKAO_CLIENT_ID: ${{ secrets.PROD_KAKAO_CLIENT_ID }}
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
           PROD_ADMIN_EMAILS: ${{ secrets.PROD_ADMIN_EMAILS }}
           PROD_SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
+          KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          BANK_NAME: ${{ secrets.BANK_NAME }}
+          BANK_ACCOUNT_NUMBER: ${{ secrets.BANK_ACCOUNT_NUMBER }}
+          BANK_ACCOUNT_HOLDER: ${{ secrets.BANK_ACCOUNT_HOLDER }}
+          SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Write .env.production locally (GitHub Actions runner is ephemeral & isolated).
@@ -415,22 +423,32 @@ jobs:
           FRONTEND_URL=https://www.doremi-live.com
           CORS_ORIGINS=https://doremi-live.com,https://www.doremi-live.com
 
+          APP_ENV=production
+
           POSTGRES_USER=dorami_prod
           POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
           POSTGRES_DB=live_commerce_production
+          DATABASE_URL=postgresql://dorami_prod:${PROD_POSTGRES_PASSWORD}@postgres:5432/live_commerce_production?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30
 
           REDIS_HOST=redis
           REDIS_PORT=6379
           REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
+          REDIS_URL=redis://:${PROD_REDIS_PASSWORD}@redis:6379
+
+          CSRF_ENABLED=true
+          ENABLE_DEV_AUTH=false
+          COOKIE_SECURE=true
 
           JWT_SECRET=${PROD_JWT_SECRET}
           JWT_ACCESS_EXPIRES_IN=15m
           JWT_REFRESH_EXPIRES_IN=7d
 
           PROFILE_ENCRYPTION_KEY=${PROD_PROFILE_ENCRYPTION_KEY}
+          PROFILE_LEGACY_ENCRYPTION_KEYS=${PROD_PROFILE_LEGACY_ENCRYPTION_KEYS}
 
           KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
           KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}
+          NEXT_PUBLIC_KAKAO_JS_KEY=${KAKAO_JS_KEY}
           KAKAO_CALLBACK_URL=https://www.doremi-live.com/api/auth/kakao/callback
 
           RTMP_SERVER_URL=rtmp://www.doremi-live.com:1935/live
@@ -441,6 +459,17 @@ jobs:
           NEXT_PUBLIC_API_URL=https://www.doremi-live.com/api
           NEXT_PUBLIC_WS_URL=https://www.doremi-live.com
           NEXT_PUBLIC_CDN_URL=https://www.doremi-live.com/hls
+
+          BACKEND_URL=http://backend:3001
+          MEDIA_SERVER_URL=http://srs:8080
+
+          VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+          VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+          VAPID_SUBJECT=${VAPID_SUBJECT}
+          BANK_NAME=${BANK_NAME:-KB Kookmin Bank}
+          BANK_ACCOUNT_NUMBER=${BANK_ACCOUNT_NUMBER}
+          BANK_ACCOUNT_HOLDER=${BANK_ACCOUNT_HOLDER}
+          SRS_WEBHOOK_SECRET=${SRS_WEBHOOK_SECRET}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
           SENTRY_DSN=${PROD_SENTRY_DSN}
@@ -616,16 +645,24 @@ jobs:
           DB_PORT="${POSTGRES_PORT:-5432}"
           DB_NAME="live_commerce_production"
 
-          # Use trust auth for both migrations and backend connections
-          # Trust auth works reliably on docker networks and doesn't require password management
-          DATABASE_URL="postgresql://postgres@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer"
-          echo "INFO: Attempting migrations with postgres superuser (trust auth on docker network)"
+          # Use password auth for both migrations and backend connections
+          POSTGRES_USER_VAL=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+          POSTGRES_PASSWORD_VAL=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+          DATABASE_URL="postgresql://${POSTGRES_USER_VAL:-postgres}:${POSTGRES_PASSWORD_VAL}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30"
+          echo "INFO: Attempting migrations with password auth"
+
+          echo "=== Checking for destructive migrations (BLOCKING) ==="
+          if [ "${SKIP_DESTRUCTIVE_CHECK:-false}" != "true" ]; then
+            bash scripts/check-destructive-migrations.sh . || { echo "ERROR: Destructive migration detected — deploy blocked. Set SKIP_DESTRUCTIVE_CHECK=true to override."; exit 1; }
+          else
+            echo "⚠️ SKIP_DESTRUCTIVE_CHECK=true — skipping safety check"
+          fi
 
           eval "$COMPOSE_CMD run --rm -T -e \"DATABASE_URL=${DATABASE_URL}\" backend npx prisma migrate deploy" || { echo "ERROR: Migration failed"; exit 1; }
           echo "Migrations completed successfully"
 
-          # Set backend to use same trust auth connection string for consistency
-          echo "INFO: Configuring backend for trust auth (same as migrations)"
+          # Set backend to use same connection string for consistency
+          echo "INFO: Configuring backend DATABASE_URL"
           sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" "${INFRA_DIR}/.env.production"
 
           # 7. Start backend (force-recreate to use new image)

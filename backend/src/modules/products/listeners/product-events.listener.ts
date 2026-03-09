@@ -6,6 +6,8 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 import { OrderCreatedEvent } from '../../../common/events/order.events';
 import { ProductStockUpdatedEvent } from '../../../common/events/product.events';
 import { SocketIoProvider } from '../../websocket/socket-io.provider';
+import { ProductStatus } from '@live-commerce/shared-types';
+import { mapProductToDto } from '../product.mapper';
 
 @Injectable()
 export class ProductEventsListener {
@@ -28,41 +30,56 @@ export class ProductEventsListener {
   async handleOrderCreated(event: OrderCreatedEvent) {
     this.logger.log(`Order created: ${event.orderId}, processing stock updates...`);
 
-    // Decrease stock for all products in order
-    for (const item of event.items) {
-      const product = await this.prisma.product.findUnique({
-        where: { id: item.productId },
-      });
+    const stockUpdates: Array<{
+      productId: string;
+      oldQuantity: number;
+      newQuantity: number;
+      streamKey?: string;
+      updatedProduct: any;
+    }> = [];
 
-      if (!product) {
-        this.logger.error(`Product ${item.productId} not found`);
-        continue;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of event.items) {
+        const product = await tx.product.update({
+          where: { id: item.productId },
+          data: { quantity: { decrement: item.quantity } },
+        });
+
+        if (product.quantity <= 0) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { status: ProductStatus.SOLD_OUT },
+          });
+          product.status = ProductStatus.SOLD_OUT;
+        }
+
+        stockUpdates.push({
+          productId: item.productId,
+          oldQuantity: product.quantity + item.quantity,
+          newQuantity: product.quantity,
+          streamKey: item.streamKey ?? product.streamKey ?? undefined,
+          updatedProduct: product,
+        });
       }
+    });
 
-      const newQuantity = product.quantity - item.quantity;
-
-      const updatedProduct = await this.prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          quantity: newQuantity,
-          status: newQuantity <= 0 ? 'SOLD_OUT' : product.status,
-        },
-      });
-
-      // Emit product stock updated event
+    // Emit events after transaction commits
+    for (const update of stockUpdates) {
       this.eventEmitter.emit(
         'product:stock:updated',
         new ProductStockUpdatedEvent(
-          item.productId,
-          product.quantity,
-          newQuantity,
+          update.productId,
+          update.oldQuantity,
+          update.newQuantity,
           'purchase',
-          item.streamKey ?? product.streamKey ?? undefined,
-          this.toProductEventPayload(updatedProduct),
+          update.streamKey,
+          mapProductToDto(update.updatedProduct),
         ),
       );
 
-      this.logger.log(`Product ${item.productId} stock: ${product.quantity} → ${newQuantity}`);
+      this.logger.log(
+        `Product ${update.productId} stock: ${update.oldQuantity} → ${update.newQuantity}`,
+      );
     }
   }
 
@@ -158,9 +175,7 @@ export class ProductEventsListener {
       return;
     }
 
-    const stockPayload = this.isProductEventPayload(updatedProduct)
-      ? updatedProduct
-      : this.toProductEventPayload(updatedProduct);
+    const stockPayload = mapProductToDto(updatedProduct);
 
     this.socketIo.server.to(`stream:${targetStreamKey}`).emit('live:product:updated', {
       type: 'live:product:updated',
@@ -173,7 +188,7 @@ export class ProductEventsListener {
         type: 'product:low-stock',
         data: {
           productId: payload.productId,
-          productName: (stockPayload as { name?: string }).name,
+          productName: stockPayload.name,
           remainingStock: payload.newStock,
         },
       });
@@ -198,38 +213,5 @@ export class ProductEventsListener {
         data: { productId: payload.productId },
       });
     }
-  }
-
-  private isProductEventPayload(product: unknown): product is { stock: number; name: string } {
-    return typeof product === 'object' && product !== null && 'stock' in product;
-  }
-
-  private toProductEventPayload(product: any) {
-    return {
-      id: product.id,
-      streamKey: product.streamKey,
-      name: product.name,
-      price: parseFloat(product.price.toString()),
-      stock: product.quantity,
-      colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
-      sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
-      shippingFee: parseFloat(product.shippingFee.toString()),
-      freeShippingMessage: product.freeShippingMessage ?? undefined,
-      timerEnabled: product.timerEnabled,
-      timerDuration: product.timerDuration,
-      imageUrl: product.imageUrl ?? undefined,
-      images: Array.isArray(product.images) ? product.images : [],
-      sortOrder: product.sortOrder ?? 0,
-      isNew: product.isNew ?? false,
-      discountRate: product.discountRate ? parseFloat(product.discountRate.toString()) : undefined,
-      originalPrice: product.originalPrice
-        ? parseFloat(product.originalPrice.toString())
-        : undefined,
-      status: product.status,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
-      description: undefined,
-      metadata: undefined,
-    };
   }
 }

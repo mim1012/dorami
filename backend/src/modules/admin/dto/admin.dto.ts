@@ -1,4 +1,5 @@
 import {
+  IsEmail,
   IsOptional,
   IsInt,
   Min,
@@ -10,9 +11,12 @@ import {
   IsNumber,
   IsBoolean,
   IsNotEmpty,
+  Matches,
+  Length,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class GetUsersQueryDto {
   @IsOptional()
@@ -100,9 +104,11 @@ export class UserListItemDto {
   id!: string;
   email!: string;
   name!: string;
+  depositorName!: string | null;
   phone!: string | null;
   instagramId!: string | null;
   shippingAddressSummary?: string | null;
+  profileCompletedAt!: string | null;
   createdAt!: string;
   lastLoginAt!: string | null;
   lastPurchaseAt?: string | null;
@@ -380,10 +386,101 @@ export class UserStatisticsDto {
   orderFrequency!: number; // orders per month
 }
 
+export class UpdateAdminUserAddressDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  fullName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  address1!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  address2?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  city!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^[A-Z]{2}$/, {
+    message: 'State must be 2-letter US code',
+  })
+  state!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{5}(-\d{4})?$/, {
+    message: 'ZIP code must be in format 12345 or 12345-6789',
+  })
+  zip!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
+    message: 'Phone number must be in format +1XXXXXXXXXX',
+  })
+  phone!: string;
+}
+
+export class UpdateAdminUserDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsEmail()
+  @IsNotEmpty()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  depositorName?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^@?[a-zA-Z0-9._]+$/, {
+    message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
+  })
+  @Transform(({ value }: { value: string }) => {
+    if (!value) {
+      return value;
+    }
+    return value.startsWith('@') ? value : `@${value}`;
+  })
+  instagramId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
+    message: 'phone must be an international format',
+  })
+  phone?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateAdminUserAddressDto)
+  shippingAddress?: UpdateAdminUserAddressDto;
+}
+
 export class UserDetailDto {
   id!: string;
   email!: string;
   name!: string;
+  phone?: string;
   instagramId!: string | null;
   depositorName!: string | null;
   shippingAddress!: ShippingAddressDto | null;
@@ -441,10 +538,6 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   bankAccountHolder?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  emailNotificationsEnabled?: boolean;
 
   @IsOptional()
   @IsBoolean()

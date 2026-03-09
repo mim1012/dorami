@@ -29,6 +29,7 @@ import {
   UpdateNoticeDto,
   GetOrdersQueryDto,
   UpdateUserStatusDto,
+  UpdateAdminUserDto,
   UpdateOrderStatusDto,
   UpdateOrderShippingStatusDto,
   UpdateSystemSettingsDto,
@@ -250,6 +251,17 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '사용자 상세 정보' })
   async getUserDetail(@Param('id') userId: string) {
     return this.adminService.getUserDetail(userId);
+  }
+
+  @Patch('users/:id')
+  @ApiOperation({
+    summary: '회원 정보 수정 (관리자)',
+    description: '회원 기본 정보(이름, 이메일, 연락처, 인스타그램 ID, 배송지) 수정',
+  })
+  @ApiParam({ name: 'id', description: '사용자 ID' })
+  @ApiResponse({ status: 200, description: '회원 정보 수정 성공' })
+  async updateUser(@Param('id') userId: string, @Body() dto: UpdateAdminUserDto) {
+    return this.adminService.updateUser(userId, dto);
   }
 
   @Patch('users/:id/status')

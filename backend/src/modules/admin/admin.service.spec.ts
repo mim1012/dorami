@@ -67,6 +67,7 @@ describe('AdminService', () => {
           useValue: {
             decryptAddress: jest.fn(),
             encryptAddress: jest.fn(),
+            tryDecryptAddress: jest.fn(),
           },
         },
         {
@@ -211,6 +212,7 @@ describe('AdminService', () => {
               { name: { contains: 'user_one', mode: 'insensitive' } },
               { email: { contains: 'user_one', mode: 'insensitive' } },
               { instagramId: { contains: 'user_one', mode: 'insensitive' } },
+              { depositorName: { contains: 'user_one', mode: 'insensitive' } },
             ],
           }),
         }),
@@ -292,10 +294,12 @@ describe('AdminService', () => {
         id: 'user-1',
         email: 'user1@test.com',
         name: 'User One',
+        depositorName: null,
         instagramId: '@user_one',
         createdAt: expect.any(String),
         lastLoginAt: expect.any(String),
         lastPurchaseAt: null,
+        profileCompletedAt: null,
         phone: undefined,
         shippingAddressSummary: '-',
         status: 'ACTIVE',
@@ -343,7 +347,7 @@ describe('AdminService', () => {
 
     it('should return user detail with decrypted address', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'decryptAddress').mockReturnValue(mockDecryptedAddress);
+      jest.spyOn(encryptionService, 'tryDecryptAddress').mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getUserDetail(userId);
 
@@ -351,7 +355,7 @@ describe('AdminService', () => {
       expect(result.email).toBe('test@example.com');
       expect(result.shippingAddress).toEqual(mockDecryptedAddress);
       expect(result.statistics.totalOrders).toBe(0);
-      expect(encryptionService.decryptAddress).toHaveBeenCalledWith('encrypted-address');
+      expect(encryptionService.tryDecryptAddress).toHaveBeenCalledWith('encrypted-address');
     });
 
     it('should throw NotFoundException when user not found', async () => {

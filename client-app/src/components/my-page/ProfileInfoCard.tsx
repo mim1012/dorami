@@ -9,6 +9,8 @@ interface ProfileInfoCardProps {
   nickname: string;
   phone?: string;
   onPhoneEdit?: () => void;
+  onInstagramIdEdit?: () => void;
+  onDepositorNameEdit?: () => void;
 }
 
 export function ProfileInfoCard({
@@ -18,6 +20,8 @@ export function ProfileInfoCard({
   nickname,
   phone,
   onPhoneEdit,
+  onInstagramIdEdit,
+  onDepositorNameEdit,
 }: ProfileInfoCardProps) {
   return (
     <div className="bg-content-bg shadow-sm border border-border-color rounded-button p-6 mb-6">
@@ -26,12 +30,32 @@ export function ProfileInfoCard({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Body className="text-secondary-text text-caption">인스타그램 ID</Body>
-          <Body className="text-primary-text">{instagramId || '미설정'}</Body>
+          <div className="flex items-center gap-2">
+            <Body className="text-primary-text">{instagramId || '미설정'}</Body>
+            {onInstagramIdEdit && (
+              <button
+                onClick={onInstagramIdEdit}
+                className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity"
+              >
+                {instagramId ? '변경' : '등록'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
           <Body className="text-secondary-text text-caption">입금자명</Body>
-          <Body className="text-primary-text">{depositorName || '미설정'}</Body>
+          <div className="flex items-center gap-2">
+            <Body className="text-primary-text">{depositorName || '미설정'}</Body>
+            {onDepositorNameEdit && (
+              <button
+                onClick={onDepositorNameEdit}
+                className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity"
+              >
+                {depositorName ? '변경' : '등록'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div>

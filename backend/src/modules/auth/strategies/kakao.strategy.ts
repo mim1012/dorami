@@ -14,6 +14,8 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
       clientID: configService.get('KAKAO_CLIENT_ID') as string,
       clientSecret: configService.get('KAKAO_CLIENT_SECRET') as string,
       callbackURL: configService.get('KAKAO_CALLBACK_URL') as string,
+      // Scope (phone_number only, no email) is configured in the Kakao Developer Console,
+      // not here — passport-kakao StrategyOption does not accept a scope field.
     });
   }
 
@@ -27,7 +29,8 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
 
     const user = await this.authService.validateKakaoUser({
       kakaoId: String(id),
-      email: _json.kakao_account?.email,
+      // email is NOT collected from Kakao (privacy policy: user provides email manually)
+      kakaoPhone: _json.kakao_account?.phone_number, // optional backup only
       nickname: username ?? _json.properties?.nickname ?? 'User',
       profileImage: _json.properties?.profile_image,
     });

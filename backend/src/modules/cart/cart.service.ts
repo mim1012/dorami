@@ -123,15 +123,15 @@ export class CartService {
           }
 
           // Also sync timer settings from product in case they changed after item was first added
-          const newExpiresAt = product.timerEnabled
-            ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+          const newExpiresAt = freshProduct.timerEnabled
+            ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
             : null;
 
           return await tx.cart.update({
             where: { id: existingCartItem.id },
             data: {
               quantity: newQuantity,
-              timerEnabled: product.timerEnabled,
+              timerEnabled: freshProduct.timerEnabled,
               expiresAt: newExpiresAt,
             },
           });
@@ -162,8 +162,8 @@ export class CartService {
           );
         }
 
-        const expiresAt = product.timerEnabled
-          ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+        const expiresAt = freshProduct.timerEnabled
+          ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
           : null;
 
         return await tx.cart.create({
@@ -176,7 +176,7 @@ export class CartService {
             color,
             size,
             shippingFee: new Decimal(0),
-            timerEnabled: product.timerEnabled,
+            timerEnabled: freshProduct.timerEnabled,
             expiresAt,
             status: 'ACTIVE',
           },
@@ -256,17 +256,12 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
-    // Check stock availability
-    const product = await this.prisma.product.findUnique({
-      where: { id: cartItem.productId },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Product not found');
-    }
-
     const updatedItem = await this.prisma.$transaction(
       async (tx) => {
+        const product = await tx.product.findUniqueOrThrow({
+          where: { id: cartItem.productId },
+        });
+
         // Re-check stock within transaction to prevent TOCTOU race condition
         const reservedQuantity = await this.getReservedQuantityInTransaction(
           tx,

@@ -1,0 +1,326 @@
+# Comprehensive Test Pipeline — Task #24
+# Runs all tests sequentially and produces a unified GitHub Summary
+# Trigger: manual dispatch or on push to main
+
+name: Comprehensive Test Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: 'Run E2E tests'
+        type: boolean
+        default: true
+      run_load:
+        description: 'Run load tests'
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'client-app/**'
+      - 'packages/shared-types/**'
+
+concurrency:
+  group: comprehensive-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ===========================================
+  # Phase 1: Build & Unit Tests
+  # ===========================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: dorami_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    outputs:
+      unit_result: ${{ steps.unit.outcome }}
+      unit_count: ${{ steps.count.outputs.total }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run prisma:generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+      - name: Run unit tests
+        id: unit
+        continue-on-error: true
+        run: cd backend && npx jest --ci --forceExit --json --outputFile=../reports/unit-results.json 2>&1 | tee ../reports/unit-output.txt
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci
+          PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+      - name: Count results
+        id: count
+        if: always()
+        run: |
+          if [[ -f reports/unit-results.json ]]; then
+            total=$(jq '.numTotalTests // 0' reports/unit-results.json)
+            passed=$(jq '.numPassedTests // 0' reports/unit-results.json)
+            failed=$(jq '.numFailedTests // 0' reports/unit-results.json)
+            echo "total=${total}" >> "$GITHUB_OUTPUT"
+            echo "passed=${passed}" >> "$GITHUB_OUTPUT"
+            echo "failed=${failed}" >> "$GITHUB_OUTPUT"
+          else
+            echo "total=0" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: reports/
+          retention-days: 7
+
+  # ===========================================
+  # Phase 2: Lint & Type Check
+  # ===========================================
+  lint-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    outputs:
+      lint_result: ${{ steps.lint.outcome }}
+      typecheck_result: ${{ steps.typecheck.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint:all 2>&1 | tee reports/lint-output.txt
+      - name: Type Check
+        id: typecheck
+        continue-on-error: true
+        run: npm run type-check:all 2>&1 | tee reports/typecheck-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-typecheck-results
+          path: reports/
+          retention-days: 7
+
+  # ===========================================
+  # Phase 3: E2E Tests
+  # ===========================================
+  e2e-tests:
+    name: E2E Tests
+    needs: [unit-tests]
+    if: ${{ github.event.inputs.run_e2e != 'false' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: dorami_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    outputs:
+      e2e_result: ${{ steps.e2e.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: client-app
+      - name: Start backend
+        run: |
+          cd backend
+          npx prisma migrate deploy 2>/dev/null || npx prisma db push --accept-data-loss
+          npm run start:dev &
+          sleep 15
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci
+          PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          CSRF_ENABLED: 'false'
+          PORT: '3001'
+      - name: Start frontend
+        run: |
+          cd client-app
+          npm run build
+          npm run start &
+          sleep 10
+        env:
+          NEXT_PUBLIC_WS_URL: http://localhost:3001
+          BACKEND_URL: http://127.0.0.1:3001
+      - name: Run E2E tests
+        id: e2e
+        continue-on-error: true
+        run: cd client-app && npx playwright test --project=user --reporter=json 2>&1 | tee ../reports/e2e-output.txt
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: |
+            reports/
+            client-app/playwright-report/
+          retention-days: 7
+
+  # ===========================================
+  # Phase 4: Load Tests
+  # ===========================================
+  load-tests:
+    name: Load Tests
+    needs: [unit-tests]
+    if: ${{ github.event.inputs.run_load != 'false' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: dorami_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    outputs:
+      load_result: ${{ steps.load.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Start backend
+        run: |
+          cd backend
+          npx prisma migrate deploy 2>/dev/null || npx prisma db push --accept-data-loss
+          npm run start:dev &
+          sleep 15
+        env:
+          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci
+          PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          CSRF_ENABLED: 'false'
+      - name: Run load test
+        id: load
+        continue-on-error: true
+        run: |
+          npx playwright install --with-deps chromium
+          cd client-app && npx playwright test load-test.spec.ts --project=user 2>&1 | tee ../reports/load-output.txt
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: reports/
+          retention-days: 7
+
+  # ===========================================
+  # Summary
+  # ===========================================
+  summary:
+    name: Test Summary
+    needs: [unit-tests, lint-typecheck, e2e-tests, load-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: all-reports
+      - name: Generate Summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'HEADER'
+          # Comprehensive Test Report
+
+          | Phase | Status |
+          |-------|--------|
+          HEADER
+
+          unit="${{ needs.unit-tests.outputs.unit_result }}"
+          lint="${{ needs.lint-typecheck.outputs.lint_result }}"
+          tc="${{ needs.lint-typecheck.outputs.typecheck_result }}"
+          e2e="${{ needs.e2e-tests.outputs.e2e_result }}"
+          load="${{ needs.load-tests.outputs.load_result }}"
+
+          icon() { [[ "$1" == "success" ]] && echo "PASS" || echo "FAIL"; }
+
+          echo "| Unit Tests | $(icon "$unit") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lint | $(icon "$lint") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Type Check | $(icon "$tc") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| E2E Tests | $(icon "$e2e") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Load Tests | $(icon "$load") |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Unit Test Details" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Total: ${{ needs.unit-tests.outputs.unit_count || 'N/A' }}" >> "$GITHUB_STEP_SUMMARY"
+
+          # Overall verdict
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$unit" == "success" && "$lint" == "success" && "$tc" == "success" ]]; then
+            echo "> **VERDICT: PASS** — Core checks passed. Review E2E/Load results for confidence." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "> **VERDICT: NEEDS ATTENTION** — One or more core checks failed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "_Generated at $(date -u '+%Y-%m-%d %H:%M:%S UTC')_" >> "$GITHUB_STEP_SUMMARY"

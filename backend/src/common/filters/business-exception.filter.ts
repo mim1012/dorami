@@ -69,6 +69,8 @@ export class BusinessExceptionFilter implements ExceptionFilter {
       this.logger.error('Unhandled non-Error exception', JSON.stringify(exception));
     }
 
-    response.status(status).json(errorResponse);
+    if (!response.headersSent) {
+      response.status(status).json(errorResponse);
+    }
   }
 }

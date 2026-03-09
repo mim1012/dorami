@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import {
@@ -238,6 +239,55 @@ export class StreamingService {
     this.logger.log(`Stream ${streamId} cancelled by user ${userId}`);
   }
 
+  async deleteHistoryStreams(streamIds: string[]) {
+    const uniqIds = Array.from(new Set(streamIds.filter(Boolean)));
+    const requestedCount = uniqIds.length;
+    if (requestedCount === 0) {
+      return {
+        requestedCount: 0,
+        deletedCount: 0,
+        skippedCount: 0,
+        deletedIds: [],
+        skippedIds: [],
+      };
+    }
+
+    const streamsToDelete = await this.prisma.liveStream.findMany({
+      where: {
+        id: { in: uniqIds },
+        status: { not: 'LIVE' },
+      },
+      select: {
+        id: true,
+        streamKey: true,
+      },
+    });
+
+    const deletableIds = streamsToDelete.map((stream) => stream.id);
+    const deletableSet = new Set(deletableIds);
+    const skippedIds = uniqIds.filter((id) => !deletableSet.has(id));
+
+    if (deletableIds.length > 0) {
+      await this.prisma.liveStream.deleteMany({
+        where: { id: { in: deletableIds } },
+      });
+
+      const redisKeys = streamsToDelete.flatMap((stream) => [
+        `stream:${stream.streamKey}:meta`,
+        `stream:${stream.streamKey}:viewers`,
+      ]);
+      await Promise.all(redisKeys.map((key) => this.redisService.del(key)));
+    }
+
+    return {
+      requestedCount,
+      deletedCount: deletableIds.length,
+      skippedCount: skippedIds.length,
+      deletedIds: deletableIds,
+      skippedIds,
+    };
+  }
+
   async goLive(
     streamId: string,
     userId: string,
@@ -335,7 +385,7 @@ export class StreamingService {
 
   async getActiveStreamsPublic(): Promise<Record<string, unknown>[]> {
     const sessions = await this.prisma.liveStream.findMany({
-      where: { status: 'LIVE' },
+      where: { status: { in: ['LIVE'] } },
       orderBy: { startedAt: 'desc' },
       include: {
         user: { select: { id: true, name: true } },
@@ -344,6 +394,7 @@ export class StreamingService {
 
     return Promise.all(
       sessions.map(async (s) => {
+        const normalizedStatus = s.status === 'PENDING' ? 'SCHEDULED' : s.status;
         const viewerCountStr = await this.redisService.get(`stream:${s.streamKey}:viewers`);
         const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
         return {
@@ -354,6 +405,8 @@ export class StreamingService {
           viewerCount,
           thumbnailUrl: s.thumbnailUrl ?? null,
           startedAt: s.startedAt?.toISOString() ?? null,
+          status: normalizedStatus,
+          isLive: s.status === 'LIVE',
           host: { id: s.user.id, name: s.user.name },
         };
       }),
@@ -502,7 +555,7 @@ export class StreamingService {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Prisma.LiveStreamWhereInput = {};
 
     if (userId) {
       where.userId = userId;
@@ -816,7 +869,7 @@ export class StreamingService {
    * Get featured product for a live stream
    * Returns null if no product is featured
    */
-  async getFeaturedProduct(streamKey: string): Promise<any | null> {
+  async getFeaturedProduct(streamKey: string): Promise<Record<string, unknown> | null> {
     // Check Redis first
     const featuredProductId = await this.redisService.get(`stream:${streamKey}:featured-product`);
 
@@ -851,7 +904,11 @@ export class StreamingService {
    * Set featured product for a live stream (Admin only)
    * Broadcasts update to all viewers via WebSocket
    */
-  async setFeaturedProduct(streamKey: string, productId: string, _userId: string): Promise<any> {
+  async setFeaturedProduct(
+    streamKey: string,
+    productId: string,
+    _userId: string,
+  ): Promise<Record<string, unknown>> {
     // Verify stream exists and user is admin
     const stream = await this.prisma.liveStream.findUnique({
       where: { streamKey },

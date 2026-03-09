@@ -138,17 +138,22 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
-      // Admin users go directly to /admin (no profile completion required)
-      // Regular users: redirect to profile registration if incomplete
-      const needsProfileCompletion =
-        user.role !== 'ADMIN' && (!user.instagramId || !user.depositorName);
-
-      const redirectUrl =
-        user.role === 'ADMIN'
-          ? `${this.frontendUrl}/admin`
-          : needsProfileCompletion
-            ? `${this.frontendUrl}/profile/register`
-            : `${this.frontendUrl}/`;
+      // Admin users go directly to /admin
+      // Regular users: redirect to /auth/kakao/callback with profile completion info
+      let redirectUrl: string;
+      if (user.role === 'ADMIN') {
+        redirectUrl = `${this.frontendUrl}/admin`;
+      } else {
+        const profileStatus = this.authService.getProfileCompletionStatus(user);
+        const params = new URLSearchParams({
+          profileComplete: String(profileStatus.profileComplete),
+          isNewUser: String(profileStatus.isNewUser),
+        });
+        if (!profileStatus.profileComplete && user.name) {
+          params.set('kakaoName', user.name);
+        }
+        redirectUrl = `${this.frontendUrl}/auth/kakao/callback?${params.toString()}`;
+      }
 
       res.redirect(redirectUrl);
       return;

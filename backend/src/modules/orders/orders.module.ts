@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { InventoryService } from './inventory.service';
@@ -10,7 +11,7 @@ import { ReservationModule } from '../reservation/reservation.module';
 import { EncryptionService } from '../../common/services/encryption.service';
 
 @Module({
-  imports: [PointsModule, NotificationsModule, ReservationModule],
+  imports: [ConfigModule, PointsModule, NotificationsModule, ReservationModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

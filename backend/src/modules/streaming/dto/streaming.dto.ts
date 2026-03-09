@@ -6,6 +6,9 @@ import {
   IsInt,
   Min,
   IsBoolean,
+  IsArray,
+  IsUUID,
+  ArrayNotEmpty,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -131,6 +134,13 @@ export class StreamHistoryResponseDto {
   totalPages!: number;
 }
 
+export class StreamHistoryBulkDeleteDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('4', { each: true })
+  streamIds!: string[];
+}
+
 export class StreamingSessionResponseDto {
   id!: string;
   userId!: string;
@@ -160,6 +170,8 @@ export class ActiveStreamResponseDto {
   viewerCount!: number;
   thumbnailUrl!: string | null;
   startedAt!: string | null;
+  status!: string;
+  isLive!: boolean;
   host!: { id: string; name: string };
 }
 

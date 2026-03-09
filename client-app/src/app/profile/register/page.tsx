@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
 import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
+import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
@@ -14,6 +15,7 @@ import { Select } from '@/components/common/Select';
 import { Display, Body, Heading2 } from '@/components/common/Typography';
 
 interface FormData {
+  email: string;
   depositorName: string;
   instagramId: string;
   fullName: string;
@@ -26,6 +28,7 @@ interface FormData {
 }
 
 interface FormErrors {
+  email?: string;
   depositorName?: string;
   instagramId?: string;
   fullName?: string;
@@ -41,6 +44,7 @@ export default function ProfileRegisterPage() {
   const { user, isLoading: authLoading, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
+    email: user?.email || '',
     depositorName: '',
     instagramId: '',
     fullName: '',
@@ -69,18 +73,31 @@ export default function ProfileRegisterPage() {
     error: instagramCheckError,
   } = useInstagramCheck(formData.instagramId);
 
+  // Step 1: Not authenticated → go to login
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (authLoading) return;
+    const isAuthenticated = !!(user?.kakaoId || user?.email);
+    if (!isAuthenticated) {
+      router.replace('/login');
     }
   }, [user, authLoading, router]);
 
-  // 이미 프로필이 완성된 유저가 이 페이지에 오면 홈으로 이동
+  // Step 2: Profile already complete → go to live or admin
   useEffect(() => {
-    if (!authLoading && user?.instagramId && user?.depositorName) {
-      router.replace('/');
+    if (authLoading) return;
+    if (user && isProfileComplete(user)) {
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = user.role === 'ADMIN' ? '/admin' : '/live';
+      router.replace(redirectPath);
     }
   }, [user, authLoading, router]);
+
+  // Step 3: Pre-fill email from Kakao when user loads
+  useEffect(() => {
+    if (user?.email && !formData.email) {
+      setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
+    }
+  }, [user?.email]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -106,6 +123,12 @@ export default function ProfileRegisterPage() {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = '이메일을 입력해주세요';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = '올바른 이메일 형식이 아닙니다';
+    }
 
     if (!formData.depositorName.trim()) {
       newErrors.depositorName = '입금자명을 입력해주세요';
@@ -135,16 +158,11 @@ export default function ProfileRegisterPage() {
       newErrors.state = 'State를 선택해주세요';
     }
 
-    if (!formData.zip) {
-      newErrors.zip = 'ZIP Code를 입력해주세요';
-    } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
-      newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
-    }
+    // ZIP: 검증 제거 (아무거나 입력 가능)
 
-    if (!formData.phone) {
+    // 전화번호: 아무거나 입력 가능 (유효성 검증 제거)
+    if (!formData.phone.trim()) {
       newErrors.phone = '전화번호를 입력해주세요';
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
     }
 
     setErrors(newErrors);
@@ -166,11 +184,13 @@ export default function ProfileRegisterPage() {
       await refreshProfile();
       // refreshProfile은 실패해도 throw하지 않으므로, 스토어 상태를 직접 확인
       const updatedUser = useAuthStore.getState().user;
-      if (!updatedUser?.instagramId || !updatedUser?.depositorName) {
+      if (!isProfileComplete(updatedUser)) {
         setSubmitError('프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      router.push('/');
+      // Admin goes to admin dashboard, users go to live
+      const redirectPath = updatedUser?.role === 'ADMIN' ? '/admin' : '/live';
+      router.push(redirectPath);
     } catch (error: any) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Profile completion error:', error);
@@ -192,7 +212,7 @@ export default function ProfileRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-black py-12 px-4">
+    <div className="min-h-screen bg-primary-black py-6 sm:py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Display className="text-hot-pink mb-2">프로필 등록</Display>
@@ -207,8 +227,20 @@ export default function ProfileRegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 기본 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">기본 정보</Heading2>
+
+            <Input
+              label="이메일"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={errors.email}
+              placeholder="user@example.com"
+              fullWidth
+              required
+            />
 
             <Input
               label="입금자명"
@@ -252,7 +284,7 @@ export default function ProfileRegisterPage() {
           </div>
 
           {/* 미국 배송지 정보 */}
-          <div className="bg-content-bg rounded-xl p-6 space-y-4">
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">미국 배송지</Heading2>
 
             <Input
@@ -332,7 +364,7 @@ export default function ProfileRegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
-                placeholder="(123) 456-7890"
+                placeholder="(213) 555-1234"
                 fullWidth
                 required
               />
@@ -343,7 +375,7 @@ export default function ProfileRegisterPage() {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="md"
             fullWidth
             disabled={isSubmitting || checkingInstagram || instagramAvailable === false}
           >

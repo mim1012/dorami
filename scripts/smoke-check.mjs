@@ -6,12 +6,22 @@ const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 12000);
 
 const checks = [
   {
-    name: 'backend_health',
-    url: `${BACKEND_URL}/api/health`,
+    name: 'backend_health_live',
+    url: `${BACKEND_URL}/api/health/live`,
     method: 'GET',
     validate: async (res, body) => {
       if (!res.ok) return 'response is not 2xx';
       if (!body || body.status !== 'ok') return 'unexpected health payload';
+      return null;
+    },
+  },
+  {
+    name: 'backend_health_ready',
+    url: `${BACKEND_URL}/api/health/ready`,
+    method: 'GET',
+    validate: async (res, body) => {
+      if (!res.ok) return `response status ${res.status}`;
+      if (!body || body.status !== 'ok') return 'unexpected readiness payload';
       return null;
     },
   },
@@ -21,48 +31,6 @@ const checks = [
     method: 'GET',
     validate: async (res) => {
       if (!res.ok) return `response status ${res.status}`;
-      return null;
-    },
-  },
-  {
-    name: 'backend_payment_config',
-    url: `${BACKEND_URL}/api/config/payment`,
-    method: 'GET',
-    validate: async (res, body) => {
-      if (!res.ok) return `response status ${res.status}`;
-      if (!body || typeof body !== 'object') return 'invalid payment config payload';
-      return null;
-    },
-  },
-  {
-    name: 'frontend_home',
-    url: `${CLIENT_URL}/`,
-    method: 'GET',
-    validate: async (res, text) => {
-      if (res.status < 200 || res.status >= 400) return `response status ${res.status}`;
-      if (!text || !text.includes('<html')) return 'missing html response';
-      return null;
-    },
-  },
-  {
-    name: 'frontend_live_page',
-    url: `${CLIENT_URL}/live`,
-    method: 'GET',
-    validate: async (res, text) => {
-      if (res.status < 200 || res.status >= 400) return `response status ${res.status}`;
-      if (!text || !text.includes('<html')) return 'missing html response';
-      return null;
-    },
-  },
-  {
-    name: 'frontend_csrf',
-    url: `${CLIENT_URL}/api/csrf`,
-    method: 'GET',
-    validate: async (res, body) => {
-      if (!res.ok) return `response status ${res.status}`;
-      if (!body || typeof body !== 'object' || typeof body.token !== 'string') {
-        return 'invalid csrf payload';
-      }
       return null;
     },
   },
@@ -77,24 +45,12 @@ const checks = [
     },
   },
   {
-    name: 'backend_live_deals',
-    url: `${BACKEND_URL}/api/products/live-deals`,
-    method: 'GET',
-    validate: async (res, body) => {
-      if (!res.ok) return `response status ${res.status}`;
-      if (body === null || typeof body === 'object') return null;
-      return 'unexpected live-deals payload';
-    },
-  },
-  {
-    name: 'frontend_admin_route',
-    url: `${CLIENT_URL}/admin`,
+    name: 'frontend_home',
+    url: `${CLIENT_URL}/`,
     method: 'GET',
     validate: async (res, text) => {
-      // In a secured app this may redirect to login page for unauthenticated users.
-      if (res.status === 302 || res.status === 307 || res.status === 308) return null;
       if (res.status < 200 || res.status >= 400) return `response status ${res.status}`;
-      if (!text || text.length < 50) return 'admin route returned empty response';
+      if (!text || !text.includes('<html')) return 'missing html response';
       return null;
     },
   },

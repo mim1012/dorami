@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 // Security headers applied to every response from the Next.js frontend
-const securityHeaders = [
+const baseHeaders = [
   // Prevent this page from being embedded in frames on other origins (clickjacking)
   { key: 'X-Frame-Options', value: 'DENY' },
   // Prevent MIME-type sniffing
@@ -15,14 +15,21 @@ const securityHeaders = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
   },
-  // HSTS: enforce HTTPS for 1 year (applied only when served over HTTPS)
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=31536000; includeSubDomains; preload',
-  },
   // Prevent DNS prefetching from leaking information
   { key: 'X-DNS-Prefetch-Control', value: 'off' },
 ];
+
+// HSTS: only apply in production (staging uses HTTP)
+const isProduction = process.env.APP_ENV === 'production';
+const securityHeaders = isProduction
+  ? [
+      ...baseHeaders,
+      {
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains; preload',
+      },
+    ]
+  : baseHeaders;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

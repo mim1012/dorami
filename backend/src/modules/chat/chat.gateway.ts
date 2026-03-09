@@ -17,10 +17,12 @@ import {
   authenticateSocket,
 } from '../../common/middleware/ws-jwt-auth.middleware';
 import { MessageQueueService } from '../../common/services/message-queue.service';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface ChatMessagePayload {
   liveId: string;
   message: string;
+  clientMessageId?: string;
 }
 
 interface DeleteMessagePayload {
@@ -30,6 +32,7 @@ interface DeleteMessagePayload {
 
 // Stream keys are 32-char hex strings
 const STREAM_KEY_REGEX = /^[a-f0-9]{32}$/;
+const CHAT_MESSAGE_DEDUP_TTL_MS = 60_000;
 
 // Rate limit: max messages per window
 const RATE_LIMIT_MAX = 5;
@@ -52,6 +55,7 @@ export class ChatGateway
   private readonly roomMembers = new Map<string, Set<string>>();
   private readonly userSockets = new Map<string, Set<string>>();
   private readonly socketRooms = new Map<string, Set<string>>();
+  private readonly recentClientMessageIds = new Map<string, number>();
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   // Per-user message timestamps for rate limiting
@@ -60,6 +64,7 @@ export class ChatGateway
   constructor(
     private readonly jwtService: JwtService,
     private readonly messageQueueService: MessageQueueService,
+    private readonly prismaService: PrismaService,
   ) {}
 
   afterInit(_server: Server) {
@@ -84,6 +89,18 @@ export class ChatGateway
       if (cleanedCount > 0) {
         this.logger.debug(`Chat rate limit cleanup: removed ${cleanedCount} expired user entries`);
       }
+
+      const dedupeCleanupNow = Date.now();
+      let duplicateKeysRemoved = 0;
+      for (const [key, expireAt] of this.recentClientMessageIds.entries()) {
+        if (expireAt <= dedupeCleanupNow) {
+          this.recentClientMessageIds.delete(key);
+          duplicateKeysRemoved += 1;
+        }
+      }
+      if (duplicateKeysRemoved > 0) {
+        this.logger.debug(`Chat dedupe cleanup: removed ${duplicateKeysRemoved} message ids`);
+      }
     }, 60000); // Run every 60 seconds
   }
 
@@ -97,11 +114,16 @@ export class ChatGateway
     this.userSockets.clear();
     this.socketRooms.clear();
     this.messageTimes.clear();
+    this.recentClientMessageIds.clear();
   }
 
   async handleConnection(client: Socket) {
     try {
-      const authenticatedClient = await authenticateSocket(client, this.jwtService);
+      const authenticatedClient = await authenticateSocket(
+        client,
+        this.jwtService,
+        this.prismaService,
+      );
       const userId = authenticatedClient.user.userId;
 
       // Track socket ids by user for online/offline evaluation
@@ -171,8 +193,33 @@ export class ChatGateway
 
     this.logger.debug(`Flushing ${queuedMessages.length} queued message(s) to user=${userId}`);
     for (const queuedMessage of queuedMessages) {
+      const messageData = queuedMessage.data as {
+        data?: Record<string, unknown>;
+        id?: string;
+        clientMessageId?: string;
+      };
+      const messagePayload = (messageData.data as Record<string, unknown>) ?? {};
+      const dedupeId = (messagePayload?.id as string | undefined) ?? messageData.clientMessageId;
+      if (dedupeId) {
+        const dedupeKey = `user:${userId}:message:${dedupeId}`;
+        const expireAt = this.recentClientMessageIds.get(dedupeKey);
+        if (expireAt && expireAt > Date.now()) {
+          continue;
+        }
+        this.recentClientMessageIds.set(dedupeKey, Date.now() + CHAT_MESSAGE_DEDUP_TTL_MS);
+      }
       authenticatedClient.emit(queuedMessage.event, queuedMessage.data);
     }
+  }
+
+  private isDuplicateClientMessage(userId: string, messageId: string): boolean {
+    const dedupeKey = `user:${userId}:message:${messageId}`;
+    const expireAt = this.recentClientMessageIds.get(dedupeKey);
+    if (expireAt && expireAt > Date.now()) {
+      return true;
+    }
+    this.recentClientMessageIds.set(dedupeKey, Date.now() + CHAT_MESSAGE_DEDUP_TTL_MS);
+    return false;
   }
 
   private addUserToRoom(userId: string, roomName: string) {
@@ -344,6 +391,21 @@ export class ChatGateway
     }
 
     const roomName = `live:${payload.liveId}`;
+    const clientMessageId =
+      typeof payload.clientMessageId === 'string' ? payload.clientMessageId.trim() : '';
+    const sanitizedClientMessageId = clientMessageId || randomUUID();
+
+    if (this.isDuplicateClientMessage(client.user.userId, sanitizedClientMessageId)) {
+      client.emit('chat:send-message:success', {
+        type: 'chat:send-message:success',
+        data: {
+          timestamp: new Date().toISOString(),
+          clientMessageId: sanitizedClientMessageId,
+        },
+      });
+      return;
+    }
+
     const chatMessage = {
       type: 'chat:message',
       data: {
@@ -352,6 +414,7 @@ export class ChatGateway
         userId: client.user.userId,
         username: client.user.name,
         message: sanitizedMessage,
+        clientMessageId: sanitizedClientMessageId,
         timestamp: new Date().toISOString(),
       },
     };
@@ -380,6 +443,7 @@ export class ChatGateway
       type: 'chat:send-message:success',
       data: {
         timestamp: new Date().toISOString(),
+        clientMessageId: sanitizedClientMessageId,
       },
     };
   }

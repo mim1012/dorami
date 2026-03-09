@@ -61,14 +61,11 @@ function LoginContent() {
   useEffect(() => {
     if (!user || !isAuthenticated || isLoading) return;
 
-    // Admin users don't need profile completion (no instagramId/depositorName required)
-    const needsProfile = user.role !== 'ADMIN' && (!user.instagramId || !user.depositorName);
+    // All users can login without profile completion (instagramId/depositorName not required)
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
     const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
 
-    if (needsProfile) {
-      router.push('/profile/register');
-    } else if (safeTarget) {
+    if (safeTarget) {
       router.push(safeTarget);
     } else {
       router.push('/');
@@ -106,40 +103,19 @@ function LoginContent() {
         return;
       }
       const data = await res.json();
-      // Refresh auth state and redirect based on profile completion
+      // Refresh auth state and redirect
       await refreshProfile();
       const userData = data.data?.user;
-      if (returnTo) {
-        if (userData?.role === 'ADMIN') {
-          router.push(returnTo);
-          return;
-        }
 
+      if (returnTo) {
         const safeReturnTo =
           userData?.role === 'USER' && returnTo.startsWith('/admin') ? '/' : returnTo;
-
-        // Only USER role needs profile completion
-        if (
-          userData?.role !== 'ADMIN' &&
-          userData &&
-          (!userData.instagramId || !userData.depositorName)
-        ) {
-          router.push('/profile/register');
-          return;
-        }
-
         router.push(safeReturnTo);
         return;
       }
 
       if (userData?.role === 'ADMIN') {
         router.push('/admin');
-      } else if (
-        userData?.role !== 'ADMIN' &&
-        userData &&
-        (!userData.instagramId || !userData.depositorName)
-      ) {
-        router.push('/profile/register');
       } else {
         router.push('/');
       }

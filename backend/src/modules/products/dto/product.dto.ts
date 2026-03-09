@@ -11,6 +11,7 @@ import {
   IsNotEmpty,
   ArrayMinSize,
   ArrayMaxSize,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -35,7 +36,7 @@ export class CreateProductDto {
   @MaxLength(100)
   name!: string;
 
-  @ApiProperty({ description: 'Product price in KRW', example: 29000, minimum: 1 })
+  @ApiProperty({ description: 'Product price in USD', example: 29000, minimum: 1 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   @Type(() => Number)
@@ -176,6 +177,14 @@ export class CreateProductDto {
   @Type(() => Number)
   originalPrice?: number;
 
+  @ApiPropertyOptional({
+    description: 'Product expiration datetime (ISO 8601)',
+    example: '2026-03-15T18:00:00.000Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
   // Legacy field support (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
   @IsOptional()
@@ -184,7 +193,7 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
   @IsOptional()
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class UpdateProductDto {
@@ -198,7 +207,7 @@ export class UpdateProductDto {
   @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Product price in KRW', example: 29000, minimum: 1 })
+  @ApiPropertyOptional({ description: 'Product price in USD', example: 29000, minimum: 1 })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
@@ -344,6 +353,14 @@ export class UpdateProductDto {
   @Type(() => Number)
   originalPrice?: number;
 
+  @ApiPropertyOptional({
+    description: 'Product expiration datetime (ISO 8601)',
+    example: '2026-03-15T18:00:00.000Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
   // Legacy field support (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
   @IsOptional()
@@ -352,7 +369,7 @@ export class UpdateProductDto {
 
   @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
   @IsOptional()
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class UpdateStockDto {
@@ -374,7 +391,7 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt' })
   name!: string;
 
-  @ApiProperty({ description: 'Product price in KRW', example: 29000 })
+  @ApiProperty({ description: 'Product price in USD', example: 29000 })
   price!: number;
 
   @ApiProperty({ description: 'Available quantity (stock)', example: 50 })
@@ -386,7 +403,7 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Size options', example: ['S', 'M', 'L', 'XL'], type: [String] })
   sizeOptions!: string[];
 
-  @ApiProperty({ description: 'Shipping fee in KRW', example: 3000 })
+  @ApiProperty({ description: 'Shipping fee in USD', example: 3000 })
   shippingFee!: number;
 
   @ApiPropertyOptional({
@@ -439,12 +456,15 @@ export class ProductResponseDto {
   @ApiProperty({ description: 'Updated timestamp', example: '2024-01-15T10:30:00.000Z' })
   updatedAt!: Date;
 
+  @ApiPropertyOptional({ description: 'Product expiration datetime' })
+  expiresAt?: string | null;
+
   // Legacy fields (for backward compatibility)
   @ApiPropertyOptional({ description: 'Product description (legacy)', deprecated: true })
   description?: string;
 
   @ApiPropertyOptional({ description: 'Additional metadata (legacy)', deprecated: true })
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class GetProductsQueryDto {

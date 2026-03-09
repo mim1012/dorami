@@ -1,0 +1,51 @@
+#!/bin/bash
+# 🔧 Dorami Project Shortcuts
+# 사용법: source .doramirc  (프로젝트 루트에서)
+
+# SSH 서버 정보
+export DORAMI_SSH_KEY="${DORAMI_SSH_KEY:-D:/Project/dorami/ssh/id_ed25519}"
+export DORAMI_PROD_HOST="15.165.66.23"
+export DORAMI_PROD_USER="ubuntu"
+export DORAMI_STAGING_HOST="54.180.94.30"
+export DORAMI_STAGING_USER="ubuntu"
+
+# 🔴 Production SSH
+alias prod-ssh="ssh -i $DORAMI_SSH_KEY $DORAMI_PROD_USER@$DORAMI_PROD_HOST"
+
+# 🟢 Staging SSH
+alias staging-ssh="ssh -i $DORAMI_SSH_KEY $DORAMI_STAGING_USER@$DORAMI_STAGING_HOST"
+
+# 🖼️  Image 비교
+alias check-images="bash scripts/check-image-versions.sh"
+
+# 📦 Production 이미지 확인
+alias prod-images="prod-ssh 'docker ps --format \"table {{.Image}}\\t{{.Status}}\"'"
+
+# 📦 Staging 이미지 확인
+alias staging-images="staging-ssh 'docker ps --format \"table {{.Image}}\\t{{.Status}}\"'"
+
+# 🔍 Production Backend 로그
+alias prod-logs="prod-ssh 'docker compose -f docker-compose.prod.yml logs -f backend'"
+
+# 🔍 Staging Backend 로그
+alias staging-logs="staging-ssh 'docker compose -f docker-compose.staging.yml logs -f backend'"
+
+# ✅ Production 헬스 체크
+alias prod-health="prod-ssh 'curl -s http://localhost:3001/api/health/live | jq .'"
+
+# ✅ Staging 헬스 체크
+alias staging-health="staging-ssh 'curl -s http://localhost:3001/api/health/live | jq .'"
+
+echo "✅ Dorami shortcuts loaded!"
+echo ""
+echo "📌 Available commands:"
+echo "   prod-ssh           - SSH into production"
+echo "   staging-ssh        - SSH into staging"
+echo "   check-images       - Compare Production ↔ Staging images"
+echo "   prod-images        - Show running images on production"
+echo "   staging-images     - Show running images on staging"
+echo "   prod-logs          - Follow backend logs (production)"
+echo "   staging-logs       - Follow backend logs (staging)"
+echo "   prod-health        - Check production health"
+echo "   staging-health     - Check staging health"
+echo ""

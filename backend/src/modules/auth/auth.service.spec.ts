@@ -8,7 +8,7 @@ import { UnauthorizedException } from '../../common/exceptions/business.exceptio
 
 describe('AuthService', () => {
   let service: AuthService;
-  let _jwtService: JwtService;
+  let jwtService: JwtService;
   let redisService: RedisService;
   let prismaService: PrismaService;
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    _jwtService = module.get<JwtService>(JwtService);
+    jwtService = module.get<JwtService>(JwtService);
     redisService = module.get<RedisService>(RedisService);
     prismaService = module.get<PrismaService>(PrismaService);
   });
@@ -153,12 +153,126 @@ describe('AuthService', () => {
       await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
     });
 
+    it('should wrap expired JWT error as "Invalid or expired refresh token"', async () => {
+      jest.spyOn(jwtService, 'verify').mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('Invalid or expired refresh token');
+    });
+
+    it('should propagate UnauthorizedException with "Invalid token type" message', async () => {
+      jest.spyOn(jwtService, 'verify').mockReturnValue({
+        ...mockTokenPayload,
+        type: 'access', // wrong type — triggers 'Invalid token type'
+      });
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('Invalid token type');
+    });
+
+    it('should propagate UnauthorizedException with "User not found" message', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('User not found');
+    });
+
     it('should return new tokens on successful refresh', async () => {
       const result = await service.refreshToken(validRefreshToken);
 
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('user');
+    });
+  });
+
+  describe('validateKakaoUser', () => {
+    const kakaoProfile = {
+      kakaoId: 'kakao-real-456',
+      email: 'test@example.com',
+      nickname: 'Test User',
+    };
+
+    it('should NOT find users by email (email no longer collected from Kakao)', async () => {
+      // As of Task #5, email is not collected from Kakao OAuth per privacy policy.
+      // Users must provide their own email when completing their profile.
+      // This test verifies that validateKakaoUser only looks up by kakaoId, not email.
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null); // no user with this kakaoId
+      jest.spyOn(prismaService.user, 'create').mockResolvedValue(mockUser as any);
+
+      const result = await service.validateKakaoUser(kakaoProfile);
+
+      // User should be created (not found by email, since email isn't collected)
+      expect(result.id).toBe(mockUser.id);
+      expect(prismaService.user.create).toHaveBeenCalled();
+    });
+
+    it('should find existing user by kakaoId when email not provided', async () => {
+      const profileNoEmail = { kakaoId: 'kakao-123', nickname: 'Test User' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(mockUser as any); // kakaoId lookup
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(mockUser as any);
+
+      const result = await service.validateKakaoUser(profileNoEmail);
+
+      expect(result.id).toBe(mockUser.id);
+      // kakaoId should NOT be updated in data (not found by email)
+      expect(prismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ kakaoId: expect.anything() }),
+        }),
+      );
+    });
+
+    it('should create new user when no email and no kakaoId match', async () => {
+      const profileNoEmail = { kakaoId: 'kakao-new-999', nickname: 'New User' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(null); // kakaoId lookup
+      jest.spyOn(prismaService.user, 'create').mockResolvedValue({
+        ...mockUser,
+        kakaoId: 'kakao-new-999',
+        email: null,
+      } as any);
+
+      const result = await service.validateKakaoUser(profileNoEmail);
+
+      expect(prismaService.user.create).toHaveBeenCalled();
+      expect(result.kakaoId).toBe('kakao-new-999');
+    });
+
+    it('should skip kakaoId update when another user already owns that kakaoId', async () => {
+      const existingUser = { ...mockUser, id: 'user-A', kakaoId: 'dev_placeholder' };
+      const conflictUser = { ...mockUser, id: 'user-B', kakaoId: 'kakao-real-456' };
+      const updatedUser = { ...existingUser }; // kakaoId unchanged
+
+      jest
+        .spyOn(prismaService.user, 'findUnique')
+        .mockResolvedValueOnce(existingUser as any) // email lookup
+        .mockResolvedValueOnce(conflictUser as any); // conflict check
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(updatedUser as any);
+
+      await service.validateKakaoUser(kakaoProfile);
+
+      // update should be called without kakaoId in data
+      expect(prismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ kakaoId: expect.anything() }),
+        }),
+      );
+    });
+
+    it('should not update kakaoId when user already has the correct kakaoId', async () => {
+      const existingUser = { ...mockUser, kakaoId: 'kakao-real-456' };
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValueOnce(existingUser as any); // email lookup finds user with same kakaoId
+      jest.spyOn(prismaService.user, 'update').mockResolvedValue(existingUser as any);
+
+      await service.validateKakaoUser(kakaoProfile);
+
+      // No conflict check needed, update called without kakaoId (same value, no change)
+      expect(prismaService.user.update).toHaveBeenCalled();
     });
   });
 

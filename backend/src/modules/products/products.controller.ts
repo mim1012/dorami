@@ -82,17 +82,24 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get store products from ended live streams (Public)' })
   @ApiQuery({ name: 'page', description: 'Page number', required: false, example: 1 })
   @ApiQuery({ name: 'limit', description: 'Items per page', required: false, example: 24 })
+  @ApiQuery({
+    name: 'search',
+    description: 'Filter by product name keyword',
+    required: false,
+    example: '셔츠',
+  })
   @ApiResponse({ status: 200, description: 'Store products retrieved successfully' })
   async getStoreProducts(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ): Promise<{
     data: ProductResponseDto[];
     meta: { total: number; page: number; totalPages: number };
   }> {
     const { page: pageNum, limit: limitNum } = parsePagination(page, limit, { limit: 8 });
 
-    const result = await this.productsService.getStoreProducts(pageNum, limitNum);
+    const result = await this.productsService.getStoreProducts(pageNum, limitNum, search);
 
     return {
       data: result.products,
@@ -234,6 +241,51 @@ export class ProductsController {
 
     // Otherwise return all products
     return await this.productsService.findAll(status);
+  }
+
+  /**
+   * Epic 5 Story 5.2, 5.3: Get all products for admin (Admin only)
+   * Includes expired products by default to support admin management workflows.
+   */
+  @AdminOnly()
+  @Get('admin')
+  @ApiOperation({ summary: 'Get products for admin management (Admin only)' })
+  @ApiQuery({
+    name: 'streamKey',
+    description: 'Filter by stream key',
+    required: false,
+    example: 'abc123def456',
+  })
+  @ApiQuery({
+    name: 'status',
+    description: 'Filter by status',
+    required: false,
+  })
+  @ApiQuery({
+    name: 'includeExpired',
+    description: 'Set true to include expired products',
+    required: false,
+    example: 'true',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Products retrieved successfully (admin scope)',
+    type: [ProductResponseDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin role required' })
+  async findAllForAdmin(
+    @Query('streamKey') streamKey?: string,
+    @Query('status') status?: ProductStatus,
+    @Query('includeExpired') includeExpired?: string,
+  ): Promise<ProductResponseDto[]> {
+    const includeExpiredProducts = includeExpired === 'true' || includeExpired === '1';
+
+    if (streamKey) {
+      return await this.productsService.findByStreamKey(streamKey, status, includeExpiredProducts);
+    }
+
+    return await this.productsService.findAll(status, includeExpiredProducts);
   }
 
   /**

@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 
+# Build trigger: Fix FFmpeg RTMPS stream key truncation (commit 54dd099)
+
 # ============================================
 # Stage 1: 의존성 설치 (deps)
 # ============================================

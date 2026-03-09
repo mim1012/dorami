@@ -10,7 +10,8 @@ import { User } from '@prisma/client';
 
 interface KakaoUserProfile {
   kakaoId: string;
-  email?: string;
+  // email is NOT collected from Kakao (privacy policy: user provides email manually via CompleteProfileDto)
+  kakaoPhone?: string; // optional phone from Kakao, used as backup reference only
   nickname: string;
   profileImage?: string;
 }
@@ -37,30 +38,30 @@ export class AuthService {
   }
 
   async validateKakaoUser(profile: KakaoUserProfile): Promise<User> {
-    // Find existing user by kakaoId OR email (preserve existing user profiles)
-    const whereConditions: Array<{ kakaoId?: string; email?: string }> = [
-      { kakaoId: profile.kakaoId },
-    ];
-    if (profile.email) {
-      whereConditions.push({ email: profile.email });
-    }
+    // Log Kakao profile data for debugging (email not collected per privacy policy)
+    this.logger.log(
+      `[Kakao] Profile received: kakaoId=${profile.kakaoId}, nickname=${profile.nickname}`,
+    );
 
-    let user = await this.prisma.user.findFirst({
-      where: {
-        OR: whereConditions,
-      },
+    // Find existing user by kakaoId only (email no longer collected from Kakao)
+    let user = await this.prisma.user.findUnique({
+      where: { kakaoId: profile.kakaoId },
     });
 
-    // Check if user email is in cached admin whitelist
-    const isAdmin = profile.email && this.adminEmailSet.has(profile.email);
-    const assignedRole = isAdmin ? 'ADMIN' : 'USER';
+    if (user) {
+      this.logger.log(`[Kakao] Found existing user by kakaoId: ${user.id}`);
+    }
+
+    // Role: USER by default (admin promotion via ADMIN_EMAILS only applies to email-based login)
+    const assignedRole = 'USER';
 
     if (!user) {
-      // Auto-registration for new Kakao users
+      // Auto-registration for new Kakao users; email left null until user completes profile
       user = await this.prisma.user.create({
         data: {
           kakaoId: profile.kakaoId,
-          email: profile.email ?? null,
+          email: null,
+          kakaoPhone: profile.kakaoPhone ?? null,
           name: profile.nickname,
           role: assignedRole,
           status: 'ACTIVE',
@@ -70,19 +71,17 @@ export class AuthService {
 
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
-      // Update user profile, link kakaoId if missing, and update lastLoginAt
+      // Update nickname, lastLoginAt, and kakaoPhone; preserve role and email (user-provided)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
-          kakaoId: user.kakaoId || profile.kakaoId,
           name: profile.nickname,
-          email: profile.email ?? user.email,
-          role: assignedRole,
+          kakaoPhone: profile.kakaoPhone ?? user.kakaoPhone,
           lastLoginAt: new Date(),
         },
       });
 
-      this.logger.log(`Returning user: ${user.id} (role: ${assignedRole})`);
+      this.logger.log(`Returning user: ${user.id} (role: ${user.role})`);
     }
 
     return user;
@@ -99,6 +98,8 @@ export class AuthService {
   }
 
   async login(user: User): Promise<LoginResponseDto> {
+    const profileStatus = this.getProfileCompletionStatus(user);
+
     const payload: TokenPayload = {
       sub: user.id,
       userId: user.id,
@@ -106,6 +107,7 @@ export class AuthService {
       kakaoId: user.kakaoId,
       name: user.name,
       role: user.role,
+      profileComplete: profileStatus.profileComplete,
     };
 
     const accessToken = this.jwtService.sign(
@@ -122,6 +124,8 @@ export class AuthService {
     const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
     try {
       await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
+      // Clear blacklist entry so new tokens are not rejected after a previous logout
+      await this.redisService.del(`blacklist:${user.id}`);
     } catch (error) {
       this.logger.warn(`Failed to store refresh token in Redis: ${(error as Error).message}`);
     }
@@ -135,6 +139,7 @@ export class AuthService {
         email: user.email ?? undefined,
         name: user.name,
         role: user.role,
+        profileComplete: profileStatus.profileComplete,
       },
     };
   }
@@ -164,7 +169,10 @@ export class AuthService {
       await this.redisService.del(`refresh_token:${payload.sub}`);
 
       return this.login(user);
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
@@ -193,6 +201,41 @@ export class AuthService {
 
     this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
     return user;
+  }
+
+  getProfileCompletionStatus(user: User): {
+    profileComplete: boolean;
+    isNewUser: boolean;
+    missingFields: {
+      email: boolean;
+      phone: boolean;
+      instagramId: boolean;
+      shippingAddress: boolean;
+    };
+  } {
+    const missingEmail = !user.email;
+    const missingPhone = !user.phone;
+    const missingInstagramId = !user.instagramId;
+    const missingShippingAddress = !user.shippingAddress;
+
+    // Use profileCompletedAt as single source of truth.
+    // phone and instagramId are optional in CompleteProfileDto, so requiring them here
+    // would trap users who skip those fields in a frontend redirect loop.
+    const profileComplete = !!user.profileCompletedAt;
+
+    // A user is "new" if they have no email yet (freshly registered via Kakao)
+    const isNewUser = !user.email;
+
+    return {
+      profileComplete,
+      isNewUser,
+      missingFields: {
+        email: missingEmail,
+        phone: missingPhone,
+        instagramId: missingInstagramId,
+        shippingAddress: missingShippingAddress,
+      },
+    };
   }
 
   async logout(userId: string): Promise<void> {

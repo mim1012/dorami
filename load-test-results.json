@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-03-05T20:35:47.568Z",
+  "totalClients": 100,
+  "successfulConnections": 100,
+  "failedConnections": 0,
+  "successRate": "100.0%",
+  "avgResponseTime": 45,
+  "totalDuration": 315015,
+  "errors": []
+}

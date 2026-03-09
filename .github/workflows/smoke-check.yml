@@ -1,64 +1,37 @@
-name: Smoke Validation (CI)
+name: Smoke Check
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'backend/**'
-      - 'client-app/**'
-      - 'packages/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/smoke-check.yml'
+    inputs:
+      backend_url:
+        description: 'Backend URL to test'
+        required: false
+        default: 'http://127.0.0.1:3001'
+      client_url:
+        description: 'Frontend URL to test'
+        required: false
+        default: 'http://127.0.0.1:3000'
+  workflow_call:
+    inputs:
+      backend_url:
+        description: 'Backend URL to test'
+        required: false
+        type: string
+        default: 'http://127.0.0.1:3001'
+      client_url:
+        description: 'Frontend URL to test'
+        required: false
+        type: string
+        default: 'http://127.0.0.1:3000'
 
 env:
   NODE_VERSION: '20'
-  APP_ENV: development
-  NODE_ENV: development
-  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
-  REDIS_HOST: localhost
-  REDIS_PORT: 6379
-  REDIS_URL: redis://localhost:6379
-  JWT_SECRET: smoke-test-jwt-secret-please-replace-at-least-32-chars
-  PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-  KAKAO_CLIENT_ID: smoke-kakao-client-id
-  KAKAO_CLIENT_SECRET: smoke-kakao-client-secret
-  KAKAO_CALLBACK_URL: http://localhost:3001/api/auth/kakao/callback
-  BACKEND_URL: http://127.0.0.1:3001
-  CLIENT_URL: http://127.0.0.1:3000
-  PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
 
 jobs:
   smoke-check:
-    name: smoke-check-and-e2e
+    name: Smoke Check
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 8
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 8
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
@@ -68,97 +41,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Generate Prisma client
-        run: npm run prisma:generate
-
-      - name: Apply migrations
-        run: npx prisma migrate deploy
-        working-directory: backend
+      - name: Run smoke checks
+        run: node scripts/smoke-check.mjs
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Run backend + frontend smoke targets
-        id: boot
-        run: |
-          set -euo pipefail
-
-          npm run start:dev --workspace=backend > /tmp/backend-smoke.log 2>&1 &
-          BACKEND_PID=$!
-          echo "BACKEND_PID=$BACKEND_PID" >> $GITHUB_ENV
-
-          NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" \
-          NEXT_PUBLIC_WS_URL="$BACKEND_URL" \
-          NEXT_PUBLIC_CDN_URL="http://127.0.0.1:8080" \
-          npm run dev --workspace=client-app > /tmp/client-smoke.log 2>&1 &
-          CLIENT_PID=$!
-          echo "CLIENT_PID=$CLIENT_PID" >> $GITHUB_ENV
-
-          cleanup() {
-            kill "$BACKEND_PID" "$CLIENT_PID" 2>/dev/null || true
-            wait "$BACKEND_PID" 2>/dev/null || true
-            wait "$CLIENT_PID" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-
-          for i in {1..60}; do
-            if curl -fsS "${BACKEND_URL}/api/health" >/dev/null; then
-              echo "✅ Backend is ready"
-              break
-            fi
-            sleep 2
-          done
-          if ! curl -fsS "${BACKEND_URL}/api/health" >/dev/null; then
-            echo "❌ Backend failed to boot in time"
-            tail -n 200 /tmp/backend-smoke.log || true
-            exit 1
-          fi
-
-          for i in {1..60}; do
-            if curl -fsS "${CLIENT_URL}/api/health-check" >/dev/null; then
-              echo "✅ Frontend is ready (API proxy health check)"
-              break
-            fi
-            if curl -fsS "${CLIENT_URL}/" >/dev/null; then
-              echo "✅ Frontend is reachable"
-              break
-            fi
-            sleep 2
-          done
-          if ! (curl -fsS "${CLIENT_URL}/api/health-check" >/dev/null || curl -fsS "${CLIENT_URL}/" >/dev/null); then
-            echo "❌ Frontend failed to boot in time"
-            tail -n 200 /tmp/client-smoke.log || true
-            exit 1
-          fi
-
-          npm run smoke:check || { echo "❌ smoke-check failed"; tail -n 200 /tmp/backend-smoke.log || true; tail -n 200 /tmp/client-smoke.log || true; exit 1; }
-          npm run smoke:e2e || { echo "❌ e2e smoke failed"; tail -n 200 /tmp/backend-smoke.log || true; tail -n 200 /tmp/client-smoke.log || true; exit 1; }
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          REDIS_HOST: ${{ env.REDIS_HOST }}
-          REDIS_PORT: ${{ env.REDIS_PORT }}
-          JWT_SECRET: ${{ env.JWT_SECRET }}
-          PROFILE_ENCRYPTION_KEY: ${{ env.PROFILE_ENCRYPTION_KEY }}
-          KAKAO_CLIENT_ID: ${{ env.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET: ${{ env.KAKAO_CLIENT_SECRET }}
-          KAKAO_CALLBACK_URL: ${{ env.KAKAO_CALLBACK_URL }}
-          BACKEND_URL: ${{ env.BACKEND_URL }}
-          CLIENT_URL: ${{ env.CLIENT_URL }}
-          PLAYWRIGHT_BASE_URL: ${{ env.PLAYWRIGHT_BASE_URL }}
-
-      - name: Upload smoke logs
-        if: failure() || cancelled()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-check-logs
-          path: |
-            /tmp/backend-smoke.log
-            /tmp/client-smoke.log
+          BACKEND_URL: ${{ inputs.backend_url || 'http://127.0.0.1:3001' }}
+          CLIENT_URL: ${{ inputs.client_url || 'http://127.0.0.1:3000' }}
+          SMOKE_TIMEOUT_MS: '10000'

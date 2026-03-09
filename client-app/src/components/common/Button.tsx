@@ -29,9 +29,9 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-caption',
-    md: 'px-4 py-2 text-body',
-    lg: 'px-6 py-3 text-h2',
+    sm: 'px-3 py-2 text-caption',
+    md: 'px-4 py-2.5 text-body',
+    lg: 'px-4 py-3 text-body sm:px-6 sm:py-3 sm:text-h2',
   };
 
   const widthStyles = fullWidth ? 'w-full' : '';

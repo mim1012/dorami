@@ -108,7 +108,7 @@ export function AddressEditModal({
       handleClose();
     } catch (error: any) {
       setSubmitError(
-        error.response?.data?.message || 'Failed to update address. Please try again.'
+        error.response?.data?.message || 'Failed to update address. Please try again.',
       );
     } finally {
       setIsSubmitting(false);
@@ -129,7 +129,7 @@ export function AddressEditModal({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 pb-24">
         <Input
           label="Full Name"
           name="fullName"
@@ -213,7 +213,7 @@ export function AddressEditModal({
           />
         </div>
 
-        <div className="flex gap-4 pt-4">
+        <div className="sticky bottom-0 left-0 right-0 bg-content-bg border-t border-border-color -mx-6 px-6 py-4 flex gap-4 z-50">
           <Button type="button" variant="outline" fullWidth onClick={handleClose}>
             Cancel
           </Button>

@@ -151,6 +151,9 @@ export interface User {
   status: UserStatus;
   depositorName?: string;
   instagramId?: string;
+  phone?: string;
+  profileComplete?: boolean;
+  profileCompletedAt?: string;
   shippingAddress?: ShippingAddress;
   createdAt: string;
   lastLoginAt?: string;

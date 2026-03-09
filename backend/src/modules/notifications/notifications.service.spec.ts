@@ -134,7 +134,7 @@ describe('NotificationsService', () => {
       jest.spyOn(prismaService.notificationTemplate, 'findFirst').mockResolvedValue({
         ...mockTemplate,
         type: 'PAYMENT_REMINDER',
-        template: '주문 {{orderId}} 입금 바랍니다. 금액: {{amount}}원',
+        template: '주문 {{orderId}} 입금 바랍니다. 금액: ${{amount}}',
       } as any);
 
       await service.sendPaymentReminderNotification('user-1', 'ORD-001', 50000, '홍길동');
@@ -266,7 +266,7 @@ describe('NotificationsService', () => {
       jest.spyOn(prismaService.notificationTemplate, 'findFirst').mockResolvedValue({
         ...mockTemplate,
         type: 'PAYMENT_REMINDER',
-        template: '주문 {{orderId}} - {{depositorName}}님 {{amount}}원 입금해주세요.',
+        template: '주문 {{orderId}} - {{depositorName}}님 ${{amount}} 입금해주세요.',
       } as any);
 
       await service.sendPaymentReminderNotification('user-1', 'ORD-001', 50000, '홍길동');
@@ -275,7 +275,7 @@ describe('NotificationsService', () => {
       expect(pushNotificationService.sendNotificationToUser).toHaveBeenCalledWith(
         'user-1',
         '입금 안내',
-        '주문 ORD-001 - 홍길동님 50,000원 입금해주세요.',
+        '주문 ORD-001 - 홍길동님 $50,000 입금해주세요.',
         expect.any(Object),
       );
     });

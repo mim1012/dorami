@@ -269,10 +269,10 @@ async function bootstrap() {
   // Swagger/OpenAPI Documentation (non-production only)
   if (process.env.APP_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('도라미 Live Commerce API')
+      .setTitle('도레미 Live Commerce API')
       .setDescription(
         `
-## 도라미 라이브 커머스 플랫폼 API 문서
+## 도레미 라이브 커머스 플랫폼 API 문서
 
 ### 인증
 - Kakao OAuth 2.0 기반 로그인
@@ -336,7 +336,7 @@ async function bootstrap() {
         filter: true,
         showRequestDuration: true,
       },
-      customSiteTitle: '도라미 API 문서',
+      customSiteTitle: '도레미 API 문서',
     });
 
     logger.log('Swagger documentation available at /api/docs');
@@ -362,7 +362,7 @@ async function bootstrap() {
   chatNamespace.on('connection', async (socket) => {
     try {
       // Authenticate socket
-      const authenticatedSocket = await authenticateSocket(socket, jwtService);
+      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
       logger.log(
         `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
       );
@@ -625,7 +625,7 @@ async function bootstrap() {
 
   streamingNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocket(socket, jwtService);
+      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
       logger.log(
         `✅ Client connected to /streaming: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
       );
@@ -804,6 +804,10 @@ async function bootstrap() {
     })();
   });
 
+  // Create root namespace (/) - must be assigned before broadcastOrderNotification uses it
+  const rootNamespace = io.of('/');
+  logger.log('✅ Configured root (/) namespace manually');
+
   type OrderNotificationPayload = {
     orderId: string;
     userId: string;
@@ -881,13 +885,9 @@ async function bootstrap() {
     void broadcastOrderNotification(payload, '결제했습니다', 'order:paid');
   });
 
-  // Create root namespace (/) with WebsocketGateway logic
-  const rootNamespace = io.of('/');
-  logger.log('✅ Configured root (/) namespace manually');
-
   rootNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocket(socket, jwtService);
+      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
       logger.log(
         `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
       );
