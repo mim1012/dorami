@@ -23,7 +23,13 @@ export function useOrders(status?: OrderStatus, page = 1, limit = 20) {
     queryFn: async () => {
       const params: Record<string, any> = { page, limit };
       if (status) params.status = status;
-      const response = await apiClient.get<{ items: Order[]; total: number }>('/orders', {
+      const response = await apiClient.get<{
+        items: Order[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>('/orders', {
         params,
       });
       return response.data;
