@@ -84,6 +84,12 @@ export class ProfileResponseDto {
   @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
   phone?: string;
 
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (+82, 알림톡용)',
+    example: '+82 10-1234-5678',
+  })
+  kakaoPhone?: string;
+
   @ApiPropertyOptional({ description: '배송지 정보 (복호화됨)' })
   shippingAddress?: {
     fullName: string;
@@ -92,8 +98,14 @@ export class ProfileResponseDto {
     city: string;
     state: string;
     zip: string;
-    phone: string;
+    phone?: string;
   };
+
+  @ApiProperty({ description: '프로필 완료 여부', example: true })
+  profileComplete!: boolean;
+
+  @ApiPropertyOptional({ description: '프로필 완료 시각 (ISO 문자열)' })
+  profileCompletedAt?: Date;
 
   @ApiProperty({ description: '계정 생성일' })
   createdAt!: Date;

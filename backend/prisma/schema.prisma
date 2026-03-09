@@ -21,6 +21,7 @@ model User {
   status              UserStatus @default(ACTIVE)
   depositorName       String? // for bank transfer identification
   phone               String? // International phone number e.g. "+1 213-555-1234"
+  kakaoPhone          String?    @map("kakao_phone") // Korean phone number from Kakao (+82), used for Alimtalk
   instagramId         String?    @unique
   shippingAddress     Json? // encrypted US-format address
   profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed
@@ -156,6 +157,7 @@ model Product {
   status              ProductStatus @default(AVAILABLE)
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
+  expiresAt           DateTime?     @map("expires_at")
 
   // Relations
   carts        Cart[]
@@ -166,6 +168,7 @@ model Product {
   @@index([streamKey, status])  // For stream products filtering
   @@index([status])
   @@index([status, createdAt])  // For store products listing
+  @@index([expiresAt])
   @@map("products")
 }
 
@@ -367,9 +370,6 @@ model SystemConfig {
 
   // Free Shipping Toggle
   freeShippingEnabled Boolean @default(false) @map("free_shipping_enabled")
-
-  // Notification Settings
-  emailNotificationsEnabled Boolean @default(true) @map("email_notifications_enabled")
 
   // Alimtalk (카카오 알림톡) Settings
   alimtalkEnabled      Boolean @default(false) @map("alimtalk_enabled")
