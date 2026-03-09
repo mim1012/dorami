@@ -385,6 +385,11 @@ model SystemConfig {
   pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
   pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
 
+  // Business Info (Footer)
+  businessRegistrationNumber    String? @map("business_registration_number")
+  businessAddress               String? @map("business_address")
+  onlineSalesRegistrationNumber String? @map("online_sales_registration_number")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
