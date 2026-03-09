@@ -385,6 +385,10 @@ model SystemConfig {
   pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
   pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
 
+  // Venmo Payment Settings
+  venmoEmail         String? @map("venmo_email")
+  venmoRecipientName String? @map("venmo_recipient_name")
+
   // Business Info (Footer)
   businessRegistrationNumber    String? @map("business_registration_number")
   businessAddress               String? @map("business_address")

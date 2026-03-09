@@ -566,6 +566,26 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   freeShippingEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  venmoEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  venmoRecipientName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessRegistrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  businessAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  onlineSalesRegistrationNumber?: string;
 }
 
 // Shipping Messages DTO

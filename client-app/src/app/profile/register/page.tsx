@@ -1,7 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
+import { Suspense } from 'react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
@@ -97,7 +96,7 @@ const mapProfileToFormData = (profile: ProfileResponse, fallbackEmail?: string):
   };
 };
 
-export default function ProfileRegisterPage() {
+function ProfileRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryReturnTo = useMemo(
@@ -590,5 +589,19 @@ export default function ProfileRegisterPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ProfileRegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ProfileRegisterContent />
+    </Suspense>
   );
 }
