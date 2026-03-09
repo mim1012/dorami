@@ -339,7 +339,6 @@ function ProfileRegisterContent() {
           email: payload.email,
           depositorName: payload.depositorName,
           instagramId: payload.instagramId,
-          phone: payload.phone,
         });
         const addressResponse = await apiClient.patch<ProfileResponse>('/users/profile/address', {
           fullName: payload.fullName,

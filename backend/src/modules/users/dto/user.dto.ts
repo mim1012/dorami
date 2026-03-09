@@ -30,14 +30,17 @@ export class UpdateUserDto {
   @IsNotEmpty()
   profileImage?: string;
 
-  @ApiPropertyOptional({ description: '전화번호 (국제 형식)', example: '+1 213-555-1234' })
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (알림톡용, 예: 010-1234-5678)',
+    example: '010-1234-5678',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
-    message: '전화번호는 +국가코드 번호 형식이어야 합니다 (예: +1 213-555-1234)',
+  @Matches(/^(\+82|0)[0-9\-\s]{8,14}$/, {
+    message: '전화번호는 한국 번호 형식이어야 합니다 (예: 010-1234-5678 또는 +82 10-1234-5678)',
   })
-  phone?: string;
+  kakaoPhone?: string;
 
   @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
   @IsOptional()
@@ -87,12 +90,9 @@ export class UserResponseDto {
   @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
   instagramId?: string;
 
-  @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
-  phone?: string;
-
   @ApiPropertyOptional({
-    description: '카카오 전화번호 (+82, 알림톡용)',
-    example: '+82 10-1234-5678',
+    description: '카카오 전화번호 (알림톡용)',
+    example: '010-1234-5678',
   })
   kakaoPhone?: string;
 

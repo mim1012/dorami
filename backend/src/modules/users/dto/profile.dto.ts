@@ -81,12 +81,9 @@ export class ProfileResponseDto {
   @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
   instagramId?: string;
 
-  @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
-  phone?: string;
-
   @ApiPropertyOptional({
-    description: '카카오 전화번호 (+82, 알림톡용)',
-    example: '+82 10-1234-5678',
+    description: '카카오 전화번호 (알림톡용)',
+    example: '010-1234-5678',
   })
   kakaoPhone?: string;
 

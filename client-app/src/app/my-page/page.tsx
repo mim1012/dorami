@@ -36,7 +36,7 @@ interface ProfileData {
   role: string;
   depositorName?: string;
   instagramId?: string;
-  phone?: string;
+  kakaoPhone?: string;
   shippingAddress?: ShippingAddress;
   createdAt: string;
   updatedAt: string;
@@ -113,18 +113,18 @@ export default function MyPagePage() {
   };
 
   const handlePhoneEdit = () => {
-    setPhoneInput(profile?.phone || '');
+    setPhoneInput(profile?.kakaoPhone || '');
     setPhoneError(null);
     setIsPhoneEditOpen(true);
   };
 
   const handlePhoneSubmit = async () => {
-    if (!/^\+[0-9\s\-()]{7,20}$/.test(phoneInput)) {
-      setPhoneError('국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)');
+    if (!/^(\+82|0)[0-9\-\s]{8,14}$/.test(phoneInput)) {
+      setPhoneError('한국 번호 형식으로 입력해주세요 (예: 010-1234-5678 또는 +82 10-1234-5678)');
       return;
     }
     try {
-      const response = await apiClient.patch<ProfileData>('/users/me', { phone: phoneInput });
+      const response = await apiClient.patch<ProfileData>('/users/me', { kakaoPhone: phoneInput });
       setProfile(response.data);
       setIsPhoneEditOpen(false);
       setSuccessMessage('전화번호가 저장되었습니다');
@@ -239,7 +239,7 @@ export default function MyPagePage() {
             depositorName={profile.depositorName}
             email={profile.email}
             nickname={profile.nickname}
-            phone={profile.phone}
+            kakaoPhone={profile.kakaoPhone}
             onPhoneEdit={handlePhoneEdit}
             onInstagramIdEdit={handleInstagramIdEdit}
             onDepositorNameEdit={handleDepositorNameEdit}
@@ -285,12 +285,12 @@ export default function MyPagePage() {
                   setPhoneInput(e.target.value);
                   setPhoneError(null);
                 }}
-                placeholder="+1 213-555-1234"
+                placeholder="010-1234-5678"
                 className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
               />
               {phoneError && <Body className="text-error text-caption mb-2">{phoneError}</Body>}
               <Body className="text-secondary-text text-caption mb-4">
-                국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)
+                알림톡 수신용 한국 전화번호를 입력해주세요 (예: 010-1234-5678)
               </Body>
               <div className="flex gap-3">
                 <button

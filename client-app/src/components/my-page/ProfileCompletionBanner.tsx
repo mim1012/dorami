@@ -11,7 +11,7 @@ interface ProfileCompletionBannerProps {
 
 function getMissingFields(user: User): string[] {
   const missing: string[] = [];
-  if (!user.phone) missing.push('전화번호');
+  if (!user.kakaoPhone) missing.push('전화번호');
   if (!user.email) missing.push('이메일');
   if (!user.instagramId) missing.push('인스타그램 ID');
   const addr = user.shippingAddress as ShippingAddress | undefined;

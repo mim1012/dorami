@@ -883,27 +883,9 @@ describe('AdminService', () => {
       paymentStatus: 'PENDING',
     };
 
-    it('phone이 있으면 phone으로 payment reminder 알림톡을 발송한다', async () => {
+    it('kakaoPhone이 있으면 kakaoPhone으로 payment reminder 알림톡을 발송한다', async () => {
       jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        phone: '010-1234-5678',
-        kakaoPhone: '010-9999-0000',
-      } as any);
-
-      await service.sendPaymentReminder(orderId);
-
-      expect(alimtalkService.sendPaymentReminderAlimtalk).toHaveBeenCalledWith(
-        '010-1234-5678',
-        orderId,
-        75000,
-      );
-      expect(notificationsService.sendPaymentReminderNotification).not.toHaveBeenCalled();
-    });
-
-    it('phone이 null이고 kakaoPhone이 있으면 kakaoPhone으로 payment reminder 알림톡을 발송한다', async () => {
-      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        phone: null,
         kakaoPhone: '010-9999-0000',
       } as any);
 
@@ -917,10 +899,9 @@ describe('AdminService', () => {
       expect(notificationsService.sendPaymentReminderNotification).not.toHaveBeenCalled();
     });
 
-    it('phone과 kakaoPhone 모두 null이면 web push fallback으로 발송한다', async () => {
+    it('kakaoPhone이 null이면 web push fallback으로 발송한다', async () => {
       jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        phone: null,
         kakaoPhone: null,
       } as any);
 

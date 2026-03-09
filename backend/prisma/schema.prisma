@@ -20,8 +20,7 @@ model User {
   role                Role       @default(USER)
   status              UserStatus @default(ACTIVE)
   depositorName       String? // for bank transfer identification
-  phone               String? // International phone number e.g. "+1 213-555-1234"
-  kakaoPhone          String?    @map("kakao_phone") // Korean phone number from Kakao (+82), used for Alimtalk
+  kakaoPhone          String?    @map("kakao_phone") // Korean phone number (+82), collected from Kakao login or user-editable, used for Alimtalk
   instagramId         String?    @unique
   shippingAddress     Json? // encrypted US-format address
   profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed

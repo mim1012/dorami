@@ -52,10 +52,30 @@ export function useAuth() {
 
     if (!isLoginPage && !fetchedRef.current && isLoading) {
       fetchedRef.current = true;
-      // If user is already present from Zustand (hydrated from localStorage),
-      // just clear the loading flag — no API round-trip needed on initial render.
-      // This prevents a 30s spinner caused by fetchProfile()'s DEFAULT_TIMEOUT_MS.
-      if (user) {
+
+      // Zustand persist uses async/await internally: even with synchronous localStorage,
+      // hydration completes on a microtask AFTER the first React render. The closure
+      // value of `user` may therefore be null even when localStorage has user data.
+      // Call getState() here to read the current (post-hydration) store value instead
+      // of relying on the possibly-stale closure — this prevents a 30s fetchProfile()
+      // call when the user is already authenticated via localStorage.
+      //
+      // If persist has not yet hydrated (edge case in concurrent mode / SSR), fall back
+      // to subscribing via onFinishHydration to decide once hydration completes.
+      if (!useAuthStore.persist.hasHydrated()) {
+        const unsub = useAuthStore.persist.onFinishHydration((hydratedState) => {
+          unsub();
+          if (hydratedState.user) {
+            setLoading(false);
+          } else {
+            fetchProfile();
+          }
+        });
+        return unsub;
+      }
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
         setLoading(false);
       } else {
         fetchProfile();

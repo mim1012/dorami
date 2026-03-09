@@ -110,7 +110,6 @@ export class UsersService {
       where: { id: userId },
       data: {
         email: dto.email,
-        phone: normalizedPhone,
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
         shippingAddress: encryptedAddress as string, // Store encrypted string as Json
@@ -183,7 +182,6 @@ export class UsersService {
       role: user.role,
       depositorName: user.depositorName ?? undefined,
       instagramId: user.instagramId ?? undefined,
-      phone: user.phone ?? undefined,
       kakaoPhone: user.kakaoPhone ?? undefined,
       shippingAddress,
       profileComplete: Boolean(user.profileCompletedAt),
@@ -265,7 +263,6 @@ export class UsersService {
     role: string;
     depositorName?: string | null;
     instagramId?: string | null;
-    phone?: string | null;
     kakaoPhone?: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -281,7 +278,6 @@ export class UsersService {
       role: user.role,
       depositorName: user.depositorName ?? undefined,
       instagramId: user.instagramId ?? undefined,
-      phone: user.phone ?? undefined,
       kakaoPhone: user.kakaoPhone ?? undefined,
       profileComplete: Boolean(user.profileCompletedAt),
       profileCompletedAt: user.profileCompletedAt ?? undefined,

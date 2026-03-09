@@ -7,7 +7,7 @@ interface ProfileInfoCardProps {
   depositorName?: string;
   email?: string;
   nickname: string;
-  phone?: string;
+  kakaoPhone?: string;
   onPhoneEdit?: () => void;
   onInstagramIdEdit?: () => void;
   onDepositorNameEdit?: () => void;
@@ -18,7 +18,7 @@ export function ProfileInfoCard({
   depositorName,
   email,
   nickname,
-  phone,
+  kakaoPhone,
   onPhoneEdit,
   onInstagramIdEdit,
   onDepositorNameEdit,
@@ -71,13 +71,13 @@ export function ProfileInfoCard({
         <div>
           <Body className="text-secondary-text text-caption">전화번호 (알림톡)</Body>
           <div className="flex items-center gap-2">
-            <Body className="text-primary-text">{phone || '미설정'}</Body>
+            <Body className="text-primary-text">{kakaoPhone || '미설정'}</Body>
             {onPhoneEdit && (
               <button
                 onClick={onPhoneEdit}
                 className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity"
               >
-                {phone ? '변경' : '등록'}
+                {kakaoPhone ? '변경' : '등록'}
               </button>
             )}
           </div>

@@ -13,7 +13,7 @@ export interface User {
   nickname?: string;
   profileImage?: string;
   role: Role | string;
-  phone?: string;
+  kakaoPhone?: string;
   depositorName?: string;
   instagramId?: string;
   shippingAddress?: ShippingAddress | object;

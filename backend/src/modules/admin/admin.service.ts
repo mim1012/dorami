@@ -351,7 +351,7 @@ export class AdminService {
           email: true,
           name: true,
           depositorName: true,
-          phone: true,
+          kakaoPhone: true,
           instagramId: true,
           shippingAddress: true,
           profileCompletedAt: true,
@@ -388,7 +388,7 @@ export class AdminService {
         email: user.email ?? '',
         name: user.name,
         depositorName: user.depositorName ?? null,
-        phone: user.phone,
+        kakaoPhone: user.kakaoPhone,
         instagramId: user.instagramId,
         shippingAddressSummary: shippingSummary,
         profileCompletedAt: user.profileCompletedAt?.toISOString() ?? null,
@@ -838,7 +838,7 @@ export class AdminService {
                 },
               },
             },
-            user: { select: { phone: true, email: true } },
+            user: { select: { email: true } },
           },
         });
 
@@ -913,7 +913,7 @@ export class AdminService {
     orders.forEach((order) => {
       const shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
       const shippingAddr = this.normalizeShippingAddress(order.shippingAddress);
-      const phone = order.user.phone ?? shippingAddr?.phone ?? '-';
+      const phone = shippingAddr?.phone ?? '-';
 
       if (order.orderItems && order.orderItems.length > 0) {
         order.orderItems.forEach((item, itemIndex) => {
@@ -1863,13 +1863,12 @@ export class AdminService {
       throw new BadRequestException('Payment reminder can only be sent for pending payments');
     }
 
-    // 전화번호 조회: phone(직접 입력) 없으면 kakaoPhone(카카오 수집) fallback
     const user = await this.prisma.user.findUnique({
       where: { id: order.userId },
-      select: { phone: true, kakaoPhone: true },
+      select: { kakaoPhone: true },
     });
 
-    const effectivePhone = user?.phone ?? user?.kakaoPhone ?? null;
+    const effectivePhone = user?.kakaoPhone ?? null;
 
     if (effectivePhone) {
       await this.alimtalkService.sendPaymentReminderAlimtalk(
@@ -1972,7 +1971,7 @@ export class AdminService {
         id: true,
         email: true,
         name: true,
-        phone: true,
+        kakaoPhone: true,
         instagramId: true,
         depositorName: true,
         shippingAddress: true,
@@ -2013,7 +2012,7 @@ export class AdminService {
       id: user.id,
       email: user.email ?? '',
       name: user.name,
-      phone: user.phone ?? undefined,
+      kakaoPhone: user.kakaoPhone ?? undefined,
       instagramId: user.instagramId,
       depositorName: user.depositorName,
       shippingAddress,
@@ -2060,8 +2059,8 @@ export class AdminService {
     if (dto.depositorName !== undefined) {
       updateData.depositorName = dto.depositorName;
     }
-    if (dto.phone !== undefined) {
-      updateData.phone = dto.phone;
+    if (dto.kakaoPhone !== undefined) {
+      updateData.kakaoPhone = dto.kakaoPhone;
     }
     if (dto.instagramId !== undefined) {
       updateData.instagramId = dto.instagramId;

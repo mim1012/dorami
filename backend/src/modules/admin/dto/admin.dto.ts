@@ -105,7 +105,7 @@ export class UserListItemDto {
   email!: string;
   name!: string;
   depositorName!: string | null;
-  phone!: string | null;
+  kakaoPhone!: string | null;
   instagramId!: string | null;
   shippingAddressSummary?: string | null;
   profileCompletedAt!: string | null;
@@ -464,10 +464,10 @@ export class UpdateAdminUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
-    message: 'phone must be an international format',
+  @Matches(/^(\+82|0)[0-9\-\s]{8,14}$/, {
+    message: 'kakaoPhone must be a Korean phone number format',
   })
-  phone?: string;
+  kakaoPhone?: string;
 
   @IsOptional()
   @IsObject()
@@ -480,7 +480,7 @@ export class UserDetailDto {
   id!: string;
   email!: string;
   name!: string;
-  phone?: string;
+  kakaoPhone?: string;
   instagramId!: string | null;
   depositorName!: string | null;
   shippingAddress!: ShippingAddressDto | null;

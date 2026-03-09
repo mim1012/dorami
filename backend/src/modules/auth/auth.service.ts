@@ -214,7 +214,7 @@ export class AuthService {
     };
   } {
     const missingEmail = !user.email;
-    const missingPhone = !user.phone;
+    const missingPhone = !user.kakaoPhone;
     const missingInstagramId = !user.instagramId;
     const missingShippingAddress = !user.shippingAddress;
 
