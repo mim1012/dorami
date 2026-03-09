@@ -109,7 +109,6 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
-      BANK_NAME: ${BANK_NAME:-KB Kookmin Bank}
       SRS_WEBHOOK_SECRET: ${SRS_WEBHOOK_SECRET:-}
     depends_on:
       postgres:

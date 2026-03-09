@@ -62,7 +62,6 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@dorami.shop}
       CSRF_ENABLED: "${CSRF_ENABLED:-false}"
       FRONTEND_URL: ${FRONTEND_URL:-http://staging.doremi-live.com}
-      BANK_NAME: ${BANK_NAME:-KB국민은행}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
       RTMP_SERVER_URL: rtmp://srs:1935/live
       HLS_SERVER_URL: ${CDN_URL:-http://srs:8080/hls}
