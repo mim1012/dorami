@@ -1,8 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { ProductCard } from '@/components/home/ProductCard';
@@ -23,7 +21,7 @@ interface StoreResponse {
   };
 }
 
-export default function StorePage() {
+function StoreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
@@ -354,5 +352,19 @@ export default function StorePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function StorePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] bg-primary-black flex items-center justify-center">
+          <div className="w-10 h-10 border-[3px] border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <StoreContent />
+    </Suspense>
   );
 }
