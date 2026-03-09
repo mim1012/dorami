@@ -506,6 +506,15 @@ jobs:
             echo "=== Deployment complete ==="
           ENDSSH
 
+      - name: Save staging image tag to repo variable
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+        run: |
+          gh variable set STAGING_LATEST_IMAGE_TAG --body "${IMAGE_TAG}" --repo ${{ github.repository }}
+          echo "✅ STAGING_LATEST_IMAGE_TAG=${IMAGE_TAG} saved to repo variables"
+
       - name: Notify Success
         if: success()
         run: |

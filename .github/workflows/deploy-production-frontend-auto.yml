@@ -1,14 +1,9 @@
 name: Auto Deploy Frontend to Production
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'client-app/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-production-frontend-auto.yml'
-      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+    # Frontend-only deployment (manual use only).
+    # Auto deployment is handled by deploy-production-auto.yml (full-stack).
 
 concurrency:
   group: production-frontend-deployment

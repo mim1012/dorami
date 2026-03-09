@@ -28,19 +28,99 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   build:
-    name: Build Images
+    name: Promote Staging Image
     needs: [ci]
-    uses: ./.github/workflows/build-images.yml
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: read
+    outputs:
+      image_tag: ${{ steps.promote.outputs.image_tag }}
 
+    steps:
+      - name: Resolve staging image tag
+        id: promote
+        env:
+          STAGING_IMAGE_TAG: ${{ vars.STAGING_LATEST_IMAGE_TAG }}
+        run: |
+          if [ -z "${STAGING_IMAGE_TAG}" ]; then
+            echo "ERROR: STAGING_LATEST_IMAGE_TAG repo variable is not set."
+            echo "Run a staging deployment first to populate this variable."
+            exit 1
+          fi
+          if [[ ! "${STAGING_IMAGE_TAG}" =~ ^sha-[0-9a-f]{40}$ ]]; then
+            echo "ERROR: STAGING_LATEST_IMAGE_TAG is not a valid sha tag: ${STAGING_IMAGE_TAG}"
+            exit 1
+          fi
+          echo "Promoting staging-tested image: ${STAGING_IMAGE_TAG}"
+          echo "image_tag=${STAGING_IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify images exist in GHCR
+        env:
+          IMAGE_TAG: ${{ steps.promote.outputs.image_tag }}
+        run: |
+          for SERVICE in backend frontend; do
+            IMAGE_REF="ghcr.io/${{ github.repository_owner }}/dorami-${SERVICE}:${IMAGE_TAG}"
+            if docker manifest inspect "${IMAGE_REF}" > /dev/null 2>&1; then
+              echo "✅ ${IMAGE_REF} verified"
+            else
+              echo "ERROR: Image not found: ${IMAGE_REF}"
+              exit 1
+            fi
+          done
+          echo "✅ All staging images verified — promoting to production"
+
+  live-check:
+    name: Live Stream Safety Check
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          else
+            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+          fi
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Check for active live streams
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          LIVE_COUNT=$(ssh $USER@$HOST bash << 'ENDSSH'
+          docker exec dorami-postgres-1 psql -U postgres -d live_commerce_production -t \
+            -c "SELECT COUNT(*) FROM live_streams WHERE status = 'LIVE';" 2>/dev/null | tr -d ' \r\n' || echo "0"
+          ENDSSH
+          )
+          echo "현재 LIVE 스트림 수: ${LIVE_COUNT}"
+          if [ -n "${LIVE_COUNT}" ] && [ "${LIVE_COUNT}" -gt "0" ] 2>/dev/null; then
+            echo "❌ LIVE 방송 중 자동 배포 차단 (${LIVE_COUNT}개 스트림 활성)"
+            echo "방송 종료 후 재시도하거나 workflow_dispatch로 수동 배포하세요."
+            exit 1
+          fi
+          echo "✅ 활성 LIVE 스트림 없음 — 배포 안전"
 
   deploy:
     name: Deploy Production
-    needs: [build]
-    # Demo mode: CI → Build → Deploy (no parity gate, no blue/green, no soak)
-    if: ${{ needs.build.result == 'success' }}
+    needs: [build, live-check]
+    # CI → Promote staging image → Live check → Deploy
+    if: ${{ needs.build.result == 'success' && needs.live-check.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
