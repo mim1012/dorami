@@ -620,12 +620,12 @@ describe('StreamingService', () => {
       const result = await service.getFeaturedProduct('abc123');
 
       expect(result).not.toBeNull();
-      expect(result.id).toBe('prod-1');
-      expect(result.name).toBe('테스트 상품');
-      expect(result.price).toBe(29900);
-      expect(result.stock).toBe(10);
-      expect(result.status).toBe('AVAILABLE');
-      expect(result.colorOptions).toEqual(['빨강', '파랑']);
+      expect(result!.id).toBe('prod-1');
+      expect(result!.name).toBe('테스트 상품');
+      expect(result!.price).toBe(29900);
+      expect(result!.stock).toBe(10);
+      expect(result!.status).toBe('AVAILABLE');
+      expect(result!.colorOptions).toEqual(['빨강', '파랑']);
     });
 
     it('should clean up stale Redis entry and return null when product deleted from DB', async () => {
@@ -654,8 +654,8 @@ describe('StreamingService', () => {
 
       const result = await service.getFeaturedProduct('abc123');
 
-      expect(typeof result.price).toBe('number');
-      expect(result.price).toBe(29900);
+      expect(typeof result!.price).toBe('number');
+      expect(result!.price).toBe(29900);
     });
   });
 });

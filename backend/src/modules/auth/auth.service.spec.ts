@@ -8,7 +8,7 @@ import { UnauthorizedException } from '../../common/exceptions/business.exceptio
 
 describe('AuthService', () => {
   let service: AuthService;
-  let _jwtService: JwtService;
+  let jwtService: JwtService;
   let redisService: RedisService;
   let prismaService: PrismaService;
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    _jwtService = module.get<JwtService>(JwtService);
+    jwtService = module.get<JwtService>(JwtService);
     redisService = module.get<RedisService>(RedisService);
     prismaService = module.get<PrismaService>(PrismaService);
   });
@@ -151,6 +151,35 @@ describe('AuthService', () => {
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
 
       await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should wrap expired JWT error as "Invalid or expired refresh token"', async () => {
+      jest.spyOn(jwtService, 'verify').mockImplementation(() => {
+        throw new Error('jwt expired');
+      });
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('Invalid or expired refresh token');
+    });
+
+    it('should propagate UnauthorizedException with "Invalid token type" message', async () => {
+      jest.spyOn(jwtService, 'verify').mockReturnValue({
+        ...mockTokenPayload,
+        type: 'access', // wrong type — triggers 'Invalid token type'
+      });
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('Invalid token type');
+    });
+
+    it('should propagate UnauthorizedException with "User not found" message', async () => {
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(null);
+
+      const error = await service.refreshToken(validRefreshToken).catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('User not found');
     });
 
     it('should return new tokens on successful refresh', async () => {
