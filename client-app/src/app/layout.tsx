@@ -6,6 +6,7 @@ import { QueryProvider } from '@/lib/providers/query-provider';
 import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { KakaoInAppBrowserGuard } from '@/components/common/KakaoInAppBrowserGuard';
+import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
 
 export const metadata: Metadata = {
   title: 'Live Commerce',
@@ -28,7 +29,7 @@ export default function RootLayout({
         {/* iOS PWA */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="도라미 라이브" />
+        <meta name="apple-mobile-web-app-title" content="도레미 라이브" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link
           rel="stylesheet"
@@ -57,7 +58,9 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <div id="main-content">{children}</div>
+                <ProfileGuardBoundary>
+                  <div id="main-content">{children}</div>
+                </ProfileGuardBoundary>
               </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>

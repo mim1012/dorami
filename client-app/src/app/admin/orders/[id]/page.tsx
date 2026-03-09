@@ -140,9 +140,9 @@ export default function AdminOrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(amount);
   };
@@ -160,7 +160,8 @@ export default function AdminOrderDetailPage() {
     return (
       <span
         className={`px-3 py-2 rounded-button border text-sm font-medium ${
-          colors[status as OrderStatus] || 'bg-secondary-text/10 text-secondary-text border-secondary-text'
+          colors[status as OrderStatus] ||
+          'bg-secondary-text/10 text-secondary-text border-secondary-text'
         }`}
       >
         {labels[status as OrderStatus] || status}
@@ -205,7 +206,10 @@ export default function AdminOrderDetailPage() {
           <select
             value={order.status}
             onChange={(e) => handleOrderStatusChange(e.target.value as OrderDetail['status'])}
-            disabled={isUpdating || !ORDER_STATUS_UPDATE_OPTIONS.some((option) => option.value === order.status)}
+            disabled={
+              isUpdating ||
+              !ORDER_STATUS_UPDATE_OPTIONS.some((option) => option.value === order.status)
+            }
             className="w-full px-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink bg-white"
           >
             {ORDER_STATUS_UPDATE_OPTIONS.map((option) => (
@@ -297,7 +301,8 @@ export default function AdminOrderDetailPage() {
               <Body>{order.shippingAddress.address1}</Body>
               {order.shippingAddress.address2 && <Body>{order.shippingAddress.address2}</Body>}
               <Body>
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+                {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
+                {order.shippingAddress.zip}
               </Body>
               <Body>Tel: {order.shippingAddress.phone}</Body>
             </div>

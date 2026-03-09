@@ -28,6 +28,7 @@ import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from '@/components/ch
 import { Body, Heading2 } from '@/components/common/Typography';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@live-commerce/shared-types';
+import { formatPrice } from '@/lib/utils/price';
 import {
   MonitorOff,
   Loader,
@@ -48,7 +49,7 @@ import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/lib/store/auth';
-import { useAuth } from '@/lib/hooks/use-auth';
+import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
 interface StreamStatus {
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
@@ -76,15 +77,6 @@ export default function LiveStreamPage() {
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
   useTokenAutoRefresh(streamKey);
-
-  const { needsProfileCompletion, isLoading: authLoading } = useAuth();
-
-  // Redirect to profile if incomplete
-  useEffect(() => {
-    if (!authLoading && needsProfileCompletion) {
-      router.replace('/profile/register');
-    }
-  }, [authLoading, needsProfileCompletion, router]);
 
   const isMobile = useIsMobile(1024);
 
@@ -297,49 +289,96 @@ export default function LiveStreamPage() {
 
   // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchFeatured = async () => {
       try {
         const response = await apiClient.get<{ product: FeaturedProduct | null }>(
           `/streaming/key/${streamKey}/featured-product`,
         );
-        setFeaturedProduct(response.data.product);
+        if (!isCancelled) {
+          setFeaturedProduct(response.data.product);
+        }
       } catch {
         // non-critical
       }
     };
-    fetchFeatured();
-    fetchAllProducts();
 
+    const safeFetchAllProducts = async () => {
+      try {
+        const products = await apiClient.get<Product[]>('/products', {
+          params: { streamKey, status: 'AVAILABLE' },
+        });
+        if (!isCancelled) {
+          setAllProducts(products.data ?? []);
+        }
+      } catch {
+        // non-critical
+      }
+    };
+
+    const setFeaturedProductIfActive = (
+      updater: (product: FeaturedProduct | null) => FeaturedProduct | null,
+    ) => {
+      if (!isCancelled) setFeaturedProduct(updater);
+    };
+
+    fetchFeatured();
+    safeFetchAllProducts();
+
+    const wsConfig = RECONNECT_CONFIG.default;
     const ws = io(SOCKET_URL, {
       withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: wsConfig.maxAttempts,
+      reconnectionDelay: wsConfig.delays[0],
+      reconnectionDelayMax: wsConfig.delays[wsConfig.delays.length - 1],
+      randomizationFactor: wsConfig.jitterFactor,
+      timeout: 20000,
+      autoConnect: true,
     });
-    ws.on('connect', () => ws.emit('join:stream', { streamId: streamKey }));
-    ws.on('stream:featured-product:updated', (data: any) => {
+
+    const handleConnect = () => {
+      if (isCancelled) return;
+      ws.emit('join:stream', { streamId: streamKey });
+    };
+
+    const handleFeaturedProductUpdated = (data: any) => {
+      if (isCancelled) return;
       if (data.streamKey === streamKey) setFeaturedProduct(data.product);
-    });
-    ws.on('live:product:added', (data: any) => {
+    };
+
+    const handleProductAdded = (data: any) => {
+      if (isCancelled) return;
       setAllProducts((prev) =>
         prev.some((p) => p.id === data.data.id) ? prev : [data.data, ...prev],
       );
-    });
-    ws.on('live:product:updated', (data: any) => {
+    };
+
+    const handleProductUpdated = (data: any) => {
+      if (isCancelled) return;
       setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
-    });
-    ws.on('live:product:soldout', (data: any) => {
+    };
+
+    const handleProductSoldOut = (data: any) => {
+      if (isCancelled) return;
       setAllProducts((prev) =>
         prev.map((p) =>
           p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
         ),
       );
-      setFeaturedProduct((prev) => {
+      setFeaturedProductIfActive((prev) => {
         if (prev && prev.id === data.data.productId) {
           showToast('이 상품이 품절되었습니다.', 'error');
           return { ...prev, status: ProductStatus.SOLD_OUT };
         }
         return prev;
       });
-    });
-    ws.on('cart:item-added', (payload: any) => {
+    };
+
+    const handleCartItemAdded = (payload: any) => {
+      if (isCancelled) return;
       const data = payload.data ?? payload;
       setCartActivities((prev) => {
         const next = [
@@ -353,17 +392,62 @@ export default function LiveStreamPage() {
         ];
         return next.length > 50 ? next.slice(-50) : next;
       });
-    });
-    ws.on('order:purchase:notification', (data: { displayName: string; message: string }) => {
+    };
+
+    const handlePurchaseNotification = (data: { displayName: string; message: string }) => {
+      if (isCancelled) return;
       setPurchaseNotif(data.message);
       if (purchaseNotifTimerRef.current) clearTimeout(purchaseNotifTimerRef.current);
       purchaseNotifTimerRef.current = setTimeout(() => setPurchaseNotif(null), 4000);
+    };
+
+    const handleReconnect = () => {
+      if (isCancelled) return;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[LiveEvents] reconnect - rejoin stream', streamKey);
+      }
+      handleConnect();
+    };
+
+    const handleReconnectError = (error: Error) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[LiveEvents] reconnect error:', error);
+      }
+    };
+
+    ws.on('connect', handleConnect);
+    ws.on('reconnect', handleReconnect);
+    ws.on('connect_error', handleReconnectError);
+    ws.io.on('reconnect_failed', () => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[LiveEvents] reconnect failed');
+      }
     });
+    ws.on('stream:featured-product:updated', handleFeaturedProductUpdated);
+    ws.on('live:product:added', handleProductAdded);
+    ws.on('live:product:updated', handleProductUpdated);
+    ws.on('live:product:soldout', handleProductSoldOut);
+    ws.on('cart:item-added', handleCartItemAdded);
+    ws.on('order:purchase:notification', handlePurchaseNotification);
+
+    handleConnect();
+
     return () => {
+      isCancelled = true;
+      ws.off('connect', handleConnect);
+      ws.off('reconnect', handleReconnect);
+      ws.off('connect_error', handleReconnectError);
+      ws.off('stream:featured-product:updated', handleFeaturedProductUpdated);
+      ws.off('live:product:added', handleProductAdded);
+      ws.off('live:product:updated', handleProductUpdated);
+      ws.off('live:product:soldout', handleProductSoldOut);
+      ws.off('cart:item-added', handleCartItemAdded);
+      ws.off('order:purchase:notification', handlePurchaseNotification);
+      ws.io.off('reconnect_failed');
       ws.disconnect();
       if (purchaseNotifTimerRef.current) clearTimeout(purchaseNotifTimerRef.current);
     };
-  }, [streamKey, fetchAllProducts]);
+  }, [streamKey]);
 
   const fetchStreamStatus = useCallback(async () => {
     try {
@@ -445,10 +529,6 @@ export default function LiveStreamPage() {
   };
 
   // Profile completion guard: prevent rendering while redirecting
-  if (!authLoading && needsProfileCompletion) {
-    return null;
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -538,15 +618,6 @@ export default function LiveStreamPage() {
       showToast('로그인 후 이용해주세요', 'error', {
         label: '로그인',
         onClick: () => router.push('/login'),
-      });
-      return;
-    }
-
-    // Check profile completion
-    if (needsProfileCompletion) {
-      showToast('프로필 완성 후 이용 가능합니다', 'error', {
-        label: '프로필 완성',
-        onClick: () => router.push('/profile/register'),
       });
       return;
     }
@@ -908,7 +979,7 @@ export default function LiveStreamPage() {
                           </span>
                         )}
                       <span className="text-white text-[11px] font-medium">
-                        {displayedProduct.price.toLocaleString()}원
+                        {formatPrice(displayedProduct.price)}
                       </span>
                     </div>
                   </div>
@@ -1140,9 +1211,7 @@ export default function LiveStreamPage() {
                       <p className="text-sm font-medium text-primary-text truncate">
                         {product.name}
                       </p>
-                      <p className="text-xs text-secondary-text">
-                        ₩{product.price.toLocaleString()}
-                      </p>
+                      <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
                     </button>
                   ))}
                 </div>
@@ -1181,9 +1250,7 @@ export default function LiveStreamPage() {
                       <p className="text-sm font-medium text-primary-text truncate">
                         {product.name}
                       </p>
-                      <p className="text-xs text-secondary-text">
-                        ₩{product.price.toLocaleString()}
-                      </p>
+                      <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
                     </button>
                   ))}
                 </div>

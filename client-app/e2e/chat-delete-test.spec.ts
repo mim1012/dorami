@@ -30,7 +30,7 @@ test.describe('채팅 메시지 삭제 기능 테스트', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: 'admin-test@test.com', role: 'ADMIN' }),
+          body: JSON.stringify({ email: 'admin-test@test.com', name: 'E2E ADMIN' }),
         });
         const data = await res.json();
         // Store accessToken in localStorage for WebSocket auth
@@ -51,7 +51,7 @@ test.describe('채팅 메시지 삭제 기능 테스트', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: 'user-test@test.com', role: 'USER' }),
+          body: JSON.stringify({ email: 'user-test@test.com', name: 'E2E User' }),
         });
         const data = await res.json();
         if (data.data?.accessToken) {

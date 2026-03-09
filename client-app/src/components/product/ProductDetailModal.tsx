@@ -88,7 +88,8 @@ export default function ProductDetailModal({
           <Heading2 className="text-primary-text">상품 상세</Heading2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-content-bg rounded-full transition-colors"
+            className="p-3 md:p-2 rounded-full hover:bg-content-bg transition-colors"
+            aria-label="상세 모달 닫기"
           >
             <X className="w-6 h-6 text-secondary-text" />
           </button>
@@ -176,7 +177,7 @@ export default function ProductDetailModal({
           {product.colorOptions && product.colorOptions.length > 0 && (
             <div>
               <Caption className="text-secondary-text mb-2">컬러</Caption>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {product.colorOptions.map((color) => (
                   <button
                     key={color}
@@ -201,7 +202,7 @@ export default function ProductDetailModal({
           {product.sizeOptions && product.sizeOptions.length > 0 && (
             <div>
               <Caption className="text-secondary-text mb-2">사이즈</Caption>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {product.sizeOptions.map((size) => (
                   <button
                     key={size}
@@ -229,7 +230,7 @@ export default function ProductDetailModal({
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={quantity <= 1}
-                className="w-10 h-10 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
               >
                 <Minus className="w-4 h-4 text-primary-text" />
               </button>
@@ -239,7 +240,7 @@ export default function ProductDetailModal({
               <button
                 onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
                 disabled={quantity >= maxQuantity}
-                className="w-10 h-10 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
+                className="w-11 h-11 bg-content-bg hover:bg-border-color disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center transition-colors"
               >
                 <Plus className="w-4 h-4 text-primary-text" />
               </button>
@@ -260,7 +261,7 @@ export default function ProductDetailModal({
               onClick={handleAddToCart}
               disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
               className={`
-                w-full py-4 rounded-button font-bold text-body transition-all flex items-center justify-center gap-2
+                w-full min-h-[48px] py-3 md:py-4 rounded-button font-bold text-body transition-all flex items-center justify-center gap-2
                 ${
                   addedToCart
                     ? 'bg-success text-white'
@@ -286,7 +287,7 @@ export default function ProductDetailModal({
                 onClick={handleBuyNow}
                 disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
                 className={`
-                  w-full py-4 rounded-button font-bold text-body transition-colors
+                  w-full min-h-[48px] py-3 md:py-4 rounded-button font-bold text-body transition-colors
                   ${
                     product.status === ProductStatus.SOLD_OUT || product.stock === 0
                       ? 'bg-content-bg text-secondary-text cursor-not-allowed'

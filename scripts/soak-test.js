@@ -74,7 +74,7 @@ const SSH = {
   user: args['ssh-user'] || 'ubuntu',
   key: args['ssh-key'] || null,
   port: Number(args['ssh-port'] || 22),
-  workdir: args['ssh-workdir'] || '/opt/dorami',
+  workdir: args['ssh-workdir'] || '/opt/doremi',
 };
 
 const REDIS_PASSWORD = args['redis-password'] || null;
@@ -185,7 +185,7 @@ function createClients(baseUrl, count) {
         path: healthPath,
         method: 'GET',
         agent,
-        headers: { 'User-Agent': 'dorami-soak-test/1.0' },
+        headers: { 'User-Agent': 'doremi-soak-test/1.0' },
         timeout: 10000,
       },
       (res) => {
@@ -271,7 +271,7 @@ function detectLeaks(snapshots) {
 
 async function main() {
   console.log('='.repeat(60));
-  console.log(' Dorami Soak Test');
+  console.log(' Doremi Soak Test');
   console.log('='.repeat(60));
   console.log(`  URL         : ${BASE_URL}`);
   console.log(`  Stream key  : ${STREAM_KEY}`);
@@ -374,3 +374,5 @@ main().catch((err) => {
   console.error('[soak-test] fatal:', err.message || err);
   process.exitCode = 1;
 });
+
+

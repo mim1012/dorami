@@ -153,7 +153,23 @@
       "mcp__plugin_oh-my-claudecode_t__state_get_status",
       "mcp__plugin_oh-my-claudecode_t__notepad_write_manual",
       "mcp__plugin_oh-my-claudecode_x__wait_for_job",
-      "mcp__plugin_oh-my-claudecode_t__python_repl"
+      "mcp__plugin_oh-my-claudecode_t__python_repl",
+      "mcp__plugin_oh-my-claudecode_t__lsp_document_symbols",
+      "WebFetch(domain:www.naver.com)",
+      "WebFetch(domain:www.ftc.go.kr)",
+      "WebFetch(domain:namu.wiki)",
+      "WebFetch(domain:techblog.woowahan.com)",
+      "WebFetch(domain:engineering.linecorp.com)",
+      "WebFetch(domain:d2.naver.com)",
+      "WebFetch(domain:aws.amazon.com)",
+      "WebFetch(domain:docs.tosspayments.com)",
+      "WebFetch(domain:www.nia.or.kr)",
+      "WebFetch(domain:iamport.notion.site)",
+      "WebFetch(domain:portone.io)",
+      "WebFetch(domain:www.kakaocorp.com)",
+      "WebFetch(domain:grip.show)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:techblog.lycorp.co.jp)"
     ]
   },
   "teammateMode": "tmux"

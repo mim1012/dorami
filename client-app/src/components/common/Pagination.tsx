@@ -66,7 +66,7 @@ export function Pagination({
               { value: '50', label: '50' },
               { value: '100', label: '100' },
             ]}
-            className="w-20"
+            className="w-24"
           />
         </div>
       </div>

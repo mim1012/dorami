@@ -21,7 +21,7 @@ Successfully unified the production environment from a **Host nginx (SSL) + Dock
 
 ### 1. ✅ nginx/production.conf (New File)
 
-**Location:** `D:\Project\dorami\nginx\production.conf`
+**Location:** `D:\Project\doremi\nginx\production.conf`
 
 **Features:**
 
@@ -47,14 +47,14 @@ Successfully unified the production environment from a **Host nginx (SSL) + Dock
 
 ### 2. ✅ docker-compose.prod.yml (Modified)
 
-**Location:** `D:\Project\dorami\docker-compose.prod.yml`
+**Location:** `D:\Project\doremi\docker-compose.prod.yml`
 
 **Changes:**
 
 ```yaml
 nginx: # NEW SERVICE
   image: nginx:alpine
-  container_name: dorami-nginx-prod
+  container_name: doremi-nginx-prod
   ports:
     - '80:80'
     - '443:443'
@@ -73,7 +73,7 @@ nginx: # NEW SERVICE
     timeout: 5s
     retries: 5
   networks:
-    - dorami-internal
+    - doremi-internal
 ```
 
 **SRS Port Change:**
@@ -109,8 +109,8 @@ nginx: # NEW SERVICE
 ```yaml
 - name: Copy compose files to server
   run: |
-    scp nginx/production.conf $USER@$HOST:/opt/dorami/nginx/production.conf
-    scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
+    scp nginx/production.conf $USER@$HOST:/opt/doremi/nginx/production.conf
+    scp -r infrastructure/docker/srs $USER@$HOST:/opt/doremi/infrastructure/docker/
 ```
 
 #### c) Deployment Script Updates (Line 622-627)
@@ -131,7 +131,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
       sudo mkdir -p /etc/letsencrypt/renewal-hooks/post
       cat > /tmp/reload-nginx.sh << 'EOF'
       #!/bin/bash
-      cd /home/ubuntu/dorami
+      cd /home/ubuntu/doremi
       docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
       EOF
       sudo mv /tmp/reload-nginx.sh /etc/letsencrypt/renewal-hooks/post/reload-nginx.sh
@@ -170,7 +170,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 
 #### a) logs-proxy Command (Line 241-246)
 
-- Updated to use `dorami-nginx-prod` instead of `dorami-proxy-prod`
+- Updated to use `doremi-nginx-prod` instead of `doremi-proxy-prod`
 
 #### b) diagnose Command (Line 335-338)
 
@@ -179,7 +179,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 
 #### c) fix-ssl Command (Line 364-396)
 
-- Removed references to `dorami_certbot_conf` volume
+- Removed references to `doremi_certbot_conf` volume
 - Now uses host `/etc/letsencrypt` directory
 - Simplified cert management for docker nginx container
 - Updated to restart `nginx` container (not `nginx-proxy`)
@@ -233,7 +233,7 @@ Internet
   ↓
 Docker nginx (SSL, port 80/443)
   ↓
-Docker internal network (dorami-internal)
+Docker internal network (doremi-internal)
   ├─ backend:3001 (internal only)
   ├─ frontend:3000 (internal only)
   ├─ srs:8080 (internal only)
@@ -362,15 +362,15 @@ Before production deployment, test:
 
 **nginx container won't start**
 
-- Check syntax: `docker exec dorami-nginx-prod nginx -t`
-- Check logs: `docker logs dorami-nginx-prod`
-- Verify config file copied: `cat /opt/dorami/nginx/production.conf | head -20`
+- Check syntax: `docker exec doremi-nginx-prod nginx -t`
+- Check logs: `docker logs doremi-nginx-prod`
+- Verify config file copied: `cat /opt/doremi/nginx/production.conf | head -20`
 
 **SSL certificate errors**
 
 - Verify certs exist: `ls -la /etc/letsencrypt/live/doremi-live.com/`
-- Check mount: `docker exec dorami-nginx-prod ls /etc/letsencrypt/live/`
-- Reload nginx: `docker exec dorami-nginx-prod nginx -s reload`
+- Check mount: `docker exec doremi-nginx-prod ls /etc/letsencrypt/live/`
+- Reload nginx: `docker exec doremi-nginx-prod nginx -s reload`
 
 **WebSocket connection fails**
 
@@ -390,13 +390,13 @@ Before production deployment, test:
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # nginx logs
-docker logs dorami-nginx-prod -f --tail=100
+docker logs doremi-nginx-prod -f --tail=100
 
 # Backend API logs
-docker logs dorami-backend-prod -f --tail=50
+docker logs doremi-backend-prod -f --tail=50
 
 # Resource usage
-docker stats dorami-nginx-prod
+docker stats doremi-nginx-prod
 
 # SSL certificate check
 openssl s_client -connect www.doremi-live.com:443 -showcerts

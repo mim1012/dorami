@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Log Aggregation Script — Task #22
-# Collects ERROR and CRITICAL logs from all dorami containers
+# Collects ERROR and CRITICAL logs from all doremi containers
 # Usage: bash scripts/aggregate-logs.sh [--since 1h] [--output reports/error-log.txt]
 
 set -euo pipefail
@@ -14,7 +14,7 @@ NC='\033[0m'
 SINCE="${SINCE:-1h}"
 LOG_DIR="$(dirname "$0")/../reports"
 OUTPUT="${OUTPUT:-${LOG_DIR}/aggregated-errors.log}"
-CONTAINERS="dorami"
+CONTAINERS="doremi"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -121,3 +121,4 @@ else
   log "${GREEN}No errors found in the last ${SINCE}.${NC}"
 fi
 log "Full output: ${OUTPUT}"
+

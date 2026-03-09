@@ -49,7 +49,7 @@ ssh "$USER@$HOST" << SSH_COMMANDS
 
     # Stop Nginx temporarily to avoid port conflicts
     echo "Stopping Nginx temporarily..."
-    cd /opt/dorami
+    cd /opt/doremi
     docker compose -f docker-compose.base.yml -f docker-compose.staging.yml stop nginx || true
     sleep 2
 
@@ -73,24 +73,24 @@ echo "[Step 4/5] Copying certificate to docker volume..."
 ssh "$USER@$HOST" << SSH_COMMANDS
     set -e
 
-    DORAMI_DIR="/opt/dorami"
+    DOREMI_DIR="/opt/doremi"
     CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
 
     # Create ssl directory
-    mkdir -p \${DORAMI_DIR}/nginx/ssl
+    mkdir -p \${DOREMI_DIR}/nginx/ssl
 
     # Copy certificates
     echo "Copying fullchain.pem and privkey.pem..."
-    sudo cp \${CERT_DIR}/fullchain.pem \${DORAMI_DIR}/nginx/ssl/
-    sudo cp \${CERT_DIR}/privkey.pem \${DORAMI_DIR}/nginx/ssl/
+    sudo cp \${CERT_DIR}/fullchain.pem \${DOREMI_DIR}/nginx/ssl/
+    sudo cp \${CERT_DIR}/privkey.pem \${DOREMI_DIR}/nginx/ssl/
 
     # Set permissions
-    sudo chmod 644 \${DORAMI_DIR}/nginx/ssl/fullchain.pem
-    sudo chmod 644 \${DORAMI_DIR}/nginx/ssl/privkey.pem
-    sudo chown $(id -u):$(id -g) \${DORAMI_DIR}/nginx/ssl/*
+    sudo chmod 644 \${DOREMI_DIR}/nginx/ssl/fullchain.pem
+    sudo chmod 644 \${DOREMI_DIR}/nginx/ssl/privkey.pem
+    sudo chown $(id -u):$(id -g) \${DOREMI_DIR}/nginx/ssl/*
 
     echo "✓ Certificates copied to nginx/ssl/"
-    ls -la \${DORAMI_DIR}/nginx/ssl/
+    ls -la \${DOREMI_DIR}/nginx/ssl/
 SSH_COMMANDS
 echo "✓ Certificates copied"
 echo ""
@@ -99,7 +99,7 @@ echo ""
 echo "[Step 5/5] Restarting services with HTTPS configuration..."
 ssh "$USER@$HOST" << SSH_COMMANDS
     set -e
-    cd /opt/dorami
+    cd /opt/doremi
 
     # Start Nginx with staging-ssl.conf
     echo "Starting Nginx with HTTPS..."
@@ -157,3 +157,5 @@ echo "Certificate renewal:"
 echo "- Certbot will auto-renew 30 days before expiry"
 echo "- To test renewal: sudo certbot renew --dry-run"
 echo ""
+
+

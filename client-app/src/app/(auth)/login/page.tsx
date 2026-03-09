@@ -3,10 +3,11 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { isProfileComplete } from '@/lib/utils/profile';
 import { Display, Body } from '@/components/common/Typography';
 import Image from 'next/image';
 
-const POST_LOGIN_RETURN_KEY = 'dorami_post_login_return_to';
+const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
 
 function sanitizeReturnPath(raw: string | null): string {
   if (!raw) return '/';
@@ -60,6 +61,11 @@ function LoginContent() {
 
   useEffect(() => {
     if (!user || !isAuthenticated || isLoading) return;
+
+    if (user.role !== 'ADMIN' && !isProfileComplete(user)) {
+      router.push('/profile/register');
+      return;
+    }
 
     // All users can login without profile completion (instagramId/depositorName not required)
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;

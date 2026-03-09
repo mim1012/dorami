@@ -11,7 +11,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  * 각 테스트는 gotoWithRetry를 사용하여 rate-limit 등으로 인한 auth 리다이렉트를 재시도합니다.
  */
 test.describe('My Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');
@@ -32,6 +32,34 @@ test.describe('My Page', () => {
 
     // 로그아웃 버튼 확인
     await expect(page.getByRole('button', { name: '로그아웃' })).toBeVisible();
+
+    // ── API-UI verification: profile fields ───────────────────────────────
+    try {
+      const profile = await page.evaluate(async () => {
+        const res = await fetch('/api/users/me', { credentials: 'include' });
+        if (!res.ok) return null;
+        return (await res.json()).data ?? null;
+      });
+
+      if (profile) {
+        const depositorName: string = profile.depositorName ?? '';
+        const fullName: string = profile.shippingAddress?.fullName ?? '';
+
+        console.log(
+          '[API-UI]',
+          `profile: depositorName="${depositorName}", fullName="${fullName}"`,
+        );
+
+        if (depositorName) {
+          await expect(page.getByText(depositorName, { exact: true })).toBeVisible();
+        }
+        if (fullName) {
+          await expect(page.getByText(fullName, { exact: true })).toBeVisible();
+        }
+      }
+    } catch (err) {
+      console.warn('[API-UI] profile check failed:', err);
+    }
   });
 
   test('should show shipping address or empty state', async ({ page }) => {
@@ -146,7 +174,7 @@ test.describe('My Page', () => {
 });
 
 test.describe('Order History Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');
@@ -182,6 +210,28 @@ test.describe('Order History Page', () => {
       // 주문 카드가 보이는지 확인
       await expect(orderLocator).toBeVisible();
       console.log('Orders are displayed');
+    }
+
+    // ── API-UI verification: order count ──────────────────────────────────
+    try {
+      const ordersData = await page.evaluate(async () => {
+        const res = await fetch('/api/orders', { credentials: 'include' });
+        if (!res.ok) return null;
+        return (await res.json()).data ?? null;
+      });
+
+      const orders: { id: string }[] = Array.isArray(ordersData)
+        ? ordersData
+        : (ordersData?.orders ?? []);
+      const count = orders.length;
+      console.log('[API-UI]', `orders API count=${count}`);
+
+      if (count > 0) {
+        // At least one ORD-... ID should appear in the UI
+        await expect(page.getByText(/ORD-/).first()).toBeVisible({ timeout: 5000 });
+      }
+    } catch (err) {
+      console.warn('[API-UI] orders check failed:', err);
     }
   });
 

@@ -38,9 +38,11 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        // Reset loading state after rehydration to prevent infinite loading
+        // Reset loading state after rehydration to prevent infinite loading.
+        // Must call setLoading (Zustand setState) instead of direct mutation,
+        // otherwise React subscribers are not notified and the spinner persists.
         if (state) {
-          state.isLoading = false;
+          state.setLoading(false);
         }
       },
     },

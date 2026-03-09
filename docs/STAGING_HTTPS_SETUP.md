@@ -59,8 +59,8 @@ Key is saved at: /etc/letsencrypt/live/staging.doremi-live.com/privkey.pem
 ### 2.2 인증서를 Docker 볼륨 위치로 복사
 
 ```bash
-# Dorami 프로젝트 디렉토리
-cd /opt/dorami
+# Doremi 프로젝트 디렉토리
+cd /opt/doremi
 
 # SSL 디렉토리 생성
 mkdir -p nginx/ssl
@@ -92,7 +92,7 @@ nginx:
 ## 3단계: Docker Compose 배포
 
 ```bash
-cd /opt/dorami
+cd /opt/doremi
 
 # 환경 설정 로드
 export IMAGE_TAG=sha-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -145,7 +145,7 @@ sudo certbot renew --dry-run
 
 자동 갱신 후 Nginx를 리로드하기 위해 Cron 작업을 추가합니다.
 
-`/etc/cron.d/dorami-nginx-reload`:
+`/etc/cron.d/doremi-nginx-reload`:
 
 ```cron
 # Renew Let's Encrypt certificates and reload Nginx
@@ -158,21 +158,21 @@ sudo certbot renew --dry-run
 #!/bin/bash
 set -e
 
-DORAMI_DIR="/opt/dorami"
+DOREMI_DIR="/opt/doremi"
 
 # Certbot 갱신
 /usr/bin/certbot renew --quiet
 
 # 인증서 복사
-cp /etc/letsencrypt/live/staging.doremi-live.com/fullchain.pem ${DORAMI_DIR}/nginx/ssl/
-cp /etc/letsencrypt/live/staging.doremi-live.com/privkey.pem ${DORAMI_DIR}/nginx/ssl/
+cp /etc/letsencrypt/live/staging.doremi-live.com/fullchain.pem ${DOREMI_DIR}/nginx/ssl/
+cp /etc/letsencrypt/live/staging.doremi-live.com/privkey.pem ${DOREMI_DIR}/nginx/ssl/
 
 # Nginx 컨테이너 리로드
-cd ${DORAMI_DIR}
+cd ${DOREMI_DIR}
 docker compose -f docker-compose.base.yml -f docker-compose.staging.yml exec -T nginx nginx -s reload || true
 
 # 로그 기록
-echo "[$(date)] SSL certificate renewed and Nginx reloaded" >> /var/log/dorami-ssl-renewal.log
+echo "[$(date)] SSL certificate renewed and Nginx reloaded" >> /var/log/doremi-ssl-renewal.log
 ```
 
 권한 설정:

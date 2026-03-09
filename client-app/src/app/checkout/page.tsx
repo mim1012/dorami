@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   const { data: cartData } = useCart();
   const queryClient = useQueryClient();
   const items = cartData?.items ?? [];
-  const { user, needsProfileCompletion, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { data: balance } = usePointBalance();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,13 +44,6 @@ export default function CheckoutPage() {
       router.push('/cart');
     }
   }, [cartData, items, router, orderCompleted]);
-
-  // Redirect to profile if incomplete
-  useEffect(() => {
-    if (!authLoading && needsProfileCompletion) {
-      router.replace('/profile/register');
-    }
-  }, [authLoading, needsProfileCompletion, router]);
 
   // Load points config
   useEffect(() => {
@@ -102,9 +95,9 @@ export default function CheckoutPage() {
   const finalTotal = orderTotal - effectivePointsUsed;
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -377,7 +370,7 @@ export default function CheckoutPage() {
             size="lg"
             fullWidth
             onClick={handleSubmitOrder}
-            disabled={isSubmitting || !termsAgreed || !privacyAgreed || needsProfileCompletion}
+            disabled={isSubmitting || !termsAgreed || !privacyAgreed}
           >
             {isSubmitting ? '주문 처리 중...' : `${formatPrice(finalTotal)} 주문하기`}
           </Button>

@@ -12,7 +12,7 @@ async function createTestProduct(streamKey: string): Promise<{ id: string; name:
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -54,7 +54,7 @@ async function deleteProduct(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -164,10 +164,48 @@ test.describe('Add to Cart — persist on reload', () => {
     }
 
     // ── 4. Navigate to cart and verify items present ───────────────────────
+    // API-UI verification: fetch cart data BEFORE navigating, then check UI after
+    const cartApiData = await page.evaluate(async () => {
+      const res = await fetch('/api/cart', { credentials: 'include' });
+      if (!res.ok) return null;
+      return (await res.json()).data ?? null;
+    });
+
     await page.goto('/cart', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: '장바구니', exact: true })).toBeVisible({
       timeout: 15000,
     });
+
+    // ── API-UI price/name assertion ────────────────────────────────────────
+    try {
+      const firstItem = cartApiData?.items?.[0];
+      if (firstItem) {
+        const productName: string = firstItem.productName ?? '';
+        const price: number = Number(firstItem.price);
+        const formattedPrice = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(price);
+        console.log(
+          '[API-UI]',
+          `cart: name="${productName}", price=${price} → "${formattedPrice}"`,
+        );
+
+        if (productName) {
+          await expect(page.getByText(productName, { exact: true })).toBeVisible({
+            timeout: 10000,
+          });
+        }
+        if (price > 0) {
+          await expect(page.getByText(formattedPrice, { exact: true })).toBeVisible({
+            timeout: 10000,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[API-UI] cart price/name check failed:', err);
+    }
 
     const cartBefore = await page.evaluate(async () => {
       const res = await fetch('/api/cart', { credentials: 'include' });

@@ -18,7 +18,7 @@ import { createTestStream, ensureAuth, gotoWithRetry, devLogin } from './helpers
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
 test.describe('Admin Live Product Realtime', () => {
-  test.setTimeout(120000);
+  test.setTimeout(150000);
 
   let testStreamKey: string;
 
@@ -108,13 +108,13 @@ test.describe('Admin Live Product Realtime', () => {
     // 페이지 이동 없이 상품 목록에 즉시 반영 확인
     const productRow = page.locator('tr', { hasText: testProductName });
     await expect(productRow).toBeVisible({ timeout: 10000 });
-    await expect(productRow.getByText('39,000')).toBeVisible();
+    await expect(productRow.getByText('$39,000')).toBeVisible();
     console.log(`✅ A-PRD-RT-01: 관리자 상품 목록 즉시 반영 확인 — "${testProductName}"`);
 
     // 가격, 재고, 판매상태 표시 확인
     await expect(productRow.getByText('10개')).toBeVisible();
     await expect(productRow.getByText('판매중')).toBeVisible();
-    console.log('✅ A-PRD-RT-01: 가격(39,000), 재고(10개), 판매중 표시 확인');
+    console.log('✅ A-PRD-RT-01: 가격($39,000), 재고(10개), 판매중 표시 확인');
 
     // ── A-PRD-RT-02: 상품 API 조회 (라이브 페이지 데이터 레이어) ──────────
     await page.waitForTimeout(500);

@@ -4,11 +4,11 @@ export const productFormSchema = z
   .object({
     streamKey: z.string().optional(),
     name: z.string().min(1, '상품명을 입력해주세요').max(100, '상품명은 100자 이하로 입력해주세요'),
-    price: z
+    originalPrice: z
       .string()
-      .min(1, '가격을 입력해주세요')
+      .min(1, '정가를 입력해주세요')
       .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, {
-        message: '가격은 0보다 큰 숫자여야 합니다',
+        message: '정가는 0보다 큰 숫자여야 합니다',
       }),
     stock: z
       .string()
@@ -27,19 +27,15 @@ export const productFormSchema = z
         message: '유효한 이미지 URL을 입력해주세요',
       }),
     images: z.array(z.string()),
-    discountRate: z
-      .string()
-      .optional()
-      .refine((v) => !v || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0 && parseFloat(v) <= 100), {
-        message: '할인율은 0~100 사이의 숫자여야 합니다',
-      }),
-    originalPrice: z
+    discountEnabled: z.boolean(),
+    discountPrice: z
       .string()
       .optional()
       .refine((v) => !v || (!isNaN(parseFloat(v)) && parseFloat(v) > 0), {
-        message: '정가는 0보다 큰 숫자여야 합니다',
+        message: '할인 가격은 0보다 큰 숫자여야 합니다',
       }),
     isNew: z.boolean(),
+    expiresAtHours: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -52,6 +48,22 @@ export const productFormSchema = z
     {
       message: '타이머 시간은 1~120 사이여야 합니다',
       path: ['timerDurationHours'],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.discountEnabled) {
+        if (!data.discountPrice) return false;
+        const orig = parseFloat(data.originalPrice);
+        const disc = parseFloat(data.discountPrice);
+        if (isNaN(orig) || isNaN(disc)) return false;
+        return disc < orig;
+      }
+      return true;
+    },
+    {
+      message: '할인 가격은 정가보다 작아야 합니다',
+      path: ['discountPrice'],
     },
   );
 

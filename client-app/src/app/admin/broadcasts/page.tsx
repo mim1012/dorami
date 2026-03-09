@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
@@ -22,6 +22,8 @@ import {
   Pencil,
   AlertCircle,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import FeaturedProductManager from '@/components/admin/broadcasts/FeaturedProductManager';
 import ReStreamManager from '@/components/admin/broadcasts/ReStreamManager';
@@ -29,9 +31,11 @@ import {
   createReStreamTarget,
   getReStreamTargets,
   deleteReStreamTarget,
+  deleteReStreamTargets,
   type ReStreamTarget,
   type ReStreamPlatform,
 } from '@/lib/api/restream';
+import { deleteStreamHistory } from '@/lib/api/streaming';
 
 interface LiveStream {
   id: string;
@@ -84,6 +88,71 @@ interface GeneratedStreamKey {
   expiresAt: string;
 }
 
+type HistoryStatusFilter = 'ALL' | 'LIVE' | 'PENDING' | 'OFFLINE';
+
+const HISTORY_FILTER_OPTIONS: { value: HistoryStatusFilter; label: string }[] = [
+  { value: 'ALL', label: '전체' },
+  { value: 'LIVE', label: '방송중' },
+  { value: 'PENDING', label: '예정' },
+  { value: 'OFFLINE', label: '종료' },
+];
+
+const HISTORY_GROUP_ORDER: Record<string, number> = {
+  today: 0,
+  yesterday: 1,
+  recent7: 2,
+  recent30: 3,
+  older: 4,
+  unknown: 5,
+};
+
+const HISTORY_GROUP_NAMES: Record<string, string> = {
+  today: '오늘',
+  yesterday: '어제',
+  recent7: '최근 7일',
+  recent30: '최근 30일',
+  older: '이전',
+  unknown: '기록 없음',
+};
+
+const HISTORY_GROUP_PREVIEW_LIMIT = 2;
+
+function getHistoryDateGroup(stream: LiveStream) {
+  const source = stream.startedAt || stream.endedAt || stream.createdAt;
+  const target = source ? new Date(source) : null;
+  if (!target || Number.isNaN(target.getTime())) {
+    return { key: 'unknown', label: HISTORY_GROUP_NAMES.unknown };
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const daysAgo = Math.floor((today.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysAgo === 0) return { key: 'today', label: HISTORY_GROUP_NAMES.today };
+  if (daysAgo === 1) return { key: 'yesterday', label: HISTORY_GROUP_NAMES.yesterday };
+  if (daysAgo <= 7) return { key: 'recent7', label: HISTORY_GROUP_NAMES.recent7 };
+  if (daysAgo <= 30) return { key: 'recent30', label: HISTORY_GROUP_NAMES.recent30 };
+  return { key: 'older', label: HISTORY_GROUP_NAMES.older };
+}
+
+function getHistorySummary(stream: LiveStream) {
+  const statusText =
+    stream.status === 'LIVE' ? '방송중' : stream.status === 'PENDING' ? '예정' : '종료';
+  const statusTone =
+    stream.status === 'LIVE'
+      ? 'bg-error/10 text-error border-error'
+      : stream.status === 'PENDING'
+        ? 'bg-warning/10 text-warning border-warning'
+        : 'bg-secondary-text/10 text-secondary-text border-secondary-text';
+
+  const durationText = stream.totalDuration
+    ? `${Math.floor(stream.totalDuration / 3600)}h ${Math.floor((stream.totalDuration % 3600) / 60)}m`
+    : '-';
+
+  return { statusText, statusTone, durationText };
+}
+
 export default function BroadcastsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -96,6 +165,8 @@ export default function BroadcastsPage() {
   const [pageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
+  const [isBulkDeletingHistory, setIsBulkDeletingHistory] = useState(false);
 
   // Stream key generation modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -120,6 +191,10 @@ export default function BroadcastsPage() {
   const [newRestreamKey, setNewRestreamKey] = useState('');
   const [newRestreamMuteAudio, setNewRestreamMuteAudio] = useState(false);
   const [isAddingRestream, setIsAddingRestream] = useState(false);
+  const [selectedRestreamTargetIds, setSelectedRestreamTargetIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isBulkDeletingRestreamTargets, setIsBulkDeletingRestreamTargets] = useState(false);
 
   const PLATFORM_RTMP_URLS: Record<ReStreamPlatform, string> = {
     YOUTUBE: 'rtmp://a.rtmp.youtube.com/live2/',
@@ -149,6 +224,10 @@ export default function BroadcastsPage() {
   const [selectedStreamForFeatured, setSelectedStreamForFeatured] = useState<LiveStream | null>(
     null,
   );
+  const [historyKeyword, setHistoryKeyword] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<HistoryStatusFilter>('ALL');
+  const [historyOnlyWithIssue, setHistoryOnlyWithIssue] = useState(false);
+  const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!authLoading) {
@@ -180,37 +259,43 @@ export default function BroadcastsPage() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Fetch stream history
-  useEffect(() => {
-    const fetchHistory = async () => {
-      if (!user || user.role !== 'ADMIN') return;
+  const fetchHistory = useCallback(async () => {
+    if (!user || user.role !== 'ADMIN') return;
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const params = {
-          page,
-          limit: pageSize,
-        };
+    try {
+      const params = {
+        page,
+        limit: pageSize,
+      };
 
-        const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
-          params,
-        });
+      const response = await apiClient.get<StreamHistoryResponse>('/streaming/history', {
+        params,
+      });
 
-        setStreams(response.data.streams);
-        setTotal(response.data.total);
-        setTotalPages(response.data.totalPages);
-      } catch (err: any) {
-        console.error('Failed to fetch stream history:', err);
-        setError(err.message || 'Failed to load stream history');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchHistory();
+      setStreams(response.data.streams);
+      setTotal(response.data.total);
+      setTotalPages(response.data.totalPages);
+      setSelectedHistoryIds(new Set());
+    } catch (err: any) {
+      console.error('Failed to fetch stream history:', err);
+      setError(err.message || 'Failed to load stream history');
+    } finally {
+      setIsLoading(false);
+    }
   }, [user, page, pageSize]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  useEffect(() => {
+    setPage(1);
+    setExpandedHistoryGroups(new Set());
+    setSelectedHistoryIds(new Set());
+  }, [historyKeyword, historyStatusFilter, historyOnlyWithIssue]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -236,6 +321,158 @@ export default function BroadcastsPage() {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  };
+
+  const filteredHistoryStreams = useMemo(() => {
+    const keyword = historyKeyword.trim().toLowerCase();
+    const base = streams.filter((stream) => {
+      if (historyStatusFilter !== 'ALL' && stream.status !== historyStatusFilter) {
+        return false;
+      }
+
+      if (!keyword) return true;
+
+      return (
+        stream.title.toLowerCase().includes(keyword) ||
+        stream.streamKey.toLowerCase().includes(keyword) ||
+        stream.user?.name.toLowerCase().includes(keyword) ||
+        stream.user?.email.toLowerCase().includes(keyword)
+      );
+    });
+
+    if (!historyOnlyWithIssue) {
+      return base;
+    }
+
+    return base.filter(
+      (stream) =>
+        stream.status !== 'LIVE' || stream.totalDuration === 0 || stream.peakViewers === 0,
+    );
+  }, [streams, historyKeyword, historyStatusFilter, historyOnlyWithIssue]);
+
+  const groupedHistoryStreams = useMemo(() => {
+    const groups = new Map<string, LiveStream[]>();
+
+    filteredHistoryStreams.forEach((stream) => {
+      const { key } = getHistoryDateGroup(stream);
+      const list = groups.get(key);
+      if (list) list.push(stream);
+      else groups.set(key, [stream]);
+    });
+
+    return Array.from(groups.entries())
+      .map(([groupKey, list]) => ({
+        key: groupKey,
+        label: HISTORY_GROUP_NAMES[groupKey],
+        streams: list.slice().sort((a, b) => {
+          const aRef = new Date(a.startedAt || a.createdAt).getTime();
+          const bRef = new Date(b.startedAt || b.createdAt).getTime();
+          return bRef - aRef;
+        }),
+      }))
+      .sort((a, b) => (HISTORY_GROUP_ORDER[a.key] ?? 99) - (HISTORY_GROUP_ORDER[b.key] ?? 99));
+  }, [filteredHistoryStreams]);
+
+  const selectableHistoryIds = useMemo(
+    () =>
+      filteredHistoryStreams
+        .filter((stream) => stream.status !== 'LIVE')
+        .map((stream) => stream.id),
+    [filteredHistoryStreams],
+  );
+
+  const isAllHistorySelectableSelected = useMemo(
+    () =>
+      selectableHistoryIds.length > 0 &&
+      selectableHistoryIds.every((streamId) => selectedHistoryIds.has(streamId)),
+    [selectableHistoryIds, selectedHistoryIds],
+  );
+
+  const selectedHistoryCount = selectedHistoryIds.size;
+
+  const selectableRestreamTargetIds = useMemo(
+    () => restreamTargets.map((target) => target.id),
+    [restreamTargets],
+  );
+
+  const isAllRestreamTargetsSelected = useMemo(
+    () =>
+      selectableRestreamTargetIds.length > 0 &&
+      selectableRestreamTargetIds.every((targetId) => selectedRestreamTargetIds.has(targetId)),
+    [selectableRestreamTargetIds, selectedRestreamTargetIds],
+  );
+
+  const selectedRestreamTargetCount = selectedRestreamTargetIds.size;
+
+  useEffect(() => {
+    setSelectedHistoryIds((prev) => {
+      const validIds = new Set(selectableHistoryIds);
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [selectableHistoryIds]);
+
+  const toggleHistorySelection = (streamId: string) => {
+    setSelectedHistoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(streamId)) {
+        next.delete(streamId);
+      } else {
+        next.add(streamId);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    setSelectedRestreamTargetIds((prev) => {
+      const validIds = new Set(selectableRestreamTargetIds);
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [selectableRestreamTargetIds]);
+
+  const toggleRestreamTargetSelection = (targetId: string) => {
+    setSelectedRestreamTargetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(targetId)) {
+        next.delete(targetId);
+      } else {
+        next.add(targetId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllRestreamTargets = () => {
+    if (isAllRestreamTargetsSelected) {
+      setSelectedRestreamTargetIds(new Set());
+      return;
+    }
+    setSelectedRestreamTargetIds(new Set(selectableRestreamTargetIds));
+  };
+
+  const toggleSelectAllHistory = () => {
+    if (isAllHistorySelectableSelected) {
+      setSelectedHistoryIds(new Set());
+      return;
+    }
+    setSelectedHistoryIds(new Set(selectableHistoryIds));
+  };
+
+  const toggleHistoryGroupExpand = (groupKey: string) => {
+    setExpandedHistoryGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -362,8 +599,69 @@ export default function BroadcastsPage() {
     try {
       await deleteReStreamTarget(id);
       setRestreamTargets((prev) => prev.filter((t) => t.id !== id));
+      setSelectedRestreamTargetIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err: any) {
       setRestreamError(err.message || '삭제에 실패했습니다.');
+    }
+  };
+
+  const handleBulkDeleteRestreamTargets = async () => {
+    const ids = Array.from(selectedRestreamTargetIds);
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 동시 송출 대상 ${ids.length}개를 삭제하시겠습니까?`)) return;
+
+    setIsBulkDeletingRestreamTargets(true);
+    try {
+      await deleteReStreamTargets(ids);
+      await loadRestreamTargets();
+      setSelectedRestreamTargetIds(new Set());
+    } catch (err: any) {
+      setRestreamError(err.message || '일괄 삭제에 실패했습니다.');
+    } finally {
+      setIsBulkDeletingRestreamTargets(false);
+    }
+  };
+
+  const handleBulkDeleteHistory = async () => {
+    if (selectedHistoryIds.size === 0) return;
+    if (!confirm(`선택한 방송 기록 ${selectedHistoryIds.size}개를 삭제하시겠습니까?`)) return;
+
+    setIsBulkDeletingHistory(true);
+    try {
+      const result = await deleteStreamHistory(Array.from(selectedHistoryIds));
+      await fetchHistory();
+
+      const skippedCount = result.skippedCount ?? 0;
+      if (skippedCount > 0) {
+        const skippedText = `선택 ${selectedHistoryIds.size}개 중 ${result.deletedCount}개 삭제, ${skippedCount}개는 건너뜀`;
+        setError(skippedText);
+      } else {
+        setError(null);
+      }
+    } catch (err: any) {
+      setError(err.message || '방송 기록 일괄 삭제에 실패했습니다.');
+    } finally {
+      setIsBulkDeletingHistory(false);
+    }
+  };
+
+  const handleDeleteHistory = async (streamId: string) => {
+    if (!confirm('이 방송 기록을 삭제하시겠습니까?')) return;
+
+    try {
+      const result = await deleteStreamHistory([streamId]);
+      await fetchHistory();
+      if (result.deletedCount === 0 && result.skippedCount > 0) {
+        setError('이 방송은 현재 삭제할 수 없습니다.');
+      } else {
+        setError(null);
+      }
+    } catch (err: any) {
+      setError(err.message || '방송 기록 삭제에 실패했습니다.');
     }
   };
 
@@ -435,6 +733,7 @@ export default function BroadcastsPage() {
     setNewRestreamPlatform('YOUTUBE');
     setNewRestreamMuteAudio(false);
     setRestreamError(null);
+    setSelectedRestreamTargetIds(new Set());
   };
 
   const handleOpenGenerateModal = (stream?: LiveStream) => {
@@ -450,6 +749,7 @@ export default function BroadcastsPage() {
     setNewRestreamPlatform('YOUTUBE');
     setNewRestreamMuteAudio(false);
     setRestreamError(null);
+    setSelectedRestreamTargetIds(new Set());
     if (stream) {
       setNewStreamTitle(stream.title || '');
       setNewStreamScheduledAt(formatDateTimeInput(stream.scheduledAt || null));
@@ -682,127 +982,238 @@ export default function BroadcastsPage() {
         />
       </div>
 
-      {/* Stream History Table */}
+      {/* Stream History (Mobile-optimized Card List) */}
       <div className="bg-content-bg border border-gray-200 rounded-card overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-primary-text">방송 기록</h2>
+          <p className="text-xs text-secondary-text mt-1">
+            상태/키워드로 먼저 걸러내고, 기간별로 그룹해 긴 목록도 빠르게 탐색하세요.
+          </p>
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex items-center flex-wrap gap-2">
+              <button
+                onClick={toggleSelectAllHistory}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 text-secondary-text hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={selectableHistoryIds.length === 0}
+              >
+                {isAllHistorySelectableSelected ? '전체 해제' : '전체 선택'}
+              </button>
+              <button
+                onClick={handleBulkDeleteHistory}
+                disabled={selectedHistoryCount === 0 || isBulkDeletingHistory}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-black/5 text-black border border-black/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBulkDeletingHistory ? '삭제 중...' : `일괄 삭제 (${selectedHistoryCount})`}
+              </button>
+              <span className="ml-auto text-xs text-secondary-text">
+                선택 {selectedHistoryCount}개
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {HISTORY_FILTER_OPTIONS.map((option) => {
+                const active = historyStatusFilter === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setHistoryStatusFilter(option.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      active
+                        ? 'border-hot-pink bg-hot-pink/10 text-hot-pink'
+                        : 'border-gray-200 text-secondary-text hover:border-gray-300'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-col md:flex-row gap-2 md:items-center">
+              <label className="text-xs text-secondary-text mr-1 md:whitespace-nowrap">검색</label>
+              <input
+                type="text"
+                value={historyKeyword}
+                onChange={(e) => setHistoryKeyword(e.target.value)}
+                placeholder="제목, Stream Key, 방송자"
+                className="w-full md:flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none"
+              />
+              <label className="inline-flex items-center gap-2 text-xs text-secondary-text">
+                <input
+                  type="checkbox"
+                  checked={historyOnlyWithIssue}
+                  onChange={(e) => setHistoryOnlyWithIssue(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                이슈 의심(방송시간/시청자 0)
+              </label>
+            </div>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-secondary-text">Loading...</p>
           </div>
-        ) : streams.length === 0 ? (
+        ) : groupedHistoryStreams.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Radio className="w-12 h-12 text-secondary-text/30 mb-3" />
             <p className="text-secondary-text">방송 기록이 없습니다</p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      제목
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      Stream Key
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      상태
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      시작 시간
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      종료 시간
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      방송 시간
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      최대 시청자
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-secondary-text uppercase tracking-wider whitespace-nowrap">
-                      작업
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {streams.map((stream) => (
-                    <tr key={stream.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 py-4 whitespace-nowrap max-w-[220px]">
-                        <div className="truncate">{stream.title}</div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm text-secondary-text font-mono truncate max-w-[140px]">
-                            {stream.streamKey}
-                          </span>
-                          <button
-                            onClick={() =>
-                              handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
-                            }
-                            className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0 whitespace-nowrap"
-                            title="스트림 키 복사"
+            <div className="space-y-6 p-4 md:p-6">
+              {groupedHistoryStreams.map((group) => {
+                const isExpanded = expandedHistoryGroups.has(group.key);
+                const visibleStreams = isExpanded
+                  ? group.streams
+                  : group.streams.slice(0, HISTORY_GROUP_PREVIEW_LIMIT);
+                const canExpand = group.streams.length > HISTORY_GROUP_PREVIEW_LIMIT;
+
+                return (
+                  <section key={group.key} className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-primary-text">{group.label}</h3>
+                        <p className="text-xs text-secondary-text">{group.streams.length}건</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {visibleStreams.map((stream) => {
+                        const summary = getHistorySummary(stream);
+                        return (
+                          <article
+                            key={stream.id}
+                            className="border border-gray-200 rounded-xl bg-white p-4 md:p-5 space-y-3"
                           >
-                            {copiedField === `key-${stream.id}` ? (
-                              <Check className="w-3.5 h-3.5 text-success" />
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedHistoryIds.has(stream.id)}
+                                disabled={stream.status === 'LIVE'}
+                                onChange={() => toggleHistorySelection(stream.id)}
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink shrink-0"
+                              />
+                              <div className="min-w-0 flex-1 space-y-3">
+                                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-primary-text truncate">
+                                      {stream.title}
+                                    </p>
+                                    <p className="text-xs text-secondary-text mt-1">
+                                      {stream.user?.name || '방송자 미설정'}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${summary.statusTone}`}
+                                  >
+                                    {summary.statusText}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                              <div>
+                                <p className="text-xs text-secondary-text">시작</p>
+                                <p className="text-primary-text">{formatDate(stream.startedAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-secondary-text">종료</p>
+                                <p className="text-primary-text">{formatDate(stream.endedAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-secondary-text">방송 시간</p>
+                                <p className="text-primary-text">{summary.durationText}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-secondary-text">최대 시청자</p>
+                                <p className="text-primary-text flex items-center gap-1">
+                                  <Eye className="w-4 h-4" />
+                                  {stream.peakViewers}
+                                </p>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-secondary-text mb-1">
+                                Stream Key
+                              </label>
+                              <div className="flex items-start gap-2">
+                                <p className="text-sm text-primary-text font-mono break-all flex-1">
+                                  {stream.streamKey}
+                                </p>
+                                <button
+                                  onClick={() =>
+                                    handleCopyToClipboard(stream.streamKey, `key-${stream.id}`)
+                                  }
+                                  className="p-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shrink-0"
+                                  title="스트림 키 복사"
+                                >
+                                  {copiedField === `key-${stream.id}` ? (
+                                    <Check className="w-4 h-4 text-success" />
+                                  ) : (
+                                    <Copy className="w-4 h-4 text-secondary-text" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => handleOpenGenerateModal(stream)}
+                                className="px-3 py-1.5 bg-hot-pink text-white rounded-lg hover:bg-hot-pink/90 transition-colors text-sm font-medium flex items-center gap-1.5"
+                              >
+                                <KeyRound className="w-4 h-4" />
+                                방송 키 발급
+                              </button>
+                              <button
+                                onClick={() => setSelectedStreamForFeatured(stream)}
+                                className="px-3 py-1.5 bg-white border border-gray-200 text-primary-text rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-1.5"
+                              >
+                                <Star className="w-4 h-4" />
+                                추천상품
+                              </button>
+                              {stream.status === 'PENDING' && (
+                                <button
+                                  onClick={() => handleOpenEditModal(stream)}
+                                  className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  편집
+                                </button>
+                              )}
+                              {stream.status !== 'LIVE' ? (
+                                <button
+                                  onClick={() => handleDeleteHistory(stream.id)}
+                                  className="px-3 py-1.5 bg-white border border-gray-200 text-error rounded-lg hover:bg-error/5 transition-colors text-sm font-medium flex items-center gap-1.5"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  삭제
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    {canExpand ? (
+                      <div className="pt-1">
+                        <button
+                          onClick={() => toggleHistoryGroupExpand(group.key)}
+                          className="w-full rounded-lg border border-hot-pink/30 text-hot-pink bg-hot-pink/5 hover:bg-hot-pink/10 px-3 py-2 text-sm font-medium transition-colors"
+                        >
+                          <span className="inline-flex items-center justify-center gap-1.5">
+                            {isExpanded
+                              ? '기록 접기'
+                              : `기록 더보기 (${group.streams.length - HISTORY_GROUP_PREVIEW_LIMIT}개 더 보기)`}
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4" />
                             ) : (
-                              <Copy className="w-3.5 h-3.5 text-secondary-text" />
+                              <ChevronDown className="w-4 h-4" />
                             )}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        {getStatusBadge(stream.status)}
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">
-                          {formatDate(stream.startedAt)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">
-                          {formatDate(stream.endedAt)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-text">
-                          {formatDuration(stream.totalDuration)}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-sm text-info">
-                          <Eye className="w-4 h-4" />
-                          {stream.peakViewers}
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            onClick={() => handleOpenGenerateModal(stream)}
-                            className="px-3 py-1.5 bg-hot-pink text-white rounded-lg hover:bg-hot-pink/90 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                          >
-                            <KeyRound className="w-4 h-4" />
-                            방송 키 발급
-                          </button>
-                          {stream.status === 'PENDING' && (
-                            <button
-                              onClick={() => handleOpenEditModal(stream)}
-                              className="px-3 py-1.5 bg-info/10 text-info rounded-lg hover:bg-info/20 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                            >
-                              <Pencil className="w-4 h-4" />
-                              편집
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </section>
+                );
+              })}
             </div>
 
             {/* Pagination */}
@@ -1139,11 +1550,37 @@ export default function BroadcastsPage() {
                       <label className="block text-sm font-medium text-primary-text">
                         등록된 대상
                       </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={toggleSelectAllRestreamTargets}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 text-secondary-text hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={selectableRestreamTargetIds.length === 0}
+                        >
+                          {isAllRestreamTargetsSelected ? '전체 해제' : '전체 선택'}
+                        </button>
+                        <button
+                          onClick={handleBulkDeleteRestreamTargets}
+                          disabled={
+                            selectedRestreamTargetCount === 0 || isBulkDeletingRestreamTargets
+                          }
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-black/5 text-black border border-black/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isBulkDeletingRestreamTargets
+                            ? '삭제 중...'
+                            : `일괄 삭제 (${selectedRestreamTargetCount})`}
+                        </button>
+                      </div>
                       {restreamTargets.map((target) => (
                         <div
                           key={target.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                          className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200"
                         >
+                          <input
+                            type="checkbox"
+                            checked={selectedRestreamTargetIds.has(target.id)}
+                            onChange={() => toggleRestreamTargetSelection(target.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink shrink-0"
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-primary-text">{target.name}</p>
                             <p className="text-xs text-secondary-text">

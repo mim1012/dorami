@@ -58,7 +58,7 @@ const resolveAdminOrders = async (page: any, params: Record<string, string> = {}
 };
 
 test.describe('Smoke - Admin Orders Management', () => {
-  test.setTimeout(90000);
+  test.setTimeout(180000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');

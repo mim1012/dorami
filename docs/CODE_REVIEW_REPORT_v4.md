@@ -1,4 +1,4 @@
-# Dorami 라이브 커머스 - 코드 리뷰 보고서 v4
+# Doremi 라이브 커머스 - 코드 리뷰 보고서 v4
 
 **분석 일시**: 2026-02-07
 **분석 방법**: 소스 코드 정독 + 정적 분석 + 런타임 확인
@@ -11,21 +11,22 @@
 
 ### 전체 품질 스코어: 6.5/10 (v3 대비 +1.0 개선)
 
-| 카테고리 | v3 점수 | v4 점수 | 상태 | 변동 |
-|---------|--------|--------|------|------|
-| 코드 품질 | 4/10 | 5/10 | ⚠️ | ⬆️ +1 |
-| 보안 | 4/10 | 6/10 | ⚠️ | ⬆️ +2 |
-| 성능 | 6/10 | 6/10 | ⚠️ | ➡️ 동일 |
-| 아키텍처 | 7/10 | 7/10 | ✅ | ➡️ 동일 |
-| 에러 처리 | 5/10 | 6/10 | ⚠️ | ⬆️ +1 |
-| 테스트 | 3/10 | 4/10 | 🔴 | ⬆️ +1 |
-| 의존성 보안 | 4/10 | 5/10 | ⚠️ | ⬆️ +1 |
+| 카테고리    | v3 점수 | v4 점수 | 상태 | 변동    |
+| ----------- | ------- | ------- | ---- | ------- |
+| 코드 품질   | 4/10    | 5/10    | ⚠️   | ⬆️ +1   |
+| 보안        | 4/10    | 6/10    | ⚠️   | ⬆️ +2   |
+| 성능        | 6/10    | 6/10    | ⚠️   | ➡️ 동일 |
+| 아키텍처    | 7/10    | 7/10    | ✅   | ➡️ 동일 |
+| 에러 처리   | 5/10    | 6/10    | ⚠️   | ⬆️ +1   |
+| 테스트      | 3/10    | 4/10    | 🔴   | ⬆️ +1   |
+| 의존성 보안 | 4/10    | 5/10    | ⚠️   | ⬆️ +1   |
 
 ---
 
 ## 2. v3 대비 개선된 사항 ✅
 
 ### 2.1 Rate Limiting 구현 완료 ✅
+
 **v3 상태**: 🔴 Critical - `@Throttle` 미사용
 **v4 상태**: ✅ 해결됨
 
@@ -47,6 +48,7 @@ ThrottlerModule.forRoot(throttlerConfig)  // 전역 Rate Limiting
 **평가**: 잘 구현됨. 3단계 티어 구성은 실제 운영에 적합.
 
 ### 2.2 WebSocket CORS 수정 완료 ✅
+
 **v3 상태**: 🔴 Critical - `origin: '*'`
 **v4 상태**: ✅ 해결됨
 
@@ -64,6 +66,7 @@ ThrottlerModule.forRoot(throttlerConfig)  // 전역 Rate Limiting
 ```
 
 ### 2.3 JWT Token Rotation 구현 완료 ✅
+
 **v3 상태**: 🔴 Critical - 기존 토큰 미삭제
 **v4 상태**: ✅ 해결됨
 
@@ -78,16 +81,19 @@ async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
 ```
 
 ### 2.4 Auth 테스트 추가 ✅
+
 **v3 상태**: 🔴 Critical - auth.service.spec.ts 없음
 **v4 상태**: ✅ 추가됨 (188줄)
 
 현재 테스트 파일 9개 (v3에서 7개):
+
 ```
 + backend/src/modules/auth/auth.service.spec.ts (신규)
 + backend/src/modules/orders/orders.service.spec.ts (신규)
 ```
 
 ### 2.5 CSRF Guard 개선
+
 - `timingSafeEqual` 메서드로 타이밍 공격 방지 구현
 - CSRF 토큰 자동 순환 (매 POST 요청 후 새 토큰 발급)
 - `sameSite: 'strict'` 설정
@@ -110,6 +116,7 @@ export class AdminController {
 ```
 
 **문제**: 관리자 API 전체가 인증 없이 접근 가능. 누구나 다음을 할 수 있음:
+
 - 모든 사용자 정보 조회 (개인정보 유출)
 - 주문 입금 확인/취소
 - 사용자 계정 정지
@@ -117,6 +124,7 @@ export class AdminController {
 - 정산 데이터 조회
 
 **프론트엔드에서도 동일하게 비활성화**:
+
 ```typescript
 // client-app/src/app/admin/orders/page.tsx
 // TEMPORARILY DISABLED FOR TESTING
@@ -161,27 +169,29 @@ Moderate: 5 (@nestjs/config, @nestjs/swagger via lodash)
 
 ### 4.1 🟠 any 타입 과다 사용
 
-| 영역 | v3 | v4 | 변동 |
-|------|-----|-----|------|
-| Backend | ~140 | 142 | ➡️ 미개선 |
-| Frontend | ~49 | 78 | ⬆️ 증가 |
-| **합계** | **189** | **220** | ⬆️ 증가 |
+| 영역     | v3      | v4      | 변동      |
+| -------- | ------- | ------- | --------- |
+| Backend  | ~140    | 142     | ➡️ 미개선 |
+| Frontend | ~49     | 78      | ⬆️ 증가   |
+| **합계** | **189** | **220** | ⬆️ 증가   |
 
 **주요 문제 위치 (Backend)**:
+
 - `streaming.service.ts` - `getStreamHistory`의 where 절이 `any`
 - `admin.controller.ts` - CSV 파싱 시 `row: any`
 - `streaming.service.ts` - `mapToResponseDto(session: any)`
 
 **주요 문제 위치 (Frontend)**:
+
 - `client-app/src/lib/api/client.ts` - API 응답 타입들
 - 각 페이지 컴포넌트의 `catch (err: any)`
 
 ### 4.2 🟠 console.log 직접 사용
 
-| 영역 | v3 | v4 | 변동 |
-|------|-----|-----|------|
-| Backend | 17 | 17 | ➡️ 미개선 |
-| Frontend | - | 111 | 새로 측정 |
+| 영역     | v3  | v4  | 변동      |
+| -------- | --- | --- | --------- |
+| Backend  | 17  | 17  | ➡️ 미개선 |
+| Frontend | -   | 111 | 새로 측정 |
 
 **Backend 주요 위치**: `chat.gateway.ts` (9곳), `streaming.gateway.ts` (4곳)
 
@@ -191,14 +201,14 @@ NestJS Logger 서비스가 구현되어 있음에도 (`LoggerService`) WebSocket
 
 여러 관리자 페이지가 API 대신 하드코딩된 mock 데이터를 사용:
 
-| 페이지 | 상태 |
-|--------|------|
-| `/admin/products` | 🔴 Mock 데이터 사용 |
-| `/admin/orders` | 🔴 Mock 데이터 사용 |
-| `/admin/dashboard` (admin/page.tsx) | 🔴 Mock 데이터 사용 |
-| `/admin/dashboard` (dashboard/page.tsx) | ✅ API 연동 |
-| `/` (홈 페이지) | 🔴 Mock 데이터 사용 |
-| `/shop` | 🔴 Mock 데이터 사용 |
+| 페이지                                  | 상태                |
+| --------------------------------------- | ------------------- |
+| `/admin/products`                       | 🔴 Mock 데이터 사용 |
+| `/admin/orders`                         | 🔴 Mock 데이터 사용 |
+| `/admin/dashboard` (admin/page.tsx)     | 🔴 Mock 데이터 사용 |
+| `/admin/dashboard` (dashboard/page.tsx) | ✅ API 연동         |
+| `/` (홈 페이지)                         | 🔴 Mock 데이터 사용 |
+| `/shop`                                 | 🔴 Mock 데이터 사용 |
 
 **문제**: 백엔드 API가 완전히 구현되어 있으나 프론트엔드에서 연결하지 않음.
 
@@ -243,6 +253,7 @@ async cancelExpiredOrders() {
 ### 5.4 환경변수 기본값
 
 일부 환경변수에 프로덕션에 부적합한 기본값이 하드코딩:
+
 ```typescript
 this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
 ```
@@ -253,24 +264,24 @@ this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localh
 
 ### 인증/인가
 
-| 항목 | v3 | v4 | 비고 |
-|------|-----|-----|------|
-| OAuth 2.0 (Kakao) | ✅ | ✅ | 안정 |
-| JWT Access Token (15분) | ✅ | ✅ | 안정 |
-| JWT Refresh Token (7일) | ⚠️ | ✅ | Token Rotation 구현 |
-| Token Blacklist | ✅ | ✅ | Redis 기반 |
-| Rate Limiting | 🔴 | ✅ | **해결됨** - 3단계 티어 |
-| Admin 인증 | - | 🔴 | **새 발견** - 비활성화 상태 |
+| 항목                    | v3  | v4  | 비고                        |
+| ----------------------- | --- | --- | --------------------------- |
+| OAuth 2.0 (Kakao)       | ✅  | ✅  | 안정                        |
+| JWT Access Token (15분) | ✅  | ✅  | 안정                        |
+| JWT Refresh Token (7일) | ⚠️  | ✅  | Token Rotation 구현         |
+| Token Blacklist         | ✅  | ✅  | Redis 기반                  |
+| Rate Limiting           | 🔴  | ✅  | **해결됨** - 3단계 티어     |
+| Admin 인증              | -   | 🔴  | **새 발견** - 비활성화 상태 |
 
 ### 공격 방어
 
-| 항목 | v3 | v4 | 비고 |
-|------|-----|-----|------|
-| SQL Injection | ✅ | ✅ | Prisma ORM |
-| XSS | ⚠️ | ⚠️ | CSP unsafe-inline 유지 |
-| CSRF | ⚠️ | ⚠️ | 타이밍 공격 방지 추가, httpOnly 여전히 false |
-| Brute Force | 🔴 | ✅ | **해결됨** |
-| WebSocket Hijacking | 🔴 | ✅ | **해결됨** |
+| 항목                | v3  | v4  | 비고                                         |
+| ------------------- | --- | --- | -------------------------------------------- |
+| SQL Injection       | ✅  | ✅  | Prisma ORM                                   |
+| XSS                 | ⚠️  | ⚠️  | CSP unsafe-inline 유지                       |
+| CSRF                | ⚠️  | ⚠️  | 타이밍 공격 방지 추가, httpOnly 여전히 false |
+| Brute Force         | 🔴  | ✅  | **해결됨**                                   |
+| WebSocket Hijacking | 🔴  | ✅  | **해결됨**                                   |
 
 ---
 
@@ -298,16 +309,16 @@ this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localh
 
 ### 프론트엔드 분석
 
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| 컴포넌트 구조 | ✅ | Atomic Design 패턴 준수 |
-| 상태관리 | ✅ | Zustand + React Query 적절히 분리 |
-| 타입 안정성 | ⚠️ | `any` 78개, 대부분 catch 블록 |
-| 접근성 (a11y) | ⚠️ | `title` 속성 일부, aria 부족 |
-| 반응형 | ✅ | Tailwind 기반 모바일-데스크톱 대응 |
-| 다크모드 | ✅ | ThemeToggle 컴포넌트 구현 |
-| 코드 분할 | ✅ | Next.js App Router 자동 처리 |
-| 에러 바운더리 | ⚠️ | 컴포넌트 레벨만, 글로벌 미구현 |
+| 항목          | 상태 | 비고                               |
+| ------------- | ---- | ---------------------------------- |
+| 컴포넌트 구조 | ✅   | Atomic Design 패턴 준수            |
+| 상태관리      | ✅   | Zustand + React Query 적절히 분리  |
+| 타입 안정성   | ⚠️   | `any` 78개, 대부분 catch 블록      |
+| 접근성 (a11y) | ⚠️   | `title` 속성 일부, aria 부족       |
+| 반응형        | ✅   | Tailwind 기반 모바일-데스크톱 대응 |
+| 다크모드      | ✅   | ThemeToggle 컴포넌트 구현          |
+| 코드 분할     | ✅   | Next.js App Router 자동 처리       |
+| 에러 바운더리 | ⚠️   | 컴포넌트 레벨만, 글로벌 미구현     |
 
 ---
 
@@ -315,34 +326,34 @@ this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localh
 
 ### 단위 테스트 (Backend)
 
-| 카테고리 | v3 파일 수 | v4 파일 수 | 변동 |
-|---------|-----------|-----------|------|
-| Services | 7 | 9 | ⬆️ +2 |
-| Controllers | 0 | 0 | ➡️ |
-| Guards | 0 | 0 | ➡️ |
-| Gateways | 0 | 0 | ➡️ |
+| 카테고리    | v3 파일 수 | v4 파일 수 | 변동  |
+| ----------- | ---------- | ---------- | ----- |
+| Services    | 7          | 9          | ⬆️ +2 |
+| Controllers | 0          | 0          | ➡️    |
+| Guards      | 0          | 0          | ➡️    |
+| Gateways    | 0          | 0          | ➡️    |
 
 ### E2E 테스트 (Backend)
 
 | 카테고리 | 파일 수 |
-|---------|--------|
-| Admin | 6 |
-| Auth | 1 |
-| Cart | 1 |
-| Orders | 1 |
-| Products | 2 |
-| Users | 2 |
-| App | 1 |
-| **합계** | **14** |
+| -------- | ------- |
+| Admin    | 6       |
+| Auth     | 1       |
+| Cart     | 1       |
+| Orders   | 1       |
+| Products | 2       |
+| Users    | 2       |
+| App      | 1       |
+| **합계** | **14**  |
 
 ### Playwright 테스트 (Frontend)
 
-| 파일 | 비고 |
-|------|------|
-| `api-health.spec.ts` | API 헬스체크 |
-| `shop.spec.ts` | 상점 페이지 |
-| `shop-purchase-flow.spec.ts` | 구매 플로우 |
-| `home.spec.ts` | 홈 페이지 |
+| 파일                          | 비고             |
+| ----------------------------- | ---------------- |
+| `api-health.spec.ts`          | API 헬스체크     |
+| `shop.spec.ts`                | 상점 페이지      |
+| `shop-purchase-flow.spec.ts`  | 구매 플로우      |
+| `home.spec.ts`                | 홈 페이지        |
 | `admin-products-crud.spec.ts` | 관리자 상품 CRUD |
 
 ---
@@ -351,30 +362,30 @@ this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localh
 
 ### Phase 1: Critical (이번 주) 🔥
 
-| # | 작업 | 복잡도 | 비고 |
-|---|------|--------|------|
-| 1 | Admin 인증 재활성화 | 하 | 주석 해제 + 테스트 |
-| 2 | `recharts` 의존성 설치 | 하 | `npm install recharts` |
-| 3 | CSP unsafe-inline 제거 | 중 | nonce 기반 전환 |
-| 4 | npm audit fix | 하 | 알려진 취약점 패치 |
+| #   | 작업                   | 복잡도 | 비고                   |
+| --- | ---------------------- | ------ | ---------------------- |
+| 1   | Admin 인증 재활성화    | 하     | 주석 해제 + 테스트     |
+| 2   | `recharts` 의존성 설치 | 하     | `npm install recharts` |
+| 3   | CSP unsafe-inline 제거 | 중     | nonce 기반 전환        |
+| 4   | npm audit fix          | 하     | 알려진 취약점 패치     |
 
 ### Phase 2: High (1-2주)
 
-| # | 작업 | 복잡도 | 비고 |
-|---|------|--------|------|
-| 5 | 프론트엔드 Mock → API 연동 | 상 | 홈, 상품관리, 주문관리 |
-| 6 | console.log → Logger 전환 | 중 | Backend 17곳 |
-| 7 | any 타입 제거 (우선 50개) | 중 | catch 블록 중심 |
-| 8 | Controller 테스트 작성 | 상 | 최소 auth, admin |
+| #   | 작업                       | 복잡도 | 비고                   |
+| --- | -------------------------- | ------ | ---------------------- |
+| 5   | 프론트엔드 Mock → API 연동 | 상     | 홈, 상품관리, 주문관리 |
+| 6   | console.log → Logger 전환  | 중     | Backend 17곳           |
+| 7   | any 타입 제거 (우선 50개)  | 중     | catch 블록 중심        |
+| 8   | Controller 테스트 작성     | 상     | 최소 auth, admin       |
 
 ### Phase 3: Medium (3-4주)
 
-| # | 작업 | 복잡도 |
-|---|------|--------|
-| 9 | Cron 분산 락 | 중 |
-| 10 | 글로벌 에러 바운더리 | 중 |
-| 11 | 접근성 (a11y) 강화 | 중 |
-| 12 | 테스트 커버리지 50%+ | 상 |
+| #   | 작업                 | 복잡도 |
+| --- | -------------------- | ------ |
+| 9   | Cron 분산 락         | 중     |
+| 10  | 글로벌 에러 바운더리 | 중     |
+| 11  | 접근성 (a11y) 강화   | 중     |
+| 12  | 테스트 커버리지 50%+ | 상     |
 
 ---
 
@@ -382,14 +393,14 @@ this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localh
 
 ### v3 → v4 변화 요약
 
-| 메트릭 | v3 | v4 | 목표 (1개월) |
-|--------|-----|-----|------------|
-| 전체 품질 | 5.5/10 | 6.5/10 | 7.5/10 |
-| 보안 점수 | 4/10 | 6/10 | 8/10 |
-| 테스트 파일 | 7 | 9+14(E2E) | 25+ |
-| any 타입 | 189 | 220 | 100 |
-| console.log (BE) | 17 | 17 | 0 |
-| Critical 이슈 | 5 | 2 | 0 |
+| 메트릭           | v3     | v4        | 목표 (1개월) |
+| ---------------- | ------ | --------- | ------------ |
+| 전체 품질        | 5.5/10 | 6.5/10    | 7.5/10       |
+| 보안 점수        | 4/10   | 6/10      | 8/10         |
+| 테스트 파일      | 7      | 9+14(E2E) | 25+          |
+| any 타입         | 189    | 220       | 100          |
+| console.log (BE) | 17     | 17        | 0            |
+| Critical 이슈    | 5      | 2         | 0            |
 
 ### 즉시 수정 필요 (이번 주)
 
@@ -408,5 +419,5 @@ v3에서 지적된 Critical 5건 중 3건(Rate Limiting, WebSocket CORS, Token R
 
 ---
 
-*코드 리뷰 v4: 2026-02-07*
-*다음 리뷰: Phase 1 완료 후*
+_코드 리뷰 v4: 2026-02-07_
+_다음 리뷰: Phase 1 완료 후_

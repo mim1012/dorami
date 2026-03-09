@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
-import { apiClient } from '../api/client';
+import { apiClient, ApiError } from '../api/client';
 import { isProfileComplete } from '../utils/profile';
 
 export function useAuth() {
@@ -35,9 +35,12 @@ export function useAuth() {
         updatedAt: string;
       }>('/users/me');
       setUser(response.data);
-    } catch {
-      // API 실패 시 인증 해제 (mock user 사용하지 않음)
-      setUser(null);
+    } catch (error) {
+      // 401: 세션 만료 → 인증 해제
+      // 그 외(네트워크, 429, 5xx): 기존 상태 유지 (spurious logout 방지)
+      if (error instanceof ApiError && error.statusCode === 401) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,9 +52,16 @@ export function useAuth() {
 
     if (!isLoginPage && !fetchedRef.current && isLoading) {
       fetchedRef.current = true;
-      fetchProfile();
+      // If user is already present from Zustand (hydrated from localStorage),
+      // just clear the loading flag — no API round-trip needed on initial render.
+      // This prevents a 30s spinner caused by fetchProfile()'s DEFAULT_TIMEOUT_MS.
+      if (user) {
+        setLoading(false);
+      } else {
+        fetchProfile();
+      }
     }
-  }, [fetchProfile]);
+  }, [fetchProfile, user, setLoading, isLoading]);
 
   const handleLogout = async () => {
     // Clear client state first — prevents ProtectedRoute from rendering

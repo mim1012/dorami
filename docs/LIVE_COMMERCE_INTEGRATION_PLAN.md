@@ -1,8 +1,8 @@
-# Live Commerce Fashion Platform → Dorami 정확한 병합 전략
+# Live Commerce Fashion Platform → Doremi 정확한 병합 전략
 
 **작성일**: 2026-02-28
-**기반**: Dorami 코드베이스 완전 분석 + Live Commerce 설계 문서 분석
-**대상 조직**: Dorami 개발팀
+**기반**: Doremi 코드베이스 완전 분석 + Live Commerce 설계 문서 분석
+**대상 조직**: Doremi 개발팀
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## 현황 분석
 
-### Dorami 프론트엔드 현황
+### Doremi 프론트엔드 현황
 
 **위치**: `client-app/`
 
@@ -39,7 +39,7 @@
 
 **결론**: UI 컴포넌트와 홈페이지 섹션만 추가하면 개발 속도 대폭 향상 가능
 
-### Dorami 백엔드 현황
+### Doremi 백엔드 현황
 
 **위치**: `backend/src/`
 
@@ -104,7 +104,7 @@ Textarea, Toggle, ToggleGroup, Tooltip, utils, use-mobile
 Live Commerce:
   src/app/components/ui/*.tsx
 
-Dorami:
+Doremi:
   client-app/src/components/ui/*.tsx (신규 폴더)
 ```
 
@@ -122,7 +122,7 @@ npm ls @emotion/react @emotion/styled
 npm ls lucide-react
 ```
 
-**Dorami package.json에 추가할 의존성** (Live Commerce를 참고하되, 호환성 확인):
+**Doremi package.json에 추가할 의존성** (Live Commerce를 참고하되, 호환성 확인):
 
 ```json
 {
@@ -213,7 +213,7 @@ cat client-app/tailwind.config.ts
 # client-app/src/styles/globals.css에 필요시 추가
 ```
 
-**Dorami 컬러 확인**:
+**Doremi 컬러 확인**:
 
 - Primary: Hot Pink (#FF1493) ✅ (이미 설정됨)
 - Background: Dark (#0a0a0a) ✅
@@ -269,7 +269,7 @@ export default function UIDemo() {
 
 ### What: 9개 홈페이지 섹션 컴포넌트
 
-Live Commerce의 홈페이지 컴포넌트를 Dorami의 Next.js 구조에 맞게 변환합니다.
+Live Commerce의 홈페이지 컴포넌트를 Doremi의 Next.js 구조에 맞게 변환합니다.
 
 **컴포넌트**:
 
@@ -289,7 +289,7 @@ Live Commerce의 홈페이지 컴포넌트를 Dorami의 Next.js 구조에 맞게
 Live Commerce:
   src/app/components/*.tsx (9개 파일)
 
-Dorami:
+Doremi:
   client-app/src/components/home/*.tsx (신규 폴더)
   client-app/src/app/page.tsx 에 통합
 ```
@@ -305,7 +305,7 @@ import { useNavigate } from 'react-router';
 // React Router 기반 라우팅
 ```
 
-**Dorami 변환**:
+**Doremi 변환**:
 
 ```typescript
 import Link from 'next/link';
@@ -320,7 +320,7 @@ export function Header() {
 
   return (
     <header className="fixed top-0 z-50 w-full bg-black border-b border-white/10">
-      {/* Dorami 기존 Header 구조 유지 */}
+      {/* Doremi 기존 Header 구조 유지 */}
       {/* Logo, Search, Notifications, MyPage */}
     </header>
   );
@@ -329,7 +329,7 @@ export function Header() {
 
 **주의**:
 
-- Dorami의 기존 Header가 있는지 확인 (`client-app/src/components/Header.tsx`)
+- Doremi의 기존 Header가 있는지 확인 (`client-app/src/components/Header.tsx`)
 - 있으면: Live Commerce의 UI 컴포넌트만 가져와서 기존 로직에 적용
 - 없으면: Live Commerce 버전 전체 복사 후 라우팅만 수정
 
@@ -358,7 +358,7 @@ export function LiveBanner({ liveStream, onJoinLive }: LiveBannerProps) {
 }
 ```
 
-**Dorami 변환**:
+**Doremi 변환**:
 
 ```typescript
 'use client';
@@ -459,7 +459,7 @@ export function LiveExclusiveDeals() {
 
 #### 4️⃣ UpcomingLives.tsx 변환
 
-**구조**: 캐러셀 (Embla Carousel 사용, 이미 Dorami에서 사용 중)
+**구조**: 캐러셀 (Embla Carousel 사용, 이미 Doremi에서 사용 중)
 
 ```typescript
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
@@ -783,11 +783,11 @@ export default function HomePage() {
 
 ### What: API 경로 통일 + 타입 확장
 
-Live Commerce의 API 스펙을 Dorami 백엔드에 구현하고, 타입을 공유 타입으로 정의합니다.
+Live Commerce의 API 스펙을 Doremi 백엔드에 구현하고, 타입을 공유 타입으로 정의합니다.
 
-### 현재 Dorami API vs Live Commerce API
+### 현재 Doremi API vs Live Commerce API
 
-| 기능        | Dorami 현재                   | Live Commerce                          | 통일 후 권장                             |
+| 기능        | Doremi 현재                   | Live Commerce                          | 통일 후 권장                             |
 | ----------- | ----------------------------- | -------------------------------------- | ---------------------------------------- |
 | 현재 라이브 | `GET /api/streaming/active`   | `GET /api/live/current`                | `/api/live/current` (신규)               |
 | 라이브 특가 | ❌ 없음                       | `GET /api/live/deals?liveId=`          | `/api/live/deals` (신규)                 |
@@ -1163,7 +1163,7 @@ export interface HomePageState {
 
 ### What: Zustand store + TanStack Query 훅
 
-Live Commerce의 상태 설계를 Dorami의 패턴으로 구현합니다.
+Live Commerce의 상태 설계를 Doremi의 패턴으로 구현합니다.
 
 ### How: 구현 단계
 
@@ -1509,7 +1509,7 @@ export function LiveExclusiveDeals() {
 
 ### What: Admin UI 개선
 
-Live Commerce의 Admin 레이아웃을 참고하여 Dorami Admin 페이지를 개선합니다.
+Live Commerce의 Admin 레이아웃을 참고하여 Doremi Admin 페이지를 개선합니다.
 
 **작업 영역**:
 
@@ -1778,6 +1778,6 @@ Week 4+:
 ---
 
 **문서 작성 완료**
-**대상**: Dorami 개발팀
+**대상**: Doremi 개발팀
 **적용 가능성**: 100% (코드베이스 분석 기반)
 **예상 효과**: 개발 속도 40% 향상, 사용자 경험 대폭 개선

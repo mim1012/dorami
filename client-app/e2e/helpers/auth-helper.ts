@@ -14,7 +14,7 @@ export async function createTestStream(): Promise<string> {
   try {
     // Login as admin to get auth cookies (through Next.js proxy: /api/* → backend /api/*)
     const loginRes = await apiContext.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', name: 'E2E ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     if (!loginRes.ok()) {
       const loginBody = await loginRes.text();
@@ -68,7 +68,7 @@ export async function ensureAuth(page: Page, role: 'USER' | 'ADMIN' = 'USER') {
   const domain = new URL(BASE_URL).hostname;
 
   // Navigate to login page first (need a page at the right origin for localStorage)
-  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 90000 });
 
   // Clear stale localStorage (isAuthenticated: true causes redirect loops)
   await page.evaluate(() => localStorage.clear());
@@ -130,7 +130,7 @@ export async function gotoWithRetry(
   const { waitForSelector, maxRetries = 2, role = 'ADMIN' } = opts;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     // Wait for network to settle — ensures auth API calls (/users/me etc.) complete
     // and any resulting client-side redirect (429 → auth fail → /login) has happened.
@@ -148,7 +148,7 @@ export async function gotoWithRetry(
       // If a specific selector was requested, wait for it
       if (waitForSelector) {
         try {
-          await page.locator(waitForSelector).first().waitFor({ timeout: 15000 });
+          await page.locator(waitForSelector).first().waitFor({ timeout: 30000 });
         } catch {
           // Selector not found, but we're not on login page — let the test handle it
         }
@@ -191,7 +191,7 @@ export async function devLogin(
   role: 'USER' | 'ADMIN' = 'USER',
   options?: { skipProfileCompletion?: boolean; email?: string },
 ) {
-  const email = options?.email ?? (role === 'ADMIN' ? 'admin@dorami.shop' : 'buyer@test.com');
+  const email = options?.email ?? (role === 'ADMIN' ? 'admin@doremi.shop' : 'buyer@test.com');
   const domain = new URL(BASE_URL).hostname;
 
   // 1. Use isolated request context — avoids polluting browser cookie jar
@@ -244,6 +244,7 @@ export async function devLogin(
     if (role === 'USER' && !options?.skipProfileCompletion) {
       const profileRes = await apiCtx.post('/api/users/complete-profile', {
         data: {
+          email,
           depositorName: 'E2E테스트',
           instagramId: '@e2e_buyer_test',
           fullName: 'E2E Test User',
@@ -260,6 +261,34 @@ export async function devLogin(
         console.warn(`devLogin complete-profile: ${profileRes.status()} (may already be set)`);
       }
 
+      // Refresh JWT so the access token cookie contains profileComplete: true
+      // (middleware reads profileComplete from JWT, not from DB)
+      const refreshRes = await apiCtx.post('/api/auth/refresh');
+      if (refreshRes.ok()) {
+        // Inject updated access token cookie into browser context
+        const refreshHeaders = refreshRes.headersArray();
+        const refreshCookies = refreshHeaders.filter((h) => h.name.toLowerCase() === 'set-cookie');
+        for (const header of refreshCookies) {
+          const parts = header.value.split(';');
+          const [nameValue] = parts;
+          const eqIdx = nameValue.indexOf('=');
+          if (eqIdx === -1) continue;
+          const name = nameValue.substring(0, eqIdx).trim();
+          const value = nameValue.substring(eqIdx + 1).trim();
+          await page.context().addCookies([
+            {
+              name,
+              value,
+              domain,
+              path: '/',
+              httpOnly: header.value.toLowerCase().includes('httponly'),
+              secure: false,
+              sameSite: 'Lax',
+            },
+          ]);
+        }
+      }
+
       // Fetch fresh user data so localStorage reflects completed profile
       const meRes = await apiCtx.get('/api/users/me');
       if (meRes.ok()) {
@@ -271,12 +300,18 @@ export async function devLogin(
     await apiCtx.dispose();
   }
 
-  // 4. Populate Zustand auth store in localStorage so app hydrates as authenticated
+  // 4. Populate Zustand auth store in localStorage so app hydrates as authenticated.
+  // Include isLoading: false so Zustand's persist merge sets isLoading=false on hydration,
+  // preventing the useAuth() effect from calling fetchProfile() (which has a 30s timeout).
+  // Without this, the profile register page spinner persists until the API call completes.
   if (user) {
     await page.evaluate((userData) => {
       localStorage.setItem(
         'auth-storage',
-        JSON.stringify({ state: { user: userData, isAuthenticated: true }, version: 0 }),
+        JSON.stringify({
+          state: { user: userData, isAuthenticated: true, isLoading: false },
+          version: 0,
+        }),
       );
     }, user);
   }

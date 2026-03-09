@@ -141,7 +141,7 @@ run_diagnose() {
       OVERALL_EXIT=1
       return
     fi
-    ssh "${SSH_USER}@${SSH_HOST}" "cd /opt/dorami && bash scripts/staging-diagnose.sh $FIX_FLAG" || {
+    ssh "${SSH_USER}@${SSH_HOST}" "cd /opt/doremi && bash scripts/staging-diagnose.sh $FIX_FLAG" || {
       error "Remote diagnosis found failures"
       OVERALL_EXIT=1
     }
@@ -191,7 +191,7 @@ run_smoke() {
   DEV_LOGIN_STATUS=$(curl -sf -o /tmp/staging-smoke-login.json -w '%{http_code}' \
     -X POST "${BASE_URL}/api/auth/dev-login" \
     -H "Content-Type: application/json" \
-    -d '{"email":"smoke-test@dorami.test","name":"Smoke Test"}' \
+    -d '{"email":"smoke-test@doremi.test","name":"Smoke Test"}' \
     -c /tmp/staging-smoke-cookies.txt 2>/dev/null || echo "000")
 
   if [[ "$DEV_LOGIN_STATUS" == "200" ]] || [[ "$DEV_LOGIN_STATUS" == "201" ]]; then
@@ -395,7 +395,7 @@ run_hls_test() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-header "Dorami Staging Test Suite"
+header "Doremi Staging Test Suite"
 log "Mode: $MODE"
 log "Base URL: $BASE_URL"
 log "Local: $LOCAL_MODE"
@@ -453,3 +453,5 @@ fi
 echo ""
 
 exit $OVERALL_EXIT
+
+

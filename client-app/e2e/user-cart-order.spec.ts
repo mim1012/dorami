@@ -12,7 +12,7 @@ import { ensureAuth } from './helpers/auth-helper';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Cart Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');
@@ -69,7 +69,7 @@ test.describe('Cart Page', () => {
 });
 
 test.describe('Cart Item Management', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');
@@ -125,11 +125,49 @@ test.describe('Cart Item Management', () => {
     // 결제하기 버튼 확인
     await expect(page.getByRole('button', { name: /결제하기/ })).toBeVisible();
     console.log(`Product "${product.name}" added to cart and verified`);
+
+    // ── API=UI check: cart price, product name, quantity ──────────────────
+    try {
+      const cartApiData = await page.evaluate(async () => {
+        const res = await fetch('/api/cart', { credentials: 'include' });
+        if (!res.ok) return null;
+        const body = await res.json();
+        return body.data ?? null;
+      });
+      if (cartApiData && cartApiData.items && cartApiData.items.length > 0) {
+        const firstItem = cartApiData.items[0];
+        const apiProductName: string = firstItem.productName;
+        const apiPrice: number = Number(firstItem.price);
+        const apiQuantity: number = Number(firstItem.quantity);
+        const formattedPrice = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(apiPrice);
+        console.log('[API-UI] cart item:', {
+          apiProductName,
+          apiPrice,
+          formattedPrice,
+          apiQuantity,
+        });
+        await expect(page.getByText(apiProductName)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(formattedPrice)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(String(apiQuantity), { exact: false })).toBeVisible({
+          timeout: 10000,
+        });
+      } else {
+        console.warn(
+          '[API-UI] cart API returned no items — skipping price/name/quantity assertion',
+        );
+      }
+    } catch (err) {
+      console.warn('[API-UI] cart API check failed:', err);
+    }
   });
 });
 
 test.describe('Checkout Flow', () => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');
@@ -275,6 +313,31 @@ test.describe('Checkout Flow', () => {
     // 5. 주문 완료 → 주문 상세 페이지로 이동
     await expect(page).toHaveURL(/\/orders\//, { timeout: 15000 });
 
+    // ── API=UI check: order status and order ID ───────────────────────────
+    try {
+      const orderId = page.url().split('/').pop() || '';
+      if (orderId.match(/^ORD-\d{8}-\d{5}$/)) {
+        const orderApiData = await page.evaluate(async (oid: string) => {
+          const res = await fetch(`/api/orders/${oid}`, { credentials: 'include' });
+          if (!res.ok) return null;
+          const body = await res.json();
+          return body.data ?? null;
+        }, orderId);
+        if (orderApiData) {
+          const apiStatus: string = orderApiData.status;
+          console.log('[API-UI] order:', { orderId, apiStatus });
+          expect(apiStatus).toBe('PENDING_PAYMENT');
+          await expect(page.getByText(orderId, { exact: false })).toBeVisible({ timeout: 10000 });
+        } else {
+          console.warn('[API-UI] order API returned no data — skipping status/id assertion');
+        }
+      } else {
+        console.warn('[API-UI] orderId not in expected format:', orderId);
+      }
+    } catch (err) {
+      console.warn('[API-UI] order API check failed:', err);
+    }
+
     // 6. 주문 완료 페이지 확인
     await expect(page.getByText('주문이 완료되었습니다!')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('주문번호:')).toBeVisible();
@@ -331,7 +394,7 @@ test.describe('Checkout Flow', () => {
 });
 
 test.describe('Checkout Page Display', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'USER');

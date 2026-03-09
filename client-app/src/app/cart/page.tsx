@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
 import { Heading1, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
@@ -41,20 +41,14 @@ interface CartSummary {
 
 export default function CartPage() {
   const router = useRouter();
-  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
+  const { user, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [cart, setCart] = useState<CartSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!guardLoading && isProfileComplete) {
-      fetchCart();
-    }
-  }, [guardLoading, isProfileComplete]);
-
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get<CartSummary>('/cart');
@@ -65,7 +59,13 @@ export default function CartPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchCart();
+    }
+  }, [authLoading, user, fetchCart]);
 
   const handleCartExpired = async () => {
     showToast(

@@ -62,6 +62,45 @@ export function formatInstagramId(value: string): string {
 }
 
 /**
+ * Format live stream scheduled time for US-based Korean users.
+ * Shows browser local time (auto-detected timezone) + KST reference.
+ *
+ * Example output:
+ *   "3월 10일(월) 오전 7:00 (한국 밤 9:00)"
+ *   "3월 10일(월) 오전 4:00 (한국 밤 9:00)"
+ */
+export function formatStreamSchedule(isoString: string): {
+  dayLabel: string;
+  timeLabel: string;
+  kstLabel: string;
+} {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return { dayLabel: '날짜 미정', timeLabel: '', kstLabel: '' };
+  }
+
+  const dayLabel = date.toLocaleDateString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+  });
+
+  const timeLabel = date.toLocaleTimeString('ko-KR', {
+    hour: 'numeric',
+    minute: 'numeric',
+  });
+
+  const kstTime = date.toLocaleTimeString('ko-KR', {
+    hour: 'numeric',
+    minute: 'numeric',
+    timeZone: 'Asia/Seoul',
+  });
+  const kstLabel = `한국 ${kstTime}`;
+
+  return { dayLabel, timeLabel, kstLabel };
+}
+
+/**
  * Format price in USD currency format
  */
 export function formatPrice(price: number): string {

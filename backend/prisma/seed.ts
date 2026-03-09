@@ -40,9 +40,9 @@ async function main() {
   console.log('Creating admin user...');
   const adminUser = await prisma.user.create({
     data: {
-      email: 'admin@dorami.shop',
+      email: 'admin@doremi.shop',
       kakaoId: 'admin_kakao_001',
-      name: 'Dorami Admin',
+      name: 'Doremi Admin',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
       depositorName: 'Doremi',
@@ -364,3 +364,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+

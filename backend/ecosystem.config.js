@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'dorami-backend',
+    name: 'doremi-backend',
     script: 'dist/main.js',
     instances: 'max',
     exec_mode: 'cluster',
@@ -40,3 +40,4 @@ module.exports = {
     instance_var: 'INSTANCE_ID',
   }]
 };
+

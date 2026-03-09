@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # DB Connection Tracking Script — Task #22
 # Monitors PostgreSQL active connections, idle connections, and pool usage
-# Usage: bash scripts/check-db-connections.sh [--once] [--container dorami-postgres-1]
+# Usage: bash scripts/check-db-connections.sh [--once] [--container doremi-postgres-1]
 
 set -euo pipefail
 
@@ -11,8 +11,8 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-CONTAINER="${DB_CONTAINER:-dorami-postgres-1}"
-DB_NAME="${DB_NAME:-dorami}"
+CONTAINER="${DB_CONTAINER:-doremi-postgres-1}"
+DB_NAME="${DB_NAME:-doremi}"
 DB_USER="${DB_USER:-postgres}"
 INTERVAL="${INTERVAL:-30}"
 ONCE=false
@@ -108,3 +108,4 @@ while true; do
   check_connections || true
   sleep "$INTERVAL"
 done
+

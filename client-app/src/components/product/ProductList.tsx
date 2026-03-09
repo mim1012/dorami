@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductListProps {
   streamKey: string;
@@ -178,9 +179,7 @@ export default function ProductList({
                 )}
               </div>
               <p className="text-white text-[11px] font-medium truncate">{product.name}</p>
-              <p className="text-[#FF007A] text-[11px] font-bold">
-                ${product.price.toLocaleString()}
-              </p>
+              <p className="text-[#FF007A] text-[11px] font-bold">{formatPrice(product.price)}</p>
             </div>
           ))
         )}
@@ -283,7 +282,7 @@ export default function ProductList({
                   {product.discountRate && product.discountRate > 0 ? (
                     <div className="flex items-center gap-1 mb-0.5">
                       <span className="text-white/25 text-[10px] line-through">
-                        ${(product.originalPrice ?? product.price).toLocaleString()}
+                        {formatPrice(product.originalPrice ?? product.price)}
                       </span>
                       <span className="text-red-400 text-[10px] font-bold">
                         {product.discountRate}%↓
@@ -292,7 +291,7 @@ export default function ProductList({
                   ) : null}
 
                   <p className="text-[#FF007A] text-[13px] font-black leading-none">
-                    ${product.price.toLocaleString()}
+                    {formatPrice(product.price)}
                   </p>
 
                   <div className="flex items-center gap-1.5 mt-1">
@@ -320,7 +319,7 @@ export default function ProductList({
                       e.stopPropagation();
                       onProductClick?.(product);
                     }}
-                    className="flex-shrink-0 w-8 h-8 rounded-full bg-[#FF007A] flex items-center justify-center hover:bg-[#E00070] active:scale-90 transition-all"
+                    className="flex-shrink-0 w-11 h-11 rounded-full bg-[#FF007A] flex items-center justify-center hover:bg-[#E00070] active:scale-90 transition-all"
                     aria-label={`${product.name} 상세보기`}
                   >
                     <svg

@@ -41,7 +41,7 @@ test.describe('Reservation System (예비번호)', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' }),
+          body: JSON.stringify({ email: 'admin@doremi.shop', name: 'E2E ADMIN' }),
         });
         if (!loginRes.ok) return null;
 
@@ -86,7 +86,7 @@ test.describe('Reservation System (예비번호)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
   });
@@ -144,7 +144,7 @@ test.describe('Reservation System (예비번호)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user2@test.com', name: 'E2E USER2', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user2@test.com', name: 'E2E USER2' }),
       });
     });
 
@@ -246,7 +246,7 @@ test.describe('Reservation System (예비번호)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
 
@@ -273,7 +273,7 @@ test.describe('Reservation System (예비번호)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user2@test.com', name: 'E2E USER2', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user2@test.com', name: 'E2E USER2' }),
       });
     });
 
@@ -303,7 +303,7 @@ test.describe('Reservation System (예비번호)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
     console.log('Restored original user session');

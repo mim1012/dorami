@@ -5,7 +5,7 @@
 set -e
 
 # SSH 설정
-SSH_KEY="${1:-D:/Project/dorami/ssh/id_ed25519}"
+SSH_KEY="${1:-D:/Project/doremi/ssh/id_ed25519}"
 PROD_HOST="15.165.66.23"
 PROD_USER="ubuntu"
 STAGING_HOST="54.180.94.30"
@@ -25,14 +25,14 @@ echo -e "${BLUE}═════════════════════�
 # Production 이미지 조회
 echo -e "${YELLOW}📍 Fetching Production images (${PROD_USER}@${PROD_HOST})...${NC}"
 PROD_IMAGES=$(ssh -i "$SSH_KEY" "${PROD_USER}@${PROD_HOST}" 'docker ps --format "{{.Image}}"')
-PROD_BACKEND=$(echo "$PROD_IMAGES" | grep dorami-backend | head -1)
-PROD_FRONTEND=$(echo "$PROD_IMAGES" | grep dorami-frontend | head -1)
+PROD_BACKEND=$(echo "$PROD_IMAGES" | grep doremi-backend | head -1)
+PROD_FRONTEND=$(echo "$PROD_IMAGES" | grep doremi-frontend | head -1)
 
 # Staging 이미지 조회
 echo -e "${YELLOW}📍 Fetching Staging images (${STAGING_USER}@${STAGING_HOST})...${NC}"
 STAGING_IMAGES=$(ssh -i "$SSH_KEY" "${STAGING_USER}@${STAGING_HOST}" 'docker ps --format "{{.Image}}"')
-STAGING_BACKEND=$(echo "$STAGING_IMAGES" | grep dorami-backend | head -1)
-STAGING_FRONTEND=$(echo "$STAGING_IMAGES" | grep dorami-frontend | head -1)
+STAGING_BACKEND=$(echo "$STAGING_IMAGES" | grep doremi-backend | head -1)
+STAGING_FRONTEND=$(echo "$STAGING_IMAGES" | grep doremi-frontend | head -1)
 
 # 이미지 태그 추출
 PROD_BACKEND_TAG=$(echo "$PROD_BACKEND" | cut -d: -f2)
@@ -79,3 +79,4 @@ else
   echo -e "   Production과 Staging 이미지가 다릅니다.${NC}\n"
   exit 1
 fi
+

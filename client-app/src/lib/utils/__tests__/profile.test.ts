@@ -81,6 +81,27 @@ describe('isProfileComplete', () => {
     expect(isProfileComplete(user)).toBe(true);
   });
 
+  it('returns true immediately when profileComplete flag is provided', () => {
+    const user: User = {
+      id: '1',
+      kakaoId: 'kakao-123',
+      profileComplete: true,
+    } as User;
+    expect(isProfileComplete(user)).toBe(true);
+  });
+
+  it('returns false when profileComplete flag is false even if other fields exist', () => {
+    const user: User = {
+      id: '1',
+      kakaoId: 'kakao-123',
+      profileComplete: false,
+      instagramId: '@johndoe',
+      depositorName: 'John Doe',
+      shippingAddress: { fullName: 'Jane Doe' },
+    } as User;
+    expect(isProfileComplete(user)).toBe(false);
+  });
+
   it('returns false when instagramId is empty string', () => {
     const user: User = {
       id: '1',
@@ -136,6 +157,15 @@ describe('needsProfileCompletion', () => {
     expect(needsProfileCompletion(user)).toBe(false);
   });
 
+  it('returns false when profileComplete flag is true', () => {
+    const user: User = {
+      id: '1',
+      kakaoId: 'kakao-123',
+      profileComplete: true,
+    } as User;
+    expect(needsProfileCompletion(user)).toBe(false);
+  });
+
   it('returns true when user is authenticated via kakaoId but profile is incomplete', () => {
     const user: User = {
       id: '1',
@@ -162,6 +192,15 @@ describe('needsProfileCompletion', () => {
       kakaoId: 'kakao-123',
       depositorName: 'John Doe',
       shippingAddress: { fullName: 'Jane Doe' },
+    } as User;
+    expect(needsProfileCompletion(user)).toBe(true);
+  });
+
+  it('returns true when profileComplete flag is false', () => {
+    const user: User = {
+      id: '1',
+      kakaoId: 'kakao-123',
+      profileComplete: false,
     } as User;
     expect(needsProfileCompletion(user)).toBe(true);
   });

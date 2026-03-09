@@ -73,6 +73,24 @@ describe('useAuth', () => {
       const { result } = renderHook(() => useAuth());
       expect(result.current.isProfileComplete).toBe(true);
     });
+
+    it('returns true when profileComplete flag is true', () => {
+      (authStore.useAuthStore as jest.Mock).mockReturnValue({
+        user: {
+          id: '1',
+          kakaoId: 'kakao-123',
+          profileComplete: true,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+        setUser: mockSetUser,
+        setLoading: mockSetLoading,
+        logout: mockLogout,
+      });
+
+      const { result } = renderHook(() => useAuth());
+      expect(result.current.isProfileComplete).toBe(true);
+    });
   });
 
   describe('needsProfileCompletion', () => {
@@ -134,6 +152,42 @@ describe('useAuth', () => {
           id: '1',
           email: 'john@example.com',
           depositorName: 'John Doe',
+        },
+        isAuthenticated: true,
+        isLoading: false,
+        setUser: mockSetUser,
+        setLoading: mockSetLoading,
+        logout: mockLogout,
+      });
+
+      const { result } = renderHook(() => useAuth());
+      expect(result.current.needsProfileCompletion).toBe(true);
+    });
+
+    it('returns false when profileComplete flag is true even if fields missing', () => {
+      (authStore.useAuthStore as jest.Mock).mockReturnValue({
+        user: {
+          id: '1',
+          kakaoId: 'kakao-123',
+          profileComplete: true,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+        setUser: mockSetUser,
+        setLoading: mockSetLoading,
+        logout: mockLogout,
+      });
+
+      const { result } = renderHook(() => useAuth());
+      expect(result.current.needsProfileCompletion).toBe(false);
+    });
+
+    it('returns true when profileComplete flag is false', () => {
+      (authStore.useAuthStore as jest.Mock).mockReturnValue({
+        user: {
+          id: '1',
+          kakaoId: 'kakao-123',
+          profileComplete: false,
         },
         isAuthenticated: true,
         isLoading: false,

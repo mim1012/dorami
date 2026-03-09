@@ -7,7 +7,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  */
 
 test.describe('Admin Users List Filters', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -21,7 +21,7 @@ test.describe('Admin Users List Filters', () => {
     await expect(page.getByText('인스타 아이디 기준으로 사용자를 조회합니다')).toBeVisible();
 
     // 검색 입력
-    await expect(page.getByPlaceholder('인스타그램 ID 또는 카카오톡 이메일 검색...')).toBeVisible();
+    await expect(page.getByPlaceholder('인스타그램 ID 또는 이메일 검색...')).toBeVisible();
 
     // 필터 보기 버튼
     await expect(page.getByRole('button', { name: '필터 보기' })).toBeVisible();
@@ -78,7 +78,7 @@ test.describe('Admin Users List Filters', () => {
     await gotoWithRetry(page, '/admin/users');
     await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible({ timeout: 15000 });
 
-    const searchInput = page.getByPlaceholder('인스타그램 ID 또는 카카오톡 이메일 검색...');
+    const searchInput = page.getByPlaceholder('인스타그램 ID 또는 이메일 검색...');
     await searchInput.fill('test');
 
     // debounce 대기

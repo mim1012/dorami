@@ -27,12 +27,12 @@ mkdir -p "$TEMP_DIR"
 trap "rm -rf $TEMP_DIR" EXIT
 
 CRITICAL_CONTAINERS=(
-  "dorami-backend"
-  "dorami-frontend"
-  "dorami-postgres-prod"
-  "dorami-redis-prod"
-  "dorami-nginx-prod"
-  "dorami-srs-prod"
+  "doremi-backend"
+  "doremi-frontend"
+  "doremi-postgres-prod"
+  "doremi-redis-prod"
+  "doremi-nginx-prod"
+  "doremi-srs-prod"
 )
 
 echo "=== 1️⃣ IMAGE DIGEST (이미지 버전) ==="
@@ -65,7 +65,7 @@ done
 echo ""
 echo "=== 2️⃣ VOLUME MOUNTS (데이터 저장소) ==="
 
-for container in "dorami-postgres-prod" "dorami-redis-prod"; do
+for container in "doremi-postgres-prod" "doremi-redis-prod"; do
   echo -n "$container: "
 
   STAGING_VOLS=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$STAGING_USER@$STAGING_HOST" \
@@ -93,7 +93,7 @@ done
 echo ""
 echo "=== 3️⃣ NETWORK PORTS (포트 바인딩) ==="
 
-for container in "dorami-nginx-prod" "dorami-backend" "dorami-srs-prod"; do
+for container in "doremi-nginx-prod" "doremi-backend" "doremi-srs-prod"; do
   echo -n "$container: "
 
   STAGING_PORTS=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$STAGING_USER@$STAGING_HOST" \
@@ -116,7 +116,7 @@ done
 echo ""
 echo "=== 4️⃣ MEMORY LIMITS (메모리 제한) ==="
 
-for container in "dorami-backend" "dorami-postgres-prod" "dorami-redis-prod"; do
+for container in "doremi-backend" "doremi-postgres-prod" "doremi-redis-prod"; do
   echo -n "$container: "
 
   STAGING_MEM=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$STAGING_USER@$STAGING_HOST" \
@@ -144,3 +144,4 @@ else
   echo "   배포 전 차이점 확인 필요"
   exit 1
 fi
+

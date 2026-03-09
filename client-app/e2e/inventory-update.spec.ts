@@ -11,7 +11,7 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 async function adminApiContext() {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   await apiCtx.post('/api/auth/dev-login', {
-    data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+    data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
   });
   let csrfToken = '';
   try {
@@ -93,28 +93,13 @@ async function checkoutAsUser(
   try {
     // Login as user
     const loginRes = await apiCtx.post('/api/auth/dev-login', {
-      data: { email: userEmail, role: 'USER' },
+      data: { email: userEmail, name: 'E2E User' },
     });
     if (!loginRes.ok()) {
       return { ok: false, error: `login failed: ${loginRes.status()}` };
     }
 
-    // Ensure user profile complete
-    await apiCtx.post('/api/users/complete-profile', {
-      data: {
-        depositorName: 'E2E테스트',
-        instagramId: `@e2e_${userEmail.split('@')[0]}`,
-        fullName: 'E2E Test User',
-        address1: '123 Test Street',
-        address2: 'Apt 1',
-        city: 'New York',
-        state: 'NY',
-        zip: '10001',
-        phone: '(212) 555-1234',
-      },
-    });
-
-    // Get CSRF token
+    // Get CSRF token first
     let csrfToken = '';
     try {
       const meRes = await apiCtx.get('/api/users/me');
@@ -127,6 +112,22 @@ async function checkoutAsUser(
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (csrfToken) headers['x-csrf-token'] = csrfToken;
+
+    // Ensure user profile complete (with CSRF token)
+    await apiCtx.post('/api/users/complete-profile', {
+      headers,
+      data: {
+        depositorName: 'E2E테스트',
+        instagramId: `@e2e_${userEmail.split('@')[0]}`,
+        fullName: 'E2E Test User',
+        address1: '123 Test Street',
+        address2: 'Apt 1',
+        city: 'New York',
+        state: 'NY',
+        zip: '10001',
+        phone: '(212) 555-1234',
+      },
+    });
 
     // Add to cart
     const cartRes = await apiCtx.post('/api/cart', {
@@ -141,7 +142,7 @@ async function checkoutAsUser(
     // Place order
     const orderRes = await apiCtx.post('/api/orders/from-cart', {
       headers,
-      data: { paymentMethod: 'BANK_TRANSFER' },
+      data: {},
     });
     if (!orderRes.ok()) {
       const body = await orderRes.json().catch(() => null);
@@ -190,9 +191,10 @@ test.describe('Inventory Update — concurrent checkout', () => {
     console.log(`[inventory-update] product=${productId} initial stock=${initialStock}`);
 
     // ── 2. Concurrent checkout via API (two separate user contexts) ────────
-    // Use two distinct user emails to simulate concurrent buyers
-    const user1Email = 'buyer@test.com';
-    const user2Email = 'buyer2@test.com';
+    // Use unique emails per run to avoid leftover cart contamination from previous test runs
+    const ts = Date.now();
+    const user1Email = `buyer-${ts}-1@test.com`;
+    const user2Email = `buyer-${ts}-2@test.com`;
 
     const [result1, result2] = await Promise.all([
       checkoutAsUser(user1Email, productId),
@@ -262,7 +264,7 @@ test.describe('Inventory Update — concurrent checkout', () => {
       const stockBefore = await getProductStock(cleanupId);
       expect(stockBefore).toBe(initialStock);
 
-      const result = await checkoutAsUser('buyer@test.com', cleanupId);
+      const result = await checkoutAsUser(`buyer-single-${Date.now()}@test.com`, cleanupId);
       console.log(`[inventory-update] single checkout: ok=${result.ok} orderId=${result.orderId}`);
 
       const stockAfter = await getProductStock(cleanupId);

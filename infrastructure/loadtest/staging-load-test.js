@@ -145,7 +145,7 @@ function testAuthentication(vuId) {
     const loginRes = http.post(
       `${BACKEND_URL}/api/auth/dev-login`,
       JSON.stringify({
-        email: `loadtest-${vuId}@dorami.test`,
+        email: `loadtest-${vuId}@doremi.test`,
         name: `LoadTest User ${vuId}`,
       }),
       { headers: { 'Content-Type': 'application/json' } }
@@ -358,3 +358,4 @@ export function teardown(data) {
     console.log('  STATUS: ABORTED (backend unreachable)');
   }
 }
+

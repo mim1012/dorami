@@ -5,12 +5,12 @@
 set -e
 
 PROD_HOST="doremi-live.com"
-PROD_KEY="$HOME/.ssh/dorami-production-key.pem"
+PROD_KEY="$HOME/.ssh/doremi-production-key.pem"
 STAGING_HOST="54.180.94.30"
 STAGING_KEY="$HOME/.ssh/id_ed25519"
 
 echo "==============================================="
-echo "🔍 Dorami Stability Monitoring (24h Check)"
+echo "🔍 Doremi Stability Monitoring (24h Check)"
 echo "==============================================="
 echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
@@ -88,3 +88,5 @@ echo ""
 echo "==============================================="
 echo "✅ Check Complete - $(date '+%Y-%m-%d %H:%M:%S')"
 echo "==============================================="
+
+

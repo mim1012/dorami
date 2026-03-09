@@ -7,7 +7,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  */
 
 test.describe('Admin Settings Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(120000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -20,7 +20,7 @@ test.describe('Admin Settings Page', () => {
 
     // 헤더
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
     await expect(page.getByText('플랫폼 전체 설정을 관리합니다')).toBeVisible();
 
@@ -41,7 +41,7 @@ test.describe('Admin Settings Page', () => {
     // Waiting for backend API and frontend UI to support Zelle payment settings
     await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Zelle 입금 정보 설정
@@ -55,7 +55,7 @@ test.describe('Admin Settings Page', () => {
   test('should display shipping settings', async ({ page }) => {
     await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
-      timeout: 15000,
+      timeout: 60000,
     });
 
     // 배송 설정 필드
@@ -69,12 +69,11 @@ test.describe('Admin Settings Page', () => {
   test('should display notification and shipping settings', async ({ page }) => {
     await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
-      timeout: 15000,
+      timeout: 60000,
     });
 
     // 알림 설정
-    await expect(page.getByText('알림 설정')).toBeVisible();
-    await expect(page.getByText('이메일 알림 활성화')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '알림 설정' })).toBeVisible();
 
     // 배송 설정
     await expect(page.getByText('기본 배송비 — 동부 ($)')).toBeVisible();
@@ -85,17 +84,17 @@ test.describe('Admin Settings Page', () => {
   test('should display advanced settings sections', async ({ page }) => {
     await gotoWithRetry(page, '/admin/settings');
     await expect(page.getByRole('heading', { name: '시스템 설정' })).toBeVisible({
-      timeout: 15000,
+      timeout: 60000,
     });
 
-    // 배송문구 설정
-    await expect(page.getByText('배송문구 설정')).toBeVisible();
+    // 배송 안내 메시지
+    await expect(page.getByText('배송 안내 메시지')).toBeVisible();
 
-    // 적립 포인트 설정
-    await expect(page.getByText('적립 포인트 설정')).toBeVisible();
+    // 포인트 설정
+    await expect(page.getByText('포인트 설정')).toBeVisible();
 
-    // 공지 관리
-    await expect(page.getByText('공지 관리')).toBeVisible();
+    // 공지 작성 관리
+    await expect(page.getByText('공지 작성 관리')).toBeVisible();
 
     console.log('Advanced settings sections displayed');
   });

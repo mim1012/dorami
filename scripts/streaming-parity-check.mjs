@@ -30,7 +30,7 @@ if (args.help || args.h || args['-h']) {
 const STAGING_BASE_COMPOSE = 'docker-compose.base.yml';
 const STAGING_OVERLAY_COMPOSE = 'docker-compose.staging.yml';
 const PRODUCTION_OVERLAY_COMPOSE = 'docker-compose.prod.yml';
-const DEFAULT_WORKDIR = '/opt/dorami';
+const DEFAULT_WORKDIR = '/opt/doremi';
 const DEFAULT_NGINX_COMMON_INCLUDE = 'nginx/streaming-routing.conf';
 const METADATA_SERVICES = ['backend', 'frontend', 'nginx', 'srs', 'postgres', 'redis'];
 const IMAGE_ID_SERVICES = ['backend', 'frontend', 'nginx', 'srs'];
@@ -296,7 +296,7 @@ function buildRunner(prefix) {
   const composeOverlay =
     args[`${prefix}-compose-overlay`] ??
     (prefix === 'staging' ? STAGING_OVERLAY_COMPOSE : PRODUCTION_OVERLAY_COMPOSE);
-  const composeEnvFile = args[`${prefix}-compose-env`] ?? `${prefix === 'staging' ? '/opt/dorami/.env.staging' : '/opt/dorami/.env.production'}`;
+  const composeEnvFile = args[`${prefix}-compose-env`] ?? `${prefix === 'staging' ? '/opt/doremi/.env.staging' : '/opt/doremi/.env.production'}`;
   const composeWorkdir = args[`${prefix}-compose-workdir`] ?? DEFAULT_WORKDIR;
   const nginxInclude = args[`${prefix}-nginx-include`] ?? DEFAULT_NGINX_COMMON_INCLUDE;
   const composeProject = args[`${prefix}-compose-project`] ?? undefined;
@@ -933,3 +933,4 @@ main().catch((error) => {
   console.error('Parity check failed:', error);
   process.exit(1);
 });
+

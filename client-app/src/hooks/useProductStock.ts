@@ -71,9 +71,9 @@ export const useStockStore = create<StockState>((set) => ({
  * - reconnect_attempt 에서 Circuit Breaker OPEN 상태면 소켓 강제 해제
  *
  * Events handled:
- * - product:stock:changed  (global broadcast from ProductAlertHandler)
  * - live:product:updated   (stream-scoped broadcast)
  * - live:product:soldout   (stream-scoped broadcast)
+ * - product:low-stock       (stream-scoped warning event)
  */
 export function useProductStock(streamKey?: string) {
   const socketRef = useRef<Socket | null>(null);
@@ -94,7 +94,7 @@ export function useProductStock(streamKey?: string) {
 
   const connect = useCallback(() => {
     // Don't create duplicate connections
-    if (socketRef.current?.connected) return;
+    if (socketRef.current) return;
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -105,14 +105,6 @@ export function useProductStock(streamKey?: string) {
       reconnectionDelayMax: stockConfig.delays[stockConfig.delays.length - 1],
       autoConnect: true,
     });
-
-    // ── Global stock changed event ──
-    socket.on(
-      'product:stock:changed',
-      (payload: { productId: string; oldStock: number; newStock: number }) => {
-        updateStock(payload.productId, payload.newStock);
-      },
-    );
 
     // ── Stream-scoped product updated ──
     socket.on(
@@ -213,7 +205,11 @@ export function useProductStock(streamKey?: string) {
           }
           circuitBreakerRef.current.recordFailure();
           socket.disconnect();
-          forceLogout();
+          // Only force logout if the circuit breaker has fully opened — a single stock
+          // WebSocket auth failure should not evict the user from the session.
+          if (circuitBreakerRef.current.getState().isOpen) {
+            forceLogout();
+          }
           return;
         }
         lastAuthErrorRef.current = false;

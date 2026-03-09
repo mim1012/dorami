@@ -39,7 +39,7 @@ const THRESHOLD = {
 
 // ── Batch queue (localStorage) ─────────────────────────────────────────────────
 
-const QUEUE_KEY = 'dorami:stream_metrics_queue';
+const QUEUE_KEY = 'doremi:stream_metrics_queue';
 const MAX_QUEUE_SIZE = 10;
 
 function readQueue(): StreamMetrics[] {

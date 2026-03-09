@@ -53,13 +53,13 @@ if [[ -n "$ROLLBACK_FILE" && -f "$ROLLBACK_FILE" ]]; then
   fi
 elif [[ -n "$ROLLBACK_TAG" ]]; then
   log "Rolling back to tag: ${ROLLBACK_TAG}"
-  BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${ROLLBACK_TAG}"
-  FRONTEND_IMAGE="${DOCKER_REGISTRY}/dorami-frontend:${ROLLBACK_TAG}"
+  BACKEND_IMAGE="${DOCKER_REGISTRY}/doremi-backend:${ROLLBACK_TAG}"
+  FRONTEND_IMAGE="${DOCKER_REGISTRY}/doremi-frontend:${ROLLBACK_TAG}"
 else
   log "Rolling back to default known-good: ${DEFAULT_ROLLBACK_TAG}"
   ROLLBACK_TAG="$DEFAULT_ROLLBACK_TAG"
-  BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${ROLLBACK_TAG}"
-  FRONTEND_IMAGE="${DOCKER_REGISTRY}/dorami-frontend:${ROLLBACK_TAG}"
+  BACKEND_IMAGE="${DOCKER_REGISTRY}/doremi-backend:${ROLLBACK_TAG}"
+  FRONTEND_IMAGE="${DOCKER_REGISTRY}/doremi-frontend:${ROLLBACK_TAG}"
 fi
 
 # Pull rollback images
@@ -79,7 +79,7 @@ fi
 
 docker compose -f "$COMPOSE_FILE" up -d --no-deps backend frontend 2>/dev/null || {
   log_fail "docker compose up failed. Trying direct container restart..."
-  docker restart dorami-backend-1 dorami-frontend-1 2>/dev/null || true
+  docker restart doremi-backend-1 doremi-frontend-1 2>/dev/null || true
 }
 
 # Wait for health
@@ -103,3 +103,4 @@ log ""
 log_ok "=== ROLLBACK COMPLETE ==="
 log_ok "Target: ${ROLLBACK_TAG:-from file}"
 log_ok "Health: verified"
+

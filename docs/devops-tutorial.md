@@ -1,4 +1,4 @@
-# Dorami DevOps 과외 문서
+# Doremi DevOps 과외 문서
 
 > 대상: DevOps를 하나도 모르는 입문자 | 기준: 실제 이 프로젝트 코드
 
@@ -103,7 +103,7 @@ postgres:
     timeout: 5s # 5초 안에 응답 없으면 실패
     retries: 5 # 5번 실패하면 unhealthy 처리
   networks:
-    - dorami-internal # 이 가상 네트워크에 연결
+    - doremi-internal # 이 가상 네트워크에 연결
 ```
 
 ---
@@ -166,13 +166,13 @@ backend:
 ```yaml
 volumes:
   postgres_data:
-    name: dorami_postgres_data # 실제 Docker에서 사용할 볼륨 이름
+    name: doremi_postgres_data # 실제 Docker에서 사용할 볼륨 이름
   redis_data:
-    name: dorami_redis_data
+    name: doremi_redis_data
 
 networks:
-  dorami-internal:
-    name: dorami-internal
+  doremi-internal:
+    name: doremi-internal
     driver: bridge # 가상 브리지 네트워크 (기본값)
 ```
 
@@ -232,7 +232,7 @@ CMD ["node", "dist/src/main.js"]
 ### 이 프로젝트의 .env 파일 구조
 
 ```
-dorami/
+doremi/
 ├── backend/
 │   ├── .env            ← 실제 개발용 값 (git 제외)
 │   ├── .env.local      ← 로컬 오버라이드 (git 제외)
@@ -296,7 +296,7 @@ RTMP_SERVER_URL=rtmp://localhost:1935/live  # OBS 방송 주소
 HLS_SERVER_URL=http://localhost:8080/hls    # HLS 재생 주소
 
 # ==================== 관리자 ====================
-ADMIN_EMAILS=admin@dorami.shop  # 이 이메일로 카카오 로그인하면 자동 관리자
+ADMIN_EMAILS=admin@doremi.shop  # 이 이메일로 카카오 로그인하면 자동 관리자
 ```
 
 ### 프론트엔드 .env 특이사항: NEXT*PUBLIC* 접두사
@@ -523,7 +523,7 @@ jobs:
         run: |
           ssh $USER@$HOST << ENDSSH
             # 이 블록 안의 명령어들이 서버에서 실행됨
-            cd /opt/dorami
+            cd /opt/doremi
             git reset --hard origin/develop    # 최신 코드로 리셋
 
             # .env.staging 파일 재생성
@@ -605,7 +605,7 @@ GitHub Repository
 # GITHUB_SHA = 현재 커밋의 40자리 해시
 # 예: sha-a1b2c3d4e5f6...
 
-tags: ghcr.io/mim1012/dorami-backend:sha-${GITHUB_SHA}
+tags: ghcr.io/mim1012/doremi-backend:sha-${GITHUB_SHA}
 ```
 
 **왜 SHA 태그를 쓰나?**
@@ -619,8 +619,8 @@ tags: ghcr.io/mim1012/dorami-backend:sha-${GITHUB_SHA}
 Docker Hub의 GitHub 버전. 이 프로젝트 이미지 저장 위치:
 
 ```
-ghcr.io/mim1012/dorami-backend:sha-xxxxx
-ghcr.io/mim1012/dorami-frontend:sha-xxxxx
+ghcr.io/mim1012/doremi-backend:sha-xxxxx
+ghcr.io/mim1012/doremi-frontend:sha-xxxxx
 ```
 
 ### 전체 배포 파이프라인
@@ -694,7 +694,7 @@ git push origin develop
 GitHub Actions
         ↓ 테스트 → 빌드 → SSH 배포
 스테이징 서버 (AWS EC2 등)
-├── /opt/dorami/              # 소스코드
+├── /opt/doremi/              # 소스코드
 ├── .env.staging              # 환경변수 (서버에만 존재, git 제외)
 ├── docker-compose.base.yml   # 기본 compose
 ├── docker-compose.staging.yml # 스테이징 전용 compose
@@ -815,5 +815,5 @@ act pull_request                   # PR 트리거 로컬 시뮬레이션
 
 ---
 
-_이 문서는 `D:\Project\dorami` 코드베이스를 기반으로 작성되었습니다._
+_이 문서는 `D:\Project\doremi` 코드베이스를 기반으로 작성되었습니다._
 _파일 참조: `docker-compose.yml`, `backend/.env.example`, `.env.production.example`, `.github/workflows/ci.yml`, `.github/workflows/deploy-staging.yml`, `backend/Dockerfile`_

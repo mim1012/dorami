@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, X, Inbox } from 'lucide-react';
 import { getActiveNotices, type Notice } from '@/lib/api/notices';
@@ -24,6 +25,24 @@ function formatRelativeDate(dateStr: string): string {
 }
 
 export function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   const { data: notices = [], isLoading } = useQuery<Notice[]>({
     queryKey: ['notices', 'active'],
     queryFn: getActiveNotices,
@@ -45,9 +64,12 @@ export function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
       {/* Bottom Sheet */}
       <div
         role="dialog"
+        id="notice-modal"
+        tabIndex={-1}
         aria-modal="true"
         aria-label="공지사항"
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
+        aria-labelledby="notice-modal-title"
+        className="fixed inset-x-0 bottom-0 z-[60] bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-2">
@@ -56,19 +78,31 @@ export function NoticeModal({ isOpen, onClose }: NoticeModalProps) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
-          <h2 className="text-white font-bold text-base flex items-center gap-2">
+          <h2
+            id="notice-modal-title"
+            className="text-white font-bold text-base flex items-center gap-2"
+          >
             공지사항
             {notices.length > 0 && (
               <span className="text-white/40 text-sm font-normal">{notices.length}개</span>
             )}
           </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20 transition-colors"
-            aria-label="닫기"
-          >
-            <X className="w-4 h-4 text-white" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="h-8 px-2 text-white/80 text-xs font-semibold rounded-full bg-white/10 active:bg-white/20 transition-colors"
+              aria-label="공지사항 닫기"
+            >
+              닫기
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20 transition-colors"
+              aria-label="공지사항 닫기"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}

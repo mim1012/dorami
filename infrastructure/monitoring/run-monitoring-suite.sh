@@ -9,9 +9,9 @@
 #   --duration SECONDS    Total collection duration (default: 21600 = 6h)
 #   --output DIR          Output directory (default: results/)
 #   --interval SECONDS    Metrics collection interval (default: 5)
-#   --backend-container   Backend container name (default: dorami-backend)
-#   --nginx-container     Nginx container name (default: dorami-nginx)
-#   --srs-container       SRS container name (default: dorami-srs)
+#   --backend-container   Backend container name (default: doremi-backend)
+#   --nginx-container     Nginx container name (default: doremi-nginx)
+#   --srs-container       SRS container name (default: doremi-srs)
 #   --skip-nginx          Skip nginx log analysis
 #   --skip-srs            Skip SRS metrics collection
 #   --skip-backend        Skip backend metrics collection
@@ -29,9 +29,9 @@ set -euo pipefail
 DURATION=21600   # 6 hours
 OUTPUT_DIR="$(pwd)/results/monitoring-$(date +%Y%m%d-%H%M%S)"
 INTERVAL=5
-BACKEND_CONTAINER="dorami-backend"
-NGINX_CONTAINER="dorami-nginx"
-SRS_CONTAINER="dorami-srs"
+BACKEND_CONTAINER="doremi-backend"
+NGINX_CONTAINER="doremi-nginx"
+SRS_CONTAINER="doremi-srs"
 SKIP_NGINX=false
 SKIP_SRS=false
 SKIP_BACKEND=false
@@ -220,7 +220,7 @@ generate_summary_report() {
   metrics_file=$(ls "$OUTPUT_DIR"/metrics-*.json 2>/dev/null | head -1 || echo "")
 
   {
-    echo "# Dorami Monitoring Suite — Summary Report"
+    echo "# Doremi Monitoring Suite — Summary Report"
     echo ""
     echo "**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
     echo "**Duration:** ${DURATION}s ($(echo "scale=1; $DURATION / 3600" | bc)h)"
@@ -322,7 +322,7 @@ for k,v in d.items():
 # ============================================================================
 # Main
 # ============================================================================
-log_section "DORAMI MONITORING SUITE"
+log_section "DOREMI MONITORING SUITE"
 log "Duration  : ${DURATION}s"
 log "Interval  : ${INTERVAL}s"
 log "Output    : $OUTPUT_DIR"
@@ -354,3 +354,5 @@ log "Next steps:"
 log "  1. Open health-check-dashboard.html and load metrics-*.json"
 log "  2. Review SUMMARY_REPORT.md for quick analysis"
 log "  3. Run: cat $OUTPUT_DIR/nginx-analysis-*.json | python3 -m json.tool"
+
+

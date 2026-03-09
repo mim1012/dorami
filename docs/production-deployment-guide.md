@@ -1,4 +1,4 @@
-# Dorami 프로덕션 배포 가이드
+# Doremi 프로덕션 배포 가이드
 
 ## 목차
 
@@ -20,12 +20,12 @@
 
 ### 서버 사양 (최소)
 
-| 항목 | 최소 사양 | 권장 사양 |
-|------|----------|----------|
-| CPU | 2 vCPU | 4 vCPU |
-| RAM | 4 GB | 8 GB |
-| Storage | 40 GB SSD | 80 GB SSD |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| 항목    | 최소 사양        | 권장 사양        |
+| ------- | ---------------- | ---------------- |
+| CPU     | 2 vCPU           | 4 vCPU           |
+| RAM     | 4 GB             | 8 GB             |
+| Storage | 40 GB SSD        | 80 GB SSD        |
+| OS      | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
 
 ### 필수 소프트웨어
 
@@ -87,12 +87,12 @@ sudo ufw status
 
 ```bash
 # 프로젝트 디렉토리 생성
-sudo mkdir -p /opt/dorami
-sudo chown $USER:$USER /opt/dorami
+sudo mkdir -p /opt/doremi
+sudo chown $USER:$USER /opt/doremi
 
 # 프로젝트 클론
-cd /opt/dorami
-git clone https://github.com/your-org/dorami.git .
+cd /opt/doremi
+git clone https://github.com/your-org/doremi.git .
 git checkout main
 ```
 
@@ -138,9 +138,9 @@ FRONTEND_URL=https://your-domain.com
 CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
 
 # Database
-POSTGRES_USER=dorami_prod
+POSTGRES_USER=doremi_prod
 POSTGRES_PASSWORD=<generated-password>
-POSTGRES_DB=dorami_production
+POSTGRES_DB=doremi_production
 
 # Redis
 REDIS_PASSWORD=<generated-password>
@@ -209,13 +209,13 @@ ls -la infrastructure/docker/certbot/conf/live/your-domain.com/
 ### 5.1 Docker 이미지 빌드
 
 ```bash
-cd /opt/dorami
+cd /opt/doremi
 
 # 이미지 빌드
 docker compose -f docker-compose.prod.yml build
 
 # 빌드 확인
-docker images | grep dorami
+docker images | grep doremi
 ```
 
 ### 5.2 데이터베이스 마이그레이션
@@ -268,19 +268,19 @@ curl -f http://localhost:8080/health
 
 GitHub 저장소 > Settings > Secrets and variables > Actions에서 설정:
 
-| Secret Name | Description |
-|-------------|-------------|
-| `PRODUCTION_HOST` | 프로덕션 서버 IP/호스트 |
-| `PRODUCTION_USER` | SSH 사용자명 |
-| `PRODUCTION_SSH_KEY` | SSH 개인키 |
-| `PRODUCTION_URL` | `https://your-domain.com` |
+| Secret Name          | Description                   |
+| -------------------- | ----------------------------- |
+| `PRODUCTION_HOST`    | 프로덕션 서버 IP/호스트       |
+| `PRODUCTION_USER`    | SSH 사용자명                  |
+| `PRODUCTION_SSH_KEY` | SSH 개인키                    |
+| `PRODUCTION_URL`     | `https://your-domain.com`     |
 | `PRODUCTION_API_URL` | `https://your-domain.com/api` |
-| `PRODUCTION_WS_URL` | `https://your-domain.com` |
+| `PRODUCTION_WS_URL`  | `https://your-domain.com`     |
 | `PRODUCTION_CDN_URL` | `https://your-domain.com/hls` |
-| `SENTRY_DSN` | Sentry DSN |
-| `SENTRY_AUTH_TOKEN` | Sentry Auth Token |
-| `SENTRY_ORG` | Sentry Organization |
-| `SENTRY_PROJECT` | Sentry Project |
+| `SENTRY_DSN`         | Sentry DSN                    |
+| `SENTRY_AUTH_TOKEN`  | Sentry Auth Token             |
+| `SENTRY_ORG`         | Sentry Organization           |
+| `SENTRY_PROJECT`     | Sentry Project                |
 
 ### 6.2 GitHub Environments 설정
 
@@ -353,6 +353,7 @@ top -bn1 | head -20
 ### 7.4 Sentry 에러 추적
 
 프로덕션 에러는 Sentry 대시보드에서 실시간 모니터링:
+
 - https://sentry.io/organizations/your-org/
 
 ---
@@ -363,22 +364,22 @@ top -bn1 | head -20
 
 ```bash
 # 백업 스크립트 생성
-cat > /opt/dorami/scripts/backup.sh << 'EOF'
+cat > /opt/doremi/scripts/backup.sh << 'EOF'
 #!/bin/bash
 set -e
 
-BACKUP_DIR="/opt/dorami/backups"
+BACKUP_DIR="/opt/doremi/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=7
 
 mkdir -p $BACKUP_DIR
 
 # 데이터베이스 백업
-docker compose -f /opt/dorami/docker-compose.prod.yml exec -T postgres \
+docker compose -f /opt/doremi/docker-compose.prod.yml exec -T postgres \
   pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > $BACKUP_DIR/db_$TIMESTAMP.sql.gz
 
 # Redis 백업 (선택)
-docker compose -f /opt/dorami/docker-compose.prod.yml exec -T redis \
+docker compose -f /opt/doremi/docker-compose.prod.yml exec -T redis \
   redis-cli -a $REDIS_PASSWORD BGSAVE
 
 # 오래된 백업 삭제
@@ -387,7 +388,7 @@ find $BACKUP_DIR -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
 echo "Backup completed: db_$TIMESTAMP.sql.gz"
 EOF
 
-chmod +x /opt/dorami/scripts/backup.sh
+chmod +x /opt/doremi/scripts/backup.sh
 ```
 
 ### 8.2 Cron 스케줄 설정
@@ -397,7 +398,7 @@ chmod +x /opt/dorami/scripts/backup.sh
 crontab -e
 
 # 추가:
-0 3 * * * /opt/dorami/scripts/backup.sh >> /var/log/dorami-backup.log 2>&1
+0 3 * * * /opt/doremi/scripts/backup.sh >> /var/log/doremi-backup.log 2>&1
 ```
 
 ### 8.3 복구 절차
@@ -422,7 +423,7 @@ docker compose -f docker-compose.prod.yml up -d
 ### 9.1 수동 롤백
 
 ```bash
-cd /opt/dorami
+cd /opt/doremi
 
 # 이전 버전으로 체크아웃
 git fetch --tags
@@ -438,6 +439,7 @@ docker compose -f docker-compose.prod.yml up -d
 ### 9.2 CI/CD 롤백
 
 GitHub Actions > Deploy to Production > Run workflow
+
 - version: 롤백할 버전 (예: `v1.0.0`)
 - rollback: `true` 체크
 
@@ -585,6 +587,7 @@ docker compose -f docker-compose.prod.yml down -v --rmi all
 ## 지원
 
 문제 발생 시:
+
 1. 로그 확인: `docker compose -f docker-compose.prod.yml logs`
-2. GitHub Issues: https://github.com/your-org/dorami/issues
+2. GitHub Issues: https://github.com/your-org/doremi/issues
 3. Sentry 대시보드 확인

@@ -23,19 +23,19 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-DUMP_FILE="/tmp/dorami_prod_dump_$(date +%Y%m%d_%H%M%S).sql"
-MASKED_FILE="/tmp/dorami_masked_dump_$(date +%Y%m%d_%H%M%S).sql"
+DUMP_FILE="/tmp/doremi_prod_dump_$(date +%Y%m%d_%H%M%S).sql"
+MASKED_FILE="/tmp/doremi_masked_dump_$(date +%Y%m%d_%H%M%S).sql"
 
 # ─── Validate Environment ───────────────────────
 if [ -z "${PROD_DB_URL:-}" ]; then
     echo -e "${RED}Error: PROD_DB_URL environment variable is required${NC}"
-    echo "  export PROD_DB_URL='postgresql://user:pass@prod-host:5432/dorami'"
+    echo "  export PROD_DB_URL='postgresql://user:pass@prod-host:5432/doremi'"
     exit 1
 fi
 
 if [ -z "${STAGING_DB_URL:-}" ]; then
     echo -e "${RED}Error: STAGING_DB_URL environment variable is required${NC}"
-    echo "  export STAGING_DB_URL='postgresql://user:pass@staging-host:5432/dorami'"
+    echo "  export STAGING_DB_URL='postgresql://user:pass@staging-host:5432/doremi'"
     exit 1
 fi
 
@@ -171,3 +171,4 @@ echo "  - Settlement: bank_name, bank_account, bank_holder"
 echo "  - NotificationSubscription: endpoint, p256dh, auth"
 echo "  - AuditLog: ipAddress"
 echo "  - PointTransaction: descriptions with names"
+

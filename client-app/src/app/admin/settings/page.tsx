@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import {
@@ -15,11 +14,23 @@ import {
   ShoppingCart,
   CheckCircle,
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
+
+interface NotificationTemplate {
+  id: string;
+  name: string;
+  type: string;
+  template: string;
+  kakaoTemplateCode: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +42,6 @@ interface SystemSettings {
   freeShippingThreshold: number;
   zelleEmail: string;
   zelleRecipientName: string;
-  emailNotificationsEnabled: boolean;
   alimtalkEnabled: boolean;
   solapiApiKey: string;
   solapiApiSecret: string;
@@ -42,24 +52,163 @@ const MIN_CART_TIMER_HOURS = 1;
 const MAX_CART_TIMER_HOURS = 120;
 const MINUTES_PER_HOUR = 60;
 
+type NotificationEventType = 'ORDER_CONFIRMATION' | 'SHIPPING_STARTED';
+
+const NOTIFICATION_EVENT_GROUPS: Array<{
+  type: NotificationEventType;
+  label: string;
+  description: string;
+}> = [
+  {
+    type: 'ORDER_CONFIRMATION',
+    label: '주문 완료 알림',
+    description: '주문 완료 시 발송',
+  },
+  {
+    type: 'SHIPPING_STARTED',
+    label: '배송 시작 알림',
+    description: '배송 시작 시 발송',
+  },
+];
+
+const EVENT_PREVIEW_VARIABLES: Record<string, Record<string, string>> = {
+  ORDER_CONFIRMATION: {
+    customerName: '김민수',
+    orderId: 'ORD-20260308-10001',
+    amount: '$12.00',
+  },
+  SHIPPING_STARTED: {
+    customerName: '김민수',
+    orderId: 'ORD-20260308-10001',
+    trackingNumber: 'DOR-123456789',
+  },
+};
+
+const FALLBACK_VARIABLES: Record<string, string> = {
+  customerName: '고객님',
+  orderId: 'ORD-20260308-00001',
+  amount: '$0',
+  depositorName: '입금자명',
+  trackingNumber: 'TRK-000000',
+  reservationNumber: 'RES-0000',
+  productName: '상품명',
+};
+
+function buildTemplatePreview(type: string, template: string): string {
+  const variables = EVENT_PREVIEW_VARIABLES[type] || FALLBACK_VARIABLES;
+  let text = template;
+  for (const [key, value] of Object.entries(variables)) {
+    text = text.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+  }
+  return text;
+}
+
+type SectionKey =
+  | 'payment'
+  | 'commerce'
+  | 'notification'
+  | 'shippingMessages'
+  | 'points'
+  | 'noticeManagement'
+  | 'noticeList';
+
+const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
+  payment: true,
+  commerce: true,
+  notification: true,
+  shippingMessages: false,
+  points: false,
+  noticeManagement: false,
+  noticeList: false,
+};
+
+const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[] = [
+  { key: 'payment', label: '입금', icon: DollarSign },
+  { key: 'commerce', label: '장바구니/배송', icon: ShoppingCart },
+  { key: 'notification', label: '알림', icon: Bell },
+  { key: 'shippingMessages', label: '배송안내', icon: Package },
+  { key: 'points', label: '포인트', icon: Package },
+  { key: 'noticeManagement', label: '공지관리', icon: SettingsIcon },
+  { key: 'noticeList', label: '공지목록', icon: SettingsIcon },
+];
+
 function SectionCard({
   icon: Icon,
   title,
+  sectionId,
+  isOpen,
+  onToggle,
   children,
 }: {
   icon: React.ElementType;
   title: string;
+  sectionId: string;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-100">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-pink-50 rounded-lg">
-          <Icon className="w-5 h-5 text-[#FF4D8D]" />
+    <section id={sectionId} className="bg-white rounded-xl border border-gray-100">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-6 pt-6 pb-4 flex items-center justify-between gap-3"
+        aria-expanded={isOpen}
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-pink-50 rounded-lg">
+            <Icon className="w-5 h-5 text-[#FF4D8D]" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 text-left">{title}</h3>
         </div>
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        {isOpen ? (
+          <ChevronDown className="w-5 h-5 text-gray-500" />
+        ) : (
+          <ChevronRight className="w-5 h-5 text-gray-500" />
+        )}
+      </button>
+      {isOpen ? (
+        <div className="px-6 pb-6 border-t border-gray-100">
+          <div className="pt-4 space-y-4">{children}</div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function QuickNav({
+  currentSection,
+  onNavigate,
+}: {
+  currentSection: SectionKey;
+  onNavigate: (section: SectionKey) => void;
+}) {
+  return (
+    <div className="sticky top-2 z-20 -mx-2 px-2 py-2">
+      <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            {SECTION_NAV.map(({ key, label, icon: Icon }) => {
+              const active = currentSection === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onNavigate(key)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    active
+                      ? 'bg-pink-50 border-pink-300 text-[#FF4D8D] font-semibold'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-pink-200'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
-      {children}
     </div>
   );
 }
@@ -73,7 +222,6 @@ export default function AdminSettingsPage() {
     freeShippingThreshold: 150,
     zelleEmail: '',
     zelleRecipientName: '',
-    emailNotificationsEnabled: true,
     alimtalkEnabled: false,
     solapiApiKey: '',
     solapiApiSecret: '',
@@ -83,13 +231,47 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] =
+    useState<Record<SectionKey, boolean>>(DEFAULT_SECTION_STATE);
+  const [activeSection, setActiveSection] = useState<SectionKey>('payment');
+  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([]);
+  const [notificationTemplateByType, setNotificationTemplateByType] = useState<
+    Record<string, string>
+  >({});
+  const [isTemplateEnabled, setIsTemplateEnabled] = useState<Record<string, boolean>>({});
+  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         setIsLoading(true);
-        const { data } = await apiClient.get<SystemSettings>('/admin/config/settings');
-        setSettings(data);
+        const [settingsResponse, templatesResponse] = await Promise.all([
+          apiClient.get<SystemSettings>('/admin/config/settings'),
+          apiClient.get<NotificationTemplate[]>('/admin/notification-templates'),
+        ]);
+        const templates = templatesResponse.data || [];
+        const nextByType: Record<string, string> = {};
+        const nextTemplateEnabled: Record<string, boolean> = {};
+
+        NOTIFICATION_EVENT_GROUPS.forEach((event) => {
+          nextByType[event.type] = '';
+          nextTemplateEnabled[event.type] = false;
+        });
+
+        for (const template of templates) {
+          if (!NOTIFICATION_EVENT_GROUPS.some((event) => event.type === template.type)) {
+            continue;
+          }
+          if (!nextByType[template.type]) {
+            nextByType[template.type] = template.id;
+          }
+          nextTemplateEnabled[template.type] = true;
+        }
+
+        setSettings(settingsResponse.data);
+        setNotificationTemplates(templates);
+        setNotificationTemplateByType(nextByType);
+        setIsTemplateEnabled(nextTemplateEnabled);
       } catch (err: any) {
         console.error('Failed to load settings:', err);
         setError('설정을 불러오는데 실패했습니다');
@@ -99,6 +281,57 @@ export default function AdminSettingsPage() {
     };
     fetchSettings();
   }, []);
+
+  const handleTemplateFieldChange = (
+    id: string,
+    field: keyof NotificationTemplate,
+    value: string,
+  ) => {
+    setNotificationTemplates((prev) =>
+      prev.map((template) => (template.id === id ? { ...template, [field]: value } : template)),
+    );
+  };
+
+  const handleTemplateSelect = (type: string, templateId: string) => {
+    setNotificationTemplateByType((prev) => ({
+      ...prev,
+      [type]: templateId,
+    }));
+  };
+
+  const getTemplatesByType = (type: string) =>
+    notificationTemplates.filter((template) => template.type === type);
+
+  const getActiveTemplate = (type: string): NotificationTemplate | undefined => {
+    const selected = notificationTemplateByType[type];
+    const list = getTemplatesByType(type);
+    return list.find((template) => template.id === selected) ?? list[0];
+  };
+
+  const handleTemplateSave = async (template: NotificationTemplate) => {
+    setSavingTemplateId(template.id);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await apiClient.patch(`/admin/notification-templates/${template.id}`, {
+        template: template.template,
+        kakaoTemplateCode: template.kakaoTemplateCode,
+      });
+      setSuccessMessage('알림 템플릿이 저장되었습니다');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (err: any) {
+      setError(err.response?.data?.message || '알림 템플릿 저장에 실패했습니다');
+    } finally {
+      setSavingTemplateId(null);
+    }
+  };
+
+  const handleTemplateToggle = (type: string, enabled: boolean) => {
+    setIsTemplateEnabled((prev) => ({
+      ...prev,
+      [type]: enabled,
+    }));
+  };
 
   const handleSave = async () => {
     try {
@@ -117,6 +350,25 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleToggleSection = (key: SectionKey) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+    setActiveSection(key);
+  };
+
+  const handleNavigateSection = (key: SectionKey) => {
+    setActiveSection(key);
+    const sectionElement = document.getElementById(key);
+    if (sectionElement) {
+      sectionElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -131,7 +383,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <SettingsIcon className="w-7 h-7 text-[#FF4D8D]" />
@@ -139,14 +391,7 @@ export default function AdminSettingsPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">플랫폼 전체 설정을 관리합니다</p>
         </div>
-        <Button variant="primary" size="lg" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4 mr-2" />
-          )}
-          {isSaving ? '저장 중...' : '전체 저장'}
-        </Button>
+        <QuickNav currentSection={activeSection} onNavigate={handleNavigateSection} />
       </div>
 
       {/* Alert Messages */}
@@ -163,8 +408,14 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      {/* Zelle Payment Settings */}
-      <SectionCard icon={DollarSign} title="입금 정보 (Zelle)">
+      {/* Payment Settings */}
+      <SectionCard
+        icon={DollarSign}
+        title="입금 정보 (Zelle)"
+        sectionId="payment"
+        isOpen={expandedSections.payment}
+        onToggle={() => handleToggleSection('payment')}
+      >
         <div className="space-y-4">
           <Input
             label="Zelle 이메일"
@@ -190,114 +441,116 @@ export default function AdminSettingsPage() {
         </div>
       </SectionCard>
 
-      {/* Cart & Shipping Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Cart Timer */}
-        <SectionCard icon={ShoppingCart} title="장바구니 타이머">
-          <Input
-            label="기본 타이머 시간 (시간)"
-            type="number"
-            step="1"
-            min={MIN_CART_TIMER_HOURS}
-            max={MAX_CART_TIMER_HOURS}
-            value={Math.max(
-              MIN_CART_TIMER_HOURS,
-              Math.ceil((settings.defaultCartTimerMinutes || 0) / MINUTES_PER_HOUR),
-            )}
-            onChange={(e) => {
-              const parsedHours = parseInt(e.target.value, 10);
-              const hours = Number.isFinite(parsedHours)
-                ? Math.min(
-                    MAX_CART_TIMER_HOURS,
-                    Math.max(MIN_CART_TIMER_HOURS, parsedHours || MIN_CART_TIMER_HOURS),
-                  )
-                : MIN_CART_TIMER_HOURS;
-              setSettings({ ...settings, defaultCartTimerMinutes: hours * MINUTES_PER_HOUR });
-            }}
-            fullWidth
-          />
-          <p className="text-xs text-gray-400 mt-2">1시간~120시간(최대 5일) 범위</p>
-        </SectionCard>
+      {/* Cart & Shipping */}
+      <SectionCard
+        icon={ShoppingCart}
+        title="장바구니/배송"
+        sectionId="commerce"
+        isOpen={expandedSections.commerce}
+        onToggle={() => handleToggleSection('commerce')}
+      >
+        <div className="space-y-6">
+          <div className="border border-gray-100 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 타이머</h4>
+            <Input
+              label="기본 타이머 시간 (시간)"
+              type="number"
+              step="1"
+              min={MIN_CART_TIMER_HOURS}
+              max={MAX_CART_TIMER_HOURS}
+              value={Math.max(
+                MIN_CART_TIMER_HOURS,
+                Math.ceil((settings.defaultCartTimerMinutes || 0) / MINUTES_PER_HOUR),
+              )}
+              onChange={(e) => {
+                const parsedHours = parseInt(e.target.value, 10);
+                const hours = Number.isFinite(parsedHours)
+                  ? Math.min(
+                      MAX_CART_TIMER_HOURS,
+                      Math.max(MIN_CART_TIMER_HOURS, parsedHours || MIN_CART_TIMER_HOURS),
+                    )
+                  : MIN_CART_TIMER_HOURS;
+                setSettings({ ...settings, defaultCartTimerMinutes: hours * MINUTES_PER_HOUR });
+              }}
+              fullWidth
+            />
+            <p className="text-xs text-gray-400 mt-2">1시간~120시간(최대 5일) 범위</p>
+          </div>
 
-        {/* Shipping Settings */}
-        <SectionCard icon={Package} title="배송 설정">
-          <div className="space-y-4">
-            <Input
-              label="기본 배송비 — 동부 ($)"
-              type="number"
-              step="0.01"
-              min={0}
-              value={settings.defaultShippingFee}
-              onChange={(e) =>
-                setSettings({ ...settings, defaultShippingFee: parseFloat(e.target.value) || 0 })
-              }
-              fullWidth
-            />
-            <Input
-              label="CA/서부 배송비 ($)"
-              type="number"
-              step="0.01"
-              min={0}
-              value={settings.caShippingFee}
-              onChange={(e) =>
-                setSettings({ ...settings, caShippingFee: parseFloat(e.target.value) || 0 })
-              }
-              fullWidth
-            />
-            <div className="flex items-center gap-3 pt-1">
-              <input
-                type="checkbox"
-                id="freeShippingEnabled"
-                checked={settings.freeShippingEnabled}
-                onChange={(e) =>
-                  setSettings({ ...settings, freeShippingEnabled: e.target.checked })
-                }
-                className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-              />
-              <label htmlFor="freeShippingEnabled" className="text-sm text-gray-700 cursor-pointer">
-                무료배송 활성화
-              </label>
-            </div>
-            {settings.freeShippingEnabled && (
+          <div className="border border-gray-100 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-4">배송 설정</h4>
+            <div className="space-y-4">
               <Input
-                label="무료배송 기준금액 ($)"
+                label="기본 배송비 — 동부 ($)"
                 type="number"
                 step="0.01"
                 min={0}
-                value={settings.freeShippingThreshold}
+                value={settings.defaultShippingFee}
                 onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    freeShippingThreshold: parseFloat(e.target.value) || 0,
-                  })
+                  setSettings({ ...settings, defaultShippingFee: parseFloat(e.target.value) || 0 })
                 }
                 fullWidth
               />
-            )}
+              <Input
+                label="CA/서부 배송비 ($)"
+                type="number"
+                step="0.01"
+                min={0}
+                value={settings.caShippingFee}
+                onChange={(e) =>
+                  setSettings({ ...settings, caShippingFee: parseFloat(e.target.value) || 0 })
+                }
+                fullWidth
+              />
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  id="freeShippingEnabled"
+                  checked={settings.freeShippingEnabled}
+                  onChange={(e) =>
+                    setSettings({ ...settings, freeShippingEnabled: e.target.checked })
+                  }
+                  className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="freeShippingEnabled"
+                  className="text-sm text-gray-700 cursor-pointer"
+                >
+                  무료배송 활성화
+                </label>
+              </div>
+              {settings.freeShippingEnabled && (
+                <Input
+                  label="무료배송 기준금액 ($)"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={settings.freeShippingThreshold}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      freeShippingThreshold: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  fullWidth
+                />
+              )}
+            </div>
           </div>
-        </SectionCard>
-      </div>
+        </div>
+      </SectionCard>
 
       {/* Notification Settings */}
-      <SectionCard icon={Bell} title="알림 설정">
+      <SectionCard
+        icon={Bell}
+        title="알림 설정"
+        sectionId="notification"
+        isOpen={expandedSections.notification}
+        onToggle={() => handleToggleSection('notification')}
+      >
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="emailNotifications"
-              checked={settings.emailNotificationsEnabled}
-              onChange={(e) =>
-                setSettings({ ...settings, emailNotificationsEnabled: e.target.checked })
-              }
-              className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-            />
-            <label htmlFor="emailNotifications" className="text-sm text-gray-700 cursor-pointer">
-              이메일 알림 활성화
-            </label>
-          </div>
-
-          <div className="border-t border-gray-100 pt-6">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 id="alimtalkEnabled"
@@ -305,16 +558,25 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setSettings({ ...settings, alimtalkEnabled: e.target.checked })}
                 className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
               />
-              <label
-                htmlFor="alimtalkEnabled"
-                className="text-sm font-medium text-gray-700 cursor-pointer"
-              >
-                카카오 알림톡 활성화
-              </label>
+              <div>
+                <label
+                  htmlFor="alimtalkEnabled"
+                  className="text-sm font-semibold text-gray-700 cursor-pointer"
+                >
+                  카카오 알림톡 활성화
+                </label>
+                <p className="text-xs text-gray-500">
+                  이벤트별 알림톡 발송을 제어하고 템플릿을 관리합니다.
+                </p>
+              </div>
             </div>
 
+            <p className="text-xs text-gray-500">
+              알림 설정은 아래 이벤트 단위로 관리하며, ON/OFF를 끈 이벤트는 자동 발송되지 않습니다.
+            </p>
+
             {settings.alimtalkEnabled && (
-              <div className="space-y-4 pl-7">
+              <div className="space-y-4">
                 <Input
                   label="솔라피 API Key"
                   type="text"
@@ -345,25 +607,184 @@ export default function AdminSettingsPage() {
               </div>
             )}
           </div>
+
+          <div className="space-y-3">
+            {NOTIFICATION_EVENT_GROUPS.map((event) => {
+              const templates = getTemplatesByType(event.type);
+              const activeTemplate = getActiveTemplate(event.type);
+              const isEnabled = !!isTemplateEnabled[event.type];
+              const isEditable = settings.alimtalkEnabled && isEnabled;
+
+              return (
+                <div key={event.type} className="border border-gray-200 rounded-xl bg-white">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">{event.label}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{event.description}</p>
+                    </div>
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        id={`template-${event.type}`}
+                        checked={isEnabled}
+                        onChange={(e) => handleTemplateToggle(event.type, e.target.checked)}
+                        className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
+                        disabled={!settings.alimtalkEnabled}
+                      />
+                      ON/OFF
+                    </label>
+                  </div>
+
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        템플릿 선택
+                      </label>
+                      <select
+                        value={activeTemplate?.id ?? ''}
+                        onChange={(e) => handleTemplateSelect(event.type, e.target.value)}
+                        disabled={!isEditable}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {templates.length === 0 ? (
+                          <option value="">템플릿이 없습니다</option>
+                        ) : (
+                          templates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+
+                    {activeTemplate ? (
+                      <>
+                        <Input
+                          label="카카오 템플릿 코드"
+                          type="text"
+                          value={activeTemplate.kakaoTemplateCode || ''}
+                          onChange={(e) =>
+                            handleTemplateFieldChange(
+                              activeTemplate.id,
+                              'kakaoTemplateCode',
+                              e.target.value,
+                            )
+                          }
+                          fullWidth
+                          disabled={!isEditable}
+                        />
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                            메시지 본문
+                          </label>
+                          <textarea
+                            value={activeTemplate.template}
+                            onChange={(e) =>
+                              handleTemplateFieldChange(
+                                activeTemplate.id,
+                                'template',
+                                e.target.value,
+                              )
+                            }
+                            rows={4}
+                            disabled={!isEditable}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-[#FF4D8D] disabled:bg-gray-100 disabled:text-gray-400 resize-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                            미리보기
+                          </label>
+                          <textarea
+                            value={buildTemplatePreview(event.type, activeTemplate.template)}
+                            rows={3}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700"
+                          />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs text-gray-500">
+                            사용중 템플릿: {activeTemplate.name}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleTemplateSave(activeTemplate)}
+                            disabled={savingTemplateId === activeTemplate.id || !isEditable}
+                          >
+                            {savingTemplateId === activeTemplate.id ? '저장 중...' : '저장'}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        해당 이벤트에 연결된 템플릿이 없습니다. 템플릿을 먼저 등록해 주세요.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </SectionCard>
-
       {/* Extended Sections */}
-      <ShippingMessages />
-      <PointsConfiguration />
-      <NoticeManagement />
-      <NoticeListManagement />
+      <SectionCard
+        icon={Package}
+        title="배송 안내 메시지"
+        sectionId="shippingMessages"
+        isOpen={expandedSections.shippingMessages}
+        onToggle={() => handleToggleSection('shippingMessages')}
+      >
+        <ShippingMessages />
+      </SectionCard>
+      <SectionCard
+        icon={Package}
+        title="포인트 설정"
+        sectionId="points"
+        isOpen={expandedSections.points}
+        onToggle={() => handleToggleSection('points')}
+      >
+        <PointsConfiguration />
+      </SectionCard>
+      <SectionCard
+        icon={SettingsIcon}
+        title="공지 작성 관리"
+        sectionId="noticeManagement"
+        isOpen={expandedSections.noticeManagement}
+        onToggle={() => handleToggleSection('noticeManagement')}
+      >
+        <NoticeManagement />
+      </SectionCard>
+      <SectionCard
+        icon={SettingsIcon}
+        title="공지 목록 관리"
+        sectionId="noticeList"
+        isOpen={expandedSections.noticeList}
+        onToggle={() => handleToggleSection('noticeList')}
+      >
+        <NoticeListManagement />
+      </SectionCard>
 
       {/* Bottom Save */}
-      <div className="flex justify-end pb-8">
-        <Button variant="primary" size="lg" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4 mr-2" />
-          )}
-          {isSaving ? '저장 중...' : '전체 설정 저장'}
-        </Button>
+      <div className="sticky bottom-4">
+        <div className="rounded-xl border border-gray-200 bg-white/95 backdrop-blur p-3 shadow-sm">
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full md:w-auto"
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {isSaving ? '저장 중...' : '전체 설정 저장'}
+          </Button>
+        </div>
       </div>
     </div>
   );
