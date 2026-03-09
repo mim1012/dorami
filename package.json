@@ -52,7 +52,10 @@
     "typescript": "^5.7.2"
   },
   "lint-staged": {
-    "backend/src/**/*.ts": [
+    "backend/src/**/*.spec.ts": [
+      "prettier --write"
+    ],
+    "backend/src/**/!(*.spec).ts": [
       "eslint --config backend/eslint.config.mjs --fix",
       "prettier --write"
     ],
