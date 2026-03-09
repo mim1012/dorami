@@ -61,6 +61,17 @@ export class ProductNotFoundException extends BusinessException {
   }
 }
 
+export class ProfileIncompleteException extends BusinessException {
+  constructor(userId: string) {
+    super(
+      'PROFILE_INCOMPLETE',
+      { userId },
+      'Profile information is incomplete',
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
 export class UserNotFoundException extends BusinessException {
   constructor(userId: string) {
     super('USER_NOT_FOUND', { userId }, `User ${userId} not found`, HttpStatus.NOT_FOUND);

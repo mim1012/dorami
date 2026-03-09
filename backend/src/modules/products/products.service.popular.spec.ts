@@ -102,7 +102,7 @@ describe('ProductsService.getPopularProducts', () => {
 
     expect(mockPrisma.product.count).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: 'AVAILABLE' },
+        where: expect.objectContaining({ status: 'AVAILABLE' }),
       }),
     );
   });

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
@@ -37,6 +38,10 @@ describe('UsersService - Profile Completion', () => {
         {
           provide: EncryptionService,
           useValue: mockEncryptionService,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('') },
         },
       ],
     }).compile();

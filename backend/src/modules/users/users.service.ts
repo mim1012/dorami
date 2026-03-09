@@ -78,14 +78,16 @@ export class UsersService {
    * Complete user profile with encrypted shipping address
    */
   async completeProfile(userId: string, dto: CompleteProfileDto): Promise<UserResponseDto> {
-    // Check Instagram ID uniqueness
-    const isAvailable = await this.isInstagramIdAvailable(dto.instagramId, userId);
-    if (!isAvailable) {
-      throw new ConflictException('This Instagram ID is already registered');
+    // Check Instagram ID uniqueness (only if provided)
+    if (dto.instagramId) {
+      const isAvailable = await this.isInstagramIdAvailable(dto.instagramId, userId);
+      if (!isAvailable) {
+        throw new ConflictException('This Instagram ID is already registered');
+      }
     }
 
-    // Normalize phone number to +1XXXXXXXXXX format
-    const normalizedPhone = this.normalizePhoneNumber(dto.phone);
+    // Normalize phone number to +1XXXXXXXXXX format (only if provided)
+    const normalizedPhone = dto.phone ? this.normalizePhoneNumber(dto.phone) : undefined;
 
     // Prepare shipping address for encryption
     const shippingAddress: ShippingAddress = {
@@ -95,8 +97,10 @@ export class UsersService {
       city: dto.city,
       state: dto.state,
       zip: dto.zip,
-      phone: normalizedPhone,
     };
+    if (normalizedPhone) {
+      shippingAddress.phone = normalizedPhone;
+    }
 
     // Encrypt shipping address
     const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);

@@ -17,7 +17,8 @@ import {
 import { LogErrors } from '../../common/decorators/log-errors.decorator';
 import { findOrThrow } from '../../common/prisma/find-or-throw.util';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Product, ProductStatus as PrismaProductStatus } from '@prisma/client';
+import { ProductStatus as PrismaProductStatus, StreamStatus, Prisma } from '@prisma/client';
+import { mapProductToDto } from './product.mapper';
 
 // Type for product update data
 interface ProductUpdateData {
@@ -34,6 +35,7 @@ interface ProductUpdateData {
   isNew?: boolean;
   discountRate?: Decimal | null;
   originalPrice?: Decimal | null;
+  expiresAt?: Date | null;
 }
 
 @Injectable()
@@ -91,6 +93,7 @@ export class ProductsService {
           createDto.originalPrice !== null && createDto.originalPrice !== undefined
             ? new Decimal(createDto.originalPrice)
             : null,
+        expiresAt: createDto.expiresAt ? new Date(createDto.expiresAt) : null,
       },
     });
 
@@ -100,10 +103,10 @@ export class ProductsService {
     this.eventEmitter.emit('product:created', {
       productId: product.id,
       streamKey: product.streamKey,
-      product: this.mapToResponseDto(product),
+      product: mapProductToDto(product),
     });
 
-    return this.mapToResponseDto(product);
+    return mapProductToDto(product);
   }
 
   /**
@@ -111,16 +114,21 @@ export class ProductsService {
    * Epic 5 Story 5.2, 5.3
    */
   @LogErrors('get products by stream key')
-  async findByStreamKey(streamKey: string, status?: ProductStatus): Promise<ProductResponseDto[]> {
+  async findByStreamKey(
+    streamKey: string,
+    status?: ProductStatus,
+    includeExpired = false,
+  ): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: {
         streamKey,
         ...(status && { status }),
+        ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
-    return products.map((product) => this.mapToResponseDto(product));
+    return products.map((product) => mapProductToDto(product));
   }
 
   /**
@@ -132,6 +140,7 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: {
         status: 'AVAILABLE',
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       orderBy: {
         createdAt: 'desc',
@@ -139,20 +148,23 @@ export class ProductsService {
       take: limit,
     });
 
-    return products.map((p) => this.mapToResponseDto(p));
+    return products.map((p) => mapProductToDto(p));
   }
 
   /**
    * Get all products (legacy method)
    */
   @LogErrors('get all products')
-  async findAll(status?: ProductStatus): Promise<ProductResponseDto[]> {
+  async findAll(status?: ProductStatus, includeExpired = false): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
-      where: status ? { status } : undefined,
+      where: {
+        ...(status ? { status } : {}),
+        ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
+      },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
-    return products.map((p) => this.mapToResponseDto(p));
+    return products.map((p) => mapProductToDto(p));
   }
 
   /**
@@ -166,7 +178,7 @@ export class ProductsService {
       'Product',
       id,
     );
-    return this.mapToResponseDto(product);
+    return mapProductToDto(product);
   }
 
   /**
@@ -231,6 +243,9 @@ export class ProductsService {
           ? new Decimal(updateDto.originalPrice)
           : null;
     }
+    if (updateDto.expiresAt !== undefined) {
+      updateData.expiresAt = updateDto.expiresAt ? new Date(updateDto.expiresAt) : null;
+    }
 
     const product = await this.prisma.product.update({
       where: { id },
@@ -243,10 +258,10 @@ export class ProductsService {
     this.eventEmitter.emit('product:updated', {
       productId: product.id,
       streamKey: product.streamKey,
-      product: this.mapToResponseDto(product),
+      product: mapProductToDto(product),
     });
 
-    return this.mapToResponseDto(product);
+    return mapProductToDto(product);
   }
 
   /**
@@ -270,7 +285,7 @@ export class ProductsService {
       streamKey: product.streamKey,
     });
 
-    return this.mapToResponseDto(product);
+    return mapProductToDto(product);
   }
 
   /**
@@ -370,10 +385,10 @@ export class ProductsService {
       streamKey: updatedProduct.streamKey,
       oldStock: product.quantity,
       newStock: updatedProduct.quantity,
-      product: this.mapToResponseDto(updatedProduct),
+      product: mapProductToDto(updatedProduct),
     });
 
-    return this.mapToResponseDto(updatedProduct);
+    return mapProductToDto(updatedProduct);
   }
 
   /**
@@ -413,10 +428,10 @@ export class ProductsService {
     this.eventEmitter.emit('product:created', {
       productId: product.id,
       streamKey: product.streamKey,
-      product: this.mapToResponseDto(product),
+      product: mapProductToDto(product),
     });
 
-    return this.mapToResponseDto(product);
+    return mapProductToDto(product);
   }
 
   /**
@@ -461,7 +476,7 @@ export class ProductsService {
       this.eventEmitter.emit('product:updated', {
         productId: product.id,
         streamKey: product.streamKey,
-        product: this.mapToResponseDto(product),
+        product: mapProductToDto(product),
       });
     }
 
@@ -515,6 +530,7 @@ export class ProductsService {
   async getStoreProducts(
     page = 1,
     limit = 24,
+    search?: string,
   ): Promise<{
     products: ProductResponseDto[];
     total: number;
@@ -523,20 +539,37 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
+    const whereCondition = {
+      status: 'AVAILABLE' as const,
+      AND: [
+        { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+        {
+          OR: [
+            { streamKey: null },
+            { streamKey: '' },
+            {
+              liveStream: {
+                is: { status: StreamStatus.OFFLINE },
+              },
+            },
+          ],
+        },
+        ...(search?.trim()
+          ? [
+              {
+                name: {
+                  contains: search.trim(),
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            ]
+          : []),
+      ],
+    };
+
     // Get products from ended (OFFLINE) live streams OR products with no streamKey (null or empty string)
     const products = await this.prisma.product.findMany({
-      where: {
-        status: 'AVAILABLE',
-        OR: [
-          { streamKey: null }, // Products with null streamKey
-          { streamKey: '' }, // Products with empty string streamKey
-          {
-            liveStream: {
-              status: 'OFFLINE', // Products from OFFLINE live streams
-            },
-          },
-        ],
-      },
+      where: whereCondition,
       include: {
         liveStream: {
           select: {
@@ -554,18 +587,7 @@ export class ProductsService {
     });
 
     const total = await this.prisma.product.count({
-      where: {
-        status: 'AVAILABLE',
-        OR: [
-          { streamKey: null },
-          { streamKey: '' },
-          {
-            liveStream: {
-              status: 'OFFLINE',
-            },
-          },
-        ],
-      },
+      where: whereCondition,
     });
 
     this.logger.log(
@@ -573,7 +595,7 @@ export class ProductsService {
     );
 
     return {
-      products: products.map((p) => this.mapToResponseDto(p)),
+      products: products.map((p) => mapProductToDto(p)),
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -606,7 +628,7 @@ export class ProductsService {
     }
 
     return {
-      products: activeLive.products.map((p) => this.mapToResponseDto(p)),
+      products: activeLive.products.map((p) => mapProductToDto(p)),
       streamTitle: activeLive.title,
       streamKey: activeLive.streamKey,
     };
@@ -637,6 +659,7 @@ export class ProductsService {
         LEFT JOIN order_items oi ON p.id = oi.product_id
         LEFT JOIN orders o ON oi.order_id = o.id
         WHERE p.status = 'AVAILABLE'
+          AND (p.expires_at IS NULL OR p.expires_at > NOW())
           AND (o.status IN ('PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED') OR o.id IS NULL)
         GROUP BY p.id
         ORDER BY sold_count DESC
@@ -662,12 +685,15 @@ export class ProductsService {
 
       // Step 4: Get total count
       const total = await this.prisma.product.count({
-        where: { status: 'AVAILABLE' },
+        where: {
+          status: 'AVAILABLE',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
       });
 
       return {
         data: productsWithSoldCount.map(({ product, soldCount }) => ({
-          ...this.mapToResponseDto(product),
+          ...mapProductToDto(product),
           soldCount,
         })),
         meta: {
@@ -681,6 +707,21 @@ export class ProductsService {
       this.logger.error('getPopularProducts error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Delete all expired products (called by scheduler)
+   */
+  @LogErrors('delete expired products')
+  async deleteExpiredProducts(): Promise<number> {
+    const expired = await this.prisma.product.findMany({
+      where: { expiresAt: { not: null, lte: new Date() } },
+      select: { id: true },
+    });
+    for (const { id } of expired) {
+      await this.delete(id);
+    }
+    return expired.length;
   }
 
   /**
@@ -700,38 +741,5 @@ export class ProductsService {
         seen.add(url);
         return true;
       });
-  }
-
-  /**
-   * Map Prisma model to Response DTO
-   */
-  private mapToResponseDto(product: Product): ProductResponseDto {
-    return {
-      id: product.id,
-      streamKey: product.streamKey,
-      name: product.name,
-      price: parseFloat(product.price.toString()),
-      stock: product.quantity, // Map quantity to stock
-      colorOptions: Array.isArray(product.colorOptions) ? product.colorOptions : [],
-      sizeOptions: Array.isArray(product.sizeOptions) ? product.sizeOptions : [],
-      shippingFee: parseFloat(product.shippingFee.toString()),
-      freeShippingMessage: product.freeShippingMessage ?? undefined,
-      timerEnabled: product.timerEnabled,
-      timerDuration: product.timerDuration,
-      imageUrl: product.imageUrl ?? undefined,
-      images: product.images ?? [],
-      sortOrder: product.sortOrder ?? 0,
-      isNew: product.isNew ?? false,
-      discountRate: product.discountRate ? parseFloat(product.discountRate.toString()) : undefined,
-      originalPrice: product.originalPrice
-        ? parseFloat(product.originalPrice.toString())
-        : undefined,
-      status: product.status as ProductStatus,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
-      // Legacy fields
-      description: undefined,
-      metadata: undefined,
-    };
   }
 }

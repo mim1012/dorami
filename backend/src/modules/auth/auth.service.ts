@@ -61,6 +61,7 @@ export class AuthService {
         data: {
           kakaoId: profile.kakaoId,
           email: null,
+          kakaoPhone: profile.kakaoPhone ?? null,
           name: profile.nickname,
           role: assignedRole,
           status: 'ACTIVE',
@@ -70,11 +71,12 @@ export class AuthService {
 
       this.logger.log(`New user created: ${user.id} (role: ${assignedRole})`);
     } else {
-      // Update nickname and lastLoginAt; preserve role and email (user-provided)
+      // Update nickname, lastLoginAt, and kakaoPhone; preserve role and email (user-provided)
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           name: profile.nickname,
+          kakaoPhone: profile.kakaoPhone ?? user.kakaoPhone,
           lastLoginAt: new Date(),
         },
       });
@@ -96,6 +98,8 @@ export class AuthService {
   }
 
   async login(user: User): Promise<LoginResponseDto> {
+    const profileStatus = this.getProfileCompletionStatus(user);
+
     const payload: TokenPayload = {
       sub: user.id,
       userId: user.id,
@@ -103,6 +107,7 @@ export class AuthService {
       kakaoId: user.kakaoId,
       name: user.name,
       role: user.role,
+      profileComplete: profileStatus.profileComplete,
     };
 
     const accessToken = this.jwtService.sign(
@@ -119,6 +124,8 @@ export class AuthService {
     const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
     try {
       await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
+      // Clear blacklist entry so new tokens are not rejected after a previous logout
+      await this.redisService.del(`blacklist:${user.id}`);
     } catch (error) {
       this.logger.warn(`Failed to store refresh token in Redis: ${(error as Error).message}`);
     }
@@ -132,6 +139,7 @@ export class AuthService {
         email: user.email ?? undefined,
         name: user.name,
         role: user.role,
+        profileComplete: profileStatus.profileComplete,
       },
     };
   }
@@ -161,7 +169,10 @@ export class AuthService {
       await this.redisService.del(`refresh_token:${payload.sub}`);
 
       return this.login(user);
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
@@ -207,8 +218,10 @@ export class AuthService {
     const missingInstagramId = !user.instagramId;
     const missingShippingAddress = !user.shippingAddress;
 
-    const profileComplete =
-      !missingEmail && !missingPhone && !missingInstagramId && !missingShippingAddress;
+    // Use profileCompletedAt as single source of truth.
+    // phone and instagramId are optional in CompleteProfileDto, so requiring them here
+    // would trap users who skip those fields in a frontend redirect loop.
+    const profileComplete = !!user.profileCompletedAt;
 
     // A user is "new" if they have no email yet (freshly registered via Kakao)
     const isNewUser = !user.email;

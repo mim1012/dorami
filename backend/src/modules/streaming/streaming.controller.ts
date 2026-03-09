@@ -30,6 +30,7 @@ import {
   UpdateStreamDto,
   GenerateKeyDto,
   StreamHistoryQueryDto,
+  StreamHistoryBulkDeleteDto,
   RtmpCallbackDto,
   SrsCallbackDto,
 } from './dto/streaming.dto';
@@ -211,6 +212,16 @@ export class StreamingController {
   @ApiResponse({ status: 200, description: '스트림 이력 목록' })
   async getHistory(@Query() query: StreamHistoryQueryDto) {
     return this.streamingService.getStreamHistory(query);
+  }
+
+  @SkipThrottle({ short: true, medium: true, long: true })
+  @AdminOnly()
+  @Post('history/bulk-delete')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '스트림 이력 일괄 삭제 (관리자)' })
+  @ApiResponse({ status: 200, description: '스트림 이력 삭제 결과' })
+  async deleteHistoryBulk(@Body() dto: StreamHistoryBulkDeleteDto) {
+    return this.streamingService.deleteHistoryStreams(dto.streamIds);
   }
 
   @SkipThrottle({ short: true, medium: true, long: true })

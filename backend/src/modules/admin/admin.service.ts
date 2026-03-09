@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -18,6 +24,7 @@ import {
   GetOrdersQueryDto,
   OrderListResponseDto,
   OrderListItemDto,
+  UpdateAdminUserDto,
   UserDetailDto,
   UpdateUserStatusDto,
   ShippingAddressDto,
@@ -28,7 +35,7 @@ import {
   UpdatePaymentProvidersDto,
 } from './dto/admin.dto';
 
-import { UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import { Prisma, UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
 
 // Type definitions for admin service
 interface WhereClause {
@@ -298,12 +305,13 @@ export class AdminService {
     // Build where clause for filters
     const where: WhereClause = {};
 
-    // Search filter (name, email, instagramId)
+    // Search filter (name, email, instagramId, depositorName)
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
         { instagramId: { contains: search, mode: 'insensitive' } },
+        { depositorName: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -342,9 +350,11 @@ export class AdminService {
           id: true,
           email: true,
           name: true,
+          depositorName: true,
           phone: true,
           instagramId: true,
           shippingAddress: true,
+          profileCompletedAt: true,
           createdAt: true,
           lastLoginAt: true,
           status: true,
@@ -366,13 +376,22 @@ export class AdminService {
 
     // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => {
+      const shippingSummary = this.formatShippingAddressSummary(user.shippingAddress);
+      // Debug: Log shipping address decryption
+      if (user.shippingAddress && shippingSummary === '-') {
+        this.logger.warn(
+          `Failed to decrypt address for user ${user.id}: ${String(user.shippingAddress).substring(0, 50)}...`,
+        );
+      }
       return {
         id: user.id,
         email: user.email ?? '',
         name: user.name,
+        depositorName: user.depositorName ?? null,
         phone: user.phone,
         instagramId: user.instagramId,
-        shippingAddressSummary: this.formatShippingAddressSummary(user.shippingAddress),
+        shippingAddressSummary: shippingSummary,
+        profileCompletedAt: user.profileCompletedAt?.toISOString() ?? null,
         createdAt: user.createdAt.toISOString(),
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         status: user.status,
@@ -1170,9 +1189,9 @@ export class AdminService {
   }
 
   private formatCurrency(num: number): string {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(num);
   }
@@ -1214,7 +1233,6 @@ export class AdminService {
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       freeShippingEnabled: config.freeShippingEnabled,
-      emailNotificationsEnabled: config.emailNotificationsEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
       solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
@@ -1247,9 +1265,6 @@ export class AdminService {
     }
     if (dto.bankAccountHolder !== undefined) {
       updateData.bankAccountHolder = dto.bankAccountHolder;
-    }
-    if (dto.emailNotificationsEnabled !== undefined) {
-      updateData.emailNotificationsEnabled = dto.emailNotificationsEnabled;
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
@@ -1299,7 +1314,6 @@ export class AdminService {
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       freeShippingEnabled: config.freeShippingEnabled,
-      emailNotificationsEnabled: config.emailNotificationsEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
       solapiApiKey: config.solapiApiKey,
       solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
@@ -1879,6 +1893,7 @@ export class AdminService {
         id: true,
         email: true,
         name: true,
+        phone: true,
         instagramId: true,
         depositorName: true,
         shippingAddress: true,
@@ -1919,6 +1934,7 @@ export class AdminService {
       id: user.id,
       email: user.email ?? '',
       name: user.name,
+      phone: user.phone ?? undefined,
       instagramId: user.instagramId,
       depositorName: user.depositorName,
       shippingAddress,
@@ -1929,6 +1945,73 @@ export class AdminService {
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
       statistics,
     };
+  }
+
+  async updateUser(userId: string, dto: UpdateAdminUserDto): Promise<UserDetailDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (dto.instagramId) {
+      const duplicated = await this.prisma.user.findFirst({
+        where: {
+          instagramId: dto.instagramId,
+          NOT: { id: userId },
+        },
+        select: { id: true },
+      });
+
+      if (duplicated) {
+        throw new ConflictException('This Instagram ID is already registered');
+      }
+    }
+
+    const updateData: Prisma.UserUpdateInput = {};
+    if (dto.name !== undefined) {
+      updateData.name = dto.name;
+    }
+    if (dto.email !== undefined) {
+      updateData.email = dto.email;
+    }
+    if (dto.depositorName !== undefined) {
+      updateData.depositorName = dto.depositorName;
+    }
+    if (dto.phone !== undefined) {
+      updateData.phone = dto.phone;
+    }
+    if (dto.instagramId !== undefined) {
+      updateData.instagramId = dto.instagramId;
+    }
+    if (dto.shippingAddress !== undefined) {
+      const normalizedShippingAddress = {
+        fullName: dto.shippingAddress.fullName.trim(),
+        address1: dto.shippingAddress.address1.trim(),
+        address2: dto.shippingAddress.address2?.trim() || undefined,
+        city: dto.shippingAddress.city.trim(),
+        state: dto.shippingAddress.state.trim().toUpperCase(),
+        zip: dto.shippingAddress.zip.trim(),
+        phone: dto.shippingAddress.phone.trim(),
+      };
+
+      const encryptedAddress = this.encryptionService.encryptAddress(normalizedShippingAddress);
+      updateData.shippingAddress = encryptedAddress as unknown as Prisma.InputJsonValue;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('No update fields provided');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return this.getUserDetail(userId);
   }
 
   /**

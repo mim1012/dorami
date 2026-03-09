@@ -29,6 +29,7 @@ import { HealthModule } from './modules/health/health.module';
 import { PointsModule } from './modules/points/points.module';
 import { ReStreamModule } from './modules/restream/restream.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { ProfileCompleteGuard } from './modules/auth/guards/profile-complete.guard';
 
 @Module({
   imports: [
@@ -89,6 +90,11 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Require completed profiles for authenticated users
+    {
+      provide: APP_GUARD,
+      useClass: ProfileCompleteGuard,
     },
     // Global Rate Limiting Guard
     {

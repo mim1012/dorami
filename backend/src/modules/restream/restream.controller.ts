@@ -12,7 +12,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { ReStreamService } from './restream.service';
-import { CreateReStreamTargetDto, UpdateReStreamTargetDto } from './dto/restream.dto';
+import {
+  CreateReStreamTargetDto,
+  UpdateReStreamTargetDto,
+  DeleteReStreamTargetsDto,
+} from './dto/restream.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -58,6 +62,13 @@ export class ReStreamController {
   @ApiResponse({ status: 204, description: '삭제 성공' })
   async deleteTarget(@Param('id') id: string) {
     await this.restreamService.deleteTarget(id);
+  }
+
+  @Post('targets/bulk-delete')
+  @ApiOperation({ summary: '리스트림 대상 일괄 삭제 (관리자)' })
+  @ApiResponse({ status: 200, description: '일괄 삭제 결과 반환' })
+  async deleteTargetsBulk(@Body() dto: DeleteReStreamTargetsDto) {
+    return this.restreamService.deleteTargets(dto.ids);
   }
 
   @Get('status/:liveStreamId')
