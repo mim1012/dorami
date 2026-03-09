@@ -80,6 +80,76 @@ export class ReStreamService implements OnModuleDestroy {
     return this.prisma.reStreamTarget.delete({ where: { id } });
   }
 
+  async deleteTargets(ids: string[]) {
+    const uniqIds = Array.from(new Set(ids.filter(Boolean)));
+    const requestedCount = uniqIds.length;
+    if (requestedCount === 0) {
+      return {
+        requestedCount: 0,
+        deletedCount: 0,
+        skippedCount: 0,
+        deletedIds: [],
+        skippedIds: [],
+      };
+    }
+
+    const existingTargets = await this.prisma.reStreamTarget.findMany({
+      where: { id: { in: uniqIds } },
+      select: { id: true },
+    });
+
+    const existingIds = existingTargets.map((target) => target.id);
+    const existingSet = new Set(existingIds);
+    const skippedIds = uniqIds.filter((id) => !existingSet.has(id));
+
+    if (existingIds.length > 0) {
+      const stopJobs: Promise<void>[] = [];
+
+      for (const targetId of existingIds) {
+        for (const [liveStreamId, targetMap] of this.processes.entries()) {
+          const runningProcess = targetMap.get(targetId);
+          if (!runningProcess) {
+            continue;
+          }
+
+          const stopJob = this.killFFmpegProcess(runningProcess, liveStreamId, targetId)
+            .catch((error) => {
+              this.logger.warn(
+                `Failed to stop restream target ${targetId} while deleting for stream ${liveStreamId}: ${
+                  (error as Error).message
+                }`,
+              );
+            })
+            .finally(() => {
+              const mapAfter = this.processes.get(liveStreamId);
+              mapAfter?.delete(targetId);
+            });
+          stopJobs.push(stopJob);
+        }
+      }
+
+      await Promise.all(stopJobs);
+
+      await this.prisma.reStreamTarget.deleteMany({
+        where: { id: { in: existingIds } },
+      });
+
+      for (const [liveStreamId, targetMap] of this.processes.entries()) {
+        if (targetMap.size === 0) {
+          this.processes.delete(liveStreamId);
+        }
+      }
+    }
+
+    return {
+      requestedCount,
+      deletedCount: existingIds.length,
+      skippedCount: skippedIds.length,
+      deletedIds: existingIds,
+      skippedIds,
+    };
+  }
+
   // ─── FFmpeg Process Management ────────────────────────
 
   async startRestreaming(liveStreamId: string, streamKey: string, userId: string) {
@@ -213,10 +283,12 @@ export class ReStreamService implements OnModuleDestroy {
     const outputUrl = `${target.rtmpUrl}${target.streamKey}`;
 
     // For plain RTMP only, extract numeric part and use -rtmp_playpath to avoid URL parameter truncation
-    const rtmpsExtraArgs: string[] = isRtmps ? [] : (() => {
-      const streamKeyForPlaypath = target.streamKey.split('?')[0];
-      return ['-rtmp_playpath', streamKeyForPlaypath, '-rtmp_live', 'live'];
-    })();
+    const rtmpsExtraArgs: string[] = isRtmps
+      ? []
+      : (() => {
+          const streamKeyForPlaypath = target.streamKey.split('?')[0];
+          return ['-rtmp_playpath', streamKeyForPlaypath, '-rtmp_live', 'live'];
+        })();
 
     // Create log entry
     const log = await this.prisma.reStreamLog.create({

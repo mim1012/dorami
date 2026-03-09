@@ -1,4 +1,14 @@
-import { IsString, IsEnum, IsBoolean, IsOptional, IsNotEmpty, Matches } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsBoolean,
+  IsOptional,
+  IsNotEmpty,
+  Matches,
+  IsArray,
+  IsUUID,
+  ArrayNotEmpty,
+} from 'class-validator';
 
 export enum ReStreamPlatformDto {
   YOUTUBE = 'YOUTUBE',
@@ -62,4 +72,11 @@ export class UpdateReStreamTargetDto {
   @IsBoolean()
   @IsOptional()
   muteAudio?: boolean;
+}
+
+export class DeleteReStreamTargetsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('4', { each: true })
+  ids!: string[];
 }

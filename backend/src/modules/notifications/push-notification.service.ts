@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SubscribeNotificationDto } from './dto/notification.dto';
 import * as webpush from 'web-push';
@@ -61,7 +57,9 @@ export class PushNotificationService {
       },
     });
 
-    this.logger.log(`User ${userId} subscribed to notifications (stream: ${dto.liveStreamId || 'all'})`);
+    this.logger.log(
+      `User ${userId} subscribed to notifications (stream: ${dto.liveStreamId || 'all'})`,
+    );
 
     return {
       id: subscription.id,
@@ -117,12 +115,7 @@ export class PushNotificationService {
   /**
    * Send push notification to a specific user
    */
-  async sendNotificationToUser(
-    userId: string,
-    title: string,
-    body: string,
-    data?: any,
-  ) {
+  async sendNotificationToUser(userId: string, title: string, body: string, data?: any) {
     const subscriptions = await this.prisma.notificationSubscription.findMany({
       where: { userId },
     });
@@ -177,12 +170,7 @@ export class PushNotificationService {
   /**
    * Send notifications to multiple subscriptions
    */
-  private async sendNotifications(
-    subscriptions: any[],
-    title: string,
-    body: string,
-    data?: any,
-  ) {
+  private async sendNotifications(subscriptions: any[], title: string, body: string, data?: any) {
     const payload = JSON.stringify({
       title,
       body,
@@ -208,14 +196,19 @@ export class PushNotificationService {
         await webpush.sendNotification(pushSubscription, payload);
         sent++;
         this.logger.debug(`Notification sent to ${subscription.userId}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         failed++;
         this.logger.error(
-          `Failed to send notification to ${subscription.userId}: ${error.message}`,
+          `Failed to send notification to ${subscription.userId}: ${error instanceof Error ? error.message : String(error)}`,
         );
 
         // If subscription is expired (410 Gone), mark for deletion
-        if (error.statusCode === 410) {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'statusCode' in error &&
+          (error as { statusCode: number }).statusCode === 410
+        ) {
           expiredSubscriptions.push(subscription.id);
         }
       }
@@ -263,8 +256,10 @@ export class PushNotificationService {
       try {
         // TODO: Add a flag to track if notification was sent for this stream
         await this.sendLiveStartNotification(stream.id);
-      } catch (error: any) {
-        this.logger.error(`Failed to notify for stream ${stream.id}: ${error.message}`);
+      } catch (error: unknown) {
+        this.logger.error(
+          `Failed to notify for stream ${stream.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
   }

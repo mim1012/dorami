@@ -16,17 +16,23 @@ export class CompleteProfileDto {
   @Length(1, 100)
   depositorName!: string; // 입금자명
 
-  @ApiProperty({ description: '인스타그램 ID (@ 자동 추가)', example: 'my_instagram' })
+  @ApiPropertyOptional({
+    description: '인스타그램 ID (@ 자동 추가, 선택)',
+    example: 'my_instagram',
+  })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^@?[a-zA-Z0-9._]+$/, {
     message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
   })
-  @Transform(({ value }: { value: string }) => {
-    // Auto-add @ prefix if missing
-    return value.startsWith('@') ? value : `@${value}`;
+  @Transform(({ value }: { value: string | undefined }) => {
+    if (!value || value.trim() === '' || value.trim() === '@') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
   })
-  instagramId!: string;
+  instagramId?: string;
 
   // Shipping address fields (will be encrypted)
   @ApiProperty({ description: '수령인 이름', example: '홍길동', maxLength: 100 })
@@ -73,16 +79,16 @@ export class CompleteProfileDto {
   })
   zip!: string;
 
-  @ApiProperty({
-    description: '미국 전화번호 (US +1 only)',
+  @ApiPropertyOptional({
+    description: '미국 전화번호 (US +1 only, 선택)',
     example: '(213) 555-1234',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^(\+1)?[0-9\s\-()]{10,14}$/, {
     message: 'Phone number must be US format (e.g., (213) 555-1234 or +1 213 555 1234)',
   })
-  phone!: string;
+  phone?: string;
 }
 
 export class CheckInstagramDto {

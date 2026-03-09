@@ -39,12 +39,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token type');
     }
 
-    // Check if token is blacklisted by jti (preferred) or userId (fallback)
-    // Gracefully handle Redis unavailability — assume not blacklisted if Redis is down
+    // Check blacklist by both jti AND userId.
+    // logout() writes blacklist:{userId}; jti-based revocation is reserved for future per-token use.
+    // Checking both ensures logout reliably revokes all active access tokens for the user.
     try {
-      const blacklistKey = payload.jti ? `blacklist:${payload.jti}` : `blacklist:${payload.sub}`;
-      const isBlacklisted = await this.redisService.exists(blacklistKey);
-      if (isBlacklisted) {
+      const [jtiBlacklisted, userBlacklisted] = await Promise.all([
+        payload.jti ? this.redisService.exists(`blacklist:${payload.jti}`) : Promise.resolve(false),
+        this.redisService.exists(`blacklist:${payload.sub}`),
+      ]);
+      if (jtiBlacklisted || userBlacklisted) {
         throw new UnauthorizedException('Token has been revoked');
       }
     } catch (error) {
@@ -80,6 +83,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       email: payload.email,
       kakaoId: payload.kakaoId,
       role: payload.role,
+      profileComplete: payload.profileComplete ?? false,
     };
   }
 }
