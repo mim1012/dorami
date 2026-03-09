@@ -42,6 +42,8 @@ interface SystemSettings {
   freeShippingThreshold: number;
   zelleEmail: string;
   zelleRecipientName: string;
+  venmoEmail: string;
+  venmoRecipientName: string;
   alimtalkEnabled: boolean;
   solapiApiKey: string;
   solapiApiSecret: string;
@@ -222,6 +224,8 @@ export default function AdminSettingsPage() {
     freeShippingThreshold: 150,
     zelleEmail: '',
     zelleRecipientName: '',
+    venmoEmail: '',
+    venmoRecipientName: '',
     alimtalkEnabled: false,
     solapiApiKey: '',
     solapiApiSecret: '',
@@ -268,7 +272,11 @@ export default function AdminSettingsPage() {
           nextTemplateEnabled[template.type] = true;
         }
 
-        setSettings(settingsResponse.data);
+        setSettings({
+          ...settingsResponse.data,
+          venmoEmail: settingsResponse.data.venmoEmail ?? '',
+          venmoRecipientName: settingsResponse.data.venmoRecipientName ?? '',
+        });
         setNotificationTemplates(templates);
         setNotificationTemplateByType(nextByType);
         setIsTemplateEnabled(nextTemplateEnabled);
@@ -411,7 +419,7 @@ export default function AdminSettingsPage() {
       {/* Payment Settings */}
       <SectionCard
         icon={DollarSign}
-        title="입금 정보 (Zelle)"
+        title="입금 정보 (Zelle / Venmo)"
         sectionId="payment"
         isOpen={expandedSections.payment}
         onToggle={() => handleToggleSection('payment')}
@@ -429,6 +437,21 @@ export default function AdminSettingsPage() {
             label="수신인 이름"
             value={settings.zelleRecipientName}
             onChange={(e) => setSettings({ ...settings, zelleRecipientName: e.target.value })}
+            placeholder="수신인 이름"
+            fullWidth
+          />
+          <Input
+            label="Venmo 이메일 / 사용자명"
+            type="text"
+            value={settings.venmoEmail}
+            onChange={(e) => setSettings({ ...settings, venmoEmail: e.target.value })}
+            placeholder="@username 또는 venmo@example.com"
+            fullWidth
+          />
+          <Input
+            label="Venmo 수신인 이름"
+            value={settings.venmoRecipientName}
+            onChange={(e) => setSettings({ ...settings, venmoRecipientName: e.target.value })}
             placeholder="수신인 이름"
             fullWidth
           />

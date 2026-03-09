@@ -219,13 +219,13 @@ function ProfileRegisterContent() {
       newErrors.depositorName = '입금자명을 입력해주세요';
     }
 
-    // 인스타그램 ID: 선택 입력 (값이 있을 때만 형식 검증)
-    if (formData.instagramId.trim() && formData.instagramId !== '@') {
-      if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
-        newErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
-      } else if (instagramAvailable === false) {
-        newErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
-      }
+    // 인스타그램 ID: 필수 입력
+    if (!formData.instagramId.trim() || formData.instagramId === '@') {
+      newErrors.instagramId = '인스타그램 ID를 입력해주세요';
+    } else if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
+      newErrors.instagramId = '올바른 인스타그램 ID 형식이 아닙니다';
+    } else if (instagramAvailable === false) {
+      newErrors.instagramId = '이미 등록된 인스타그램 ID입니다';
     }
 
     if (!formData.fullName.trim()) {
@@ -250,8 +250,10 @@ function ProfileRegisterContent() {
       newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
     }
 
-    // 전화번호: 선택 입력 (값이 있을 때만 형식 검증)
-    if (formData.phone.trim() && !PHONE_PATTERN.test(formData.phone)) {
+    // 전화번호: 필수 입력
+    if (!formData.phone.trim()) {
+      newErrors.phone = '전화번호를 입력해주세요';
+    } else if (!PHONE_PATTERN.test(formData.phone)) {
       newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
     }
 
@@ -322,15 +324,14 @@ function ProfileRegisterContent() {
     const payload = {
       email: formData.email.trim(),
       depositorName: formData.depositorName.trim(),
-      // 선택 필드: 빈 문자열은 undefined로 변환 (백엔드 @IsOptional 처리)
-      instagramId: igTrimmed && igTrimmed !== '@' ? igTrimmed : undefined,
+      instagramId: igTrimmed,
       fullName: formData.fullName.trim(),
       address1: formData.address1.trim(),
       address2: formData.address2.trim(),
       city: formData.city.trim(),
       state: formData.state.trim(),
       zip: formData.zip.trim(),
-      phone: phoneTrimmed || undefined,
+      phone: phoneTrimmed,
     };
 
     try {
@@ -451,13 +452,14 @@ function ProfileRegisterContent() {
 
             <div>
               <Input
-                label="인스타그램 ID (선택)"
+                label="인스타그램 ID"
                 name="instagramId"
                 value={formData.instagramId}
                 onChange={handleChange}
                 error={errors.instagramId}
                 placeholder="@username"
                 fullWidth
+                required
               />
               {checkingInstagram && (
                 <Body className="text-secondary-text text-xs mt-1">확인 중...</Body>
@@ -554,13 +556,14 @@ function ProfileRegisterContent() {
               />
 
               <Input
-                label="전화번호 (미국, 선택)"
+                label="전화번호 (미국)"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 error={errors.phone}
                 placeholder="(213) 555-1234"
                 fullWidth
+                required
               />
             </div>
           </div>
