@@ -195,10 +195,10 @@ jobs:
           echo "  IMAGE_TAG=${IMAGE_TAG}"
           echo "  GITHUB_REF_NAME=${GITHUB_REF_NAME}"
           echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
-          echo "  GHCR_TOKEN=${GHCR_TOKEN:0:20}..." # Show first 20 chars only
+          echo "  GHCR_TOKEN=***set***"
 
           ssh $USER@$HOST << ENDSSH
-            set -ex
+            set -e
 
             # Variables expanded by runner before SSH transmission (unquoted heredoc)
             export IMAGE_TAG="${IMAGE_TAG}"
@@ -281,6 +281,7 @@ MEDIA_SERVER_URL="http://localhost:8080"
 ENABLE_DEV_AUTH="true"
 NEXT_PUBLIC_KAKAO_JS_KEY="${KAKAO_JS_KEY}"
 LOG_LEVEL="debug"
+FRONTEND_URL="https://staging.doremi-live.com"
 ENVEOF
             chmod 600 /opt/dorami/.env.staging
             echo "✓ .env.staging created from GitHub Secrets"
@@ -295,32 +296,6 @@ ENVEOF
 
             echo "=== Logging into GHCR ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
-
-            echo "=== Loading environment for staging compose ==="
-            # CRITICAL: Save deployment values BEFORE sourcing .env.staging (which overwrites them)
-            _DEPLOY_IMAGE_TAG="${IMAGE_TAG}"
-            _DEPLOY_REPO_OWNER="${GITHUB_REPOSITORY_OWNER}"
-            _DEPLOY_STAGING_HOST="${HOST}"
-            _DEPLOY_KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
-            _DEPLOY_KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
-            _DEPLOY_KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
-            _DEPLOY_ADMIN_EMAILS="${ADMIN_EMAILS}"
-            echo "Using deployment IMAGE_TAG: ${_DEPLOY_IMAGE_TAG}"
-
-            if [ -f .env.staging ]; then
-              set -a
-              . ./.env.staging
-              set +a
-            fi
-
-            # RESTORE: deployment values always win over .env.staging
-            export IMAGE_TAG="${_DEPLOY_IMAGE_TAG}"
-            export GITHUB_REPOSITORY_OWNER="${_DEPLOY_REPO_OWNER}"
-            export STAGING_HOST="${_DEPLOY_STAGING_HOST}"
-            export KAKAO_CLIENT_ID="${_DEPLOY_KAKAO_CLIENT_ID}"
-            export KAKAO_CLIENT_SECRET="${_DEPLOY_KAKAO_CLIENT_SECRET}"
-            export KAKAO_CALLBACK_URL="${_DEPLOY_KAKAO_CALLBACK_URL}"
-            export ADMIN_EMAILS="${_DEPLOY_ADMIN_EMAILS}"
 
             echo "=== Fixing staging environment variables ==="
             bash scripts/fix-staging-env.sh
@@ -339,7 +314,7 @@ ENVEOF
             echo "=== Ensuring uploads directory exists and is writable ==="
             # Just create the directory - docker will handle permissions on container startup
             mkdir -p /opt/dorami/backend/uploads
-            chmod 777 /opt/dorami/backend/uploads || true
+            chmod 755 /opt/dorami/backend/uploads || true
             echo "✓ Uploads directory ready"
 
             echo "=== SSL Certificate Setup Skipped for Staging ==="
@@ -357,14 +332,14 @@ ENVEOF
             # Start services
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
 
-            echo "=== Resolving any failed migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate resolve --rolled-back 20260224000000_add_free_shipping_threshold < /dev/null 2>/dev/null || true
+            echo "=== Checking for destructive migrations (staging - warn only) ==="
+            bash scripts/check-destructive-migrations.sh . || echo "⚠️ WARNING: Destructive migrations detected (not blocking on staging)"
 
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate deploy < /dev/null
 
             echo "=== Cleaning up old images ==="
-            docker image prune -af --filter "until=1h"
+            docker image prune -af --filter "label=org.opencontainers.image.source" --filter "until=24h"
 
             echo "=== Checking service health ==="
             for i in 1 2 3 4 5 6; do
