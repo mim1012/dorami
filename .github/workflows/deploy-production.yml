@@ -459,8 +459,6 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           BANK_NAME: ${{ secrets.BANK_NAME }}
-          BANK_ACCOUNT_NUMBER: ${{ secrets.BANK_ACCOUNT_NUMBER }}
-          BANK_ACCOUNT_HOLDER: ${{ secrets.BANK_ACCOUNT_HOLDER }}
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
@@ -516,8 +514,6 @@ jobs:
           VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
           VAPID_SUBJECT=${VAPID_SUBJECT}
           BANK_NAME=${BANK_NAME:-KB Kookmin Bank}
-          BANK_ACCOUNT_NUMBER=${BANK_ACCOUNT_NUMBER}
-          BANK_ACCOUNT_HOLDER=${BANK_ACCOUNT_HOLDER}
           SRS_WEBHOOK_SECRET=${SRS_WEBHOOK_SECRET}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
