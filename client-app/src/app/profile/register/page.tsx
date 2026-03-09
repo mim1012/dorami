@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
@@ -388,7 +390,12 @@ export default function ProfileRegisterPage() {
     }
   };
 
-  if (authLoading || profilePrefetching) {
+  // Only block on profilePrefetching (edit-mode API fetch).
+  // authLoading is intentionally excluded: the page has its own useEffect auth check
+  // (redirects to /login if !isAuthenticated). Blocking on authLoading causes a 30s+
+  // spinner when Zustand persist fires the effect before hydration completes, because
+  // fetchProfile() falls into the 401-refresh-retry path (up to 90s total).
+  if (profilePrefetching) {
     return (
       <div className="min-h-screen bg-primary-black flex items-center justify-center">
         <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
