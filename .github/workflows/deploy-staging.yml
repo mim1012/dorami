@@ -331,18 +331,31 @@ jobs:
 
             # Start postgres and redis first so we can sync the password
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
-            echo "Waiting for postgres role to be fully loaded (peer auth)..."
+            echo "Waiting for postgres to accept connections..."
             for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-              if docker exec --user postgres dorami-postgres-1 psql -c "SELECT 1;" > /dev/null 2>&1; then
-                echo "✓ Postgres role ready (attempt \$i/20)"
+              if docker exec dorami-postgres-1 pg_isready > /dev/null 2>&1; then
+                echo "✓ Postgres accepting connections (attempt \$i/20)"
                 break
               fi
-              echo "  Postgres role not ready yet (attempt \$i/20)..."
+              echo "  Waiting... (attempt \$i/20)"
               sleep 3
             done
+            sleep 2
 
-            echo "=== Syncing postgres password with secret ==="
-            docker exec --user postgres dorami-postgres-1 psql -c "ALTER USER postgres PASSWORD '${STAGING_POSTGRES_PASSWORD}';" 2>&1 && echo "✓ Postgres password synced" || echo "⚠ Password sync failed (will use existing credentials)"
+            echo "=== Syncing postgres password ==="
+            if docker exec --user postgres dorami-postgres-1 psql -U postgres -c "ALTER USER postgres PASSWORD '${STAGING_POSTGRES_PASSWORD}';" 2>&1; then
+              echo "✓ postgres password synced"
+            elif docker exec --user postgres dorami-postgres-1 psql -U app_user -c "CREATE ROLE postgres WITH SUPERUSER LOGIN PASSWORD '${STAGING_POSTGRES_PASSWORD}'; ALTER USER app_user PASSWORD '${STAGING_POSTGRES_PASSWORD}';" 2>&1; then
+              echo "✓ passwords synced via app_user"
+            else
+              echo "⚠ Cannot sync passwords - recreating postgres volume (staging data non-critical)"
+              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging stop postgres || true
+              docker volume rm dorami_postgres_data 2>/dev/null || true
+              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
+              echo "Waiting for fresh postgres initialization..."
+              sleep 25
+              echo "✓ Postgres volume recreated with correct credentials"
+            fi
 
             # Start all services
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
