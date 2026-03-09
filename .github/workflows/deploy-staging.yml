@@ -371,14 +371,19 @@ jobs:
               echo "✓ Postgres volume recreated with correct credentials"
             fi
 
-            # Start all services
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
+            echo "=== Ensuring live_commerce_staging database exists ==="
+            docker exec dorami-postgres-1 psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname='live_commerce_staging'" | grep -q 1 \
+              || docker exec dorami-postgres-1 psql -U postgres -c "CREATE DATABASE live_commerce_staging;" \
+              && echo "✓ live_commerce_staging database ready"
 
             echo "=== Checking for destructive migrations (staging - warn only) ==="
             bash scripts/check-destructive-migrations.sh . || echo "⚠️ WARNING: Destructive migrations detected (not blocking on staging)"
 
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate deploy < /dev/null
+
+            # Start all services (DB and migrations are ready)
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
 
             echo "=== Cleaning up old images ==="
             docker image prune -af --filter "label=org.opencontainers.image.source" --filter "until=24h"
