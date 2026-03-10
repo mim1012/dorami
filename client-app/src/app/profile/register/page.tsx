@@ -204,6 +204,24 @@ function ProfileRegisterContent() {
     setPrefilled(true);
   }, [user, isEditMode, prefilled]);
 
+  // 기존 프로필 데이터 프리필
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        depositorName: user.depositorName || prev.depositorName,
+        instagramId: user.instagramId || prev.instagramId,
+        fullName: user.fullName || prev.fullName,
+        address1: user.address1 || prev.address1,
+        address2: user.address2 || prev.address2,
+        city: user.city || prev.city,
+        state: user.state || prev.state,
+        zip: user.zip || prev.zip,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 

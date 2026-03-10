@@ -4,7 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient, RedisClientType } from 'redis';
 import { Logger } from '@nestjs/common';
 
-const CONNECTION_TIMEOUT = parseInt(process.env.REDIS_CONNECTION_TIMEOUT_MS ?? '10000', 10);
+const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -13,21 +13,18 @@ export class RedisIoAdapter extends IoAdapter {
   private subClient: RedisClientType | null = null;
   private isConnected = false;
 
+  constructor(app: any) {
+    super(app);
+    console.log('🔥 RedisIoAdapter constructor called');
+  }
+
   /**
    * Connect to Redis with timeout and error handling
    */
   async connectToRedis(): Promise<boolean> {
-    const redisUrl = process.env.REDIS_PUBSUB_URL ?? process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error(
-        'REDIS_URL or REDIS_PUBSUB_URL must be set. ' +
-          'In production/staging this is required. In development, set REDIS_URL=redis://localhost:6379',
-      );
-    }
+    const redisUrl = process.env.REDIS_PUBSUB_URL || process.env.REDIS_URL || 'redis://localhost:6379/1';
 
-    this.logger.log(
-      `Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`,
-    );
+    this.logger.log(`Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`);
 
     try {
       this.pubClient = createClient({
@@ -42,16 +39,16 @@ export class RedisIoAdapter extends IoAdapter {
             return Math.min(retries * 100, 3000);
           },
         },
-      });
+      }) as RedisClientType;
 
-      this.subClient = this.pubClient.duplicate();
+      this.subClient = this.pubClient.duplicate() as RedisClientType;
 
       // Add error handlers
-      this.pubClient.on('error', (err: Error) => {
+      this.pubClient.on('error', (err) => {
         this.logger.error(`Redis pub client error: ${err.message}`);
       });
 
-      this.subClient.on('error', (err: Error) => {
+      this.subClient.on('error', (err) => {
         this.logger.error(`Redis sub client error: ${err.message}`);
       });
 
@@ -59,9 +56,7 @@ export class RedisIoAdapter extends IoAdapter {
       await Promise.race([
         Promise.all([this.pubClient.connect(), this.subClient.connect()]),
         new Promise((_, reject) =>
-          setTimeout(() => {
-            reject(new Error('Redis connection timeout'));
-          }, CONNECTION_TIMEOUT),
+          setTimeout(() => { reject(new Error('Redis connection timeout')); }, CONNECTION_TIMEOUT),
         ),
       ]);
 
@@ -92,7 +87,7 @@ export class RedisIoAdapter extends IoAdapter {
       if (this.subClient?.isOpen) {
         await this.subClient.quit();
       }
-    } catch {
+    } catch (_error) {
       this.logger.warn('Error during Redis cleanup');
     }
     this.pubClient = null;
@@ -101,33 +96,31 @@ export class RedisIoAdapter extends IoAdapter {
     this.isConnected = false;
   }
 
-  override createIOServer(port: number, options?: ServerOptions) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  createIOServer(port: number, options?: ServerOptions): any {
+    this.logger.log(`Creating Socket.IO server on port ${port} with options:`, JSON.stringify(options, null, 2));
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        // CORS_ORIGINS validated by config.validation.ts; guaranteed present after app init
-        origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3002')
-          .split(',')
-          .map((o) => o.trim()),
+        origin: process.env.CORS_ORIGINS?.split(',') || [
+          'http://localhost:3000',
+          'http://localhost:3002',
+        ],
         credentials: true,
       },
-      pingTimeout: parseInt(process.env.WS_PING_TIMEOUT_MS ?? '60000', 10),
-      pingInterval: parseInt(process.env.WS_PING_INTERVAL_MS ?? '25000', 10),
-      connectTimeout: parseInt(process.env.WS_CONNECT_TIMEOUT_MS ?? '45000', 10),
+      pingTimeout: 60000,
+      pingInterval: 25000,
+      connectTimeout: 45000,
       transports: ['websocket', 'polling'],
     });
 
     // Only use Redis adapter if connected
     if (this.isConnected && this.adapterConstructor) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       server.adapter(this.adapterConstructor);
       this.logger.log('Socket.IO using Redis adapter for horizontal scaling');
     } else {
       this.logger.log('Socket.IO using default in-memory adapter');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return server;
   }
 }
