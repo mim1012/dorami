@@ -96,7 +96,7 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await expect(instaInput).toBeVisible();
     await expect(instaInput).toBeEnabled();
 
-    const fullNameInput = page.getByLabel('수령인');
+    const fullNameInput = page.getByLabel('성함(Full Name)');
     await expect(fullNameInput).toBeVisible();
 
     const address1 = page.getByLabel('주소').first();
@@ -127,7 +127,7 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await page.goto('/profile/register', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('프로필 등록').first()).toBeVisible({ timeout: 10000 });
 
-    const phoneInput = page.getByLabel('전화번호');
+    const phoneInput = page.getByLabel('Phone Number');
     await expect(phoneInput).toBeVisible();
     await phoneInput.fill('(310) 555-7777');
     expect(await phoneInput.inputValue()).toBe('(310) 555-7777');
@@ -142,7 +142,7 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await address1.fill('999 Updated Street');
     expect(await address1.inputValue()).toBe('999 Updated Street');
 
-    const city = page.getByLabel('도시');
+    const city = page.getByLabel('도시 (City)');
     await city.fill('Chicago');
     expect(await city.inputValue()).toBe('Chicago');
   });
