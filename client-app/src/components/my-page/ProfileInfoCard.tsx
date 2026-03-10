@@ -69,7 +69,7 @@ export function ProfileInfoCard({
         </div>
 
         <div>
-          <Body className="text-secondary-text text-caption">전화번호 (알림톡)</Body>
+          <Body className="text-secondary-text text-caption">카카오톡 전화번호</Body>
           <div className="flex items-center gap-2">
             <Body className="text-primary-text">{kakaoPhone || '미설정'}</Body>
             {onPhoneEdit && (

@@ -119,8 +119,14 @@ export default function MyPagePage() {
   };
 
   const handlePhoneSubmit = async () => {
-    if (!/^(\+82|0)[0-9\-\s]{8,14}$/.test(phoneInput)) {
-      setPhoneError('한국 번호 형식으로 입력해주세요 (예: 010-1234-5678 또는 +82 10-1234-5678)');
+    if (
+      !/^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/.test(
+        phoneInput.replace(/\s/g, ''),
+      )
+    ) {
+      setPhoneError(
+        '미국 번호 (예: +1 213-555-1234) 또는 한국 번호 (예: 010-1234-5678)를 입력해주세요',
+      );
       return;
     }
     try {
@@ -277,7 +283,9 @@ export default function MyPagePage() {
         {isPhoneEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
             <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
-              <Body className="text-primary-text font-semibold mb-4">전화번호 등록</Body>
+              <Body className="text-primary-text font-semibold mb-4">
+                카카오톡에 등록된 전화번호
+              </Body>
               <input
                 type="tel"
                 value={phoneInput}
@@ -285,12 +293,13 @@ export default function MyPagePage() {
                   setPhoneInput(e.target.value);
                   setPhoneError(null);
                 }}
-                placeholder="010-1234-5678"
+                placeholder="+1 213-555-1234 또는 010-1234-5678"
                 className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
               />
               {phoneError && <Body className="text-error text-caption mb-2">{phoneError}</Body>}
               <Body className="text-secondary-text text-caption mb-4">
-                알림톡 수신용 한국 전화번호를 입력해주세요 (예: 010-1234-5678)
+                카카오톡에 등록된 전화번호를 입력해주세요 (미국: +1 213-555-1234 / 한국:
+                010-1234-5678)
               </Body>
               <div className="flex gap-3">
                 <button

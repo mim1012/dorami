@@ -31,14 +31,14 @@ export class UpdateUserDto {
   profileImage?: string;
 
   @ApiPropertyOptional({
-    description: '카카오 전화번호 (알림톡용, 예: 010-1234-5678)',
-    example: '010-1234-5678',
+    description: '카카오톡에 등록된 전화번호 (미국: +1 213-555-1234 / 한국: 010-1234-5678)',
+    example: '+1 213-555-1234',
   })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(\+82|0)[0-9\-\s]{8,14}$/, {
-    message: '전화번호는 한국 번호 형식이어야 합니다 (예: 010-1234-5678 또는 +82 10-1234-5678)',
+  @Matches(/^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/, {
+    message: '미국 번호 (+1 213-555-1234) 또는 한국 번호 (010-1234-5678) 형식으로 입력해주세요',
   })
   kakaoPhone?: string;
 
