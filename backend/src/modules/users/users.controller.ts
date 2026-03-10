@@ -79,6 +79,7 @@ export class UsersController {
   }
 
   @Patch('me')
+  @AllowIncompleteProfile()
   @ApiOperation({ summary: '내 프로필 수정' })
   @ApiResponse({ status: 200, description: '프로필 수정 성공' })
   async updateMyProfile(@CurrentUser('userId') userId: string, @Body() updateDto: UpdateUserDto) {
@@ -111,6 +112,7 @@ export class UsersController {
    * Use this for "My Page" where address is needed
    */
   @Get('profile/me')
+  @AllowIncompleteProfile()
   @ApiOperation({
     summary: '내 전체 프로필 조회',
     description: '복호화된 배송지 정보를 포함한 전체 프로필을 반환합니다.',
@@ -121,6 +123,7 @@ export class UsersController {
   }
 
   @Patch('profile/address')
+  @AllowIncompleteProfile()
   @ApiOperation({
     summary: '배송지 수정',
     description: '기본 배송지를 수정합니다. 주소는 AES-256-GCM으로 암호화 저장됩니다.',

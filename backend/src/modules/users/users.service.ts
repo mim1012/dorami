@@ -46,8 +46,15 @@ export class UsersService {
       return this.mapToResponseDto(user);
     } catch (err: unknown) {
       const prismaErr = err as { code?: string; meta?: { target?: string[] } };
-      if (prismaErr.code === 'P2002' && prismaErr.meta?.target?.includes('email')) {
-        throw new ConflictException('이미 사용 중인 이메일입니다');
+      if (prismaErr.code === 'P2002') {
+        const target = prismaErr.meta?.target ?? [];
+        if (target.includes('email')) {
+          throw new ConflictException('이미 사용 중인 이메일입니다');
+        }
+        if (target.includes('instagramId') || target.includes('instagram_id')) {
+          throw new ConflictException('이미 사용 중인 인스타그램 ID입니다');
+        }
+        throw new ConflictException('중복된 정보가 있습니다');
       }
       throw err;
     }

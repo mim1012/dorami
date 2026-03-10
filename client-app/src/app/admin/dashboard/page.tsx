@@ -175,7 +175,9 @@ export default function AdminDashboardPage() {
         activeRes.status === 'fulfilled' && activeRes.value.data ? activeRes.value.data : [];
       const upcoming =
         upcomingRes.status === 'fulfilled' && upcomingRes.value.data ? upcomingRes.value.data : [];
-      setLiveStreams([...active, ...upcoming].slice(0, 5));
+      const combined = [...active, ...upcoming];
+      const unique = combined.filter((s, i) => combined.findIndex((x) => x.id === s.id) === i);
+      setLiveStreams(unique.slice(0, 5));
 
       if (ordersRes.status === 'fulfilled') {
         setRecentOrders(ordersRes.value.data?.orders ?? []);

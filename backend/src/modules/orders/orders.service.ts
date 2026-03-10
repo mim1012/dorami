@@ -22,6 +22,7 @@ import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.eve
 import { PointsService } from '../points/points.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PointTransactionType, Order, OrderItem, Prisma } from '@prisma/client';
+import { CartStatus } from '@live-commerce/shared-types';
 
 // Type for Order with items
 interface OrderWithItems extends Order {
@@ -111,7 +112,7 @@ export class OrdersService {
         const cartItems = await tx.cart.findMany({
           where: {
             userId,
-            status: 'ACTIVE',
+            status: CartStatus.ACTIVE,
           },
           include: {
             product: true,
@@ -200,7 +201,7 @@ export class OrdersService {
             depositorName: user.depositorName ?? user.name,
             instagramId: user.instagramId ?? '',
             shippingAddress: user.shippingAddress ?? {},
-            status: 'PENDING_PAYMENT',
+            status: OrderStatus.PENDING_PAYMENT,
             paymentMethod: 'BANK_TRANSFER',
             paymentStatus: 'PENDING',
             shippingStatus: 'PENDING',
@@ -221,10 +222,10 @@ export class OrdersService {
         await tx.cart.updateMany({
           where: {
             userId,
-            status: 'ACTIVE',
+            status: CartStatus.ACTIVE,
           },
           data: {
-            status: 'COMPLETED',
+            status: CartStatus.COMPLETED,
           },
         });
 
@@ -373,7 +374,7 @@ export class OrdersService {
             depositorName: user.depositorName ?? user.name,
             instagramId: user.instagramId ?? '',
             shippingAddress: user.shippingAddress ?? {},
-            status: 'PENDING_PAYMENT',
+            status: OrderStatus.PENDING_PAYMENT,
             subtotal: new Decimal(totals.subtotal),
             shippingFee: new Decimal(totals.totalShippingFee),
             total: new Decimal(finalTotal),
@@ -538,14 +539,14 @@ export class OrdersService {
       throw new OrderNotFoundException(orderId);
     }
 
-    if (order.status !== 'PENDING_PAYMENT') {
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new BusinessException('ORDER_NOT_PENDING', { orderId });
     }
 
     const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
       data: {
-        status: 'PAYMENT_CONFIRMED',
+        status: OrderStatus.PAYMENT_CONFIRMED,
         paidAt: new Date(),
       },
       include: { orderItems: true },
@@ -571,7 +572,7 @@ export class OrdersService {
       throw new OrderNotFoundException(orderId);
     }
 
-    const CANCELLABLE_STATUSES: string[] = ['PENDING_PAYMENT'];
+    const CANCELLABLE_STATUSES: string[] = [OrderStatus.PENDING_PAYMENT];
     if (!CANCELLABLE_STATUSES.includes(order.status)) {
       throw new BusinessException(
         'ORDER_CANNOT_BE_CANCELLED',
@@ -585,7 +586,7 @@ export class OrdersService {
         tx,
         order.orderItems as { productId: string; quantity: number }[],
       );
-      await tx.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
+      await tx.order.update({ where: { id: orderId }, data: { status: OrderStatus.CANCELLED } });
     });
 
     // Remove timer
@@ -728,7 +729,7 @@ export class OrdersService {
       // Find orders that should be expired
       const expiredOrders = await this.prisma.order.findMany({
         where: {
-          status: 'PENDING_PAYMENT',
+          status: OrderStatus.PENDING_PAYMENT,
           createdAt: {
             lte: expirationTime,
           },
@@ -765,7 +766,7 @@ export class OrdersService {
               tx,
               order.orderItems as { productId: string; quantity: number }[],
             );
-            await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } });
+            await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED } });
           });
 
           this.logger.log(`Auto-cancelled expired order: ${order.id}`);
@@ -791,7 +792,7 @@ export class OrdersService {
       const unpaidOrders = await this.prisma.order.findMany({
         where: {
           paymentStatus: 'PENDING',
-          status: 'PENDING_PAYMENT',
+          status: OrderStatus.PENDING_PAYMENT,
           createdAt: { lte: sixHoursAgo },
         },
         select: {

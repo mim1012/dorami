@@ -49,6 +49,7 @@ interface SystemSettings {
   solapiApiSecret: string;
   kakaoChannelId: string;
   businessRegistrationNumber: string;
+  businessAddress: string;
   onlineSalesRegistrationNumber: string;
 }
 
@@ -115,7 +116,7 @@ type SectionKey =
   | 'points'
   | 'noticeManagement'
   | 'noticeList'
-  | 'businessInfo';
+  | 'footer';
 
 const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   payment: true,
@@ -125,7 +126,7 @@ const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   points: false,
   noticeManagement: false,
   noticeList: false,
-  businessInfo: false,
+  footer: false,
 };
 
 const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[] = [
@@ -136,6 +137,7 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'points', label: '포인트', icon: Package },
   { key: 'noticeManagement', label: '공지관리', icon: SettingsIcon },
   { key: 'noticeList', label: '공지목록', icon: SettingsIcon },
+  { key: 'footer', label: '푸터 설정', icon: SettingsIcon },
 ];
 
 function SectionCard({
@@ -235,6 +237,7 @@ export default function AdminSettingsPage() {
     solapiApiSecret: '',
     kakaoChannelId: '',
     businessRegistrationNumber: '',
+    businessAddress: '',
     onlineSalesRegistrationNumber: '',
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -796,13 +799,12 @@ export default function AdminSettingsPage() {
         <NoticeListManagement />
       </SectionCard>
 
-      {/* Business Info */}
       <SectionCard
         icon={SettingsIcon}
-        title="사업자 정보"
-        sectionId="businessInfo"
-        isOpen={expandedSections.businessInfo}
-        onToggle={() => handleToggleSection('businessInfo')}
+        title="푸터 설정"
+        sectionId="footer"
+        isOpen={expandedSections.footer}
+        onToggle={() => handleToggleSection('footer')}
       >
         <div className="space-y-4">
           <Input
@@ -812,6 +814,13 @@ export default function AdminSettingsPage() {
               setSettings({ ...settings, businessRegistrationNumber: e.target.value })
             }
             placeholder="000-00-00000"
+            fullWidth
+          />
+          <Input
+            label="사업장 주소"
+            value={settings.businessAddress}
+            onChange={(e) => setSettings({ ...settings, businessAddress: e.target.value })}
+            placeholder="사업장 주소를 입력하세요"
             fullWidth
           />
           <Input

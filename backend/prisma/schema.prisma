@@ -367,6 +367,15 @@ model SystemConfig {
   zelleEmail         String  @default("") @map("zelle_email")
   zelleRecipientName String  @default("") @map("zelle_recipient_name")
 
+  // Venmo Payment Settings
+  venmoEmail         String  @default("") @map("venmo_email")
+  venmoRecipientName String  @default("") @map("venmo_recipient_name")
+
+  // Footer / Business Info
+  businessRegistrationNumber     String  @default("") @map("business_registration_number")
+  businessAddress                String  @default("") @map("business_address")
+  onlineSalesRegistrationNumber  String  @default("") @map("online_sales_registration_number")
+
   // Free Shipping Toggle
   freeShippingEnabled Boolean @default(false) @map("free_shipping_enabled")
 
@@ -383,15 +392,6 @@ model SystemConfig {
   pointMaxRedemptionPct  Int     @default(50) @map("point_max_redemption_pct") // max % of order payable with points
   pointExpirationEnabled Boolean @default(false) @map("point_expiration_enabled")
   pointExpirationMonths  Int     @default(12) @map("point_expiration_months")
-
-  // Venmo Payment Settings
-  venmoEmail         String? @map("venmo_email")
-  venmoRecipientName String? @map("venmo_recipient_name")
-
-  // Business Info (Footer)
-  businessRegistrationNumber    String? @map("business_registration_number")
-  businessAddress               String? @map("business_address")
-  onlineSalesRegistrationNumber String? @map("online_sales_registration_number")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

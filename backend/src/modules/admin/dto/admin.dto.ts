@@ -17,6 +17,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { Role, UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export class GetUsersQueryDto {
   @IsOptional()
@@ -112,8 +117,8 @@ export class UserListItemDto {
   createdAt!: string;
   lastLoginAt!: string | null;
   lastPurchaseAt?: string | null;
-  status!: string;
-  role!: string;
+  status!: UserStatus;
+  role!: Role;
   totalOrders!: number;
   totalPurchaseAmount!: string;
 }
@@ -340,9 +345,9 @@ export class OrderListItemDto {
   userEmail!: string;
   depositorName!: string;
   instagramId!: string;
-  status!: string;
-  paymentStatus!: string;
-  shippingStatus!: string;
+  status!: OrderStatus;
+  paymentStatus!: PaymentStatus;
+  shippingStatus!: ShippingStatus;
   subtotal!: string;
   shippingFee!: string;
   total!: string;
@@ -456,8 +461,8 @@ export class UpdateAdminUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(\+82|0)[0-9\-\s]{8,14}$/, {
-    message: 'kakaoPhone must be a Korean phone number format',
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
   })
   kakaoPhone?: string;
 
@@ -478,18 +483,18 @@ export class UserDetailDto {
   shippingAddress!: ShippingAddressDto | null;
   createdAt!: string;
   lastLoginAt!: string | null;
-  status!: string;
-  role!: string;
+  status!: UserStatus;
+  role!: Role;
   suspendedAt!: string | null;
   statistics!: UserStatisticsDto;
 }
 
 export class UpdateUserStatusDto {
   @IsString()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'], {
+  @IsEnum(UserStatus, {
     message: 'status must be one of ACTIVE, INACTIVE, SUSPENDED',
   })
-  status!: string;
+  status!: UserStatus;
 
   @IsOptional()
   @IsString()
@@ -556,10 +561,6 @@ export class UpdateSystemSettingsDto {
   zelleRecipientName?: string;
 
   @IsOptional()
-  @IsBoolean()
-  freeShippingEnabled?: boolean;
-
-  @IsOptional()
   @IsString()
   venmoEmail?: string;
 
@@ -578,6 +579,10 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   onlineSalesRegistrationNumber?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  freeShippingEnabled?: boolean;
 }
 
 // Shipping Messages DTO
@@ -640,8 +645,8 @@ export class UpdateNotificationTemplateDto {
 
 export class UpdateOrderStatusDto {
   @IsString()
-  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
-  status!: string;
+  @IsEnum(OrderStatus)
+  status!: OrderStatus;
 }
 
 export class UpdateOrderShippingStatusDto {

@@ -16,6 +16,7 @@ import {
 } from './dto/streaming.dto';
 import { LiveStatusDto } from '../admin/dto/admin.dto';
 import { BusinessException } from '../../common/exceptions/business.exception';
+import { StreamStatus } from '@live-commerce/shared-types';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -67,8 +68,8 @@ export class StreamingService {
       const streams = await this.prisma.liveStream.findMany({
         where: {
           OR: [
-            { status: 'LIVE' },
-            { status: 'PENDING', scheduledAt: { gte: now }, expiresAt: { gte: now } },
+            { status: StreamStatus.LIVE },
+            { status: StreamStatus.PENDING, scheduledAt: { gte: now }, expiresAt: { gte: now } },
           ],
         },
         orderBy: [
@@ -90,8 +91,8 @@ export class StreamingService {
 
       // LIVE 스트림을 맨 앞으로 정렬
       const sorted = [
-        ...streams.filter((s) => s.status === 'LIVE'),
-        ...streams.filter((s) => s.status !== 'LIVE'),
+        ...streams.filter((s) => s.status === StreamStatus.LIVE),
+        ...streams.filter((s) => s.status !== StreamStatus.LIVE),
       ];
 
       return sorted.map((stream) => ({
@@ -101,7 +102,7 @@ export class StreamingService {
         description: stream.description ?? null,
         scheduledAt: stream.scheduledAt?.toISOString() ?? null,
         thumbnailUrl: stream.thumbnailUrl || null,
-        isLive: stream.status === 'LIVE',
+        isLive: stream.status === StreamStatus.LIVE,
         host: {
           id: stream.user.id,
           name: stream.user.name,
@@ -131,7 +132,7 @@ export class StreamingService {
     const existingStream = await this.prisma.liveStream.findFirst({
       where: {
         userId,
-        status: { in: ['PENDING', 'LIVE'] },
+        status: { in: [StreamStatus.PENDING, StreamStatus.LIVE] },
       },
     });
 
@@ -153,7 +154,7 @@ export class StreamingService {
         streamKey,
         title: 'Live Stream',
         expiresAt: new Date(startStreamDto.expiresAt),
-        status: 'PENDING',
+        status: StreamStatus.PENDING,
       },
     });
 
@@ -219,7 +220,7 @@ export class StreamingService {
       throw new BusinessException('STREAM_NOT_FOUND', { streamId });
     }
 
-    if (session.status !== 'PENDING') {
+    if (session.status !== StreamStatus.PENDING) {
       throw new BusinessException(
         'INVALID_STREAM_STATE',
         { currentStatus: session.status },
@@ -229,7 +230,7 @@ export class StreamingService {
 
     await this.prisma.liveStream.update({
       where: { id: streamId },
-      data: { status: 'OFFLINE' },
+      data: { status: StreamStatus.OFFLINE },
     });
 
     // Clean up Redis if any metadata was cached
@@ -255,7 +256,7 @@ export class StreamingService {
     const streamsToDelete = await this.prisma.liveStream.findMany({
       where: {
         id: { in: uniqIds },
-        status: { not: 'LIVE' },
+        status: { not: StreamStatus.LIVE },
       },
       select: {
         id: true,
@@ -302,7 +303,7 @@ export class StreamingService {
     }
 
     // Only PENDING streams can go live
-    if (session.status !== 'PENDING') {
+    if (session.status !== StreamStatus.PENDING) {
       throw new BusinessException(
         'INVALID_STREAM_STATE',
         { currentStatus: session.status },
@@ -313,7 +314,7 @@ export class StreamingService {
     const updatedSession = await this.prisma.liveStream.update({
       where: { id: streamId },
       data: {
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
         startedAt: new Date(),
       },
     });
@@ -324,7 +325,7 @@ export class StreamingService {
       JSON.stringify({
         userId: session.userId,
         title: session.title,
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
         streamId: session.id,
         startedAt: updatedSession.startedAt?.toISOString(),
       }),
@@ -348,7 +349,7 @@ export class StreamingService {
     await this.prisma.liveStream.update({
       where: { id: streamId },
       data: {
-        status: 'OFFLINE',
+        status: StreamStatus.OFFLINE,
         endedAt: new Date(),
       },
     });
@@ -375,7 +376,7 @@ export class StreamingService {
   async getActiveStreams(): Promise<StreamingSessionResponseDto[]> {
     const sessions = await this.prisma.liveStream.findMany({
       where: {
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
       },
       orderBy: { startedAt: 'desc' },
     });
@@ -385,7 +386,7 @@ export class StreamingService {
 
   async getActiveStreamsPublic(): Promise<Record<string, unknown>[]> {
     const sessions = await this.prisma.liveStream.findMany({
-      where: { status: { in: ['LIVE'] } },
+      where: { status: { in: [StreamStatus.LIVE] } },
       orderBy: { startedAt: 'desc' },
       include: {
         user: { select: { id: true, name: true } },
@@ -394,7 +395,7 @@ export class StreamingService {
 
     return Promise.all(
       sessions.map(async (s) => {
-        const normalizedStatus = s.status === 'PENDING' ? 'SCHEDULED' : s.status;
+        const normalizedStatus = s.status === StreamStatus.PENDING ? 'SCHEDULED' : s.status;
         const viewerCountStr = await this.redisService.get(`stream:${s.streamKey}:viewers`);
         const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
         return {
@@ -406,7 +407,7 @@ export class StreamingService {
           thumbnailUrl: s.thumbnailUrl ?? null,
           startedAt: s.startedAt?.toISOString() ?? null,
           status: normalizedStatus,
-          isLive: s.status === 'LIVE',
+          isLive: s.status === StreamStatus.LIVE,
           host: { id: s.user.id, name: s.user.name },
         };
       }),
@@ -418,23 +419,23 @@ export class StreamingService {
     await this.prisma.liveStream.updateMany({
       where: {
         userId,
-        status: 'PENDING',
+        status: StreamStatus.PENDING,
         expiresAt: { lt: new Date() },
       },
-      data: { status: 'OFFLINE' },
+      data: { status: StreamStatus.OFFLINE },
     });
 
     // Check if user already has an active stream
     const existingStream = await this.prisma.liveStream.findFirst({
       where: {
         userId,
-        status: { in: ['PENDING', 'LIVE'] },
+        status: { in: [StreamStatus.PENDING, StreamStatus.LIVE] },
       },
     });
 
     if (existingStream) {
       // If LIVE, block — can't create a new stream while broadcasting
-      if (existingStream.status === 'LIVE') {
+      if (existingStream.status === StreamStatus.LIVE) {
         throw new BusinessException(
           'STREAM_ALREADY_ACTIVE',
           { streamId: existingStream.id },
@@ -482,7 +483,7 @@ export class StreamingService {
         thumbnailUrl: dto.thumbnailUrl ?? null,
         freeShippingEnabled: dto.freeShippingEnabled ?? false,
         expiresAt,
-        status: 'PENDING',
+        status: StreamStatus.PENDING,
       },
     });
 
@@ -516,7 +517,7 @@ export class StreamingService {
     const cached = await this.redisService.get(`stream:${streamKey}:meta`);
 
     let title = 'Live Stream';
-    let status = 'OFFLINE';
+    let status: string = StreamStatus.OFFLINE;
     let startedAt: Date | undefined;
 
     if (cached) {
@@ -672,7 +673,7 @@ export class StreamingService {
     // Find the most recent LIVE stream
     const liveStream = await this.prisma.liveStream.findFirst({
       where: {
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
       },
       orderBy: {
         startedAt: 'desc',
@@ -745,7 +746,11 @@ export class StreamingService {
     }
 
     // Check if stream is in valid state (PENDING or OFFLINE for reconnection)
-    if (session.status !== 'PENDING' && session.status !== 'OFFLINE' && session.status !== 'LIVE') {
+    if (
+      session.status !== StreamStatus.PENDING &&
+      session.status !== StreamStatus.OFFLINE &&
+      session.status !== StreamStatus.LIVE
+    ) {
       this.logger.warn(
         `RTMP auth failed: Stream in invalid state - ${streamKey}, status: ${session.status}`,
       );
@@ -755,7 +760,11 @@ export class StreamingService {
     // Check if stream key has expired.
     // Skip expiry check for LIVE streams — an active broadcast must not be
     // interrupted by key expiry on OBS reconnect.
-    if (session.status !== 'LIVE' && session.expiresAt && new Date() > session.expiresAt) {
+    if (
+      session.status !== StreamStatus.LIVE &&
+      session.expiresAt &&
+      new Date() > session.expiresAt
+    ) {
       this.logger.warn(`RTMP auth failed: Stream key expired - ${streamKey}`);
       return false;
     }
@@ -771,7 +780,7 @@ export class StreamingService {
     await this.prisma.liveStream.update({
       where: { id: session.id },
       data: {
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
         startedAt: session.startedAt || new Date(),
         expiresAt: newExpiresAt,
       },
@@ -783,7 +792,7 @@ export class StreamingService {
       JSON.stringify({
         userId: session.userId,
         title: session.title,
-        status: 'LIVE',
+        status: StreamStatus.LIVE,
         streamId: session.id,
         startedAt: new Date().toISOString(),
       }),
@@ -823,7 +832,7 @@ export class StreamingService {
           }
 
           // Stream was already transitioned by another flow.
-          if (session.status !== 'LIVE') {
+          if (session.status !== StreamStatus.LIVE) {
             this.logger.log(
               `Skipping delayed stream-offline for ${streamKey}; current status is ${session.status}`,
             );
@@ -840,7 +849,7 @@ export class StreamingService {
           await this.prisma.liveStream.update({
             where: { id: session.id },
             data: {
-              status: 'OFFLINE',
+              status: StreamStatus.OFFLINE,
               endedAt: new Date(),
               totalDuration,
             },

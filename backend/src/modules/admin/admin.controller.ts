@@ -40,6 +40,8 @@ import {
   UpdateNotificationTemplateDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
 import { RedisService } from '../../common/redis/redis.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -83,6 +85,15 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '최근 활동 목록' })
   async getRecentActivities(@Query('limit') limit?: number) {
     return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
+  }
+
+  @Get('config/public-footer')
+  @Public()
+  @Roles()
+  @ApiOperation({ summary: '공개 푸터 정보 조회' })
+  @ApiResponse({ status: 200, description: '사업자 번호, 주소, 통신판매업 번호' })
+  async getPublicFooterConfig() {
+    return this.adminService.getPublicFooterConfig();
   }
 
   @Get('config/settings')

@@ -2,6 +2,10 @@ import { IsString, IsNotEmpty, Matches, IsOptional, Length, IsEmail } from 'clas
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsUSState } from '../../../common/validators/us-state.validator';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export class CompleteProfileDto {
   @ApiProperty({ description: '이메일', example: 'user@example.com', maxLength: 255 })
@@ -85,8 +89,8 @@ export class CompleteProfileDto {
   })
   @IsString()
   @IsOptional()
-  @Matches(/^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/, {
-    message: '미국 번호 (예: +1 213-555-1234) 또는 한국 번호 (예: 010-1234-5678)를 입력해주세요',
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
   })
   kakaoPhone?: string;
 }

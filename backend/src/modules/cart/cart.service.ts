@@ -10,6 +10,11 @@ import {
   CartSummaryDto,
   CartStatus,
 } from './dto/cart.dto';
+import {
+  ProductStatus,
+  CartStatus as SharedCartStatus,
+  ReservationStatus,
+} from '@live-commerce/shared-types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Cart, Prisma } from '@prisma/client';
 
@@ -85,7 +90,7 @@ export class CartService {
           productId,
           color: color ?? null,
           size: size ?? null,
-          status: 'ACTIVE',
+          status: SharedCartStatus.ACTIVE,
         },
       }),
     ]);
@@ -94,7 +99,7 @@ export class CartService {
       throw new NotFoundException(`Product ${productId} not found`);
     }
 
-    if (product.status !== 'AVAILABLE') {
+    if (product.status !== ProductStatus.AVAILABLE) {
       throw new BadRequestException('Product is not available for purchase');
     }
 
@@ -108,7 +113,7 @@ export class CartService {
         async (tx) => {
           // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
           const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-          if (freshProduct.status !== 'AVAILABLE') {
+          if (freshProduct.status !== ProductStatus.AVAILABLE) {
             throw new BadRequestException('Product is not available for purchase');
           }
           // Re-check available stock within transaction
@@ -149,7 +154,7 @@ export class CartService {
       async (tx) => {
         // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
         const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-        if (freshProduct.status !== 'AVAILABLE') {
+        if (freshProduct.status !== ProductStatus.AVAILABLE) {
           throw new BadRequestException('Product is not available for purchase');
         }
         // Re-check available stock within transaction to prevent TOCTOU race condition
@@ -178,7 +183,7 @@ export class CartService {
             shippingFee: new Decimal(0),
             timerEnabled: freshProduct.timerEnabled,
             expiresAt,
-            status: 'ACTIVE',
+            status: SharedCartStatus.ACTIVE,
           },
         });
       },
@@ -224,7 +229,7 @@ export class CartService {
     const cartItems = await this.prisma.cart.findMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       orderBy: {
         createdAt: 'desc',
@@ -248,7 +253,7 @@ export class CartService {
       where: {
         id: cartItemId,
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -305,7 +310,7 @@ export class CartService {
       where: {
         id: cartItemId,
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -336,14 +341,14 @@ export class CartService {
     const cartItems = await this.prisma.cart.findMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
     await this.prisma.cart.deleteMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -371,7 +376,7 @@ export class CartService {
       // Find expired carts first to get product IDs
       const expiredCarts = await this.prisma.cart.findMany({
         where: {
-          status: 'ACTIVE',
+          status: SharedCartStatus.ACTIVE,
           timerEnabled: true,
           expiresAt: {
             lte: now,
@@ -391,7 +396,7 @@ export class CartService {
           },
         },
         data: {
-          status: 'EXPIRED',
+          status: SharedCartStatus.EXPIRED,
         },
       });
 
@@ -403,9 +408,9 @@ export class CartService {
           where: {
             userId: cart.userId,
             productId: cart.productId,
-            status: 'PROMOTED',
+            status: ReservationStatus.PROMOTED,
           },
-          data: { status: 'EXPIRED' },
+          data: { status: ReservationStatus.EXPIRED },
         });
       }
 
@@ -435,7 +440,7 @@ export class CartService {
     const result = await this.prisma.cart.aggregate({
       where: {
         productId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       _sum: {
         quantity: true,
@@ -455,7 +460,7 @@ export class CartService {
     const result = await tx.cart.aggregate({
       where: {
         productId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       _sum: {
         quantity: true,

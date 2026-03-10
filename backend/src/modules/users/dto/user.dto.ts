@@ -1,6 +1,10 @@
 import { IsString, IsEmail, IsOptional, Matches, Length, IsNotEmpty } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export enum UserRole {
   BUYER = 'BUYER',
@@ -37,8 +41,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/, {
-    message: '미국 번호 (+1 213-555-1234) 또는 한국 번호 (010-1234-5678) 형식으로 입력해주세요',
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
   })
   kakaoPhone?: string;
 

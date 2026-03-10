@@ -100,8 +100,9 @@ export function useAuth() {
   const isUserAuthenticated = !!(user?.kakaoId || user?.email);
   // Profile completion: user has filled in required profile fields
   const isUserProfileComplete = isProfileComplete(user);
-  // Convenience: needs profile if authenticated but profile incomplete
-  const needsProfileCompletion = isUserAuthenticated && !isUserProfileComplete;
+  // Convenience: needs profile if authenticated but profile incomplete (admin exempt)
+  const needsProfileCompletion =
+    isUserAuthenticated && !isUserProfileComplete && user?.role !== 'ADMIN';
 
   return {
     user,
