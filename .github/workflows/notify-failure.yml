@@ -1,0 +1,70 @@
+# Notify on workflow failure via OpenClaw webhook
+# Triggers when any workflow run completes with failure
+
+name: Notify Failure
+
+on:
+  workflow_run:
+    workflows:
+      - "Deploy to Staging"
+      - "Deploy to Production"
+      - "CI"
+    types:
+      - completed
+
+jobs:
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: Get failed jobs info
+        id: failed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Fetch failed jobs
+          JOBS=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs \
+            --jq '[.jobs[] | select(.conclusion == "failure") | {name: .name, step: (.steps[] | select(.conclusion == "failure") | .name)}] | map("\(.name) → \(.step)") | join("\n")')
+          echo "FAILED_JOBS<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$JOBS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Send to OpenClaw
+        env:
+          OPENCLAW_WEBHOOK_URL: ${{ secrets.OPENCLAW_WEBHOOK_URL }}
+          OPENCLAW_WEBHOOK_SECRET: ${{ secrets.OPENCLAW_WEBHOOK_SECRET }}
+        run: |
+          WORKFLOW="${{ github.event.workflow_run.name }}"
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          COMMIT="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA="${COMMIT:0:7}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          FAILED="${{ steps.failed.outputs.FAILED_JOBS }}"
+
+          MSG="🚨 *CI/CD 실패*
+워크플로우: \`${WORKFLOW}\`
+브랜치: \`${BRANCH}\` (${SHORT_SHA})
+실패 항목:
+\`\`\`
+${FAILED}
+\`\`\`
+[로그 보기](${RUN_URL})"
+
+          # Send via OpenClaw webhook
+          if [ -n "$OPENCLAW_WEBHOOK_URL" ]; then
+            curl -s -X POST "$OPENCLAW_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -H "X-Webhook-Secret: $OPENCLAW_WEBHOOK_SECRET" \
+              -d "{\"text\": \"${MSG}\", \"chat_id\": \"telegram:6409720313\"}"
+          fi
+
+          # Also post as GitHub Actions summary
+          echo "## 🚨 CI/CD Failure Notification" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** ${WORKFLOW}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${BRANCH} (${SHORT_SHA})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed jobs:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${FAILED}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "- [View logs](${RUN_URL})" >> $GITHUB_STEP_SUMMARY
