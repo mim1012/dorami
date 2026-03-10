@@ -1,7 +1,7 @@
 # Notify on workflow failure via OpenClaw webhook
 # Triggers when any workflow run completes with failure
 
-name: Notify Failure
+name: Notify CI/CD Result
 
 on:
   workflow_run:
@@ -14,11 +14,12 @@ on:
 
 jobs:
   notify:
-    name: Notify on Failure
+    name: Notify Result
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    if: ${{ github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Get failed jobs info
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
         id: failed
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,15 +41,31 @@ jobs:
           COMMIT="${{ github.event.workflow_run.head_sha }}"
           SHORT_SHA="${COMMIT:0:7}"
           RUN_URL="${{ github.event.workflow_run.html_url }}"
-          FAILED="${{ steps.failed.outputs.FAILED_JOBS }}"
+          CONCLUSION="${{ github.event.workflow_run.conclusion }}"
 
-          MSG="🚨 *CI/CD 실패*
+          if [ "$CONCLUSION" = "success" ]; then
+            EMOJI="✅"
+            STATUS="성공"
+            FAILED=""
+          else
+            EMOJI="🚨"
+            STATUS="실패"
+            FAILED="${{ steps.failed.outputs.FAILED_JOBS }}"
+          fi
+
+          MSG="${EMOJI} *CI/CD ${STATUS}*
 워크플로우: \`${WORKFLOW}\`
-브랜치: \`${BRANCH}\` (${SHORT_SHA})
+브랜치: \`${BRANCH}\` (${SHORT_SHA})"
+
+          if [ -n "$FAILED" ]; then
+            MSG="${MSG}
 실패 항목:
 \`\`\`
 ${FAILED}
-\`\`\`
+\`\`\`"
+          fi
+
+          MSG="${MSG}
 [로그 보기](${RUN_URL})"
 
           # Send via OpenClaw webhook
@@ -59,12 +76,14 @@ ${FAILED}
               -d "{\"text\": \"${MSG}\", \"chat_id\": \"telegram:6409720313\"}"
           fi
 
-          # Also post as GitHub Actions summary
-          echo "## 🚨 CI/CD Failure Notification" >> $GITHUB_STEP_SUMMARY
+          # GitHub Actions summary
+          echo "## ${EMOJI} CI/CD ${STATUS}" >> $GITHUB_STEP_SUMMARY
           echo "- **Workflow:** ${WORKFLOW}" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** ${BRANCH} (${SHORT_SHA})" >> $GITHUB_STEP_SUMMARY
-          echo "- **Failed jobs:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${FAILED}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -n "$FAILED" ]; then
+            echo "- **Failed jobs:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${FAILED}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- [View logs](${RUN_URL})" >> $GITHUB_STEP_SUMMARY
