@@ -200,28 +200,30 @@ function ProfileRegisterContent() {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
+    const addr = user.shippingAddress as
+      | import('@live-commerce/shared-types').ShippingAddress
+      | undefined;
+    const kakaoPhoneFormatted = user.kakaoPhone
+      ? formatPhoneNumberForInput(user.kakaoPhone, inferPhoneRegion(user.kakaoPhone))
+      : '';
+    if (kakaoPhoneFormatted) {
+      setPhoneRegion(inferPhoneRegion(user.kakaoPhone));
+    }
+    setFormData((prev) => ({
+      ...prev,
+      email: user.email ?? '',
+      depositorName: user.depositorName || prev.depositorName,
+      instagramId: user.instagramId || prev.instagramId,
+      fullName: addr?.fullName || prev.fullName,
+      address1: addr?.address1 || prev.address1,
+      address2: addr?.address2 || prev.address2,
+      city: addr?.city || prev.city,
+      state: addr?.state || prev.state,
+      zip: addr?.zip || prev.zip,
+      kakaoPhone: kakaoPhoneFormatted || prev.kakaoPhone,
+    }));
     setPrefilled(true);
   }, [user, isEditMode, prefilled]);
-
-  // 기존 프로필 데이터 프리필
-  useEffect(() => {
-    if (user) {
-      const addr = user.shippingAddress;
-      setFormData((prev) => ({
-        ...prev,
-        depositorName: user.depositorName || prev.depositorName,
-        instagramId: user.instagramId || prev.instagramId,
-        fullName: addr?.fullName || user.fullName || prev.fullName,
-        address1: addr?.address1 || user.address1 || prev.address1,
-        address2: addr?.address2 || user.address2 || prev.address2,
-        city: addr?.city || user.city || prev.city,
-        state: addr?.state || user.state || prev.state,
-        zip: addr?.zip || user.zip || prev.zip,
-        phone: addr?.phone || user.phone || prev.phone,
-      }));
-    }
-  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -388,21 +390,53 @@ function ProfileRegisterContent() {
 
     try {
       if (isEditMode) {
-        await apiClient.patch('/users/me', {
-          email: payload.email,
-          depositorName: payload.depositorName,
-          instagramId: payload.instagramId,
-          ...(kakaoPhoneTrimmed && { kakaoPhone: kakaoPhoneTrimmed }),
-        });
-        const addressResponse = await apiClient.patch<ProfileResponse>('/users/profile/address', {
-          fullName: payload.fullName,
-          address1: payload.address1,
-          address2: payload.address2,
-          city: payload.city,
-          state: payload.state,
-          zip: payload.zip,
-        });
-        setFormData(mapProfileToFormData(addressResponse.data, payload.email));
+        const [profileResult, addressResult] = await Promise.allSettled([
+          apiClient.patch('/users/me', {
+            email: payload.email,
+            depositorName: payload.depositorName,
+            instagramId: payload.instagramId,
+            ...(kakaoPhoneTrimmed && { kakaoPhone: kakaoPhoneTrimmed }),
+          }),
+          apiClient.patch<ProfileResponse>('/users/profile/address', {
+            fullName: payload.fullName,
+            address1: payload.address1,
+            address2: payload.address2,
+            city: payload.city,
+            state: payload.state,
+            zip: payload.zip,
+          }),
+        ]);
+
+        const profileFailed = profileResult.status === 'rejected';
+        const addressFailed = addressResult.status === 'rejected';
+
+        if (profileFailed || addressFailed) {
+          const failedParts: string[] = [];
+          if (profileFailed) failedParts.push('기본 정보');
+          if (addressFailed) failedParts.push('배송지 정보');
+
+          const firstRejected = [profileResult, addressResult].find(
+            (r): r is PromiseRejectedResult => r.status === 'rejected',
+          );
+          const firstError = firstRejected?.reason as unknown;
+          if (firstError instanceof ApiError) {
+            const handled = applyServerValidationErrors(firstError);
+            if (!handled) {
+              setSubmitError(
+                `${failedParts.join(', ')} 저장에 실패했습니다. 정보를 확인 후 다시 시도해주세요.`,
+              );
+            }
+          } else {
+            setSubmitError(
+              `${failedParts.join(', ')} 저장에 실패했습니다. 정보를 확인 후 다시 시도해주세요.`,
+            );
+          }
+          return;
+        }
+
+        const addressData = (addressResult as PromiseFulfilledResult<{ data: ProfileResponse }>)
+          .value.data;
+        setFormData(mapProfileToFormData(addressData, payload.email));
         await refreshProfile();
         setSuccessMessage('프로필 정보가 저장됐습니다.');
         return;

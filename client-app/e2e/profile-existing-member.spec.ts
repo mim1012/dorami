@@ -14,14 +14,15 @@ test.describe('B. 기존 회원 동작 검증', () => {
   // 매 테스트마다 fresh 로그인 (토큰 만료 방지)
   test.beforeEach(async ({ page }) => {
     const apiCtx = await playwrightRequest.newContext({ baseURL: BACKEND_URL });
-    const loginRes = await apiCtx.post('/api/v1/auth/dev-login', {
-      data: { email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' },
+    const loginRes = await apiCtx.post('/api/auth/dev-login', {
+      data: { email: 'e2e-user@test.com', name: 'E2E USER' },
     });
     expect(loginRes.ok()).toBeTruthy();
     const loginData = await loginRes.json();
     const user = loginData.data.user;
 
-    const setCookieHeaders = loginRes.headersArray()
+    const setCookieHeaders = loginRes
+      .headersArray()
       .filter((h) => h.name.toLowerCase() === 'set-cookie')
       .map((h) => h.value);
     const cookies = setCookieHeaders.map((header) => {
@@ -31,14 +32,18 @@ test.describe('B. 기존 회원 동작 검증', () => {
       return {
         name: nameValue.substring(0, eqIdx),
         value: nameValue.substring(eqIdx + 1),
-        domain: 'localhost', path: '/', expires: -1,
-        httpOnly: false, secure: false, sameSite: 'Lax' as const,
+        domain: 'localhost',
+        path: '/',
+        expires: -1,
+        httpOnly: false,
+        secure: false,
+        sameSite: 'Lax' as const,
       };
     });
 
     // 실제 /users/me 프로필 가져오기 (완성된 프로필)
     const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-    const meRes = await apiCtx.get('/api/v1/users/me', { headers: { Cookie: cookieHeader } });
+    const meRes = await apiCtx.get('/api/users/me', { headers: { Cookie: cookieHeader } });
     const meData = await meRes.json();
     const fullUser = meData.data;
     await apiCtx.dispose();
@@ -48,11 +53,15 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await page.context().addCookies(cookies);
 
     // useAuth 재검증 intercept — /api/users/me 요청을 완성된 유저 데이터로 응답
-    await page.route('http://localhost:3001/api/v1/users/me', async (route) => {
+    await page.route('http://localhost:3001/api/users/me', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: fullUser, success: true, timestamp: new Date().toISOString() }),
+        body: JSON.stringify({
+          data: fullUser,
+          success: true,
+          timestamp: new Date().toISOString(),
+        }),
       });
     });
 
@@ -63,7 +72,9 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await page.waitForTimeout(1000);
   });
 
-  test('B1: 완성된 프로필 유저 → /profile/register 접근 시 리다이렉트 없이 정상 접근', async ({ page }) => {
+  test('B1: 완성된 프로필 유저 → /profile/register 접근 시 리다이렉트 없이 정상 접근', async ({
+    page,
+  }) => {
     await page.goto('/profile/register', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(/profile\/register|login/, { timeout: 5000 });
 
@@ -144,7 +155,10 @@ test.describe('B. 기존 회원 동작 검증', () => {
     await page.getByRole('button', { name: '프로필 등록 완료' }).click();
 
     await page.waitForTimeout(2000);
-    const errorVisible = await page.getByText('오류').isVisible().catch(() => false);
+    const errorVisible = await page
+      .getByText('오류')
+      .isVisible()
+      .catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCart, cartKeys } from '@/lib/hooks/queries/use-cart';
@@ -9,7 +9,8 @@ import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
-import { AlertCircle, CheckCircle, Coins, DollarSign, MapPin } from 'lucide-react';
+import CartTimer from '@/components/cart/CartTimer';
+import { AlertCircle, CheckCircle, Clock, Coins, DollarSign, MapPin } from 'lucide-react';
 
 interface PointsConfig {
   pointsEnabled: boolean;
@@ -25,7 +26,22 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient();
   const items = cartData?.items ?? [];
   const { user, isLoading: authLoading } = useAuth();
+
+  const earliestExpiry = items
+    .map((item) => item.expiresAt)
+    .filter((t): t is string => Boolean(t))
+    .sort()[0];
+
+  const handleCartExpired = useCallback(() => {
+    router.push('/cart?expired=1');
+  }, [router]);
   const { data: balance } = usePointBalance();
+
+  const idempotencyKeyRef = useRef<string>('');
+
+  useEffect(() => {
+    idempotencyKeyRef.current = crypto.randomUUID();
+  }, []);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,9 +143,12 @@ export default function CheckoutPage() {
         body.pointsToUse = pointsToUse;
       }
 
-      const response = await apiClient.post<{ id: string }>('/orders/from-cart', body);
+      const response = await apiClient.post<{ id: string }>('/orders/from-cart', body, {
+        headers: { 'Idempotency-Key': idempotencyKeyRef.current },
+      });
 
       setOrderCompleted(true);
+      idempotencyKeyRef.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
       router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
@@ -154,6 +173,17 @@ export default function CheckoutPage() {
           <Display className="text-hot-pink mb-2">주문하기</Display>
           <Body className="text-secondary-text">주문 정보를 확인하고 결제를 진행해주세요</Body>
         </div>
+
+        {/* Cart Timer */}
+        {earliestExpiry && (
+          <div className="bg-warning/10 border border-warning/30 rounded-2xl p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-warning flex-shrink-0" />
+              <Body className="text-warning text-sm">예약 만료까지 남은 시간</Body>
+            </div>
+            <CartTimer expiresAt={earliestExpiry} onExpired={handleCartExpired} />
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (

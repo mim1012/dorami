@@ -2,22 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getOrderById } from '@/lib/api/orders';
+import { getOrderById, cancelOrder } from '@/lib/api/orders';
 import { Order, OrderStatus } from '@/lib/types/order';
 import { apiClient } from '@/lib/api/client';
 import { CheckCircle, Clock, Package, Truck, Home } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { useToast } from '@/components/common/Toast';
 
 export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
+  const { showToast } = useToast();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zelleEmail, setZelleEmail] = useState('');
   const [zelleRecipientName, setZelleRecipientName] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -44,6 +47,20 @@ export default function OrderConfirmationPage() {
       setError(err.message || 'Failed to load order');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!window.confirm('주문을 취소하시겠습니까?')) return;
+    setIsCancelling(true);
+    try {
+      await cancelOrder(orderId);
+      showToast('주문이 취소되었습니다', 'success');
+      await fetchOrder();
+    } catch (err: any) {
+      showToast(err.message || '주문 취소에 실패했습니다', 'error');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -242,6 +259,15 @@ export default function OrderConfirmationPage() {
           <Button variant="primary" onClick={() => router.push('/')}>
             쇼핑 계속하기
           </Button>
+          {order.status === OrderStatus.PENDING_PAYMENT && (
+            <button
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+            >
+              {isCancelling ? '취소 중...' : '주문 취소'}
+            </button>
+          )}
         </div>
       </div>
     </div>

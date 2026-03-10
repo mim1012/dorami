@@ -3,13 +3,12 @@ import { ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
+import type { ShippingAddress } from '@live-commerce/shared-types';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 describe('UsersService - Profile Completion', () => {
   let service: UsersService;
   let _prismaService: PrismaService;
-  let _encryptionService: EncryptionService;
 
   const mockPrismaService = {
     user: {
@@ -21,12 +20,6 @@ describe('UsersService - Profile Completion', () => {
     },
   };
 
-  const mockEncryptionService = {
-    encryptAddress: jest.fn(),
-    decryptAddress: jest.fn(),
-    tryDecryptAddress: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -34,10 +27,6 @@ describe('UsersService - Profile Completion', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
-        },
-        {
-          provide: EncryptionService,
-          useValue: mockEncryptionService,
         },
         {
           provide: ConfigService,
@@ -48,7 +37,6 @@ describe('UsersService - Profile Completion', () => {
 
     service = module.get<UsersService>(UsersService);
     _prismaService = module.get<PrismaService>(PrismaService);
-    _encryptionService = module.get<EncryptionService>(EncryptionService);
 
     // Reset all mocks before each test
     jest.clearAllMocks();
@@ -111,11 +99,17 @@ describe('UsersService - Profile Completion', () => {
       zip: '90001',
     };
 
-    const mockEncryptedAddress = 'iv:authTag:ciphertext';
+    const expectedPlainAddress: ShippingAddress = {
+      fullName: 'Minji Kim',
+      address1: '123 Main St',
+      address2: 'Apt 4B',
+      city: 'Los Angeles',
+      state: 'CA',
+      zip: '90001',
+    };
 
-    it('should complete profile successfully with encrypted address', async () => {
+    it('should complete profile successfully with plain JSON address', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null); // Instagram ID available
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
         email: 'user@test.com',
@@ -125,7 +119,7 @@ describe('UsersService - Profile Completion', () => {
         status: 'ACTIVE',
         depositorName: 'Kim MinJi',
         instagramId: '@minji_official',
-        shippingAddress: mockEncryptedAddress,
+        shippingAddress: expectedPlainAddress,
         profileCompletedAt: new Date('2026-01-31'),
         createdAt: new Date(),
         lastLoginAt: null,
@@ -134,26 +128,16 @@ describe('UsersService - Profile Completion', () => {
 
       const result = await service.completeProfile(userId, completeProfileDto);
 
-      // Verify encryption was called with correct address
-      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
-        fullName: 'Minji Kim',
-        address1: '123 Main St',
-        address2: 'Apt 4B',
-        city: 'Los Angeles',
-        state: 'CA',
-        zip: '90001',
-      });
-
-      // Verify user was updated with encrypted address
+      // Verify user was updated with plain JSON address
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
-        data: {
+        data: expect.objectContaining({
           email: 'user@test.com',
           depositorName: 'Kim MinJi',
           instagramId: '@minji_official',
-          shippingAddress: mockEncryptedAddress,
+          shippingAddress: expectedPlainAddress,
           profileCompletedAt: expect.any(Date),
-        },
+        }),
       });
 
       expect(result).toHaveProperty('id', userId);
@@ -172,18 +156,22 @@ describe('UsersService - Profile Completion', () => {
         'This Instagram ID is already registered',
       );
 
-      // Should not call encryptAddress or update if Instagram ID is taken
-      expect(mockEncryptionService.encryptAddress).not.toHaveBeenCalled();
+      // Should not call update if Instagram ID is taken
       expect(mockPrismaService.user.update).not.toHaveBeenCalled();
     });
 
     it('should allow user to update their own Instagram ID', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({ id: userId }); // Same user
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
         depositorName: 'Kim MinJi',
         instagramId: '@updated_instagram',
+        name: 'MinJi',
+        role: 'USER',
+        kakaoId: 'kakao-123',
+        email: 'user@test.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         profileCompletedAt: new Date(),
       } as any);
 
@@ -199,10 +187,15 @@ describe('UsersService - Profile Completion', () => {
 
     it('should auto-add @ prefix to Instagram ID (via DTO transform)', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
         instagramId: '@no_at_symbol',
+        name: 'MinJi',
+        role: 'USER',
+        kakaoId: 'kakao-123',
+        email: 'user@test.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         profileCompletedAt: new Date(),
       } as any);
 
@@ -229,29 +222,45 @@ describe('UsersService - Profile Completion', () => {
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
+        name: 'MinJi',
+        role: 'USER',
+        kakaoId: 'kakao-123',
+        email: 'user@test.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         profileCompletedAt: new Date(),
       } as any);
 
       await service.completeProfile(userId, dtoWithoutAddress2);
 
-      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
-        fullName: 'Minji Kim',
-        address1: '123 Main St',
-        address2: undefined,
-        city: 'Los Angeles',
-        state: 'CA',
-        zip: '90001',
-      });
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shippingAddress: expect.objectContaining({
+              fullName: 'Minji Kim',
+              address1: '123 Main St',
+              address2: undefined,
+              city: 'Los Angeles',
+              state: 'CA',
+              zip: '90001',
+            }),
+          }),
+        }),
+      );
     });
 
     it('should set profileCompletedAt timestamp', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
+        name: 'MinJi',
+        role: 'USER',
+        kakaoId: 'kakao-123',
+        email: 'user@test.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         profileCompletedAt: new Date('2026-01-31T10:30:00Z'),
       } as any);
 
@@ -269,8 +278,7 @@ describe('UsersService - Profile Completion', () => {
 
   describe('getShippingAddress', () => {
     const userId = 'user-123';
-    const mockEncryptedAddress = 'iv:authTag:ciphertext';
-    const mockDecryptedAddress: ShippingAddress = {
+    const mockPlainAddress: ShippingAddress = {
       fullName: 'John Doe',
       address1: '123 Main St',
       city: 'Los Angeles',
@@ -278,12 +286,11 @@ describe('UsersService - Profile Completion', () => {
       zip: '90001',
     };
 
-    it('should return decrypted shipping address', async () => {
+    it('should return plain JSON shipping address', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: userId,
-        shippingAddress: mockEncryptedAddress,
+        shippingAddress: mockPlainAddress,
       });
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getShippingAddress(userId);
 
@@ -291,8 +298,7 @@ describe('UsersService - Profile Completion', () => {
         where: { id: userId },
         select: { shippingAddress: true },
       });
-      expect(mockEncryptionService.tryDecryptAddress).toHaveBeenCalledWith(mockEncryptedAddress);
-      expect(result).toEqual(mockDecryptedAddress);
+      expect(result).toEqual(mockPlainAddress);
     });
 
     it('should return null if user not found', async () => {
@@ -301,7 +307,6 @@ describe('UsersService - Profile Completion', () => {
       const result = await service.getShippingAddress(userId);
 
       expect(result).toBeNull();
-      expect(mockEncryptionService.tryDecryptAddress).not.toHaveBeenCalled();
     });
 
     it('should return null if shipping address is null', async () => {
@@ -313,15 +318,13 @@ describe('UsersService - Profile Completion', () => {
       const result = await service.getShippingAddress(userId);
 
       expect(result).toBeNull();
-      expect(mockEncryptionService.tryDecryptAddress).not.toHaveBeenCalled();
     });
 
-    it('should handle decryption errors gracefully', async () => {
+    it('should handle missing address gracefully', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: userId,
-        shippingAddress: 'corrupted:data',
+        shippingAddress: null,
       });
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(null);
 
       const result = await service.getShippingAddress(userId);
 
@@ -331,7 +334,6 @@ describe('UsersService - Profile Completion', () => {
 
   describe('updateAddress', () => {
     const userId = 'user-123';
-    const mockEncryptedAddress = 'new-iv:new-authTag:new-ciphertext';
     const updateAddressDto = {
       fullName: 'Updated Name',
       address1: '456 New St',
@@ -340,43 +342,44 @@ describe('UsersService - Profile Completion', () => {
       state: 'CA',
       zip: '94102',
     };
+    const expectedPlainAddress: ShippingAddress = {
+      fullName: 'Updated Name',
+      address1: '456 New St',
+      address2: 'Suite 100',
+      city: 'San Francisco',
+      state: 'CA',
+      zip: '94102',
+    };
+
+    const mockFullUser = {
+      id: userId,
+      email: 'user@test.com',
+      kakaoId: 'kakao-123',
+      name: 'Test User',
+      role: 'USER',
+      status: 'ACTIVE',
+      depositorName: 'Test',
+      instagramId: '@test',
+      kakaoPhone: null,
+      shippingAddress: expectedPlainAddress,
+      profileCompletedAt: new Date(),
+      createdAt: new Date(),
+      lastLoginAt: null,
+      updatedAt: new Date(),
+    };
 
     it('should update shipping address successfully', async () => {
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
-      mockPrismaService.user.update.mockResolvedValue({
-        id: userId,
-        email: 'user@test.com',
-        kakaoId: 'kakao-123',
-        name: 'Test User',
-        role: 'USER',
-        status: 'ACTIVE',
-        depositorName: 'Test',
-        instagramId: '@test',
-        shippingAddress: mockEncryptedAddress,
-        profileCompletedAt: new Date(),
-        createdAt: new Date(),
-        lastLoginAt: null,
-        updatedAt: new Date(),
-      });
+      mockPrismaService.user.update.mockResolvedValue(mockFullUser);
+      // updateAddress calls getProfile which calls findUnique
+      mockPrismaService.user.findUnique.mockResolvedValue(mockFullUser);
 
       const result = await service.updateAddress(userId, updateAddressDto as any);
 
-      // Verify encryption was called with new address
-      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
-        fullName: 'Updated Name',
-        address1: '456 New St',
-        address2: 'Suite 100',
-        city: 'San Francisco',
-        state: 'CA',
-        zip: '94102',
-      });
-
-      // Verify user was updated with encrypted address
+      // Verify user was updated with plain JSON address
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: {
-          shippingAddress: mockEncryptedAddress,
+          shippingAddress: expectedPlainAddress,
         },
       });
 
@@ -388,48 +391,53 @@ describe('UsersService - Profile Completion', () => {
         ...updateAddressDto,
         address2: undefined,
       };
-
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(dtoWithoutAddress2);
-      mockPrismaService.user.update.mockResolvedValue({
-        id: userId,
-        shippingAddress: mockEncryptedAddress,
-      } as any);
-
-      await service.updateAddress(userId, dtoWithoutAddress2 as any);
-
-      expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
+      const plainAddressNoAddress2: ShippingAddress = {
         fullName: 'Updated Name',
         address1: '456 New St',
         address2: undefined,
         city: 'San Francisco',
         state: 'CA',
         zip: '94102',
+      };
+
+      mockPrismaService.user.update.mockResolvedValue({
+        ...mockFullUser,
+        shippingAddress: plainAddressNoAddress2,
+      });
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        ...mockFullUser,
+        shippingAddress: plainAddressNoAddress2,
+      });
+
+      await service.updateAddress(userId, dtoWithoutAddress2 as any);
+
+      expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          shippingAddress: plainAddressNoAddress2,
+        },
       });
     });
 
-    it('should encrypt address before storing', async () => {
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
-      mockPrismaService.user.update.mockResolvedValue({
-        id: userId,
-      } as any);
+    it('should store plain JSON address (not encrypted)', async () => {
+      mockPrismaService.user.update.mockResolvedValue(mockFullUser);
+      mockPrismaService.user.findUnique.mockResolvedValue(mockFullUser);
 
       await service.updateAddress(userId, updateAddressDto as any);
 
-      // Verify encrypted address was stored, not plain text
+      // Verify plain JSON address was stored, not an encrypted string
       expect(mockPrismaService.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            shippingAddress: mockEncryptedAddress,
+            shippingAddress: expect.objectContaining({
+              fullName: 'Updated Name',
+            }),
           }),
         }),
       );
     });
 
     it('should throw error if user not found', async () => {
-      mockEncryptionService.encryptAddress.mockReturnValue(mockEncryptedAddress);
-      mockEncryptionService.tryDecryptAddress.mockReturnValue(updateAddressDto);
       mockPrismaService.user.update.mockRejectedValue(new Error('Record not found'));
 
       await expect(

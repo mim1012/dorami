@@ -292,7 +292,11 @@ export const apiClient = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { method: 'GET', ...options }),
 
-  post: <T>(endpoint: string, body?: any, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
+  post: <T>(
+    endpoint: string,
+    body?: any,
+    options?: Pick<RequestOptions, 'signal' | 'timeout'> & { headers?: Record<string, string> },
+  ) =>
     request<T>(endpoint, {
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,

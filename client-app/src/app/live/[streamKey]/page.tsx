@@ -161,7 +161,7 @@ export default function LiveStreamPage() {
     userCount,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey, { forceLogoutOnAuthFailure: false });
+  } = useChatConnection(streamKey);
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
 

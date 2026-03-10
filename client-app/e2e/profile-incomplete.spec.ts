@@ -11,22 +11,20 @@ function uniqueEmail(prefix: string) {
  * fresh dev-login + CSRF 처리 + complete-profile (일부 필드만)
  * 반환: { parsedCookies, userId }
  */
-async function setupIncompleteUser(
-  page: import('@playwright/test').Page,
-  skipFields: string[],
-) {
+async function setupIncompleteUser(page: import('@playwright/test').Page, skipFields: string[]) {
   const email = uniqueEmail('incomplete');
   const apiCtx = await playwrightRequest.newContext({ baseURL: BACKEND_URL });
 
   // 1. dev-login
-  const loginRes = await apiCtx.post('/api/v1/auth/dev-login', {
-    data: { email, name: 'E2E Incomplete User', role: 'USER' },
+  const loginRes = await apiCtx.post('/api/auth/dev-login', {
+    data: { email, name: 'E2E Incomplete User' },
   });
   expect(loginRes.ok(), `dev-login failed: ${loginRes.status()}`).toBeTruthy();
   const loginData = await loginRes.json();
   const user = loginData.data.user;
 
-  const setCookieHeaders = loginRes.headersArray()
+  const setCookieHeaders = loginRes
+    .headersArray()
     .filter((h) => h.name.toLowerCase() === 'set-cookie')
     .map((h) => h.value);
   const parsedCookies = setCookieHeaders.map((header) => {
@@ -36,18 +34,24 @@ async function setupIncompleteUser(
     return {
       name: nameValue.substring(0, eqIdx),
       value: nameValue.substring(eqIdx + 1),
-      domain: 'localhost', path: '/', expires: -1,
-      httpOnly: false, secure: false, sameSite: 'Lax' as const,
+      domain: 'localhost',
+      path: '/',
+      expires: -1,
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax' as const,
     };
   });
 
   // 2. CSRF 토큰 받기
   const cookieHeader = parsedCookies.map((c) => `${c.name}=${c.value}`).join('; ');
-  const meForCsrf = await apiCtx.get('/api/v1/auth/me', { headers: { Cookie: cookieHeader } });
-  const csrfCookieHeader = meForCsrf.headersArray()
-    .filter((h) => h.name.toLowerCase() === 'set-cookie')
-    .map((h) => h.value)
-    .find((v) => v.startsWith('csrf-token=')) || '';
+  const meForCsrf = await apiCtx.get('/api/auth/me', { headers: { Cookie: cookieHeader } });
+  const csrfCookieHeader =
+    meForCsrf
+      .headersArray()
+      .filter((h) => h.name.toLowerCase() === 'set-cookie')
+      .map((h) => h.value)
+      .find((v) => v.startsWith('csrf-token=')) || '';
   const csrfToken = csrfCookieHeader.split('=')[1]?.split(';')[0] || '';
 
   // 3. complete-profile (skipFields 제외)
@@ -67,7 +71,7 @@ async function setupIncompleteUser(
     if (!skipFields.includes(k)) filteredProfile[k] = v;
   }
 
-  const profileRes = await apiCtx.post('/api/v1/users/complete-profile', {
+  const profileRes = await apiCtx.post('/api/users/complete-profile', {
     data: filteredProfile,
     headers: {
       Cookie: `${cookieHeader}; csrf-token=${csrfToken}`,
@@ -76,7 +80,9 @@ async function setupIncompleteUser(
   });
   // 일부 필수 필드 누락 → 400 예상 (의도적)
   if (!profileRes.ok()) {
-    console.log(`complete-profile (incomplete): ${profileRes.status()} — expected for missing fields`);
+    console.log(
+      `complete-profile (incomplete): ${profileRes.status()} — expected for missing fields`,
+    );
   }
   await apiCtx.dispose();
 
@@ -91,19 +97,26 @@ async function setupIncompleteUser(
   }
 
   // useAuth 재검증 intercept — 미완성 유저 데이터 반환
-  await page.route('http://localhost:3001/api/v1/users/me', async (route) => {
+  await page.route('http://localhost:3001/api/users/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: incompleteUser, success: true, timestamp: new Date().toISOString() }),
+      body: JSON.stringify({
+        data: incompleteUser,
+        success: true,
+        timestamp: new Date().toISOString(),
+      }),
     });
   });
 
   await page.evaluate((u) => {
-    localStorage.setItem('auth-storage', JSON.stringify({
-      state: { user: u, isAuthenticated: true, isLoading: false },
-      version: 0,
-    }));
+    localStorage.setItem(
+      'auth-storage',
+      JSON.stringify({
+        state: { user: u, isAuthenticated: true, isLoading: false },
+        version: 0,
+      }),
+    );
   }, incompleteUser);
 
   return { user: incompleteUser, parsedCookies };
@@ -113,15 +126,31 @@ test.describe('A. 프로필 미완성 케이스별 리다이렉트 및 완료 �
   test.use({ storageState: { cookies: [], origins: [] } });
   test.setTimeout(90000);
 
-  test('A1: depositorName 없는 유저 → /profile/register API로 검증 및 리다이렉트 확인', async ({ page }) => {
-    await setupIncompleteUser(page, ['depositorName', 'instagramId', 'fullName', 'address1', 'city', 'state', 'zip', 'phone']);
+  test('A1: depositorName 없는 유저 → /profile/register API로 검증 및 리다이렉트 확인', async ({
+    page,
+  }) => {
+    await setupIncompleteUser(page, [
+      'depositorName',
+      'instagramId',
+      'fullName',
+      'address1',
+      'city',
+      'state',
+      'zip',
+      'phone',
+    ]);
 
     // 프로필 API로 미완성 상태 확인
     const TOKEN = await page.evaluate(() => {
-      return document.cookie.split(';').find(c => c.trim().startsWith('accessToken='))?.split('=')[1] || '';
+      return (
+        document.cookie
+          .split(';')
+          .find((c) => c.trim().startsWith('accessToken='))
+          ?.split('=')[1] || ''
+      );
     });
     const apiCtx = await playwrightRequest.newContext({ baseURL: BACKEND_URL });
-    const meRes = await apiCtx.get('/api/v1/users/me', {
+    const meRes = await apiCtx.get('/api/users/me', {
       headers: { Cookie: `accessToken=${TOKEN}` },
     });
     const meData = await meRes.json();
@@ -145,7 +174,15 @@ test.describe('A. 프로필 미완성 케이스별 리다이렉트 및 완료 �
   test('A2: instagramId만 없는 유저 → API로 상태 검증', async ({ page }) => {
     // 먼저 complete-profile로 instagramId 제외하고 등록 — 400 날 것 (validator 필수)
     // 대신 API로 직접 user 상태 확인
-    await setupIncompleteUser(page, ['instagramId', 'fullName', 'address1', 'city', 'state', 'zip', 'phone']);
+    await setupIncompleteUser(page, [
+      'instagramId',
+      'fullName',
+      'address1',
+      'city',
+      'state',
+      'zip',
+      'phone',
+    ]);
 
     const TOKEN = await page.evaluate(() => {
       const cookies = document.cookie.split(';');
@@ -157,7 +194,7 @@ test.describe('A. 프로필 미완성 케이스별 리다이렉트 및 완료 �
     });
 
     const apiCtx = await playwrightRequest.newContext({ baseURL: BACKEND_URL });
-    const meRes = await apiCtx.get('/api/v1/users/me', {
+    const meRes = await apiCtx.get('/api/users/me', {
       headers: { Cookie: `accessToken=${TOKEN}` },
     });
     expect(meRes.ok()).toBeTruthy();
@@ -175,8 +212,19 @@ test.describe('A. 프로필 미완성 케이스별 리다이렉트 및 완료 �
     expect(url.includes('/profile/register') || url.includes('/login')).toBeTruthy();
   });
 
-  test('A3: depositorName + instagramId 없는 유저 → /profile/register에서 폼 채우기', async ({ page }) => {
-    await setupIncompleteUser(page, ['depositorName', 'instagramId', 'fullName', 'address1', 'city', 'state', 'zip', 'phone']);
+  test('A3: depositorName + instagramId 없는 유저 → /profile/register에서 폼 채우기', async ({
+    page,
+  }) => {
+    await setupIncompleteUser(page, [
+      'depositorName',
+      'instagramId',
+      'fullName',
+      'address1',
+      'city',
+      'state',
+      'zip',
+      'phone',
+    ]);
 
     // /profile/register 직접 접근 (localStorage에 user null 필드 있음)
     await page.goto(`${BASE_URL}/profile/register`, { waitUntil: 'domcontentloaded' });
@@ -205,7 +253,9 @@ test.describe('A. 프로필 미완성 케이스별 리다이렉트 및 완료 �
     } else {
       // 쿠키 인증 실패 → /login으로 떨어짐 — 이건 useAuth 재검증 이슈
       // 이 케이스는 앱 동작을 기록 (실제 버그 가능성)
-      console.warn('⚠️ A3: 미완성 유저가 /login으로 리다이렉트됨 — useAuth 세션 재검증 타이밍 이슈 의심');
+      console.warn(
+        '⚠️ A3: 미완성 유저가 /login으로 리다이렉트됨 — useAuth 세션 재검증 타이밍 이슈 의심',
+      );
       expect(url).toContain('/login'); // 명시적으로 기록
     }
   });
