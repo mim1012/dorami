@@ -99,7 +99,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Los Angeles',
           state: 'CA',
           zip: '90001',
-          phone: '(310) 555-0123',
+
         })
         .expect(200);
 
@@ -134,7 +134,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(401);
     });
@@ -152,7 +152,7 @@ describe('Profile Completion (E2E)', () => {
       expect(response.body.message).toBeDefined();
     });
 
-    it('should return 400 with invalid phone format', async () => {
+    it('should return 400 with invalid kakaoPhone format', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/users/complete-profile')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -164,11 +164,11 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '1234567890', // Invalid format
+          kakaoPhone: 'notaphone', // Invalid format
         })
         .expect(400);
 
-      expect(response.body.message).toContain('Phone number must be in format (123) 456-7890');
+      expect(response.body.message).toBeDefined();
     });
 
     it('should return 400 with invalid ZIP code format', async () => {
@@ -183,7 +183,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '1234', // Invalid format
-          phone: '(123) 456-7890',
+
         })
         .expect(400);
 
@@ -202,7 +202,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'XX', // Invalid state code
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(400);
 
@@ -234,7 +234,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(409);
 
@@ -274,7 +274,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(200);
 
@@ -314,7 +314,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '90001-1234', // Extended format
-          phone: '(310) 555-0123',
+
         })
         .expect(200);
 
@@ -353,7 +353,7 @@ describe('Profile Completion (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(200);
 

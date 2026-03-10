@@ -376,7 +376,6 @@ export class ShippingAddressDto {
   city!: string;
   state!: string;
   zip!: string;
-  phone!: string;
 }
 
 export class UserStatisticsDto {
@@ -420,13 +419,6 @@ export class UpdateAdminUserAddressDto {
     message: 'ZIP code must be in format 12345 or 12345-6789',
   })
   zip!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
-    message: 'Phone number must be in format +1XXXXXXXXXX',
-  })
-  phone!: string;
 }
 
 export class UpdateAdminUserDto {

@@ -37,12 +37,20 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, updateDto: UpdateUserDto): Promise<UserResponseDto> {
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: updateDto,
-    });
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: updateDto,
+      });
 
-    return this.mapToResponseDto(user);
+      return this.mapToResponseDto(user);
+    } catch (err: unknown) {
+      const prismaErr = err as { code?: string; meta?: { target?: string[] } };
+      if (prismaErr.code === 'P2002' && prismaErr.meta?.target?.includes('email')) {
+        throw new ConflictException('이미 사용 중인 이메일입니다');
+      }
+      throw err;
+    }
   }
 
   async deleteAccount(userId: string): Promise<void> {
@@ -86,9 +94,6 @@ export class UsersService {
       }
     }
 
-    // Normalize phone number to +1XXXXXXXXXX format (only if provided)
-    const normalizedPhone = dto.phone ? this.normalizePhoneNumber(dto.phone) : undefined;
-
     // Prepare shipping address for encryption
     const shippingAddress: ShippingAddress = {
       fullName: dto.fullName,
@@ -98,9 +103,6 @@ export class UsersService {
       state: dto.state,
       zip: dto.zip,
     };
-    if (normalizedPhone) {
-      shippingAddress.phone = normalizedPhone;
-    }
 
     // Encrypt shipping address
     const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
@@ -112,6 +114,7 @@ export class UsersService {
         email: dto.email,
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
+        ...(dto.kakaoPhone !== undefined && { kakaoPhone: dto.kakaoPhone }),
         shippingAddress: encryptedAddress as string, // Store encrypted string as Json
         profileCompletedAt: new Date(), // Mark profile as completed
       },
@@ -202,7 +205,6 @@ export class UsersService {
       city: dto.city,
       state: dto.state,
       zip: dto.zip,
-      phone: dto.phone,
     };
 
     // Encrypt shipping address

@@ -109,7 +109,6 @@ describe('UsersService - Profile Completion', () => {
       city: 'Los Angeles',
       state: 'CA',
       zip: '90001',
-      phone: '(310) 555-0123',
     };
 
     const mockEncryptedAddress = 'iv:authTag:ciphertext';
@@ -135,7 +134,7 @@ describe('UsersService - Profile Completion', () => {
 
       const result = await service.completeProfile(userId, completeProfileDto);
 
-      // Verify encryption was called with correct address (phone normalized to +1XXXXXXXXXX for shipping)
+      // Verify encryption was called with correct address
       expect(mockEncryptionService.encryptAddress).toHaveBeenCalledWith({
         fullName: 'Minji Kim',
         address1: '123 Main St',
@@ -143,7 +142,6 @@ describe('UsersService - Profile Completion', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '+13105550123',
       });
 
       // Verify user was updated with encrypted address
@@ -246,7 +244,6 @@ describe('UsersService - Profile Completion', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '+13105550123',
       });
     });
 
@@ -279,7 +276,6 @@ describe('UsersService - Profile Completion', () => {
       city: 'Los Angeles',
       state: 'CA',
       zip: '90001',
-      phone: '(310) 555-0123',
     };
 
     it('should return decrypted shipping address', async () => {
@@ -343,7 +339,6 @@ describe('UsersService - Profile Completion', () => {
       city: 'San Francisco',
       state: 'CA',
       zip: '94102',
-      phone: '(415) 555-9999',
     };
 
     it('should update shipping address successfully', async () => {
@@ -375,7 +370,6 @@ describe('UsersService - Profile Completion', () => {
         city: 'San Francisco',
         state: 'CA',
         zip: '94102',
-        phone: '(415) 555-9999',
       });
 
       // Verify user was updated with encrypted address
@@ -411,7 +405,6 @@ describe('UsersService - Profile Completion', () => {
         city: 'San Francisco',
         state: 'CA',
         zip: '94102',
-        phone: '(415) 555-9999',
       });
     });
 

@@ -14,7 +14,7 @@ export function isProfileComplete(user: User | null): boolean {
     return user.profileComplete;
   }
 
-  // Fallback: check required fields only (instagramId and phone are optional)
+  // Fallback: check required fields only (instagramId and kakaoPhone are optional)
   const hasEmail = !!user.email;
 
   if (!hasEmail) return false;

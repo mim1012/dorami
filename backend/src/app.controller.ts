@@ -36,4 +36,16 @@ export class AppController {
       zelleRecipientName: config?.zelleRecipientName ?? '',
     };
   }
+
+  @Public()
+  @Get('config/business')
+  async getBusinessConfig() {
+    const config = await this.prisma.systemConfig.findUnique({
+      where: { id: 'system' },
+    });
+    return {
+      businessRegistrationNumber: config?.businessRegistrationNumber ?? '',
+      onlineSalesRegistrationNumber: config?.onlineSalesRegistrationNumber ?? '',
+    };
+  }
 }

@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
 env:
   DOCKER_REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/dorami

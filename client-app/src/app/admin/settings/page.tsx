@@ -48,6 +48,8 @@ interface SystemSettings {
   solapiApiKey: string;
   solapiApiSecret: string;
   kakaoChannelId: string;
+  businessRegistrationNumber: string;
+  onlineSalesRegistrationNumber: string;
 }
 
 const MIN_CART_TIMER_HOURS = 1;
@@ -112,7 +114,8 @@ type SectionKey =
   | 'shippingMessages'
   | 'points'
   | 'noticeManagement'
-  | 'noticeList';
+  | 'noticeList'
+  | 'businessInfo';
 
 const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   payment: true,
@@ -122,6 +125,7 @@ const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   points: false,
   noticeManagement: false,
   noticeList: false,
+  businessInfo: false,
 };
 
 const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[] = [
@@ -230,6 +234,8 @@ export default function AdminSettingsPage() {
     solapiApiKey: '',
     solapiApiSecret: '',
     kakaoChannelId: '',
+    businessRegistrationNumber: '',
+    onlineSalesRegistrationNumber: '',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -788,6 +794,37 @@ export default function AdminSettingsPage() {
         onToggle={() => handleToggleSection('noticeList')}
       >
         <NoticeListManagement />
+      </SectionCard>
+
+      {/* Business Info */}
+      <SectionCard
+        icon={SettingsIcon}
+        title="사업자 정보"
+        sectionId="businessInfo"
+        isOpen={expandedSections.businessInfo}
+        onToggle={() => handleToggleSection('businessInfo')}
+      >
+        <div className="space-y-4">
+          <Input
+            label="사업자등록번호"
+            value={settings.businessRegistrationNumber}
+            onChange={(e) =>
+              setSettings({ ...settings, businessRegistrationNumber: e.target.value })
+            }
+            placeholder="000-00-00000"
+            fullWidth
+          />
+          <Input
+            label="통신판매업신고번호"
+            value={settings.onlineSalesRegistrationNumber}
+            onChange={(e) =>
+              setSettings({ ...settings, onlineSalesRegistrationNumber: e.target.value })
+            }
+            placeholder="제 0000-지역-0000 호"
+            fullWidth
+          />
+          <p className="text-xs text-gray-400">저장 후 사이트 푸터에 즉시 반영됩니다.</p>
+        </div>
       </SectionCard>
 
       {/* Bottom Save */}

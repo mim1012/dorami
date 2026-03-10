@@ -24,7 +24,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface ProfileData {
@@ -58,6 +57,9 @@ export default function MyPagePage() {
   const [isDepositorNameEditOpen, setIsDepositorNameEditOpen] = useState(false);
   const [depositorNameInput, setDepositorNameInput] = useState('');
   const [depositorNameError, setDepositorNameError] = useState<string | null>(null);
+  const [isEmailEditOpen, setIsEmailEditOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
@@ -67,7 +69,6 @@ export default function MyPagePage() {
     city: '',
     state: '',
     zip: '',
-    phone: '',
   });
 
   // Load profile
@@ -100,7 +101,6 @@ export default function MyPagePage() {
         city: address.city,
         state: address.state,
         zip: address.zip,
-        phone: address.phone,
       });
     }
   };
@@ -171,6 +171,38 @@ export default function MyPagePage() {
     setDepositorNameInput(profile?.depositorName || '');
     setDepositorNameError(null);
     setIsDepositorNameEditOpen(true);
+  };
+
+  const handleEmailEdit = () => {
+    setEmailInput(profile?.email || '');
+    setEmailError(null);
+    setIsEmailEditOpen(true);
+  };
+
+  const handleEmailSubmit = async () => {
+    const trimmed = emailInput.trim();
+    if (!trimmed) {
+      setEmailError('이메일을 입력해주세요');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError('올바른 이메일 형식이 아닙니다');
+      return;
+    }
+    try {
+      const response = await apiClient.patch<ProfileData>('/users/me', { email: trimmed });
+      setProfile(response.data);
+      setIsEmailEditOpen(false);
+      setSuccessMessage('이메일이 저장되었습니다');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: unknown) {
+      const status = (err as { statusCode?: number })?.statusCode;
+      if (status === 409) {
+        setEmailError('이미 사용 중인 이메일입니다');
+      } else {
+        setEmailError('저장에 실패했습니다. 다시 시도해주세요');
+      }
+    }
   };
 
   const handleDepositorNameSubmit = async () => {
@@ -249,6 +281,7 @@ export default function MyPagePage() {
             onPhoneEdit={handlePhoneEdit}
             onInstagramIdEdit={handleInstagramIdEdit}
             onDepositorNameEdit={handleDepositorNameEdit}
+            onEmailEdit={handleEmailEdit}
           />
 
           <PointsBalanceCard />
@@ -348,6 +381,39 @@ export default function MyPagePage() {
                 </button>
                 <button
                   onClick={handleInstagramIdSubmit}
+                  className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isEmailEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
+              <Body className="text-primary-text font-semibold mb-4">이메일 변경</Body>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => {
+                  setEmailInput(e.target.value);
+                  setEmailError(null);
+                }}
+                placeholder="example@email.com"
+                className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
+              />
+              {emailError && <Body className="text-error text-caption mb-2">{emailError}</Body>}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setIsEmailEditOpen(false)}
+                  className="flex-1 py-3 border border-border-color rounded-button text-secondary-text text-sm hover:bg-primary-black transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleEmailSubmit}
                   className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   저장

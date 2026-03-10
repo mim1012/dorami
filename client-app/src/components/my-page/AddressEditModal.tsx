@@ -7,7 +7,7 @@ import { Select } from '@/components/common/Select';
 import { Button } from '@/components/common/Button';
 import { Body } from '@/components/common/Typography';
 import { US_STATES } from '@/lib/constants/us-states';
-import { formatPhoneNumber, formatZipCode } from '@/lib/utils/format';
+import { formatZipCode } from '@/lib/utils/format';
 
 export interface AddressFormData {
   fullName: string;
@@ -16,7 +16,6 @@ export interface AddressFormData {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface FormErrors {
@@ -25,7 +24,6 @@ interface FormErrors {
   city?: string;
   state?: string;
   zip?: string;
-  phone?: string;
 }
 
 interface AddressEditModalProps {
@@ -50,9 +48,7 @@ export function AddressEditModal({
     const { name, value } = e.target;
     let formattedValue = value;
 
-    if (name === 'phone') {
-      formattedValue = formatPhoneNumber(value);
-    } else if (name === 'zip') {
+    if (name === 'zip') {
       formattedValue = formatZipCode(value);
     } else if (name === 'state') {
       formattedValue = value.toUpperCase();
@@ -85,12 +81,6 @@ export function AddressEditModal({
     } else if (!/^\d{5}(-\d{4})?$/.test(formData.zip)) {
       newErrors.zip = 'ZIP code must be in format 12345 or 12345-6789';
     }
-    if (!formData.phone) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must be complete';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -189,29 +179,16 @@ export function AddressEditModal({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="ZIP Code"
-            name="zip"
-            value={formData.zip}
-            onChange={handleChange}
-            error={errors.zip}
-            placeholder="12345 or 12345-6789"
-            fullWidth
-            required
-          />
-
-          <Input
-            label="Phone Number"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            error={errors.phone}
-            placeholder="(123) 456-7890"
-            fullWidth
-            required
-          />
-        </div>
+        <Input
+          label="ZIP Code"
+          name="zip"
+          value={formData.zip}
+          onChange={handleChange}
+          error={errors.zip}
+          placeholder="12345 or 12345-6789"
+          fullWidth
+          required
+        />
 
         <div className="sticky bottom-0 left-0 right-0 bg-content-bg border-t border-border-color -mx-6 px-6 py-4 flex gap-4 z-50">
           <Button type="button" variant="outline" fullWidth onClick={handleClose}>

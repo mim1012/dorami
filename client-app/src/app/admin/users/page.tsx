@@ -15,7 +15,7 @@ interface UserListItem {
   email: string;
   name: string;
   depositorName: string | null;
-  phone: string | null;
+  kakaoPhone: string | null;
   instagramId: string | null;
   shippingAddressSummary?: string | null;
   profileCompletedAt: string | null;
@@ -155,10 +155,11 @@ function AdminUsersContent() {
         user.depositorName || <span className="text-secondary-text text-xs">미설정</span>,
     },
     {
-      key: 'phone',
-      label: '전화번호',
+      key: 'kakaoPhone',
+      label: '카카오 연락처',
       sortable: false,
-      render: (user) => user.phone || <span className="text-secondary-text text-xs">미설정</span>,
+      render: (user) =>
+        user.kakaoPhone || <span className="text-secondary-text text-xs">미설정</span>,
     },
     {
       key: 'shippingAddress',

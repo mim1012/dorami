@@ -104,7 +104,6 @@ export class UserResponseDto {
     city?: string;
     state?: string;
     zip?: string;
-    phone?: string;
   };
 
   @ApiProperty({ description: '프로필 완료 여부', example: true })

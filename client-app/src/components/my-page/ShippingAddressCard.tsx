@@ -10,7 +10,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface ShippingAddressCardProps {
@@ -36,7 +35,6 @@ export function ShippingAddressCard({ address, onEditClick }: ShippingAddressCar
           <Body className="text-primary-text">
             {address.city}, {address.state} {address.zip}
           </Body>
-          <Body className="text-primary-text">연락처: {address.phone}</Body>
         </div>
       ) : (
         <Body className="text-secondary-text">등록된 배송지가 없습니다</Body>

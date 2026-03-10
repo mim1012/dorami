@@ -44,7 +44,7 @@ describe('My Page - Address Update (E2E)', () => {
       city: 'Los Angeles',
       state: 'CA',
       zip: '90001',
-      phone: '(310) 555-0001',
+
     });
 
     testUser = await prismaService.user.create({
@@ -121,7 +121,7 @@ describe('My Page - Address Update (E2E)', () => {
       expect(address).toHaveProperty('city', 'Los Angeles');
       expect(address).toHaveProperty('state', 'CA');
       expect(address).toHaveProperty('zip', '90001');
-      expect(address).toHaveProperty('phone', '(310) 555-0001');
+
     });
 
     it('should return 401 without authentication', async () => {
@@ -141,7 +141,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'San Francisco',
           state: 'CA',
           zip: '94102',
-          phone: '(415) 555-9999',
+
         })
         .expect(200);
 
@@ -177,7 +177,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(401);
     });
@@ -205,14 +205,14 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '1234', // Invalid format
-          phone: '(123) 456-7890',
+
         })
         .expect(400);
 
       expect(response.body.message).toContain('ZIP code must be in format 12345 or 12345-6789');
     });
 
-    it('should return 400 with invalid phone format', async () => {
+    it('should return 200 with address without phone (phone removed)', async () => {
       const response = await request(app.getHttpServer())
         .patch('/api/users/profile/address')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -222,11 +222,10 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Test City',
           state: 'CA',
           zip: '12345',
-          phone: '1234567890', // Invalid format
         })
-        .expect(400);
+        .expect(200);
 
-      expect(response.body.message).toContain('Phone number must be in format (123) 456-7890');
+      expect(response.body).toHaveProperty('shippingAddress');
     });
 
     it('should return 400 with invalid state code', async () => {
@@ -239,7 +238,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Test City',
           state: 'XX', // Invalid state code
           zip: '12345',
-          phone: '(123) 456-7890',
+
         })
         .expect(400);
 
@@ -257,7 +256,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Seattle',
           state: 'WA',
           zip: '98101',
-          phone: '(206) 555-3333',
+
         })
         .expect(200);
 
@@ -286,7 +285,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'New York',
           state: 'NY',
           zip: '10001-1234', // Extended format
-          phone: '(212) 555-7777',
+
         })
         .expect(200);
 
@@ -310,7 +309,7 @@ describe('My Page - Address Update (E2E)', () => {
           city: 'Privacy City',
           state: 'CA',
           zip: '90210',
-          phone: '(310) 555-0000',
+
         })
         .expect(200);
 

@@ -11,6 +11,7 @@ interface ProfileInfoCardProps {
   onPhoneEdit?: () => void;
   onInstagramIdEdit?: () => void;
   onDepositorNameEdit?: () => void;
+  onEmailEdit?: () => void;
 }
 
 export function ProfileInfoCard({
@@ -22,6 +23,7 @@ export function ProfileInfoCard({
   onPhoneEdit,
   onInstagramIdEdit,
   onDepositorNameEdit,
+  onEmailEdit,
 }: ProfileInfoCardProps) {
   return (
     <div className="bg-content-bg shadow-sm border border-border-color rounded-button p-6 mb-6">
@@ -30,12 +32,12 @@ export function ProfileInfoCard({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Body className="text-secondary-text text-caption">인스타그램 ID</Body>
-          <div className="flex items-center gap-2">
-            <Body className="text-primary-text">{instagramId || '미설정'}</Body>
+          <div className="flex items-center gap-2 min-w-0">
+            <Body className="text-primary-text truncate min-w-0">{instagramId || '미설정'}</Body>
             {onInstagramIdEdit && (
               <button
                 onClick={onInstagramIdEdit}
-                className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity"
+                className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity flex-shrink-0"
               >
                 {instagramId ? '변경' : '등록'}
               </button>
@@ -60,7 +62,17 @@ export function ProfileInfoCard({
 
         <div>
           <Body className="text-secondary-text text-caption">이메일</Body>
-          <Body className="text-primary-text">{email || '미설정'}</Body>
+          <div className="flex items-center gap-2">
+            <Body className="text-primary-text">{email || '미설정'}</Body>
+            {onEmailEdit && (
+              <button
+                onClick={onEmailEdit}
+                className="text-hot-pink text-xs underline hover:opacity-80 transition-opacity"
+              >
+                {email ? '변경' : '등록'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div>

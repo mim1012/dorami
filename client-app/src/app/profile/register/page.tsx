@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { useInstagramCheck } from '@/lib/hooks/use-instagram-check';
-import { formatPhoneNumber, formatZipCode, formatInstagramId } from '@/lib/utils/format';
+import { formatZipCode, formatInstagramId } from '@/lib/utils/format';
 import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -19,32 +19,32 @@ interface FormData {
   email: string;
   depositorName: string;
   instagramId: string;
+  kakaoPhone: string;
   fullName: string;
   address1: string;
   address2: string;
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface FormErrors {
   email?: string;
   depositorName?: string;
   instagramId?: string;
+  kakaoPhone?: string;
   fullName?: string;
   address1?: string;
   city?: string;
   state?: string;
   zip?: string;
-  phone?: string;
 }
 
 interface ProfileResponse {
   email?: string;
   depositorName?: string;
   instagramId?: string;
-  phone?: string;
+  kakaoPhone?: string;
   shippingAddress?: {
     fullName?: string;
     address1?: string;
@@ -52,13 +52,13 @@ interface ProfileResponse {
     city?: string;
     state?: string;
     zip?: string;
-    phone?: string;
   };
 }
 
 const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
 const ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
-const PHONE_PATTERN = /^\(\d{3}\) \d{3}-\d{4}$/;
+const KAKAO_PHONE_PATTERN =
+  /^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/;
 
 const sanitizeReturnPath = (raw: string | null): string | null => {
   if (!raw) return null;
@@ -86,13 +86,13 @@ const mapProfileToFormData = (profile: ProfileResponse, fallbackEmail?: string):
     email: profile.email ?? fallbackEmail ?? '',
     depositorName: profile.depositorName ?? '',
     instagramId: profile.instagramId ?? '',
+    kakaoPhone: profile.kakaoPhone ?? '',
     fullName: shipping?.fullName ?? '',
     address1: shipping?.address1 ?? '',
     address2: shipping?.address2 ?? '',
     city: shipping?.city ?? '',
     state: shipping?.state ? shipping.state.toUpperCase() : '',
     zip: shipping?.zip ? formatZipCode(shipping.zip) : '',
-    phone: shipping?.phone ? formatPhoneNumber(shipping.phone) : '',
   };
 };
 
@@ -109,13 +109,13 @@ function ProfileRegisterContent() {
     email: '',
     depositorName: '',
     instagramId: '',
+    kakaoPhone: '',
     fullName: '',
     address1: '',
     address2: '',
     city: '',
     state: '',
     zip: '',
-    phone: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -185,9 +185,7 @@ function ProfileRegisterContent() {
 
     let formattedValue = value;
 
-    if (name === 'phone') {
-      formattedValue = formatPhoneNumber(value);
-    } else if (name === 'zip') {
+    if (name === 'zip') {
       formattedValue = formatZipCode(value);
     } else if (name === 'instagramId') {
       formattedValue = formatInstagramId(value);
@@ -250,11 +248,12 @@ function ProfileRegisterContent() {
       newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
     }
 
-    // 전화번호: 필수 입력
-    if (!formData.phone.trim()) {
-      newErrors.phone = '전화번호를 입력해주세요';
-    } else if (!PHONE_PATTERN.test(formData.phone)) {
-      newErrors.phone = '미국 전화번호 형식: (123) 456-7890';
+    // 카카오 전화번호: 선택사항, 입력 시 형식 검증
+    if (
+      formData.kakaoPhone.trim() &&
+      !KAKAO_PHONE_PATTERN.test(formData.kakaoPhone.replace(/\s/g, ''))
+    ) {
+      newErrors.kakaoPhone = '미국 번호 (예: +1 213-555-1234) 또는 한국 번호 (예: 010-1234-5678)';
     }
 
     setErrors(newErrors);
@@ -291,8 +290,8 @@ function ProfileRegisterContent() {
         normalizedErrors.state = 'State를 선택해주세요';
       } else if (lower.includes('zip')) {
         normalizedErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
-      } else if (lower.includes('phone')) {
-        normalizedErrors.phone = '미국 전화번호 형식: (123) 456-7890';
+      } else if (lower.includes('phone') || lower.includes('kakaophone')) {
+        normalizedErrors.kakaoPhone = '올바른 전화번호 형식이 아닙니다';
       }
     });
 
@@ -320,18 +319,18 @@ function ProfileRegisterContent() {
     setSuccessMessage(null);
 
     const igTrimmed = formData.instagramId.trim();
-    const phoneTrimmed = formData.phone.trim();
+    const kakaoPhoneTrimmed = formData.kakaoPhone.trim();
     const payload = {
       email: formData.email.trim(),
       depositorName: formData.depositorName.trim(),
       instagramId: igTrimmed,
+      ...(kakaoPhoneTrimmed && { kakaoPhone: kakaoPhoneTrimmed }),
       fullName: formData.fullName.trim(),
       address1: formData.address1.trim(),
       address2: formData.address2.trim(),
       city: formData.city.trim(),
       state: formData.state.trim(),
       zip: formData.zip.trim(),
-      phone: phoneTrimmed,
     };
 
     try {
@@ -340,6 +339,7 @@ function ProfileRegisterContent() {
           email: payload.email,
           depositorName: payload.depositorName,
           instagramId: payload.instagramId,
+          ...(kakaoPhoneTrimmed && { kakaoPhone: kakaoPhoneTrimmed }),
         });
         const addressResponse = await apiClient.patch<ProfileResponse>('/users/profile/address', {
           fullName: payload.fullName,
@@ -348,7 +348,6 @@ function ProfileRegisterContent() {
           city: payload.city,
           state: payload.state,
           zip: payload.zip,
-          phone: payload.phone,
         });
         setFormData(mapProfileToFormData(addressResponse.data, payload.email));
         await refreshProfile();
@@ -480,6 +479,23 @@ function ProfileRegisterContent() {
             </div>
           </div>
 
+          {/* 카카오 전화번호 (선택) */}
+          <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
+            <Heading2 className="text-hot-pink mb-4">연락처 (선택)</Heading2>
+            <Input
+              label="카카오 전화번호 (선택사항)"
+              name="kakaoPhone"
+              value={formData.kakaoPhone}
+              onChange={handleChange}
+              error={errors.kakaoPhone}
+              placeholder="미국: +1 213-555-1234 / 한국: 010-1234-5678"
+              fullWidth
+            />
+            <p className="text-xs text-secondary-text/60">
+              알림톡 발송에 사용됩니다. 입력하지 않아도 됩니다.
+            </p>
+          </div>
+
           {/* 미국 배송지 정보 */}
           <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
             <Heading2 className="text-hot-pink mb-4">미국 배송지</Heading2>
@@ -543,29 +559,16 @@ function ProfileRegisterContent() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="ZIP Code"
-                name="zip"
-                value={formData.zip}
-                onChange={handleChange}
-                error={errors.zip}
-                placeholder="12345 또는 12345-6789"
-                fullWidth
-                required
-              />
-
-              <Input
-                label="전화번호 (미국)"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                error={errors.phone}
-                placeholder="(213) 555-1234"
-                fullWidth
-                required
-              />
-            </div>
+            <Input
+              label="ZIP Code"
+              name="zip"
+              value={formData.zip}
+              onChange={handleChange}
+              error={errors.zip}
+              placeholder="12345 또는 12345-6789"
+              fullWidth
+              required
+            />
           </div>
 
           {/* 등록 버튼 */}

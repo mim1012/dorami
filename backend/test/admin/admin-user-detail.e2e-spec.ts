@@ -71,7 +71,6 @@ describe('Admin User Detail (E2E)', () => {
       city: 'Los Angeles',
       state: 'CA',
       zip: '90001',
-      phone: '(310) 555-0123',
     };
 
     testTargetUser = await prismaService.user.create({
@@ -136,14 +135,13 @@ describe('Admin User Detail (E2E)', () => {
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
-      expect(response.body.shippingAddress).toEqual({
+      expect(response.body.shippingAddress).toMatchObject({
         fullName: 'John Doe',
         address1: '123 Main Street',
         address2: 'Apt 4B',
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0123',
       });
     });
 

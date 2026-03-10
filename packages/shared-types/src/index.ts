@@ -103,7 +103,6 @@ export interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone?: string;
   street?: string;
   zipCode?: string;
   postalCode?: string;

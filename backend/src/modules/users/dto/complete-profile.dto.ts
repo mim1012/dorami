@@ -79,16 +79,16 @@ export class CompleteProfileDto {
   })
   zip!: string;
 
-  @ApiProperty({
-    description: '미국 전화번호 (US +1 only)',
-    example: '(213) 555-1234',
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (선택사항)',
+    example: '+1 213-555-1234',
   })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^(\+1)?[0-9\s\-()]{10,14}$/, {
-    message: 'Phone number must be US format (e.g., (213) 555-1234 or +1 213 555 1234)',
+  @IsOptional()
+  @Matches(/^(\+1|1)?[\s\-.]?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}$|^(\+82|0)\d{8,11}$/, {
+    message: '미국 번호 (예: +1 213-555-1234) 또는 한국 번호 (예: 010-1234-5678)를 입력해주세요',
   })
-  phone!: string;
+  kakaoPhone?: string;
 }
 
 export class CheckInstagramDto {

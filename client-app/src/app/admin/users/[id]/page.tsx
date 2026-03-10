@@ -19,7 +19,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface UserStatistics {
@@ -51,7 +50,7 @@ interface UserDetail {
   id: string;
   email: string;
   name: string;
-  phone: string | null;
+  kakaoPhone: string | null;
   instagramId: string | null;
   depositorName: string | null;
   shippingAddress: ShippingAddress | null;
@@ -70,13 +69,12 @@ interface ShippingAddressForm {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface EditableUserForm {
   name: string;
   email: string;
-  phone: string;
+  kakaoPhone: string;
   instagramId: string;
   depositorName: string;
   shippingAddress: ShippingAddressForm;
@@ -202,7 +200,7 @@ export default function AdminUserDetailPage() {
   const getUserFormDefaults = (nextUser: UserDetail): EditableUserForm => ({
     name: nextUser.name || '',
     email: nextUser.email || '',
-    phone: nextUser.phone || '',
+    kakaoPhone: nextUser.kakaoPhone || '',
     instagramId: nextUser.instagramId || '',
     depositorName: nextUser.depositorName || '',
     shippingAddress: {
@@ -212,7 +210,6 @@ export default function AdminUserDetailPage() {
       city: nextUser.shippingAddress?.city || '',
       state: nextUser.shippingAddress?.state || '',
       zip: nextUser.shippingAddress?.zip || '',
-      phone: nextUser.shippingAddress?.phone || '',
     },
   });
 
@@ -268,14 +265,14 @@ export default function AdminUserDetailPage() {
     try {
       const name = normalizeText(profileForm.name);
       const email = normalizeText(profileForm.email);
-      const phone = normalizeText(profileForm.phone);
+      const kakaoPhone = normalizeText(profileForm.kakaoPhone);
       const instagramId = normalizeText(profileForm.instagramId);
       const depositorName = normalizeText(profileForm.depositorName);
 
       const profileChanged =
         name !== normalizeText(baseProfile.name) ||
         email !== normalizeText(baseProfile.email) ||
-        phone !== normalizeText(baseProfile.phone) ||
+        kakaoPhone !== normalizeText(baseProfile.kakaoPhone) ||
         instagramId !== normalizeText(baseProfile.instagramId) ||
         depositorName !== normalizeText(baseProfile.depositorName);
 
@@ -295,12 +292,12 @@ export default function AdminUserDetailPage() {
         payload.email = email;
       }
 
-      if (phone !== normalizeText(baseProfile.phone)) {
-        if (!phone) {
+      if (kakaoPhone !== normalizeText(baseProfile.kakaoPhone)) {
+        if (!kakaoPhone) {
           showToast('연락처는 비워둘 수 없습니다', 'error');
           return;
         }
-        payload.phone = phone;
+        payload.kakaoPhone = kakaoPhone;
       }
 
       if (instagramId !== normalizeText(baseProfile.instagramId)) {
@@ -331,9 +328,7 @@ export default function AdminUserDetailPage() {
         normalizeText(profileForm.shippingAddress.state) !==
           normalizeText(baseProfile.shippingAddress.state) ||
         normalizeText(profileForm.shippingAddress.zip) !==
-          normalizeText(baseProfile.shippingAddress.zip) ||
-        normalizeText(profileForm.shippingAddress.phone) !==
-          normalizeText(baseProfile.shippingAddress.phone);
+          normalizeText(baseProfile.shippingAddress.zip);
 
       if (shippingChanged) {
         const shippingPayload = {
@@ -343,7 +338,6 @@ export default function AdminUserDetailPage() {
           city: normalizeText(profileForm.shippingAddress.city),
           state: normalizeText(profileForm.shippingAddress.state),
           zip: normalizeText(profileForm.shippingAddress.zip),
-          phone: normalizeText(profileForm.shippingAddress.phone),
         };
 
         if (
@@ -351,13 +345,9 @@ export default function AdminUserDetailPage() {
           !shippingPayload.address1 ||
           !shippingPayload.city ||
           !shippingPayload.state ||
-          !shippingPayload.zip ||
-          !shippingPayload.phone
+          !shippingPayload.zip
         ) {
-          showToast(
-            '배송지 필수 항목(수령인, 주소, 도시, 주, ZIP, 연락처)을 입력해 주세요',
-            'error',
-          );
+          showToast('배송지 필수 항목(수령인, 주소, 도시, 주, ZIP)을 입력해 주세요', 'error');
           return;
         }
 
@@ -528,9 +518,9 @@ export default function AdminUserDetailPage() {
                 required
               />
               <Input
-                label="전화번호"
-                value={profileForm.phone}
-                onChange={(e) => handleProfileInputChange('phone', e.target.value)}
+                label="카카오 연락처"
+                value={profileForm.kakaoPhone}
+                onChange={(e) => handleProfileInputChange('kakaoPhone', e.target.value)}
                 fullWidth
                 required
               />
@@ -595,13 +585,6 @@ export default function AdminUserDetailPage() {
                   fullWidth
                   required
                 />
-                <Input
-                  label="배송지 연락처"
-                  value={profileForm.shippingAddress.phone}
-                  onChange={(e) => handleShippingAddressChange('phone', e.target.value)}
-                  fullWidth
-                  required
-                />
               </div>
 
               <Body className="text-caption text-secondary-text">
@@ -626,8 +609,8 @@ export default function AdminUserDetailPage() {
               </div>
 
               <div>
-                <Body className="text-secondary-text text-caption">전화번호</Body>
-                <Body>{user.phone || '-'}</Body>
+                <Body className="text-secondary-text text-caption">카카오 연락처</Body>
+                <Body>{user.kakaoPhone || '-'}</Body>
               </div>
 
               <div>
@@ -684,7 +667,6 @@ export default function AdminUserDetailPage() {
               <Body>
                 {user.shippingAddress.city} {user.shippingAddress.state} {user.shippingAddress.zip}
               </Body>
-              <Body>연락처: {user.shippingAddress.phone}</Body>
             </div>
           ) : (
             <Body className="text-secondary-text">배송지 미등록</Body>

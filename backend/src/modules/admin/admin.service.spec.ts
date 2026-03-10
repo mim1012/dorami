@@ -307,7 +307,7 @@ describe('AdminService', () => {
         lastLoginAt: expect.any(String),
         lastPurchaseAt: null,
         profileCompletedAt: null,
-        phone: undefined,
+        kakaoPhone: undefined,
         shippingAddressSummary: '-',
         status: 'ACTIVE',
         role: 'USER',
@@ -349,7 +349,6 @@ describe('AdminService', () => {
       city: 'Los Angeles',
       state: 'CA',
       zip: '90001',
-      phone: '(310) 555-0123',
     };
 
     it('should return user detail with decrypted address', async () => {
@@ -440,7 +439,6 @@ describe('AdminService', () => {
           city: 'Seoul',
           region: 'KR',
           zipCode: '12345',
-          phone: '010-1234-5678',
         }),
       },
     };
@@ -460,7 +458,6 @@ describe('AdminService', () => {
         city: 'Seoul',
         state: 'KR',
         zip: '12345',
-        phone: '010-1234-5678',
       });
     });
 
@@ -972,7 +969,7 @@ describe('AdminService', () => {
       paidAt: new Date('2026-01-01T01:00:00Z'),
       shippingAddress: null,
       orderItems: [],
-      user: { phone: null, email: 'current@example.com' },
+      user: { kakaoPhone: null, email: 'current@example.com' },
       ...overrides,
     });
 
@@ -991,7 +988,7 @@ describe('AdminService', () => {
       // user.email(현재) = 'new@example.com', order.userEmail(주문시) = 'order-time@example.com'
       const orderWithDifferentEmail = makeOrder({
         userEmail: 'order-time@example.com',
-        user: { phone: null, email: 'new@example.com' },
+        user: { kakaoPhone: null, email: 'new@example.com' },
       });
 
       jest.spyOn(prisma.order, 'findMany').mockResolvedValue([orderWithDifferentEmail] as any);
@@ -1006,7 +1003,7 @@ describe('AdminService', () => {
     it('orderItems가 있을 때 각 row에 order.userEmail이 사용되어야 한다', async () => {
       const orderWithItems = makeOrder({
         userEmail: 'order-time@example.com',
-        user: { phone: null, email: 'new@example.com' },
+        user: { kakaoPhone: null, email: 'new@example.com' },
         orderItems: [
           {
             id: 'item-1',

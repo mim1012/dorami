@@ -295,9 +295,6 @@ export default function CheckoutPage() {
                     <Body className="text-secondary-text text-sm">
                       {[addr.city, addr.state, addr.zip].filter(Boolean).join(', ')}
                     </Body>
-                    {addr.phone && (
-                      <Body className="text-secondary-text text-sm">{addr.phone}</Body>
-                    )}
                   </>
                 );
               })()}

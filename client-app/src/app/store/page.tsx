@@ -357,14 +357,16 @@ function StoreContent() {
 
 export default function StorePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-[100dvh] bg-primary-black flex items-center justify-center">
-          <div className="w-10 h-10 border-[3px] border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <StoreContent />
-    </Suspense>
+    <div className="home-page">
+      <Suspense
+        fallback={
+          <div className="min-h-[100dvh] bg-primary-black flex items-center justify-center">
+            <div className="w-10 h-10 border-[3px] border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <StoreContent />
+      </Suspense>
+    </div>
   );
 }

@@ -46,14 +46,6 @@ export class UpdateAddressDto {
     message: 'ZIP code must be in format 12345 or 12345-6789',
   })
   zip!: string;
-
-  @ApiProperty({ description: '전화번호', example: '(213) 555-1234' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\(\d{3}\) \d{3}-\d{4}$/, {
-    message: 'Phone number must be in format (123) 456-7890',
-  })
-  phone!: string;
 }
 
 export class ProfileResponseDto {
@@ -95,7 +87,6 @@ export class ProfileResponseDto {
     city: string;
     state: string;
     zip: string;
-    phone?: string;
   };
 
   @ApiProperty({ description: '프로필 완료 여부', example: true })

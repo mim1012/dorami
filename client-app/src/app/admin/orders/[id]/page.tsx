@@ -16,7 +16,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface OrderItem {
@@ -304,7 +303,6 @@ export default function AdminOrderDetailPage() {
                 {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
                 {order.shippingAddress.zip}
               </Body>
-              <Body>Tel: {order.shippingAddress.phone}</Body>
             </div>
           )}
         </div>

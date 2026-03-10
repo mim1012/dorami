@@ -260,9 +260,8 @@ export class AdminService {
     const city = toText(value.city) || toText(value.town);
     const state = toText(value.state) || toText(value.region);
     const zip = toText(value.zip) || toText(value.zipCode) || toText(value.postalCode);
-    const phone = toText(value.phone);
 
-    if (!fullName && !address1 && !address2 && !city && !state && !zip && !phone) {
+    if (!fullName && !address1 && !address2 && !city && !state && !zip) {
       return null;
     }
 
@@ -273,7 +272,6 @@ export class AdminService {
       city,
       state,
       zip,
-      phone,
     } as ShippingAddressDto;
   }
 
@@ -838,7 +836,7 @@ export class AdminService {
                 },
               },
             },
-            user: { select: { email: true } },
+            user: { select: { email: true, kakaoPhone: true } },
           },
         });
 
@@ -912,8 +910,7 @@ export class AdminService {
 
     orders.forEach((order) => {
       const shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
-      const shippingAddr = this.normalizeShippingAddress(order.shippingAddress);
-      const phone = shippingAddr?.phone ?? '-';
+      const phone = (order as any).user?.kakaoPhone ?? '-';
 
       if (order.orderItems && order.orderItems.length > 0) {
         order.orderItems.forEach((item, itemIndex) => {
@@ -2073,7 +2070,6 @@ export class AdminService {
         city: dto.shippingAddress.city.trim(),
         state: dto.shippingAddress.state.trim().toUpperCase(),
         zip: dto.shippingAddress.zip.trim(),
-        phone: dto.shippingAddress.phone.trim(),
       };
 
       const encryptedAddress = this.encryptionService.encryptAddress(normalizedShippingAddress);

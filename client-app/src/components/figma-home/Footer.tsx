@@ -1,14 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { LegalModal } from '@/components/legal/LegalModal';
 
 const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
 const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
 
+const DEFAULT_BIZ_NUMBER = '194-44-00522';
+const DEFAULT_ONLINE_SALES_NUMBER = '제 2021-대전유성-1024 호';
+
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);
+  const [bizNumber, setBizNumber] = useState(DEFAULT_BIZ_NUMBER);
+  const [onlineSalesNumber, setOnlineSalesNumber] = useState(DEFAULT_ONLINE_SALES_NUMBER);
+
+  useEffect(() => {
+    fetch('/api/config/business')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.businessRegistrationNumber) setBizNumber(data.businessRegistrationNumber);
+        if (data?.onlineSalesRegistrationNumber)
+          setOnlineSalesNumber(data.onlineSalesRegistrationNumber);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <>
@@ -116,11 +132,11 @@ export function Footer() {
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">사업자 번호</span>
-                <span className="text-primary-text/80 font-medium">194-44-00522</span>
+                <span className="text-primary-text/80 font-medium">{bizNumber}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">통신판매업</span>
-                <span className="text-primary-text/80 font-medium">제 2021-대전유성-1024 호</span>
+                <span className="text-primary-text/80 font-medium">{onlineSalesNumber}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">문의</span>
