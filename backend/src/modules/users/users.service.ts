@@ -2,7 +2,7 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { EncryptionService, ShippingAddress } from '../../common/services/encryption.service';
+import type { ShippingAddress } from '@live-commerce/shared-types';
 import { UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateAddressDto, ProfileResponseDto } from './dto/profile.dto';
@@ -12,7 +12,6 @@ import { UserNotFoundException } from '../../common/exceptions/business.exceptio
 export class UsersService {
   constructor(
     private prisma: PrismaService,
-    private encryptionService: EncryptionService,
     private configService: ConfigService,
   ) {}
 
@@ -90,7 +89,7 @@ export class UsersService {
   }
 
   /**
-   * Complete user profile with encrypted shipping address
+   * Complete user profile
    */
   async completeProfile(userId: string, dto: CompleteProfileDto): Promise<UserResponseDto> {
     // Check Instagram ID uniqueness (only if provided)
@@ -101,7 +100,6 @@ export class UsersService {
       }
     }
 
-    // Prepare shipping address for encryption
     const shippingAddress: ShippingAddress = {
       fullName: dto.fullName,
       address1: dto.address1,
@@ -111,9 +109,6 @@ export class UsersService {
       zip: dto.zip,
     };
 
-    // Encrypt shipping address
-    const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
-
     // Update user with profile data
     let user = await this.prisma.user.update({
       where: { id: userId },
@@ -122,8 +117,8 @@ export class UsersService {
         depositorName: dto.depositorName,
         instagramId: dto.instagramId,
         ...(dto.kakaoPhone !== undefined && { kakaoPhone: dto.kakaoPhone }),
-        shippingAddress: encryptedAddress as string, // Store encrypted string as Json
-        profileCompletedAt: new Date(), // Mark profile as completed
+        shippingAddress: shippingAddress as unknown as Prisma.InputJsonValue,
+        profileCompletedAt: new Date(),
       },
     });
 
@@ -147,7 +142,7 @@ export class UsersService {
   }
 
   /**
-   * Get decrypted shipping address (admin only)
+   * Get shipping address (admin only)
    */
   async getShippingAddress(userId: string): Promise<ShippingAddress | null> {
     const user = await this.prisma.user.findUnique({
@@ -159,13 +154,11 @@ export class UsersService {
       return null;
     }
 
-    // Cast Json to string for decryption
-    const encryptedString = user.shippingAddress as string;
-    return this.encryptionService.tryDecryptAddress(encryptedString);
+    return user.shippingAddress as unknown as ShippingAddress;
   }
 
   /**
-   * Get user profile with decrypted shipping address
+   * Get user profile
    */
   async getProfile(userId: string): Promise<ProfileResponseDto> {
     const user = await this.prisma.user.findUnique({
@@ -176,12 +169,9 @@ export class UsersService {
       throw new UserNotFoundException(userId);
     }
 
-    // Decrypt shipping address if exists
-    let shippingAddress: ShippingAddress | undefined;
-    if (user.shippingAddress) {
-      const encryptedString = user.shippingAddress as string;
-      shippingAddress = this.encryptionService.tryDecryptAddress(encryptedString) ?? undefined;
-    }
+    const shippingAddress = user.shippingAddress
+      ? (user.shippingAddress as unknown as ShippingAddress)
+      : undefined;
 
     return {
       id: user.id,
@@ -214,14 +204,10 @@ export class UsersService {
       zip: dto.zip,
     };
 
-    // Encrypt shipping address
-    const encryptedAddress = this.encryptionService.encryptAddress(shippingAddress);
-
-    // Update user with new address
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        shippingAddress: encryptedAddress as string,
+        shippingAddress: shippingAddress as unknown as Prisma.InputJsonValue,
       },
     });
 

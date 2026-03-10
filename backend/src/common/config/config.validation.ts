@@ -95,12 +95,8 @@ export const configValidationSchema = Joi.object({
   // Admin
   ADMIN_EMAILS: Joi.string().optional().allow(''),
 
-  // Encryption - Required in all environments
-  PROFILE_ENCRYPTION_KEY: Joi.string().length(64).required().messages({
-    'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
-    'any.required': 'PROFILE_ENCRYPTION_KEY is required',
-  }),
-  // Legacy encryption keys for fallback decryption (comma-separated 64-char hex strings)
+  // Encryption keys - no longer used (shipping addresses stored as plain JSON)
+  PROFILE_ENCRYPTION_KEY: Joi.string().optional().allow(''),
   PROFILE_LEGACY_ENCRYPTION_KEYS: Joi.string().optional().allow(''),
 
   // Cart/Order Settings

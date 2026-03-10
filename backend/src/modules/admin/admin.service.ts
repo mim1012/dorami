@@ -8,7 +8,6 @@ import {
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
@@ -124,7 +123,6 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
-    private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private redisService: RedisService,
@@ -221,22 +219,6 @@ export class AdminService {
   private parseShippingAddress(addressValue: unknown): Record<string, unknown> | null {
     if (!addressValue) {
       return null;
-    }
-
-    if (typeof addressValue === 'string') {
-      // Try decryption with legacy key fallback
-      const decrypted = this.encryptionService.tryDecryptAddress(addressValue);
-      if (decrypted) {
-        return decrypted as unknown as Record<string, unknown>;
-      }
-
-      // Try parsing as plain JSON (pre-encryption data)
-      try {
-        const parsed = JSON.parse(addressValue);
-        return parsed as Record<string, unknown>;
-      } catch {
-        return null;
-      }
     }
 
     if (typeof addressValue === 'object' && !Array.isArray(addressValue)) {
@@ -375,12 +357,6 @@ export class AdminService {
     // Map users to DTOs with order stats
     const userDtos: UserListItemDto[] = users.map((user) => {
       const shippingSummary = this.formatShippingAddressSummary(user.shippingAddress);
-      // Debug: Log shipping address decryption
-      if (user.shippingAddress && shippingSummary === '-') {
-        this.logger.warn(
-          `Failed to decrypt address for user ${user.id}: ${String(user.shippingAddress).substring(0, 50)}...`,
-        );
-      }
       return {
         id: user.id,
         email: user.email ?? '',
@@ -2072,8 +2048,7 @@ export class AdminService {
         zip: dto.shippingAddress.zip.trim(),
       };
 
-      const encryptedAddress = this.encryptionService.encryptAddress(normalizedShippingAddress);
-      updateData.shippingAddress = encryptedAddress as unknown as Prisma.InputJsonValue;
+      updateData.shippingAddress = normalizedShippingAddress as unknown as Prisma.InputJsonValue;
     }
 
     if (Object.keys(updateData).length === 0) {

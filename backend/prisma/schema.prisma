@@ -22,7 +22,7 @@ model User {
   depositorName       String? // for bank transfer identification
   kakaoPhone          String?    @map("kakao_phone") // Korean phone number (+82), collected from Kakao login or user-editable, used for Alimtalk
   instagramId         String?    @unique
-  shippingAddress     Json? // encrypted US-format address
+  shippingAddress     Json? // US-format address
   profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed
   suspendedAt         DateTime?  @map("suspended_at") // timestamp when user was suspended
   suspensionReason    String?    @map("suspension_reason") // reason for suspension
