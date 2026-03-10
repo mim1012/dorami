@@ -207,17 +207,18 @@ function ProfileRegisterContent() {
   // 기존 프로필 데이터 프리필
   useEffect(() => {
     if (user) {
+      const addr = user.shippingAddress;
       setFormData((prev) => ({
         ...prev,
         depositorName: user.depositorName || prev.depositorName,
         instagramId: user.instagramId || prev.instagramId,
-        fullName: user.fullName || prev.fullName,
-        address1: user.address1 || prev.address1,
-        address2: user.address2 || prev.address2,
-        city: user.city || prev.city,
-        state: user.state || prev.state,
-        zip: user.zip || prev.zip,
-        phone: user.phone || prev.phone,
+        fullName: addr?.fullName || user.fullName || prev.fullName,
+        address1: addr?.address1 || user.address1 || prev.address1,
+        address2: addr?.address2 || user.address2 || prev.address2,
+        city: addr?.city || user.city || prev.city,
+        state: addr?.state || user.state || prev.state,
+        zip: addr?.zip || user.zip || prev.zip,
+        phone: addr?.phone || user.phone || prev.phone,
       }));
     }
   }, [user]);
