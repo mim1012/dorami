@@ -28,7 +28,11 @@ set -euo pipefail
 # ============================================================================
 
 POSTGRES_USER="${POSTGRES_USER:-doremi_prod}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+# Extract password from DATABASE_URL if POSTGRES_PASSWORD is not explicitly set
+if [ -z "${POSTGRES_PASSWORD:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+  POSTGRES_PASSWORD=$(echo "${DATABASE_URL}" | sed -n 's|^[^:]*://[^:]*:\([^@]*\)@.*|\1|p')
+fi
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 POSTGRES_DB="${POSTGRES_DB:-doremi_production}"
 S3_BUCKET="${S3_BUCKET}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
