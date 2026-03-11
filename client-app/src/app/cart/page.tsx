@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
@@ -39,7 +39,7 @@ interface CartSummary {
   earliestExpiration?: string;
 }
 
-export default function CartPage() {
+function CartPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -261,5 +261,19 @@ export default function CartPage() {
 
       <BottomTabBar />
     </>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+          <Body className="text-primary-text">장바구니를 불러오는 중...</Body>
+        </div>
+      }
+    >
+      <CartPageContent />
+    </Suspense>
   );
 }
