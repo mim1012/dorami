@@ -27,6 +27,7 @@ export class TokenPayload {
   name!: string; // User display name
   role!: string;
   profileComplete?: boolean;
+  shippingAddressComplete?: boolean;
   type?: string; // 'access' or 'refresh'
   jti?: string; // unique token ID for blacklisting
   iat?: number;

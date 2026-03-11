@@ -108,6 +108,7 @@ export class AuthService {
       name: user.name,
       role: user.role,
       profileComplete: profileStatus.profileComplete,
+      shippingAddressComplete: !!user.shippingAddress,
     };
 
     const accessToken = this.jwtService.sign(

@@ -14,7 +14,12 @@ const KAKAO_OPEN_EXTERNAL_VALUE = '1';
  */
 function decodeJwtPayload(
   token: string,
-): { exp?: number; role?: string; profileComplete?: boolean } | null {
+): {
+  exp?: number;
+  role?: string;
+  profileComplete?: boolean;
+  shippingAddressComplete?: boolean;
+} | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -25,6 +30,7 @@ function decodeJwtPayload(
       exp?: number;
       role?: string;
       profileComplete?: boolean;
+      shippingAddressComplete?: boolean;
       [key: string]: unknown;
     };
     return payload;
@@ -163,6 +169,21 @@ export function middleware(request: NextRequest) {
   );
 
   if (requiresProfileCompletion && payload.role !== 'ADMIN' && payload.profileComplete !== true) {
+    const profileUrl = new URL('/profile/register', request.url);
+    if (pathname !== '/profile/register') {
+      const search = request.nextUrl.search ?? '';
+      const target = `${pathname}${search}`;
+      profileUrl.searchParams.set('returnTo', target);
+    }
+    return NextResponse.redirect(profileUrl);
+  }
+
+  if (
+    requiresProfileCompletion &&
+    payload.role !== 'ADMIN' &&
+    payload.profileComplete === true &&
+    payload.shippingAddressComplete === false
+  ) {
     const profileUrl = new URL('/profile/register', request.url);
     if (pathname !== '/profile/register') {
       const search = request.nextUrl.search ?? '';
