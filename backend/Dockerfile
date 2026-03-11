@@ -32,11 +32,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 의존성 복사 (npm workspaces는 루트 node_modules에 호이스팅)
-COPY --from=deps /app/node_modules ./node_modules
+# 의존성 파일 복사 (캐시 레이어 최적화)
+COPY package.json package-lock.json ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY backend/package.json ./backend/
+COPY client-app/package.json ./client-app/
+
+# devDependencies 포함 전체 의존성 설치 (nest CLI, prisma 등 빌드 도구 포함)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
 # 소스 코드 복사
-COPY package.json ./
 COPY packages/shared-types ./packages/shared-types
 COPY backend ./backend
 
@@ -44,8 +50,8 @@ COPY backend ./backend
 RUN npm run build:shared
 
 # Prisma Client 생성 및 Backend 빌드
-RUN npm install -g @nestjs/cli@11 --ignore-scripts && \
-    cd backend && npx prisma generate && nest build
+RUN cd backend && npx prisma generate && \
+    /app/node_modules/.bin/nest build
 
 # ============================================
 # Stage 3: 프로덕션 이미지 (runner)
