@@ -1029,23 +1029,27 @@ jobs:
     steps:
       - name: Send Success Notification
         if: needs.deploy.result == 'success' && needs.verify.result == 'success'
+              - name: Telegram - Production Success
+        if: needs.deploy.result == 'success' && needs.verify.result == 'success'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "=========================================="
-          echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
-          echo "=========================================="
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "URL: ${{ vars.PRODUCTION_URL }}"
-          echo "Deployed by: ${{ github.actor }}"
-          echo "=========================================="
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          MSG="✅ *Production 배포 성공*%0A버전: \`${{ needs.validate.outputs.version }}\`%0A커밋: ${SHORT_SHA}%0A배포자: ${{ github.actor }}"
+          [ -n "$TELEGRAM_BOT_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${MSG}" -d "parse_mode=Markdown" -d "disable_web_page_preview=true"
 
-      - name: Send Failure Notification
+      - name: Telegram - Production Failure
         if: needs.deploy.result == 'failure' || needs.verify.result == 'failure'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "=========================================="
-          echo "PRODUCTION DEPLOYMENT FAILED"
-          echo "=========================================="
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "Deploy Result: ${{ needs.deploy.result }}"
-          echo "Verify Result: ${{ needs.verify.result }}"
-          echo "=========================================="
-          exit 1
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG="🚨 *Production 배포 실패*%0A버전: \`${{ needs.validate.outputs.version }}\`%0A커밋: ${SHORT_SHA}%0A[로그 보기](${RUN_URL})"
+          [ -n "$TELEGRAM_BOT_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${MSG}" -d "parse_mode=Markdown" -d "disable_web_page_preview=true"
