@@ -22,9 +22,12 @@ export class RedisIoAdapter extends IoAdapter {
    * Connect to Redis with timeout and error handling
    */
   async connectToRedis(): Promise<boolean> {
-    const redisUrl = process.env.REDIS_PUBSUB_URL || process.env.REDIS_URL || 'redis://localhost:6379/1';
+    const redisUrl =
+      process.env.REDIS_PUBSUB_URL || process.env.REDIS_URL || 'redis://localhost:6379/1';
 
-    this.logger.log(`Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`);
+    this.logger.log(
+      `Connecting to Redis for Socket.IO adapter: ${redisUrl.replace(/\/\/.*@/, '//*****@')}`,
+    );
 
     try {
       this.pubClient = createClient({
@@ -56,7 +59,9 @@ export class RedisIoAdapter extends IoAdapter {
       await Promise.race([
         Promise.all([this.pubClient.connect(), this.subClient.connect()]),
         new Promise((_, reject) =>
-          setTimeout(() => { reject(new Error('Redis connection timeout')); }, CONNECTION_TIMEOUT),
+          setTimeout(() => {
+            reject(new Error('Redis connection timeout'));
+          }, CONNECTION_TIMEOUT),
         ),
       ]);
 
@@ -87,7 +92,7 @@ export class RedisIoAdapter extends IoAdapter {
       if (this.subClient?.isOpen) {
         await this.subClient.quit();
       }
-    } catch (_error) {
+    } catch {
       this.logger.warn('Error during Redis cleanup');
     }
     this.pubClient = null;
@@ -97,7 +102,10 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
-    this.logger.log(`Creating Socket.IO server on port ${port} with options:`, JSON.stringify(options, null, 2));
+    this.logger.log(
+      `Creating Socket.IO server on port ${port} with options:`,
+      JSON.stringify(options, null, 2),
+    );
     const server = super.createIOServer(port, {
       ...options,
       cors: {

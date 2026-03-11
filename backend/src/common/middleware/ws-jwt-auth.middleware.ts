@@ -14,7 +14,9 @@ function getRedisClient(): Redis {
       password: process.env.REDIS_PASSWORD ?? undefined,
       lazyConnect: true,
     });
-    redisClient.connect().catch(() => {});
+    void redisClient.connect().catch(() => {
+      // intentional: lazy connect errors are ignored
+    });
   }
   return redisClient;
 }

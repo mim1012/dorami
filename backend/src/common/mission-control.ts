@@ -22,14 +22,18 @@ async function post(body: object) {
 }
 
 async function patch(id: number | null, status: string, reason?: string) {
-  if (!id) return;
+  if (!id) {
+    return;
+  }
   try {
     await fetch(MC_URL, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status, reason }),
     });
-  } catch {}
+  } catch {
+    // intentional: fire-and-forget, ignore errors
+  }
 }
 
 export const mc = {
