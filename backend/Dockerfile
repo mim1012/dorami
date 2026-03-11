@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY backend/package.json ./backend/
+COPY client-app/package.json ./client-app/
 
 # BuildKit 캐시 마운트로 npm 캐시 영속화
 # 프로덕션 의존성만 먼저 설치하여 별도 보관
@@ -44,7 +45,7 @@ RUN npm run build:shared
 
 # Prisma Client 생성 및 Backend 빌드
 RUN cd backend && npx prisma generate && \
-    PATH="/app/node_modules/.bin:$PATH" nest build
+    node /app/node_modules/@nestjs/cli/bin/nest.js build
 
 # ============================================
 # Stage 3: 프로덕션 이미지 (runner)
