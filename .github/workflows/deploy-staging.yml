@@ -251,7 +251,7 @@ jobs:
             echo "=== Checking uploads directory state before cleanup ==="
             ls -ld /opt/dorami/backend/uploads 2>&1 || echo "uploads directory doesn't exist yet"
             echo "=== Attempting to remove uploads directory ==="
-            rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
+            sudo rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Creating .env.staging from GitHub Secrets ==="
