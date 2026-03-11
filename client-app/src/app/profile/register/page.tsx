@@ -434,11 +434,10 @@ function ProfileRegisterContent() {
           return;
         }
 
-        const addressData = (addressResult as PromiseFulfilledResult<{ data: ProfileResponse }>)
-          .value.data;
-        setFormData(mapProfileToFormData(addressData, payload.email));
         await refreshProfile();
-        setSuccessMessage('프로필 정보가 저장됐습니다.');
+        const storedReturnTo = consumeStoredReturnTo();
+        const redirectPath = storedReturnTo || queryReturnTo || '/my-page';
+        router.push(redirectPath);
         return;
       }
 
@@ -609,7 +608,7 @@ function ProfileRegisterContent() {
             />
 
             <Input
-              label="二쇱냼 (Address Line 1)"
+              label="주소 (Address Line 1)"
               name="address1"
               value={formData.address1}
               onChange={handleChange}
