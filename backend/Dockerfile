@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Build trigger: Fix FFmpeg RTMPS stream key truncation (commit 54dd099)
+# Build trigger: Force fresh build to bust stale GHA cache (ioredis workspace nesting fix)
 
 # ============================================
 # Stage 1: 의존성 설치 (deps)
