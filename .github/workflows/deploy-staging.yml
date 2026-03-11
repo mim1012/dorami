@@ -25,11 +25,34 @@ env:
 
 jobs:
   # ===========================================
+  # Detect Source Code Changes
+  # ===========================================
+  check:
+    name: Check Source Changes
+    runs-on: ubuntu-latest
+    outputs:
+      source_changed: ${{ steps.filter.outputs.source }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            source:
+              - 'backend/**'
+              - 'client-app/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '**/Dockerfile'
+
+  # ===========================================
   # Run CI Tests First
   # ===========================================
   test:
     name: Run Tests
-    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_tests }}
+    needs: [check]
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.skip_tests) && needs.check.outputs.source_changed == 'true' }}
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -40,8 +63,8 @@ jobs:
   # ===========================================
   build:
     name: Build Images
-    needs: [test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    needs: [check, test]
+    if: always() && needs.check.outputs.source_changed == 'true' && (needs.test.result == 'success' || needs.test.result == 'skipped')
     uses: ./.github/workflows/build-images.yml
     permissions:
       contents: read
@@ -52,8 +75,8 @@ jobs:
   # ===========================================
   deploy:
     name: Deploy to Staging
-    needs: [build]
-    if: always() && needs.build.result == 'success'
+    needs: [check, build]
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: staging
@@ -124,9 +147,16 @@ jobs:
         id: image_tag
         env:
           BUILD_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          SOURCE_CHANGED: ${{ needs.check.outputs.source_changed }}
+          STAGING_LATEST_IMAGE_TAG: ${{ vars.STAGING_LATEST_IMAGE_TAG }}
         run: |
-          # Use GITHUB_SHA as fallback if build output not available
-          IMAGE_TAG="${BUILD_IMAGE_TAG:-sha-${GITHUB_SHA}}"
+          # source 변경 없으면 마지막 성공한 이미지 태그 재사용
+          if [ "$SOURCE_CHANGED" = "false" ]; then
+            IMAGE_TAG="${STAGING_LATEST_IMAGE_TAG:-sha-${GITHUB_SHA}}"
+            echo "♻️  Reusing last image (no source changes): ${IMAGE_TAG}"
+          else
+            IMAGE_TAG="${BUILD_IMAGE_TAG:-sha-${GITHUB_SHA}}"
+          fi
           if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
             echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
             exit 1
@@ -563,7 +593,7 @@ jobs:
           ENDSSH
 
       - name: Save staging image tag to repo variable
-        if: success()
+        if: success() && needs.check.outputs.source_changed == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
