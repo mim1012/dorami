@@ -347,8 +347,8 @@ jobs:
             echo "=== Ensuring uploads directory exists and is writable ==="
             # Just create the directory - docker will handle permissions on container startup
             mkdir -p /opt/dorami/backend/uploads
-            chmod 755 /opt/dorami/backend/uploads || true
-            echo "✓ Uploads directory ready"
+            chmod 777 /opt/dorami/backend/uploads || true
+            echo "✓ Uploads directory ready (writable by container nestjs uid=1001)"
 
             echo "=== SSL Certificate Setup Skipped for Staging ==="
             echo "⚠️  Staging environment runs on HTTP only. For production, configure domain-based HTTPS."
