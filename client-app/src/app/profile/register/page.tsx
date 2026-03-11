@@ -434,6 +434,7 @@ function ProfileRegisterContent() {
           return;
         }
 
+        await apiClient.post('/auth/refresh');
         await refreshProfile();
         const storedReturnTo = consumeStoredReturnTo();
         const redirectPath = storedReturnTo || queryReturnTo || '/my-page';
