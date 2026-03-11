@@ -332,8 +332,9 @@ jobs:
             sudo fuser -k 8080/tcp 2>/dev/null || true
             sleep 1
 
-            # Ensure external postgres volume exists (may have been removed by previous failed deploy)
-            docker volume create dorami_postgres_data 2>/dev/null && echo "✓ Volume ensured" || echo "  Volume already exists"
+            # Ensure external volumes exist (may have been removed by previous failed deploy)
+            docker volume create dorami_postgres_data 2>/dev/null && echo "✓ postgres volume ensured" || echo "  postgres volume already exists"
+            docker volume create dorami_redis_data 2>/dev/null && echo "✓ redis volume ensured" || echo "  redis volume already exists"
 
             # Start postgres and redis first so we can sync the password
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
@@ -413,7 +414,17 @@ jobs:
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
 
             echo "=== Cleaning up old images ==="
-            docker image prune -af --filter "label=org.opencontainers.image.source" --filter "until=24h"
+            docker image prune -af --filter "label=org.opencontainers.image.source" --filter "until=24h" || true
+
+            echo "=== Waiting for nginx to bind port 80 ==="
+            for i in 1 2 3 4 5 6; do
+              if docker ps --format "{{.Ports}}" | grep -q "0.0.0.0:80"; then
+                echo "✓ nginx port 80 bound (attempt \$i)"
+                break
+              fi
+              echo "  Waiting for nginx... (attempt \$i/6)"
+              sleep 5
+            done
 
             echo "=== Checking service health ==="
             for i in 1 2 3 4 5 6; do
