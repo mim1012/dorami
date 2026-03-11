@@ -229,7 +229,7 @@ jobs:
 
             echo "=== Checking for docker-compose file changes ==="
             COMPOSE_CHANGES=$(git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | wc -l)
-            if [ "$COMPOSE_CHANGES" -gt 0 ]; then
+            if [ "${COMPOSE_CHANGES:-0}" -gt 0 ]; then
               echo "⚠️  WARNING: docker-compose/infrastructure/nginx config changes detected"
               git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | head -30
               echo "⚠️  These changes will be applied. Ensure compatibility with deployed services."
@@ -390,6 +390,11 @@ jobs:
               docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=100
               exit 1
             }
+
+            # Show early logs to catch startup crashes fast (e.g. missing module, env error)
+            sleep 3
+            echo "=== Early backend logs (crash detection) ==="
+            docker logs dorami-backend-1 --tail 50 2>&1 || true
 
             # Wait for backend health (up to 90s)
             echo "=== Waiting for backend health ==="
