@@ -19,7 +19,10 @@ COPY client-app/package.json ./client-app/
 # 프로덕션 의존성만 먼저 설치하여 별도 보관
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev --ignore-scripts && \
-    cp -R node_modules prod_node_modules
+    cp -R node_modules prod_node_modules && \
+    for ws_nm in packages/*/node_modules backend/node_modules client-app/node_modules; do \
+      [ -d "$ws_nm" ] && cp -Rn "$ws_nm/." prod_node_modules/ || true; \
+    done
 
 # 빌드를 위해 전체 의존성 설치 (devDependencies 포함)
 RUN --mount=type=cache,target=/root/.npm \
