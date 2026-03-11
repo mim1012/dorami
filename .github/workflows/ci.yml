@@ -221,10 +221,8 @@ jobs:
           tags: dorami-${{ matrix.service }}:test
           cache-from: |
             type=gha,scope=${{ matrix.service }}
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:buildcache
           cache-to: |
             type=gha,scope=${{ matrix.service }},mode=max
-            type=registry,ref=ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:buildcache,mode=max
 
   # ===========================================
   # Security Scan
