@@ -44,8 +44,8 @@ COPY backend ./backend
 RUN npm run build:shared
 
 # Prisma Client 생성 및 Backend 빌드
-RUN cd backend && npx prisma generate && \
-    node /app/node_modules/@nestjs/cli/bin/nest.js build
+RUN npm install -g @nestjs/cli@11 --ignore-scripts && \
+    cd backend && npx prisma generate && nest build
 
 # ============================================
 # Stage 3: 프로덕션 이미지 (runner)
