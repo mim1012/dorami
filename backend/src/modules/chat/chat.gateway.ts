@@ -10,7 +10,11 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { AuthenticatedSocket, authenticateSocket } from '../../common/middleware/ws-jwt-auth.middleware';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  AuthenticatedSocket,
+  authenticateSocket,
+} from '../../common/middleware/ws-jwt-auth.middleware';
 
 interface ChatMessagePayload {
   liveId: string;
@@ -32,9 +36,12 @@ interface DeleteMessagePayload {
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
-  constructor(private readonly jwtService: JwtService) {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prismaService: PrismaService,
+  ) {
     console.log('🔥 ChatGateway constructor called');
   }
 
@@ -47,9 +54,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   async handleConnection(client: Socket) {
     try {
       // Authenticate client
-      const authenticatedClient = await authenticateSocket(client, this.jwtService);
+      const authenticatedClient = await authenticateSocket(
+        client,
+        this.jwtService,
+        this.prismaService,
+      );
 
-      console.log(`✅ Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`);
+      console.log(
+        `✅ Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`,
+      );
 
       // Send welcome message
       client.emit('connection:success', {
@@ -61,7 +74,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         },
       });
     } catch (error) {
-      console.error('❌ Connection failed:', error.message);
+      console.error('❌ Connection failed:', (error as Error).message);
       client.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -218,7 +231,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const roomName = `live:${payload.liveId}`;
 
-    console.log(`🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`);
+    console.log(
+      `🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+    );
 
     // Broadcast deletion to all clients in room
     this.server.to(roomName).emit('chat:message-deleted', {

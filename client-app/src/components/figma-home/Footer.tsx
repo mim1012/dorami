@@ -9,10 +9,12 @@ const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
 
 const DEFAULT_BIZ_NUMBER = '194-44-00522';
 const DEFAULT_ONLINE_SALES_NUMBER = '제 2021-대전유성-1024 호';
+const DEFAULT_BIZ_ADDRESS = '경기도 용인시 수지구 상현로 5, 401-40호 (상현동,상현프라자)';
 
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);
   const [bizNumber, setBizNumber] = useState(DEFAULT_BIZ_NUMBER);
+  const [bizAddress, setBizAddress] = useState(DEFAULT_BIZ_ADDRESS);
   const [onlineSalesNumber, setOnlineSalesNumber] = useState(DEFAULT_ONLINE_SALES_NUMBER);
 
   useEffect(() => {
@@ -20,6 +22,7 @@ export function Footer() {
       .then((r) => r.json())
       .then((data) => {
         if (data?.businessRegistrationNumber) setBizNumber(data.businessRegistrationNumber);
+        if (data?.businessAddress) setBizAddress(data.businessAddress);
         if (data?.onlineSalesRegistrationNumber)
           setOnlineSalesNumber(data.onlineSalesRegistrationNumber);
       })
@@ -151,9 +154,7 @@ export function Footer() {
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">사업장 주소</span>
-                <span className="text-primary-text/80 font-medium">
-                  경기도 용인시 수지구 상현로 5, 401-40호 (상현동,상현프라자)
-                </span>
+                <span className="text-primary-text/80 font-medium">{bizAddress}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">호스팅제공자</span>

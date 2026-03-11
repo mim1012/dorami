@@ -275,7 +275,7 @@ function ProfileRegisterContent() {
       newErrors.depositorName = '입금자명을 입력해주세요';
     }
 
-    // ?몄뒪?洹몃옩 ID: ?꾩닔 ?낅젰
+    // 인스타그램 ID: 필수 입력
     if (!formData.instagramId.trim() || formData.instagramId === '@') {
       newErrors.instagramId = '인스타그램 ID를 입력해주세요';
     } else if (!/^@[a-zA-Z0-9._]+$/.test(formData.instagramId)) {
@@ -306,7 +306,7 @@ function ProfileRegisterContent() {
       newErrors.zip = 'ZIP Code 형식: 12345 또는 12345-6789';
     }
 
-    // 숹력번호: 선택사하, 입력 시 형식 확인
+    // 전화번호: 선택사항, 입력 시 형식 확인
     if (formData.kakaoPhone.trim() && !isValidProfilePhone(formData.kakaoPhone)) {
       newErrors.kakaoPhone = '미국 번호 (예: +1 213-555-1234) 또는 한국 번호 (예: 010-1234-5678)';
     }
@@ -668,7 +668,7 @@ function ProfileRegisterContent() {
             />
           </div>
 
-          {/* ?깅줉 踰꾪듉 */}
+          {/* 등록 버튼 */}
           <Button
             type="submit"
             variant="primary"

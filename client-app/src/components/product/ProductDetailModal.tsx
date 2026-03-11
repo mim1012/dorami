@@ -96,21 +96,15 @@ export default function ProductDetailModal({
         </div>
 
         {/* Product Image Gallery */}
-        <div className="max-h-96">
-          {(() => {
-            const images = (product.images ?? []).filter(Boolean);
-            if (images.length === 0 && product.imageUrl) {
-              images.push(product.imageUrl);
-            }
-            return (
-              <ImageGallery
-                images={images}
-                productName={product.name}
-                aspectRatio="aspect-square"
-              />
-            );
-          })()}
-        </div>
+        {(() => {
+          const images = (product.images ?? []).filter(Boolean);
+          if (images.length === 0 && product.imageUrl) {
+            images.push(product.imageUrl);
+          }
+          return (
+            <ImageGallery images={images} productName={product.name} aspectRatio="aspect-square" />
+          );
+        })()}
 
         {/* Product Info */}
         <div className="p-6 space-y-6">

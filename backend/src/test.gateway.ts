@@ -1,18 +1,27 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket, OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
     origin: '*',
-    credentials: true
+    credentials: true,
   },
   transports: ['websocket', 'polling'],
-  namespace: '/test'
+  namespace: '/test',
 })
 export class TestGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new Logger(TestGateway.name);
 
@@ -26,7 +35,7 @@ export class TestGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     return { event: 'pong', data: 'pong' };
   }
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('✅ TestGateway initialized');
   }
 

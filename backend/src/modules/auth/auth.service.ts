@@ -188,6 +188,7 @@ export class AuthService {
       update: {
         lastLoginAt: new Date(),
         role: finalRole,
+        status: 'ACTIVE',
       },
       create: {
         kakaoId: `dev_${randomUUID()}`,
@@ -198,6 +199,15 @@ export class AuthService {
         lastLoginAt: new Date(),
       },
     });
+
+    // Clear suspension flag so previously-suspended test accounts can reconnect via WebSocket
+    try {
+      await this.redisService.del(`suspended:${user.id}`);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to clear suspension flag for ${user.id}: ${(error as Error).message}`,
+      );
+    }
 
     this.logger.log(`[Dev Auth] Upserted user: ${user.id} (${email}, ${user.role})`);
     return user;

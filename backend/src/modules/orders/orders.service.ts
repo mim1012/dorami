@@ -442,12 +442,14 @@ export class OrdersService {
     userId?: string,
     productIds?: string[],
   ): Promise<OrderTotals> {
-    let subtotal = 0;
+    let subtotalCents = 0;
 
     items.forEach((item) => {
       const price = typeof item.price === 'number' ? item.price : Number(item.price);
-      subtotal += price * item.quantity;
+      subtotalCents += Math.round(price * 100) * item.quantity;
     });
+
+    const subtotal = subtotalCents / 100;
 
     // Calculate global shipping fee
     let totalShippingFee = 0;
@@ -535,39 +537,6 @@ export class OrdersService {
     this.eventEmitter.emit('order:paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);
-  }
-
-  async cancelOrder(orderId: string, userId: string): Promise<void> {
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
-      include: { orderItems: true },
-    });
-
-    if (!order) {
-      throw new OrderNotFoundException(orderId);
-    }
-
-    const CANCELLABLE_STATUSES: string[] = [OrderStatus.PENDING_PAYMENT];
-    if (!CANCELLABLE_STATUSES.includes(order.status)) {
-      throw new BusinessException(
-        'ORDER_CANNOT_BE_CANCELLED',
-        { orderId, currentStatus: order.status },
-        `Order cannot be cancelled in status: ${order.status}`,
-      );
-    }
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.inventoryService.batchRestoreStockTx(
-        tx,
-        order.orderItems as { productId: string; quantity: number }[],
-      );
-      await tx.order.update({ where: { id: orderId }, data: { status: OrderStatus.CANCELLED } });
-    });
-
-    // Remove timer
-    await this.redisService.del(`order:timer:${orderId}`);
-
-    this.eventEmitter.emit('order:cancelled', { orderId });
   }
 
   /**

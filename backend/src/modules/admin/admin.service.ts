@@ -225,6 +225,17 @@ export class AdminService {
       return addressValue as Record<string, unknown>;
     }
 
+    if (typeof addressValue === 'string') {
+      try {
+        const parsed = JSON.parse(addressValue);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {
+        // not valid JSON string
+      }
+    }
+
     return null;
   }
 

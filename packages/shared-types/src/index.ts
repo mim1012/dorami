@@ -699,18 +699,18 @@ export function calculateCartTotal(items: Cart[]): {
   totalShippingFee: string;
   total: string;
 } {
-  let subtotal = 0;
-  let totalShippingFee = 0;
+  let subtotalCents = 0;
+  let totalShippingFeeCents = 0;
 
   items.forEach((item) => {
-    subtotal += parseDecimal(item.price) * item.quantity;
-    totalShippingFee += parseDecimal(item.shippingFee);
+    subtotalCents += Math.round(parseDecimal(item.price) * 100) * item.quantity;
+    totalShippingFeeCents += Math.round(parseDecimal(item.shippingFee) * 100);
   });
 
   return {
-    subtotal: formatDecimal(subtotal),
-    totalShippingFee: formatDecimal(totalShippingFee),
-    total: formatDecimal(subtotal + totalShippingFee),
+    subtotal: (subtotalCents / 100).toFixed(2),
+    totalShippingFee: (totalShippingFeeCents / 100).toFixed(2),
+    total: ((subtotalCents + totalShippingFeeCents) / 100).toFixed(2),
   };
 }
 

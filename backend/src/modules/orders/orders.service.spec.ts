@@ -490,6 +490,12 @@ describe('OrdersService - createOrderFromCart', () => {
     });
   });
 
+  describe('cancelOrder - removed from user-facing API', () => {
+    it('should not have a cancelOrder method on the service', () => {
+      expect(typeof (service as any).cancelOrder).toBe('undefined');
+    });
+  });
+
   describe('Transaction Atomicity', () => {
     it('should execute all operations within a single transaction', async () => {
       // Arrange

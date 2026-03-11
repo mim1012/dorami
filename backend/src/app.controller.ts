@@ -34,6 +34,8 @@ export class AppController {
     return {
       zelleEmail: config?.zelleEmail ?? '',
       zelleRecipientName: config?.zelleRecipientName ?? '',
+      venmoEmail: config?.venmoEmail ?? '',
+      venmoRecipientName: config?.venmoRecipientName ?? '',
     };
   }
 
@@ -45,6 +47,7 @@ export class AppController {
     });
     return {
       businessRegistrationNumber: config?.businessRegistrationNumber ?? '',
+      businessAddress: config?.businessAddress ?? '',
       onlineSalesRegistrationNumber: config?.onlineSalesRegistrationNumber ?? '',
     };
   }

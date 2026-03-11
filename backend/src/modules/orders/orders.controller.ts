@@ -55,20 +55,6 @@ export class OrdersController {
   // Payment confirmation should only be available via admin:
   // PATCH /api/admin/orders/:id/confirm-payment (see admin.controller.ts)
 
-  @Patch(':id/cancel')
-  @ApiOperation({ summary: '주문 취소', description: '본인의 주문을 취소합니다.' })
-  @ApiParam({
-    name: 'id',
-    description: '주문 ID (예: ORD-20240101-00001)',
-    example: 'ORD-20240101-00001',
-  })
-  @ApiResponse({ status: 200, description: '주문 취소 성공' })
-  @ApiResponse({ status: 404, description: '주문을 찾을 수 없음' })
-  async cancelOrder(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
-    await this.ordersService.cancelOrder(orderId, userId);
-    return { message: 'Order cancelled successfully' };
-  }
-
   @Get()
   @ApiOperation({ summary: '내 주문 목록 조회' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: '페이지 번호 (기본: 1)' })

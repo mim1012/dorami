@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { useOrders } from '@/lib/hooks/queries/use-orders';
+import { useOrders, useAllOrdersForCounts } from '@/lib/hooks/queries/use-orders';
 import { OrderStatus } from '@/lib/types';
 import {
   Package,
@@ -39,9 +39,20 @@ export default function OrdersPage() {
     10,
   );
 
+  const { data: allOrdersData } = useAllOrdersForCounts();
+
   const orders = data?.items ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total = data?.total ?? 0;
+
+  const allOrders = allOrdersData?.items ?? [];
+  const statusCounts = allOrders.reduce<Record<string, number>>((acc, order) => {
+    acc[order.status] = (acc[order.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const pendingOrders = allOrders.filter(
+    (o) => o.status === 'PENDING_PAYMENT' && o.paymentStatus === 'PENDING',
+  );
 
   const handleStatusChange = (status: OrderStatus | 'ALL') => {
     setSelectedStatus(status);
@@ -181,20 +192,80 @@ export default function OrdersPage() {
 
           {/* Status Filter Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => handleStatusChange(tab.value)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  selectedStatus === tab.value
-                    ? 'bg-hot-pink/20 text-hot-pink border border-hot-pink/40'
-                    : 'bg-content-bg text-secondary-text border border-border-color hover:border-hot-pink/30'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {STATUS_TABS.map((tab) => {
+              const count = tab.value === 'ALL' ? allOrdersData?.total : statusCounts[tab.value];
+              const hasPendingBadge = tab.value === OrderStatus.PENDING_PAYMENT && (count ?? 0) > 0;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => handleStatusChange(tab.value)}
+                  className={`relative flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    selectedStatus === tab.value
+                      ? 'bg-hot-pink/20 text-hot-pink border border-hot-pink/40'
+                      : 'bg-content-bg text-secondary-text border border-border-color hover:border-hot-pink/30'
+                  }`}
+                >
+                  {hasPendingBadge && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-hot-pink" />
+                  )}
+                  {tab.label}
+                  {count != null && count > 0 && (
+                    <span
+                      className={`ml-1 text-xs ${
+                        selectedStatus === tab.value ? 'text-hot-pink/80' : 'text-secondary-text/70'
+                      }`}
+                    >
+                      ({count})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Pending Payment Pinned Section */}
+          {selectedStatus === 'ALL' && pendingOrders.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-hot-pink" />
+                <Body className="text-hot-pink font-semibold text-sm">
+                  입금 대기 ({pendingOrders.length}건)
+                </Body>
+              </div>
+              <div className="space-y-2">
+                {pendingOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-hot-pink/5 border border-hot-pink/30 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-hot-pink/60 transition-colors"
+                    onClick={() => router.push(`/orders/${order.id}`)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <Body className="text-primary-text font-semibold text-sm truncate">
+                        {order.items[0]?.productName}
+                        {order.items.length > 1 && ` 외 ${order.items.length - 1}개`}
+                      </Body>
+                      <Body className="text-secondary-text text-xs font-mono">{order.id}</Body>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <Body className="text-hot-pink font-bold text-sm">
+                        {formatPrice(order.total)}
+                      </Body>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/order-complete?orderId=${order.id}`);
+                        }}
+                      >
+                        입금 확인 →
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Empty State */}
           {orders.length === 0 && (

@@ -61,6 +61,8 @@ export function formatPhoneNumberForInput(value: string, region?: PhoneRegion): 
   }
 
   if (region === 'US') {
+    // Preserve '+' so user can continue typing '+1'
+    if (cleaned === '+') return '+';
     const hasPlusOne = cleaned.startsWith('+1');
     const digits = hasPlusOne ? cleaned.slice(2) : cleaned.replace(/[^\d]/g, '');
     const short = digits.slice(0, 10);

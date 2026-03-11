@@ -24,7 +24,9 @@ export function Header() {
     queryFn: getActiveNotices,
     staleTime: 60_000,
   });
-  const latestNotice = notices[0];
+  // Prefer IMPORTANT notice in banner; fall back to latest
+  const latestNotice = notices.find((n) => n.category === 'IMPORTANT') ?? notices[0];
+  const hasUnread = notices.length > 0;
 
   useEffect(() => {
     setIsAdmin(isAuthenticated && user?.role === 'ADMIN');
@@ -64,7 +66,9 @@ export function Header() {
               aria-label="공지사항 보기"
             >
               <Bell className="w-5 h-5 md:w-4 md:h-4 text-gray-600" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF4D8D] rounded-full"></span>
+              {hasUnread && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#FF4D8D] rounded-full" />
+              )}
             </button>
             <Link
               href="/cart"
@@ -96,16 +100,37 @@ export function Header() {
         {latestNotice && (
           <button
             type="button"
-            className="mb-3 w-full rounded-full bg-[#FFF0F8] border border-[#FF4D8D]/20 px-4 py-2 text-left text-xs md:text-sm text-[#B01864] overflow-hidden"
+            className="mb-3 w-full flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#FF007A]/8 to-[#FF4D8D]/5 border border-[#FF4D8D]/25 px-3.5 py-2.5 text-left overflow-hidden active:scale-[0.99] transition-transform"
             onClick={() => setIsNoticeOpen(true)}
             aria-label="공지사항 미리보기"
           >
-            <span className="inline-flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#FF4D8D] text-white text-[10px] font-bold">
-                공
+            {/* Category pill */}
+            {latestNotice.category === 'IMPORTANT' ? (
+              <span className="flex-shrink-0 text-[10px] font-bold text-white bg-[#FF007A] px-2 py-0.5 rounded-full tracking-wide">
+                중요
               </span>
-              <span className="font-semibold truncate">공지: {latestNotice.title}</span>
+            ) : (
+              <span className="flex-shrink-0 text-[10px] font-bold text-[#FF007A] bg-[#FF007A]/10 border border-[#FF007A]/20 px-2 py-0.5 rounded-full tracking-wide">
+                공지
+              </span>
+            )}
+
+            {/* Title — truncated */}
+            <span className="flex-1 min-w-0 text-xs font-semibold text-[#990050] truncate">
+              {latestNotice.title}
             </span>
+
+            {/* Chevron hint */}
+            <svg
+              className="flex-shrink-0 w-3.5 h-3.5 text-[#FF4D8D]/50"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         )}
 

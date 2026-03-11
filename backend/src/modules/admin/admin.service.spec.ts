@@ -328,21 +328,7 @@ describe('AdminService', () => {
 
   describe('getUserDetail', () => {
     const userId = 'user-123';
-    const mockUser = {
-      id: userId,
-      email: 'test@example.com',
-      name: 'Test User',
-      instagramId: '@testuser',
-      depositorName: 'Test Depositor',
-      shippingAddress: 'encrypted-address',
-      createdAt: new Date('2026-01-15'),
-      lastLoginAt: new Date('2026-01-30'),
-      status: 'ACTIVE',
-      role: 'USER',
-      suspendedAt: null,
-    };
-
-    const mockDecryptedAddress = {
+    const mockPlainAddress = {
       fullName: 'John Doe',
       address1: '123 Main St',
       address2: 'Apt 4B',
@@ -350,18 +336,29 @@ describe('AdminService', () => {
       state: 'CA',
       zip: '90001',
     };
+    const mockUser = {
+      id: userId,
+      email: 'test@example.com',
+      name: 'Test User',
+      instagramId: '@testuser',
+      depositorName: 'Test Depositor',
+      shippingAddress: mockPlainAddress,
+      createdAt: new Date('2026-01-15'),
+      lastLoginAt: new Date('2026-01-30'),
+      status: 'ACTIVE',
+      role: 'USER',
+      suspendedAt: null,
+    };
 
-    it('should return user detail with decrypted address', async () => {
+    it('should return user detail with plain address (encryption removed)', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'tryDecryptAddress').mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getUserDetail(userId);
 
       expect(result.id).toBe(userId);
       expect(result.email).toBe('test@example.com');
-      expect(result.shippingAddress).toEqual(mockDecryptedAddress);
+      expect(result.shippingAddress).toEqual(mockPlainAddress);
       expect(result.statistics.totalOrders).toBe(0);
-      expect(encryptionService.tryDecryptAddress).toHaveBeenCalledWith('encrypted-address');
     });
 
     it('should throw NotFoundException when user not found', async () => {
@@ -379,11 +376,9 @@ describe('AdminService', () => {
       expect(result.shippingAddress).toBeNull();
     });
 
-    it('should handle decryption error gracefully', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
-        throw new Error('Decryption failed');
-      });
+    it('should return null shippingAddress when address is unparseable', async () => {
+      const userWithInvalidAddress = { ...mockUser, shippingAddress: 'not-valid-json' };
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(userWithInvalidAddress as any);
 
       const result = await service.getUserDetail(userId);
 

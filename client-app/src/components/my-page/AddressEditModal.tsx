@@ -39,7 +39,14 @@ export function AddressEditModal({
   initialData,
   onSubmit,
 }: AddressEditModalProps) {
-  const [formData, setFormData] = useState<AddressFormData>(initialData);
+  const [formData, setFormData] = useState<AddressFormData>({
+    fullName: initialData.fullName ?? '',
+    address1: initialData.address1 ?? '',
+    address2: initialData.address2 ?? '',
+    city: initialData.city ?? '',
+    state: initialData.state ?? '',
+    zip: initialData.zip ?? '',
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
