@@ -1,10 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import {
-  HealthCheck,
-  HealthCheckService,
-  HealthCheckResult,
-} from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService, HealthCheckResult } from '@nestjs/terminus';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaHealthIndicator } from './indicators/prisma.health';
 import { RedisHealthIndicator } from './indicators/redis.health';
@@ -18,17 +14,38 @@ export class HealthController {
     private redisHealth: RedisHealthIndicator,
   ) {}
 
-  @Get()
-  @Public()
-  @HealthCheck()
-  @ApiOperation({ summary: '전체 헬스 체크', description: '모든 의존성(DB, Redis) 상태를 확인합니다.' })
-  @ApiResponse({ status: 200, description: '모든 서비스 정상' })
-  @ApiResponse({ status: 503, description: '일부 서비스 장애' })
-  check(): Promise<HealthCheckResult> {
+  private runFullCheck(): Promise<HealthCheckResult> {
     return this.health.check([
       () => this.prismaHealth.isHealthy('database'),
       () => this.redisHealth.isHealthy('redis'),
     ]);
+  }
+
+  @Get()
+  @Public()
+  @HealthCheck()
+  @ApiOperation({
+    summary: '전체 헬스 체크 (alias)',
+    description:
+      '모든 의존성(DB, Redis) 상태를 확인합니다. /health/full의 backward-compatible alias.',
+  })
+  @ApiResponse({ status: 200, description: '모든 서비스 정상' })
+  @ApiResponse({ status: 503, description: '일부 서비스 장애' })
+  check(): Promise<HealthCheckResult> {
+    return this.runFullCheck();
+  }
+
+  @Get('full')
+  @Public()
+  @HealthCheck()
+  @ApiOperation({
+    summary: '전체 헬스 체크',
+    description: '모든 의존성(DB, Redis) 상태를 확인합니다.',
+  })
+  @ApiResponse({ status: 200, description: '모든 서비스 정상' })
+  @ApiResponse({ status: 503, description: '일부 서비스 장애' })
+  checkFull(): Promise<HealthCheckResult> {
+    return this.runFullCheck();
   }
 
   @Get('live')

@@ -6,7 +6,7 @@ interface ApiResponse<T> {
   data: T;
 }
 
-export interface RequestOptions {
+export interface RequestOptions extends Omit<RequestInit, 'signal'> {
   params?: Record<string, string | number | boolean | string[]>;
   signal?: AbortSignal;
   timeout?: number;
@@ -319,4 +319,15 @@ export const apiClient = {
 
   delete: <T>(endpoint: string, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
     request<T>(endpoint, { method: 'DELETE', ...options }),
+
+  deleteWithBody: <T>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ) =>
+    request<T>(endpoint, {
+      method: 'DELETE',
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...options,
+    }),
 };

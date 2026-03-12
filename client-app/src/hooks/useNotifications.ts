@@ -29,9 +29,7 @@ export function useNotifications(): UseNotificationsReturn {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const supported =
-        'Notification' in window &&
-        'serviceWorker' in navigator &&
-        'PushManager' in window;
+        'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
 
       setIsSupported(supported);
       setPermission(supported ? Notification.permission : null);
@@ -134,7 +132,7 @@ export function useNotifications(): UseNotificationsReturn {
         return false;
       }
     },
-    [isSupported, permission, requestPermission, registerServiceWorker]
+    [isSupported, permission, requestPermission, registerServiceWorker],
   );
 
   /**
@@ -156,7 +154,9 @@ export function useNotifications(): UseNotificationsReturn {
       await subscription.unsubscribe();
 
       // Remove subscription from backend
-      await apiClient.delete(`/notifications/unsubscribe?endpoint=${encodeURIComponent(subscriptionData.endpoint || '')}`);
+      await apiClient.deleteWithBody('/notifications/unsubscribe', {
+        endpoint: subscriptionData.endpoint || '',
+      });
 
       setIsSubscribed(false);
       console.log('[useNotifications] Unsubscribed from notifications');
