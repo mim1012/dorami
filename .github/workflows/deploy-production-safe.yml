@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to deploy'
+        description: 'Version to deploy (e.g. v1.0.1)'
         required: true
         type: string
+      image_tag:
+        description: 'GHCR image tag to deploy (e.g. sha-abc123...). If omitted, uses version.'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: production-deployment
@@ -53,6 +58,6 @@ jobs:
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
-          IMAGE_TAG: ${{ inputs.version }}
+          IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || inputs.version }}
         run: |
           ssh $USER@$HOST "cd /opt/dorami && IMAGE_TAG=$IMAGE_TAG bash scripts/safe-deploy-production.sh"
