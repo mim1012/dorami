@@ -239,7 +239,7 @@ MAX_RETRIES=10
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if curl -sf http://localhost/api/health/ready > /dev/null 2>&1; then
+  if curl -sf http://localhost:3001/api/health/ready > /dev/null 2>&1; then
     log_success "API health check passed"
     break
   fi
@@ -260,7 +260,7 @@ done
 # ============================================
 log_step "STEP 10: Database Connectivity from Backend"
 
-if ! curl -sf "http://localhost/api/health/ready" | grep -q "ok"; then
+if ! curl -sf "http://localhost:3001/api/health/ready" | grep -q "ok"; then
   log_error "Backend database connectivity check failed"
   exit 1
 fi
