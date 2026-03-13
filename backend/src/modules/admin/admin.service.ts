@@ -268,10 +268,10 @@ export class AdminService {
     } as ShippingAddressDto;
   }
 
-  private formatShippingAddressSummary(addressValue: unknown): string {
+  private formatShippingAddressSummary(addressValue: unknown): string | null {
     const normalized = this.normalizeShippingAddress(addressValue);
     if (!normalized) {
-      return '-';
+      return null;
     }
 
     const lines = [
@@ -282,7 +282,7 @@ export class AdminService {
       .map((line) => String(line).trim())
       .filter(Boolean);
 
-    return lines.length > 0 ? lines.join(' / ') : '-';
+    return lines.length > 0 ? lines.join(' / ') : null;
   }
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
