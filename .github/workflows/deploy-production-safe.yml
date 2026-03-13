@@ -54,6 +54,15 @@ jobs:
           scp scripts/check-destructive-migrations.sh $USER@$HOST:/opt/dorami/scripts/
           scp docker-compose.base.yml docker-compose.prod.yml $USER@$HOST:/opt/dorami/
 
+      - name: Login to GHCR on prod server
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.repository_owner }}
+        run: |
+          ssh $USER@$HOST "echo '$GHCR_TOKEN' | docker login ghcr.io -u $GHCR_USER --password-stdin"
+
       - name: Execute Safe Deployment
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
