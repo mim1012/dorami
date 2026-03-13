@@ -146,9 +146,15 @@ log_step "STEP 6: Apply Migration"
 
 log_warning "Applying pending migrations..."
 
+# Use MIGRATE_DATABASE_URL (postgres superuser) if set in .env.production
+# Required for ALTER TABLE — app_user is not the table owner
+MIGRATE_URL=$(grep '^MIGRATE_DATABASE_URL=' .env.production | cut -d= -f2- 2>/dev/null || true)
+MIGRATE_URL="${MIGRATE_URL:-}"
+
 if ! docker run --rm \
   --network "$DOCKER_NETWORK" \
   --env-file .env.production \
+  ${MIGRATE_URL:+-e DATABASE_URL="$MIGRATE_URL"} \
   "$BACKEND_IMAGE" \
   npx prisma migrate deploy; then
   log_error "Migration failed"
