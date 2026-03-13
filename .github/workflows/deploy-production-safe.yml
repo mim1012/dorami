@@ -8,7 +8,12 @@ on:
         required: true
         type: string
       image_tag:
-        description: 'GHCR image tag to deploy (e.g. sha-abc123...). If omitted, uses version.'
+        description: 'Backend GHCR image tag (e.g. sha-abc123...). If omitted, uses version.'
+        required: false
+        type: string
+        default: ''
+      frontend_image_tag:
+        description: 'Frontend GHCR image tag. If omitted, uses image_tag.'
         required: false
         type: string
         default: ''
@@ -68,5 +73,6 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
           IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || inputs.version }}
+          FRONTEND_IMAGE_TAG: ${{ inputs.frontend_image_tag != '' && inputs.frontend_image_tag || (inputs.image_tag != '' && inputs.image_tag || inputs.version) }}
         run: |
-          ssh $USER@$HOST "cd /opt/dorami && IMAGE_TAG=$IMAGE_TAG bash scripts/safe-deploy-production.sh"
+          ssh $USER@$HOST "cd /opt/dorami && IMAGE_TAG=$IMAGE_TAG BACKEND_IMAGE_TAG=$IMAGE_TAG FRONTEND_IMAGE_TAG=$FRONTEND_IMAGE_TAG bash scripts/safe-deploy-production.sh"
