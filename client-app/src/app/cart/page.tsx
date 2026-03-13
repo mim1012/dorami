@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
 import { Heading1, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
@@ -39,9 +39,10 @@ interface CartSummary {
   earliestExpiration?: string;
 }
 
-export default function CartPage() {
+function CartPageContent() {
   const router = useRouter();
-  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
+  const searchParams = useSearchParams();
+  const { user, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [cart, setCart] = useState<CartSummary | null>(null);
@@ -49,12 +50,12 @@ export default function CartPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!guardLoading && isProfileComplete) {
-      fetchCart();
+    if (searchParams.get('expired') === '1') {
+      showToast('예약 시간이 만료되어 장바구니로 돌아왔습니다. 다시 담아주세요.', 'error');
     }
-  }, [guardLoading, isProfileComplete]);
+  }, [searchParams, showToast]);
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get<CartSummary>('/cart');
@@ -65,7 +66,13 @@ export default function CartPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      fetchCart();
+    }
+  }, [authLoading, user, fetchCart]);
 
   const handleCartExpired = async () => {
     showToast(
@@ -100,6 +107,25 @@ export default function CartPage() {
     } catch (err: any) {
       console.error('Failed to remove item:', err);
       showToast('삭제에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleRemoveExpiredItems = async () => {
+    const expiredItems =
+      cart?.items.filter(
+        (item) =>
+          item.status === 'EXPIRED' ||
+          (item.expiresAt &&
+            item.status === 'ACTIVE' &&
+            new Date(item.expiresAt).getTime() <= Date.now()),
+      ) ?? [];
+    if (expiredItems.length === 0) return;
+    try {
+      await Promise.all(expiredItems.map((item) => apiClient.delete(`/cart/${item.id}`)));
+      await fetchCart();
+      showToast('만료된 상품을 삭제했습니다.', 'success');
+    } catch {
+      showToast('삭제 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -193,6 +219,16 @@ export default function CartPage() {
 
                 {/* Action Buttons */}
                 <div className="space-y-4">
+                  {hasExpiredItems && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      fullWidth
+                      onClick={handleRemoveExpiredItems}
+                    >
+                      만료 상품 삭제
+                    </Button>
+                  )}
                   <Button
                     variant="primary"
                     size="md"
@@ -225,5 +261,19 @@ export default function CartPage() {
 
       <BottomTabBar />
     </>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+          <Body className="text-primary-text">장바구니를 불러오는 중...</Body>
+        </div>
+      }
+    >
+      <CartPageContent />
+    </Suspense>
   );
 }

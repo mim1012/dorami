@@ -1,4 +1,4 @@
-# Live Commerce Fashion Platform → Dorami 디자인 병합 분석
+# Live Commerce Fashion Platform → Doremi 디자인 병합 분석
 
 **작성일**: 2026-02-28
 **분석 대상**: `Live Commerce Fashion Platform` (Figma 연동 프로젝트)
@@ -32,7 +32,7 @@ UI 라이브러리:   Radix UI (50+ 컴포넌트)
 문서:            ✅ 매우 상세 (API, 타입, 상태, 플로우)
 ```
 
-### Dorami (대상)
+### Doremi (대상)
 
 ```
 프레임워크:      NestJS (backend) + Next.js 16 (frontend)
@@ -60,14 +60,14 @@ UI 라이브러리:   없음 (자체 구현)
 ```
 Live Commerce/src/app/components/ui/*
   ↓
-Dorami/client-app/src/components/ui/
+Doremi/client-app/src/components/ui/
 ```
 
 **주의**:
 
 ```
 ✅ 가능: TailwindCSS 4.0과 호환 (4.1.12와 거의 동일)
-✅ 가능: Dorami에 UI 컴포넌트 없으면 직접 복사
+✅ 가능: Doremi에 UI 컴포넌트 없으면 직접 복사
 ⚠️  주의: 기존 Button, Input 등이 있으면 충돌 체크
 ```
 
@@ -101,7 +101,7 @@ NewProducts.tsx            — 신상품
 ```
 Live Commerce/src/app/components/*
   ↓
-Dorami/client-app/src/components/ (Next.js 맞게 수정)
+Doremi/client-app/src/components/ (Next.js 맞게 수정)
 ```
 
 **변환 필요**:
@@ -118,10 +118,10 @@ Dorami/client-app/src/components/ (Next.js 맞게 수정)
    <Link href={`/products/${id}`}>Product</Link>
    ```
 
-2. **API 호출**: Dorami의 API client 방식으로 통일
+2. **API 호출**: Doremi의 API client 방식으로 통일
 
    ```typescript
-   // Dorami 방식
+   // Doremi 방식
    import { api } from '@/lib/api/client';
    const response = await api.get('/api/live/current');
    ```
@@ -186,7 +186,7 @@ interface Product {
 
 **적용 방법**:
 
-1. **Dorami 기존 API 경로 확인**
+1. **Doremi 기존 API 경로 확인**
 
    ```
    backend/src/modules/streaming/
@@ -198,7 +198,7 @@ interface Product {
 
    ```
    Live Commerce: GET /api/live/current
-   Dorami:        GET /api/streaming/{streamKey} (?)
+   Doremi:        GET /api/streaming/{streamKey} (?)
 
    → 경로 통일 필요
    ```
@@ -278,7 +278,7 @@ interface MainPageState {
   4. 찜하기
 ```
 
-**Dorami 통합 방법**:
+**Doremi 통합 방법**:
 
 ```typescript
 // 1. Zustand store 확장
@@ -326,11 +326,11 @@ OrderManagementPage.tsx    — 주문 관리
 AnalyticsPage.tsx          — 분석
 ```
 
-**Dorami와의 비교**:
+**Doremi와의 비교**:
 
 ```
 Live Commerce: 완성도 높은 UI
-Dorami:        backend/src/modules/admin/ (기본)
+Doremi:        backend/src/modules/admin/ (기본)
 
 → UI를 현대화할 수 있음
 ```
@@ -349,7 +349,7 @@ Live Commerce 추가 필요:
   @emotion/react, @emotion/styled
   cmdk, embla-carousel-react, input-otp
 
-Dorami 기존:
+Doremi 기존:
   React 19 (Live Commerce: 18.3.1)
   TailwindCSS 4.0 (Live Commerce: 4.1.12)
 
@@ -364,7 +364,7 @@ Dorami 기존:
 import { useNavigate } from 'react-router';
 navigate(`/live/${id}`);
 
-✅ Dorami (Next.js):
+✅ Doremi (Next.js):
 import Link from 'next/link';
 <Link href={`/live/${id}`}>Join</Link>
 ```
@@ -376,7 +376,7 @@ Live Commerce API:
   GET /api/live/current
   GET /api/products/{id}
 
-Dorami 기존 API:
+Doremi 기존 API:
   GET /api/streaming/current? (확인 필요)
 
 → 백엔드 API 경로 통일 필수
@@ -396,7 +396,7 @@ Dorami 기존 API:
 ### Phase 2: 홈페이지 UI (2주)
 
 - [ ] 컴포넌트 복사 및 라우팅 변환
-- [ ] Dorami API 연결
+- [ ] Doremi API 연결
 - [ ] 스타일 조정
 - [ ] E2E 테스트
 
@@ -423,7 +423,7 @@ Dorami 기존 API:
 
 ### 시작 전 확인
 
-- [ ] Dorami 기존 UI 컴포넌트 구조 파악
+- [ ] Doremi 기존 UI 컴포넌트 구조 파악
 - [ ] 백엔드 API 경로 & 응답 형식 확인
 - [ ] 기존 타입 정의 위치 파악
 - [ ] 의존성 버전 확인

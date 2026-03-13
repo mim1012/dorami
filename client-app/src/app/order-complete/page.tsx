@@ -41,11 +41,10 @@ function OrderCompleteContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [bankInfo] = useState({
-    bank: 'Zelle',
-    accountNumber: '422sss@live.com',
-    accountHolder: 'MIN KIM',
-  });
+  const [zelleEmail, setZelleEmail] = useState('');
+  const [zelleRecipientName, setZelleRecipientName] = useState('');
+  const [venmoEmail, setVenmoEmail] = useState('');
+  const [venmoRecipientName, setVenmoRecipientName] = useState('');
 
   const { isInitialized, shareOrder } = useKakaoShare();
 
@@ -67,13 +66,31 @@ function OrderCompleteContent() {
       }
     };
 
+    const fetchPaymentConfig = async () => {
+      try {
+        const response = await apiClient.get<{
+          zelleEmail: string;
+          zelleRecipientName: string;
+          venmoEmail: string;
+          venmoRecipientName: string;
+        }>('/config/payment');
+        setZelleEmail(response.data.zelleEmail || '');
+        setZelleRecipientName(response.data.zelleRecipientName || '');
+        setVenmoEmail(response.data.venmoEmail || '');
+        setVenmoRecipientName(response.data.venmoRecipientName || '');
+      } catch {
+        // silently ignore
+      }
+    };
+
     fetchOrder();
+    fetchPaymentConfig();
   }, [orderId, router]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -100,9 +117,9 @@ function OrderCompleteContent() {
       orderNumber: order.id,
       totalAmount: order.total,
       depositorName: order.depositorName || '주문자',
-      bankName: bankInfo.bank,
-      accountNumber: bankInfo.accountNumber,
-      accountHolder: bankInfo.accountHolder,
+      bankName: 'Zelle',
+      accountNumber: zelleEmail,
+      accountHolder: zelleRecipientName,
       deadlineDate,
       items: order.items.map((item) => ({
         productName: item.productName,
@@ -162,24 +179,59 @@ function OrderCompleteContent() {
           </div>
 
           <div className="space-y-4">
-            <div className="bg-content-bg rounded-xl p-4">
-              <div className="flex items-center justify-between mb-1">
-                <Body className="text-secondary-text text-sm">Zelle</Body>
-                <button
-                  onClick={() => copyToClipboard('422sss@live.com')}
-                  className="flex items-center gap-1 text-hot-pink hover:text-hot-pink/80 transition-colors"
-                >
-                  <Copy className="w-4 h-4" />
-                  <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
-                </button>
-              </div>
-              <Heading2 className="text-primary-text font-mono">422sss@live.com</Heading2>
-            </div>
+            {/* Zelle */}
+            {zelleEmail && (
+              <>
+                <div className="bg-hot-pink/10 rounded-xl p-3 border border-hot-pink/20">
+                  <Body className="text-hot-pink text-xs font-semibold mb-2">Zelle 송금</Body>
+                  <div className="space-y-2">
+                    <div className="bg-content-bg rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <Body className="text-secondary-text text-sm">Zelle 이메일</Body>
+                        <button
+                          onClick={() => copyToClipboard(zelleEmail)}
+                          className="flex items-center gap-1 text-hot-pink hover:text-hot-pink/80 transition-colors"
+                        >
+                          <Copy className="w-4 h-4" />
+                          <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
+                        </button>
+                      </div>
+                      <Heading2 className="text-primary-text font-mono">{zelleEmail}</Heading2>
+                    </div>
+                    <div className="bg-content-bg rounded-xl p-3">
+                      <Body className="text-secondary-text text-sm mb-1">Name</Body>
+                      <Heading2 className="text-primary-text">{zelleRecipientName}</Heading2>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
-            <div className="bg-content-bg rounded-xl p-4">
-              <Body className="text-secondary-text text-sm mb-1">Name</Body>
-              <Heading2 className="text-primary-text">MIN KIM</Heading2>
-            </div>
+            {/* Venmo */}
+            {venmoEmail && (
+              <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/20">
+                <Body className="text-blue-400 text-xs font-semibold mb-2">Venmo 송금</Body>
+                <div className="space-y-2">
+                  <div className="bg-content-bg rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <Body className="text-secondary-text text-sm">Venmo</Body>
+                      <button
+                        onClick={() => copyToClipboard(venmoEmail)}
+                        className="flex items-center gap-1 text-blue-400 hover:text-blue-400/80 transition-colors"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <Body className="text-xs">{copied ? '복사됨!' : '복사'}</Body>
+                      </button>
+                    </div>
+                    <Heading2 className="text-primary-text font-mono">{venmoEmail}</Heading2>
+                  </div>
+                  <div className="bg-content-bg rounded-xl p-3">
+                    <Body className="text-secondary-text text-sm mb-1">Name</Body>
+                    <Heading2 className="text-primary-text">{venmoRecipientName}</Heading2>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-content-bg rounded-xl p-4">
               <Body className="text-secondary-text text-sm mb-1">입금 금액</Body>
@@ -193,8 +245,8 @@ function OrderCompleteContent() {
           </div>
 
           <div className="mt-4 p-4 bg-warning-bg/60 rounded-xl border border-warning/20 space-y-1">
-            <Body className="text-primary-text text-sm">▶ Zelle: 422sss@live.com</Body>
-            <Body className="text-primary-text text-sm">▶ Name: MIN KIM</Body>
+            {zelleEmail && <Body className="text-primary-text text-sm">▶ Zelle: {zelleEmail}</Body>}
+            {venmoEmail && <Body className="text-primary-text text-sm">▶ Venmo: {venmoEmail}</Body>}
             <Body className="text-primary-text text-sm font-medium">
               ▶ 입금 후 스크린샷 DM 또는 카톡 채널 전송 필수{' '}
               <span className="text-warning">(미확인 시 누락)</span>
@@ -228,7 +280,7 @@ function OrderCompleteContent() {
             <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/')}>
               홈으로 이동
             </Button>
-            <Button variant="primary" size="lg" fullWidth onClick={() => router.push('/my-page')}>
+            <Button variant="primary" size="lg" fullWidth onClick={() => router.push('/orders')}>
               주문 내역 확인
             </Button>
           </div>

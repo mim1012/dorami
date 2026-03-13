@@ -7,14 +7,14 @@
 #   ./restore-postgres.sh [backup-file-or-s3-path]
 #
 # Examples:
-#   ./restore-postgres.sh /opt/dorami/backups/db_backup_20260228_110000.sql.gz
-#   ./restore-postgres.sh s3://dorami-db-backups-prod/backups/2026/02/db_backup_20260228_110000.sql.gz
+#   ./restore-postgres.sh /opt/doremi/backups/db_backup_20260228_110000.sql.gz
+#   ./restore-postgres.sh s3://doremi-db-backups-prod/backups/2026/02/db_backup_20260228_110000.sql.gz
 #   ./restore-postgres.sh latest  # Restore most recent local backup
 #
 # Environment variables:
-#   POSTGRES_USER       - Database user (default: dorami_prod)
+#   POSTGRES_USER       - Database user (default: doremi_prod)
 #   POSTGRES_PASSWORD   - Database password
-#   POSTGRES_DB         - Database name (default: dorami_production)
+#   POSTGRES_DB         - Database name (default: doremi_production)
 #   AWS_DEFAULT_REGION  - AWS region (default: ap-northeast-2)
 #   SKIP_APP_STOP       - Skip stopping app containers (default: false)
 #   DRY_RUN             - Show what would be restored without actually restoring (default: false)
@@ -32,21 +32,21 @@ set -euo pipefail
 # Configuration
 # ============================================================================
 
-POSTGRES_USER="${POSTGRES_USER:-dorami_prod}"
+POSTGRES_USER="${POSTGRES_USER:-doremi_prod}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-POSTGRES_DB="${POSTGRES_DB:-dorami_production}"
+POSTGRES_DB="${POSTGRES_DB:-doremi_production}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 SKIP_APP_STOP="${SKIP_APP_STOP:-false}"
 DRY_RUN="${DRY_RUN:-false}"
 
 BACKUP_LOCATION="${1:-latest}"
-BACKUP_DIR="/opt/dorami/backups"
+BACKUP_DIR="/opt/doremi/backups"
 WORK_DIR="/tmp/restore-backup-$$"
 RESTORE_FILE=""
 
 # Docker container names
-POSTGRES_CONTAINER_NAMES=("dorami-postgres-prod" "live-commerce-postgres")
-APP_CONTAINERS=("backend-prod" "dorami-frontend-prod")
+POSTGRES_CONTAINER_NAMES=("doremi-postgres-prod" "live-commerce-postgres")
+APP_CONTAINERS=("backend-prod" "doremi-frontend-prod")
 
 # ============================================================================
 # Functions
@@ -236,9 +236,9 @@ get_db_credentials() {
     echo "postgres:live_commerce_production"
   else
     # Try to read from .env.production
-    if [ -f /opt/dorami/.env.production ]; then
-      local user=$(grep '^POSTGRES_USER=' /opt/dorami/.env.production | cut -d= -f2 || echo "${POSTGRES_USER}")
-      local db=$(grep '^POSTGRES_DB=' /opt/dorami/.env.production | cut -d= -f2 || echo "${POSTGRES_DB}")
+    if [ -f /opt/doremi/.env.production ]; then
+      local user=$(grep '^POSTGRES_USER=' /opt/doremi/.env.production | cut -d= -f2 || echo "${POSTGRES_USER}")
+      local db=$(grep '^POSTGRES_DB=' /opt/doremi/.env.production | cut -d= -f2 || echo "${POSTGRES_DB}")
       echo "${user}:${db}"
     else
       echo "${POSTGRES_USER}:${POSTGRES_DB}"
@@ -375,3 +375,4 @@ main() {
 
 # Run main function
 main "$@"
+

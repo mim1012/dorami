@@ -1,24 +1,40 @@
-import { IsString, IsNotEmpty, Matches, IsOptional, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, IsOptional, Length, IsEmail } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsUSState } from '../../../common/validators/us-state.validator';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export class CompleteProfileDto {
+  @ApiProperty({ description: '이메일', example: 'user@example.com', maxLength: 255 })
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email!: string;
+
   @ApiProperty({ description: '입금자명', example: '홍길동', maxLength: 100 })
   @IsString()
   @IsNotEmpty()
   @Length(1, 100)
   depositorName!: string; // 입금자명
 
-  @ApiProperty({ description: '인스타그램 ID (@ 자동 추가)', example: 'my_instagram' })
+  @ApiProperty({
+    description: '인스타그램 ID (@ 자동 추가)',
+    example: 'my_instagram',
+  })
   @IsString()
   @IsNotEmpty()
   @Matches(/^@?[a-zA-Z0-9._]+$/, {
     message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
   })
-  @Transform(({ value }: { value: string }) => {
-    // Auto-add @ prefix if missing
-    return value.startsWith('@') ? value : `@${value}`;
+  @Transform(({ value }: { value: string | undefined }) => {
+    if (!value) {
+      return value;
+    }
+    const trimmed = value.trim();
+    return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
   })
   instagramId!: string;
 
@@ -67,14 +83,16 @@ export class CompleteProfileDto {
   })
   zip!: string;
 
-  @ApiProperty({ description: '국제 전화번호', example: '+1 213-555-1234 or +82-10-1234-5678' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\+?[0-9\s\-()]{7,20}$/, {
-    message:
-      'Phone number must be in international format (e.g., +1 213-555-1234 or +82-10-1234-5678)',
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (선택사항)',
+    example: '+1 213-555-1234',
   })
-  phone!: string;
+  @IsString()
+  @IsOptional()
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
+  })
+  kakaoPhone?: string;
 }
 
 export class CheckInstagramDto {

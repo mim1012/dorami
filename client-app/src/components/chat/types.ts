@@ -5,6 +5,7 @@ export const SYSTEM_USERNAME = '시스템' as const;
 
 export interface ChatMessage {
   id: string;
+  clientMessageId?: string;
   userId: string;
   username: string; // Instagram ID
   message: string;

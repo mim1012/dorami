@@ -190,7 +190,7 @@ async function authenticate(
   outputPath: string,
 ) {
   // Use same emails as devLogin helper for consistency (ADMIN_EMAILS only needs one entry)
-  const email = role === 'ADMIN' ? 'admin@dorami.shop' : 'buyer@test.com';
+  const email = role === 'ADMIN' ? 'admin@doremi.shop' : 'buyer@test.com';
 
   // 1. Call dev-login API at Node.js level (bypasses CORS)
   const apiContext = await request.newContext({ baseURL: BACKEND_URL });
@@ -227,6 +227,7 @@ async function authenticate(
       const profileRes = await apiContext.post('/api/users/complete-profile', {
         headers: { 'X-CSRF-Token': csrfToken },
         data: {
+          email,
           depositorName: 'E2E테스트',
           instagramId: `@e2e_user_${user.id?.slice(0, 8) ?? 'test'}`,
           fullName: 'E2E Test User',
@@ -268,7 +269,7 @@ async function authenticate(
   await context.addCookies(cookies);
 
   const page = await context.newPage();
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded', timeout: 120000 });
 
   // Seed Zustand auth-storage in localStorage
   await page.evaluate((userData) => {

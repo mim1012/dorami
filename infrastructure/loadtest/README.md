@@ -1,6 +1,6 @@
 # HLS Streaming Load Test
 
-k6-based load test for validating Dorami streaming infrastructure at 500 concurrent users (CCU).
+k6-based load test for validating Doremi streaming infrastructure at 500 concurrent users (CCU).
 
 ## Quick Start
 
@@ -49,29 +49,29 @@ Stage 6: Ramp-down 100→0 VUs (2 minutes)
 
 ### HLS Playlist Metrics
 
-| Metric | Type | Target | Description |
-|--------|------|--------|-------------|
-| `hls_playlist_fetch_time_ms` | Trend | p95 < 1000ms | Time to fetch m3u8 playlist |
-| `hls_playlist_errors` | Counter | < 100 total | Failed playlist requests |
-| `hls_playlist_freshness_ms` | Gauge | Track only | Age of playlist at request |
-| `hls_playlist_refresh_interval_ms` | Gauge | Track only | Time between playlist updates |
-| `hls_playlist_parse_errors` | Counter | 0 | Playlist parsing failures |
+| Metric                             | Type    | Target       | Description                   |
+| ---------------------------------- | ------- | ------------ | ----------------------------- |
+| `hls_playlist_fetch_time_ms`       | Trend   | p95 < 1000ms | Time to fetch m3u8 playlist   |
+| `hls_playlist_errors`              | Counter | < 100 total  | Failed playlist requests      |
+| `hls_playlist_freshness_ms`        | Gauge   | Track only   | Age of playlist at request    |
+| `hls_playlist_refresh_interval_ms` | Gauge   | Track only   | Time between playlist updates |
+| `hls_playlist_parse_errors`        | Counter | 0            | Playlist parsing failures     |
 
 ### HLS Segment Metrics
 
-| Metric | Type | Target | Description |
-|--------|------|--------|-------------|
-| `hls_segment_fetch_time_ms` | Trend | p95 < 2000ms | Time to fetch .ts segment |
-| `hls_segment_errors` | Counter | < 500 total | Failed segment requests |
-| `hls_segment_delivery_latency_ms` | Gauge | < 2000ms | End-to-end segment delivery |
-| `hls_rebuffer_events` | Counter | Track only | Playback stalls (failed segments) |
+| Metric                            | Type    | Target       | Description                       |
+| --------------------------------- | ------- | ------------ | --------------------------------- |
+| `hls_segment_fetch_time_ms`       | Trend   | p95 < 2000ms | Time to fetch .ts segment         |
+| `hls_segment_errors`              | Counter | < 500 total  | Failed segment requests           |
+| `hls_segment_delivery_latency_ms` | Gauge   | < 2000ms     | End-to-end segment delivery       |
+| `hls_rebuffer_events`             | Counter | Track only   | Playback stalls (failed segments) |
 
 ### HTTP Request Metrics
 
-| Metric | Type | Target | Description |
-|--------|------|--------|-------------|
-| `http_req_duration` | Trend | p95 < 5s, p99 < 10s | Total HTTP request time |
-| `http_req_failed` | Rate | < 1% | Requests with 4xx/5xx status |
+| Metric              | Type  | Target              | Description                  |
+| ------------------- | ----- | ------------------- | ---------------------------- |
+| `http_req_duration` | Trend | p95 < 5s, p99 < 10s | Total HTTP request time      |
+| `http_req_failed`   | Rate  | < 1%                | Requests with 4xx/5xx status |
 
 ## Understanding Results
 
@@ -110,6 +110,7 @@ Stage 6: Ramp-down 100→0 VUs (2 minutes)
 ### Interpretation
 
 **Success Indicators:**
+
 - ✅ `hls_playlist_fetch_time_ms` p95 < 1000ms
 - ✅ `hls_segment_fetch_time_ms` p95 < 2000ms
 - ✅ `http_req_failed` rate < 1%
@@ -118,6 +119,7 @@ Stage 6: Ramp-down 100→0 VUs (2 minutes)
 - ✅ No memory leaks or increasing latency during sustained load
 
 **Warning Signs:**
+
 - ⚠️ Increasing error rate over time (suggests resource exhaustion)
 - ⚠️ p95 latencies > 2000ms (degraded user experience)
 - ⚠️ Rebuffer count > 50 per 500 CCU (excessive retransmissions)
@@ -174,6 +176,7 @@ ext: {
 ```
 
 Then run:
+
 ```bash
 k6 cloud infrastructure/loadtest/hls-load-test.js
 ```
@@ -192,6 +195,7 @@ npx playwright test e2e/streaming-performance.spec.ts --project=chromium
 ### "Connection refused" error
 
 Ensure SRS is running:
+
 ```bash
 npm run docker:logs srs
 ```
@@ -199,6 +203,7 @@ npm run docker:logs srs
 ### Playlist parse errors
 
 Check that SRS is generating valid m3u8:
+
 ```bash
 curl http://localhost:8080/live/test-stream-1.m3u8
 ```
@@ -206,11 +211,13 @@ curl http://localhost:8080/live/test-stream-1.m3u8
 ### High error rates
 
 Check backend logs:
+
 ```bash
 npm run docker:logs backend
 ```
 
 Check SRS logs:
+
 ```bash
 npm run docker:logs srs
 ```
@@ -218,18 +225,21 @@ npm run docker:logs srs
 ## Performance Optimization Tips
 
 1. **Increase SRS worker threads** if CPU > 70%:
+
    ```
    # Edit infrastructure/docker/srs/srs.conf
    threads 8;
    ```
 
 2. **Increase PostgreSQL connection pool** if DB queries queue:
+
    ```
    # Edit backend/.env
    DATABASE_URL="...&connection_limit=50"
    ```
 
 3. **Enable HTTP/2** in Nginx for connection multiplexing:
+
    ```nginx
    listen 443 ssl http2;
    ```

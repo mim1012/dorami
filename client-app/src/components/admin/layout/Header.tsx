@@ -63,7 +63,7 @@ export default function Header() {
 
           {/* Notifications */}
           <button
-            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="relative h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="알림"
           >
             <Bell className="w-5 h-5 text-gray-600" />
@@ -71,7 +71,7 @@ export default function Header() {
           </button>
 
           {/* Admin Profile */}
-          <button className="flex items-center gap-3 pl-2 sm:pl-3 pr-2 py-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+          <button className="flex items-center gap-3 pl-2 sm:pl-3 pr-2 py-2 min-h-[44px] hover:bg-gray-100 rounded-lg transition-colors">
             <div className="text-right hidden sm:block">
               <div className="text-sm font-semibold text-gray-900">{displayName}</div>
               <div className="text-xs text-gray-500">{user?.email || '관리자'}</div>

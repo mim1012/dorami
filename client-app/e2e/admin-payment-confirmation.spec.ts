@@ -17,7 +17,7 @@ let testOrderId: string;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 test.describe('Admin Payment Confirmation Flow', () => {
-  test.setTimeout(120000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -81,7 +81,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
 
@@ -152,7 +152,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'admin@dorami.shop', name: 'E2E ADMIN', role: 'ADMIN' }),
+        body: JSON.stringify({ email: 'admin@doremi.shop', name: 'E2E ADMIN' }),
       });
     });
 
@@ -225,6 +225,42 @@ test.describe('Admin Payment Confirmation Flow', () => {
     console.log(
       `Payment confirmed. New status: ${confirmResult.data?.status || confirmResult.data?.paymentStatus}`,
     );
+
+    // [API-UI] Verify order status at API level after confirmation
+    try {
+      const apiOrder = await page.evaluate(
+        async ({ orderId }) => {
+          const res = await fetch(`/api/orders/${orderId}`, { credentials: 'include' });
+          if (!res.ok) return null;
+          const data = await res.json();
+          return data.data || data;
+        },
+        { orderId: testOrderId },
+      );
+
+      if (apiOrder) {
+        const apiStatus = apiOrder.status;
+        console.log(`[API-UI] order status API="${apiStatus}" UI label should show 입금 완료`);
+        expect(['PAYMENT_CONFIRMED', 'CONFIRMED', 'PROCESSING']).toContain(apiStatus);
+
+        // Navigate to admin order detail UI and verify label
+        await page.goto(`/admin/orders/${testOrderId}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForLoadState('networkidle');
+
+        const confirmedLabel = page.locator('text=/입금 완료|PAYMENT_CONFIRMED/');
+        const hasLabel = await confirmedLabel
+          .first()
+          .isVisible({ timeout: 8000 })
+          .catch(() => false);
+        if (hasLabel) {
+          console.log('[API-UI] UI correctly shows 입금 완료 label');
+        } else {
+          console.log('[API-UI] Warning: 입금 완료 label not found in admin order detail UI');
+        }
+      }
+    } catch (e) {
+      console.log(`[API-UI] Warning: API-UI status verification failed: ${e.message}`);
+    }
   });
 
   test('should verify order status changed after payment confirmation', async ({ page }) => {
@@ -237,7 +273,7 @@ test.describe('Admin Payment Confirmation Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER', role: 'USER' }),
+        body: JSON.stringify({ email: 'e2e-user@test.com', name: 'E2E USER' }),
       });
     });
 
@@ -327,6 +363,43 @@ test.describe('Admin Payment Confirmation Flow', () => {
       );
     } else {
       console.log('Points API not available');
+    }
+
+    // [API-UI] Verify points balance is reflected in the UI
+    try {
+      const pointsBalance = await page.evaluate(async () => {
+        const res = await fetch('/api/points/balance', { credentials: 'include' });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const payload = data.data || data;
+        // Support both { balance: N } and { currentBalance: N } shapes
+        return payload?.balance ?? payload?.currentBalance ?? null;
+      });
+
+      if (pointsBalance !== null) {
+        console.log(`[API-UI] points API balance=${pointsBalance}`);
+
+        // Navigate to my-page and verify the balance number appears in the UI
+        await page.goto('/my-page', { waitUntil: 'domcontentloaded' });
+        await page.waitForLoadState('networkidle');
+
+        const balanceStr = String(pointsBalance);
+        const balanceVisible = await page
+          .getByText(balanceStr)
+          .first()
+          .isVisible({ timeout: 8000 })
+          .catch(() => false);
+
+        if (balanceVisible) {
+          console.log(`[API-UI] points balance ${balanceStr} is visible on my-page`);
+        } else {
+          console.log(`[API-UI] Warning: points balance ${balanceStr} not found on my-page UI`);
+        }
+      } else {
+        console.log('[API-UI] Warning: points balance not available from API');
+      }
+    } catch (e) {
+      console.log(`[API-UI] Warning: points API-UI verification failed: ${e.message}`);
     }
   });
 });

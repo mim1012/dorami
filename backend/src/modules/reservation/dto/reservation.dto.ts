@@ -1,14 +1,9 @@
 import { IsString, IsNumber, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ReservationStatus } from '@live-commerce/shared-types';
 
-export enum ReservationStatus {
-  WAITING = 'WAITING',
-  PROMOTED = 'PROMOTED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  EXPIRED = 'EXPIRED',
-}
+export { ReservationStatus };
 
 export class CreateReservationDto {
   @ApiProperty({ description: 'Product ID', example: '123e4567-e89b-12d3-a456-426614174000' })

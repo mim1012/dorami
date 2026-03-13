@@ -24,10 +24,3 @@ export async function getUserOrders(): Promise<Order[]> {
   const response = await apiClient.get<Order[]>('/orders');
   return response.data;
 }
-
-/**
- * Cancel an order
- */
-export async function cancelOrder(orderId: string): Promise<void> {
-  await apiClient.patch(`/orders/${orderId}/cancel`);
-}

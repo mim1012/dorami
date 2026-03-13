@@ -1,10 +1,11 @@
-# 도라미 라이브 커머스 플랫폼 - 백엔드
+# 도레미 라이브 커머스 플랫폼 - 백엔드
 
 NestJS + Socket.IO 기반 실시간 라이브 커머스 플랫폼
 
 ## 🎯 주요 기능
 
 ### REST API
+
 - ✅ **인증** - JWT 기반 (Access + Refresh Token)
 - ✅ **사용자 관리** - Kakao OAuth, 프로필, 권한
 - ✅ **상품 관리** - CRUD, 재고, 품절 처리
@@ -17,17 +18,20 @@ NestJS + Socket.IO 기반 실시간 라이브 커머스 플랫폼
 ### WebSocket (Socket.IO)
 
 #### `/chat` - 실시간 채팅
+
 - 라이브 방 참여/나가기
 - 메시지 송수신 (XSS 방지, 500자 제한)
 - 메시지 삭제 (관리자)
 - Rate limiting: 20msg/10s
 
 #### `/streaming` - 스트리밍
+
 - 시청자 참여/나가기
 - 실시간 시청자 수 업데이트
 - Redis 기반 클러스터 지원
 
 #### `/` - 루트 (범용)
+
 - 스트림 룸 참여/나가기
 - 상품 업데이트 브로드캐스트
 - 사용자 입장/퇴장 알림
@@ -103,22 +107,22 @@ npm run build
 pm2 start ecosystem.config.js --env production
 
 # 로그 확인
-pm2 logs dorami-backend
+pm2 logs doremi-backend
 ```
 
 ### Docker 배포
 
 ```bash
 # 이미지 빌드
-docker build -t dorami-backend .
+docker build -t doremi-backend .
 
 # 컨테이너 실행
 docker run -d \
   -p 3001:3001 \
   -e DATABASE_URL=postgresql://... \
   -e REDIS_URL=redis://... \
-  --name dorami-backend \
-  dorami-backend
+  --name doremi-backend \
+  doremi-backend
 ```
 
 ## 🏥 헬스체크
@@ -138,7 +142,7 @@ const io = require('socket.io-client');
 
 const socket = io('http://localhost:3001/chat', {
   auth: { token: 'your-jwt-token' },
-  transports: ['websocket']
+  transports: ['websocket'],
 });
 
 socket.on('connection:success', (data) => {
@@ -182,11 +186,13 @@ backend/
 ## 🛡️ 보안
 
 ### 인증
+
 - JWT Access Token (15분)
 - JWT Refresh Token (7일)
 - Redis 블랙리스트
 
 ### 보호 기능
+
 - CSRF 보호 (Double Submit Cookie)
 - Rate Limiting (HTTP + WebSocket)
 - Helmet 보안 헤더
@@ -195,21 +201,24 @@ backend/
 - XSS 방지 (HTML sanitization)
 
 ### WebSocket Rate Limits
+
 - `chat:send-message`: 20msg/10s
 - 기타 이벤트: 100req/10s
 
 ## 📊 모니터링
 
 ### 로그
+
 ```bash
 # PM2 로그
-pm2 logs dorami-backend
+pm2 logs doremi-backend
 
 # 실시간 모니터링
 pm2 monit
 ```
 
 ### 메트릭
+
 - HTTP 요청 수/응답 시간
 - WebSocket 연결 수
 - Database 쿼리 성능
@@ -220,15 +229,13 @@ pm2 monit
 ### TypeScript 디버깅
 
 `.vscode/launch.json`:
+
 ```json
 {
   "type": "node",
   "request": "launch",
   "name": "Debug NestJS",
-  "runtimeArgs": [
-    "-r", "ts-node/register",
-    "-r", "tsconfig-paths/register"
-  ],
+  "runtimeArgs": ["-r", "ts-node/register", "-r", "tsconfig-paths/register"],
   "args": ["${workspaceFolder}/src/main.ts"],
   "env": {
     "NODE_ENV": "development"
@@ -249,11 +256,13 @@ DEBUG=socket.io:* npm run start:dev
 ## 🧪 테스트
 
 ### 단위 테스트
+
 ```bash
 npm run test
 ```
 
 ### E2E 테스트
+
 ```bash
 # PostgreSQL + Redis 실행 필요
 npm run test:e2e
@@ -262,6 +271,7 @@ npm run test:e2e
 ### Socket.IO 수동 테스트
 
 1. JWT 토큰 획득:
+
 ```bash
 curl -X POST http://localhost:3001/api/v1/auth/dev-login \
   -H "Content-Type: application/json" \
@@ -269,6 +279,7 @@ curl -X POST http://localhost:3001/api/v1/auth/dev-login \
 ```
 
 2. Socket.IO 클라이언트 연결:
+
 ```bash
 node test-chat-auth.js
 ```
@@ -300,6 +311,7 @@ Private - All Rights Reserved
 ## 👤 담당자
 
 **김훈 (Kim Hun)**
+
 - GitHub: [@mim1012](https://github.com/mim1012)
 - Email: your-email@example.com
 

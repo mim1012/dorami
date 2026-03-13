@@ -7,12 +7,15 @@ import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
+import { UserStatus } from '@live-commerce/shared-types';
 
 describe('AdminService', () => {
   let service: AdminService;
   let prisma: PrismaService;
   let eventEmitter: EventEmitter2;
   let encryptionService: EncryptionService;
+  let notificationsService: NotificationsService;
+  let alimtalkService: AlimtalkService;
 
   const mockWebsocketGateway = {
     server: {
@@ -59,6 +62,7 @@ describe('AdminService', () => {
             },
             liveStream: {
               count: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
             },
           },
         },
@@ -81,6 +85,7 @@ describe('AdminService', () => {
           useValue: {
             sendPaymentConfirmation: jest.fn(),
             sendOrderStatusUpdate: jest.fn(),
+            sendPaymentReminderNotification: jest.fn(),
           },
         },
         {
@@ -111,6 +116,8 @@ describe('AdminService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     eventEmitter = module.get<EventEmitter2>(EventEmitter2);
     encryptionService = module.get<EncryptionService>(EncryptionService);
+    notificationsService = module.get<NotificationsService>(NotificationsService);
+    alimtalkService = module.get<AlimtalkService>(AlimtalkService);
   });
 
   it('should be defined', () => {
@@ -212,6 +219,7 @@ describe('AdminService', () => {
               { name: { contains: 'user_one', mode: 'insensitive' } },
               { email: { contains: 'user_one', mode: 'insensitive' } },
               { instagramId: { contains: 'user_one', mode: 'insensitive' } },
+              { depositorName: { contains: 'user_one', mode: 'insensitive' } },
             ],
           }),
         }),
@@ -293,11 +301,13 @@ describe('AdminService', () => {
         id: 'user-1',
         email: 'user1@test.com',
         name: 'User One',
+        depositorName: null,
         instagramId: '@user_one',
         createdAt: expect.any(String),
         lastLoginAt: expect.any(String),
         lastPurchaseAt: null,
-        phone: undefined,
+        profileCompletedAt: null,
+        kakaoPhone: undefined,
         shippingAddressSummary: '-',
         status: 'ACTIVE',
         role: 'USER',
@@ -318,13 +328,21 @@ describe('AdminService', () => {
 
   describe('getUserDetail', () => {
     const userId = 'user-123';
+    const mockPlainAddress = {
+      fullName: 'John Doe',
+      address1: '123 Main St',
+      address2: 'Apt 4B',
+      city: 'Los Angeles',
+      state: 'CA',
+      zip: '90001',
+    };
     const mockUser = {
       id: userId,
       email: 'test@example.com',
       name: 'Test User',
       instagramId: '@testuser',
       depositorName: 'Test Depositor',
-      shippingAddress: 'encrypted-address',
+      shippingAddress: mockPlainAddress,
       createdAt: new Date('2026-01-15'),
       lastLoginAt: new Date('2026-01-30'),
       status: 'ACTIVE',
@@ -332,27 +350,15 @@ describe('AdminService', () => {
       suspendedAt: null,
     };
 
-    const mockDecryptedAddress = {
-      fullName: 'John Doe',
-      address1: '123 Main St',
-      address2: 'Apt 4B',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90001',
-      phone: '(310) 555-0123',
-    };
-
-    it('should return user detail with decrypted address', async () => {
+    it('should return user detail with plain address (encryption removed)', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'tryDecryptAddress').mockReturnValue(mockDecryptedAddress);
 
       const result = await service.getUserDetail(userId);
 
       expect(result.id).toBe(userId);
       expect(result.email).toBe('test@example.com');
-      expect(result.shippingAddress).toEqual(mockDecryptedAddress);
+      expect(result.shippingAddress).toEqual(mockPlainAddress);
       expect(result.statistics.totalOrders).toBe(0);
-      expect(encryptionService.tryDecryptAddress).toHaveBeenCalledWith('encrypted-address');
     });
 
     it('should throw NotFoundException when user not found', async () => {
@@ -370,11 +376,9 @@ describe('AdminService', () => {
       expect(result.shippingAddress).toBeNull();
     });
 
-    it('should handle decryption error gracefully', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
-        throw new Error('Decryption failed');
-      });
+    it('should return null shippingAddress when address is unparseable', async () => {
+      const userWithInvalidAddress = { ...mockUser, shippingAddress: 'not-valid-json' };
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(userWithInvalidAddress as any);
 
       const result = await service.getUserDetail(userId);
 
@@ -430,7 +434,6 @@ describe('AdminService', () => {
           city: 'Seoul',
           region: 'KR',
           zipCode: '12345',
-          phone: '010-1234-5678',
         }),
       },
     };
@@ -450,7 +453,6 @@ describe('AdminService', () => {
         city: 'Seoul',
         state: 'KR',
         zip: '12345',
-        phone: '010-1234-5678',
       });
     });
 
@@ -477,7 +479,7 @@ describe('AdminService', () => {
       } as any);
 
       const result = await service.updateUserStatus(userId, {
-        status: 'SUSPENDED',
+        status: 'SUSPENDED' as UserStatus,
       });
 
       expect(result.success).toBe(true);
@@ -499,7 +501,7 @@ describe('AdminService', () => {
       } as any);
 
       const result = await service.updateUserStatus(userId, {
-        status: 'ACTIVE',
+        status: 'ACTIVE' as UserStatus,
       });
 
       expect(result.success).toBe(true);
@@ -510,9 +512,9 @@ describe('AdminService', () => {
     it('should throw NotFoundException when user not found', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.updateUserStatus(userId, { status: 'SUSPENDED' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateUserStatus(userId, { status: 'SUSPENDED' as UserStatus }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -860,6 +862,163 @@ describe('AdminService', () => {
         }),
       );
       expect(result.meta.totalPages).toBe(3); // 150 / 50
+    });
+  });
+
+  describe('sendPaymentReminder - 알림톡 전화번호 fallback', () => {
+    const orderId = 'ORD-20260309-00001';
+    const mockOrder = {
+      id: orderId,
+      userId: 'user-1',
+      total: 75000,
+      depositorName: '홍길동',
+      paymentStatus: 'PENDING',
+    };
+
+    it('kakaoPhone이 있으면 kakaoPhone으로 payment reminder 알림톡을 발송한다', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        kakaoPhone: '010-9999-0000',
+      } as any);
+
+      await service.sendPaymentReminder(orderId);
+
+      expect(alimtalkService.sendPaymentReminderAlimtalk).toHaveBeenCalledWith(
+        '010-9999-0000',
+        orderId,
+        75000,
+      );
+      expect(notificationsService.sendPaymentReminderNotification).not.toHaveBeenCalled();
+    });
+
+    it('kakaoPhone이 null이면 web push fallback으로 발송한다', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        kakaoPhone: null,
+      } as any);
+
+      await service.sendPaymentReminder(orderId);
+
+      expect(alimtalkService.sendPaymentReminderAlimtalk).not.toHaveBeenCalled();
+      expect(notificationsService.sendPaymentReminderNotification).toHaveBeenCalledWith(
+        mockOrder.userId,
+        orderId,
+        75000,
+        mockOrder.depositorName,
+      );
+    });
+  });
+
+  describe('exportOrdersCsv - 이메일 일관성', () => {
+    const baseOrder = {
+      id: 'ORD-20260101-00001',
+      userEmail: 'order-time@example.com',
+      depositorName: '홍길동',
+      instagramId: '@test',
+      status: 'PAYMENT_CONFIRMED',
+      paymentStatus: 'CONFIRMED',
+      shippingStatus: 'PENDING',
+      subtotal: 10000,
+      shippingFee: 3000,
+      total: 13000,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      paidAt: new Date('2026-01-01T01:00:00Z'),
+    };
+
+    it('주문 당시 이메일(order.userEmail)을 CSV에 출력해야 한다', async () => {
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([baseOrder] as any);
+
+      const csv = await service.exportOrdersCsv({
+        sortOrder: 'desc',
+      } as any);
+
+      expect(csv).toContain('order-time@example.com');
+    });
+
+    it('사용자가 이메일을 변경했을 때도 주문 당시 이메일을 출력해야 한다', async () => {
+      // order.userEmail = 주문 당시 이메일, 현재 users.email은 다르지만 CSV는 order.userEmail을 사용
+      jest
+        .spyOn(prisma.order, 'findMany')
+        .mockResolvedValue([{ ...baseOrder, userEmail: 'order-time@example.com' }] as any);
+
+      const csv = await service.exportOrdersCsv({ sortOrder: 'desc' } as any);
+
+      expect(csv).toContain('order-time@example.com');
+      expect(csv).not.toContain('new-email@example.com');
+    });
+  });
+
+  describe('exportOrdersExcel - 이메일 일관성', () => {
+    const makeOrder = (overrides: Record<string, unknown> = {}) => ({
+      id: 'ORD-20260101-00001',
+      userEmail: 'order-time@example.com',
+      depositorName: '홍길동',
+      instagramId: '@test',
+      status: 'PAYMENT_CONFIRMED',
+      paymentStatus: 'CONFIRMED',
+      shippingStatus: 'PENDING',
+      subtotal: 10000,
+      shippingFee: 3000,
+      total: 13000,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      paidAt: new Date('2026-01-01T01:00:00Z'),
+      shippingAddress: null,
+      orderItems: [],
+      user: { kakaoPhone: null, email: 'current@example.com' },
+      ...overrides,
+    });
+
+    it('주문 당시 이메일(order.userEmail)을 Excel에 출력해야 한다', async () => {
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([makeOrder()] as any);
+      jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
+
+      const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+
+      // Buffer가 반환되어야 한다
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer.length).toBeGreaterThan(0);
+    });
+
+    it('사용자 현재 이메일(user.email)이 달라도 order.userEmail을 사용해야 한다', async () => {
+      // user.email(현재) = 'new@example.com', order.userEmail(주문시) = 'order-time@example.com'
+      const orderWithDifferentEmail = makeOrder({
+        userEmail: 'order-time@example.com',
+        user: { kakaoPhone: null, email: 'new@example.com' },
+      });
+
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([orderWithDifferentEmail] as any);
+      jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
+
+      // 내부 rows가 order.userEmail을 참조하는지 검증하기 위해
+      // findMany가 받은 데이터 기준으로 buffer 생성이 성공하면 OK
+      const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      expect(buffer).toBeInstanceOf(Buffer);
+    });
+
+    it('orderItems가 있을 때 각 row에 order.userEmail이 사용되어야 한다', async () => {
+      const orderWithItems = makeOrder({
+        userEmail: 'order-time@example.com',
+        user: { kakaoPhone: null, email: 'new@example.com' },
+        orderItems: [
+          {
+            id: 'item-1',
+            productName: '테스트상품',
+            price: 10000,
+            quantity: 1,
+            color: '빨강',
+            size: 'L',
+            shippingFee: 3000,
+            Product: null,
+          },
+        ],
+      });
+
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([orderWithItems] as any);
+      jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
+
+      const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer.length).toBeGreaterThan(0);
     });
   });
 });

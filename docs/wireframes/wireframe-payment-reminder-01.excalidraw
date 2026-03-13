@@ -76,7 +76,7 @@
       "groupIds": [
         "sidebar"
       ],
-      "text": "도라미 라이브 쇼핑",
+      "text": "도레미 라이브 쇼핑",
       "fontSize": 22,
       "fontFamily": 1,
       "textAlign": "left",
@@ -92,7 +92,7 @@
       "updated": 1769666168516,
       "link": null,
       "strokeStyle": "solid",
-      "originalText": "도라미 라이브 쇼핑",
+      "originalText": "도레미 라이브 쇼핑",
       "lineHeight": 1.25,
       "containerId": null
     },
@@ -113,7 +113,7 @@
       "groupIds": [
         "sidebar"
       ],
-      "text": "도라미",
+      "text": "도레미",
       "fontSize": 22,
       "fontFamily": 1,
       "textAlign": "left",
@@ -129,7 +129,7 @@
       "updated": 1769666168516,
       "link": null,
       "strokeStyle": "solid",
-      "originalText": "도라미",
+      "originalText": "도레미",
       "lineHeight": 1.25,
       "containerId": null
     },

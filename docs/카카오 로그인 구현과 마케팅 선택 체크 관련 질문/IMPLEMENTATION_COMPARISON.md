@@ -4,7 +4,7 @@
 
 - **작성일**: 2026-01-26
 - **작성자**: Claude Code (AI Assistant)
-- **프로젝트**: Dorami Live Commerce Platform
+- **프로젝트**: Doremi Live Commerce Platform
 - **참조 문서**: `카카오 OAuth 2.0 인증 구현 및 테스트 가이드.md`, `kakao_auth_backend.js`
 
 ## 🎯 분석 목적
@@ -19,21 +19,18 @@
 
 ```javascript
 // 순수 REST API 방식
-router.get("/kakao/callback", async (req, res) => {
+router.get('/kakao/callback', async (req, res) => {
   const code = req.query.code;
 
   // 1. 인증 코드로 액세스 토큰 발급
-  const tokenResponse = await axios.post(
-    "https://kauth.kakao.com/oauth/token",
-    null,
-    { params: { grant_type, client_id, redirect_uri, code } }
-  );
+  const tokenResponse = await axios.post('https://kauth.kakao.com/oauth/token', null, {
+    params: { grant_type, client_id, redirect_uri, code },
+  });
 
   // 2. 액세스 토큰으로 사용자 정보 조회
-  const userResponse = await axios.get(
-    "https://kapi.kakao.com/v2/user/me",
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  const userResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 
   // 3. 서비스 JWT 토큰 생성
   const serviceToken = generateServiceToken(userData);
@@ -43,6 +40,7 @@ router.get("/kakao/callback", async (req, res) => {
 ```
 
 **특징:**
+
 - ✅ 명시적인 단계별 처리
 - ✅ 에러 핸들링이 명확
 - ✅ 테스트하기 쉬운 구조
@@ -82,6 +80,7 @@ async kakaoCallback(@Req() req: Request, @Res() res: Response) {
 ```
 
 **특징:**
+
 - ✅ Passport 라이브러리로 OAuth 흐름 추상화
 - ✅ NestJS Guard 시스템과 통합
 - ✅ HTTP-only 쿠키로 XSS 방어
@@ -94,32 +93,33 @@ async kakaoCallback(@Req() req: Request, @Res() res: Response) {
 
 ### 1. 인증 흐름 (OAuth 2.0 Authorization Code Grant)
 
-| 단계 | Docs 참조 | 현재 구현 | 비고 |
-|-----|----------|----------|------|
-| **1단계: 인증 페이지 리다이렉트** | ✅ 수동 URL 생성 | ✅ Passport 자동 처리 | 동일한 결과 |
-| **2단계: 인증 코드 수신** | ✅ `req.query.code` | ✅ Passport Guard | 동일한 결과 |
-| **3단계: 액세스 토큰 발급** | ✅ `axios.post` 명시적 호출 | ✅ Passport Strategy 내부 처리 | 현재 구현이 더 간결 |
-| **4단계: 사용자 정보 조회** | ✅ `axios.get` 명시적 호출 | ✅ `validate()` 메서드에 profile 전달 | 현재 구현이 더 간결 |
-| **5단계: DB 저장/조회** | ⚠️ TODO 주석만 | ✅ `validateKakaoUser()` 구현 | 현재 구현이 완전함 |
-| **6단계: 서비스 토큰 발급** | ✅ `generateServiceToken()` | ✅ `authService.login()` | 동일한 역할 |
-| **7단계: 응답 반환** | ✅ JSON 응답 | ✅ 쿠키 + 리다이렉트 | **차이점** |
+| 단계                              | Docs 참조                   | 현재 구현                             | 비고                |
+| --------------------------------- | --------------------------- | ------------------------------------- | ------------------- |
+| **1단계: 인증 페이지 리다이렉트** | ✅ 수동 URL 생성            | ✅ Passport 자동 처리                 | 동일한 결과         |
+| **2단계: 인증 코드 수신**         | ✅ `req.query.code`         | ✅ Passport Guard                     | 동일한 결과         |
+| **3단계: 액세스 토큰 발급**       | ✅ `axios.post` 명시적 호출 | ✅ Passport Strategy 내부 처리        | 현재 구현이 더 간결 |
+| **4단계: 사용자 정보 조회**       | ✅ `axios.get` 명시적 호출  | ✅ `validate()` 메서드에 profile 전달 | 현재 구현이 더 간결 |
+| **5단계: DB 저장/조회**           | ⚠️ TODO 주석만              | ✅ `validateKakaoUser()` 구현         | 현재 구현이 완전함  |
+| **6단계: 서비스 토큰 발급**       | ✅ `generateServiceToken()` | ✅ `authService.login()`              | 동일한 역할         |
+| **7단계: 응답 반환**              | ✅ JSON 응답                | ✅ 쿠키 + 리다이렉트                  | **차이점**          |
 
 **결론**: 두 구현 모두 OAuth 2.0 표준 흐름을 올바르게 따르고 있습니다. 현재 구현이 더 완전하고 실전적입니다.
 
 ### 2. 보안 측면
 
-| 보안 요소 | Docs 참조 | 현재 구현 | 권장사항 |
-|----------|----------|----------|---------|
-| **토큰 저장 방식** | ❌ JSON 응답 (LocalStorage 저장 가능) | ✅ HTTP-only 쿠키 | **현재 구현 우수** (XSS 방어) |
-| **HTTPS 강제** | ⚠️ 명시 안 됨 | ✅ `secure: production` | 현재 구현 우수 |
-| **SameSite 설정** | ❌ 없음 | ✅ `sameSite: 'lax'` | **현재 구현 우수** (CSRF 방어) |
-| **토큰 만료 시간** | ✅ 7일 | ✅ Access 15분, Refresh 7일 | **현재 구현 우수** (짧은 Access Token) |
-| **Refresh Token** | ❌ 없음 | ✅ 구현됨 | **현재 구현 우수** |
-| **환경 변수 검증** | ✅ `if (!process.env...)` | ⚠️ ConfigService 의존 | Docs 참조 방식 추가 권장 |
+| 보안 요소          | Docs 참조                             | 현재 구현                   | 권장사항                               |
+| ------------------ | ------------------------------------- | --------------------------- | -------------------------------------- |
+| **토큰 저장 방식** | ❌ JSON 응답 (LocalStorage 저장 가능) | ✅ HTTP-only 쿠키           | **현재 구현 우수** (XSS 방어)          |
+| **HTTPS 강제**     | ⚠️ 명시 안 됨                         | ✅ `secure: production`     | 현재 구현 우수                         |
+| **SameSite 설정**  | ❌ 없음                               | ✅ `sameSite: 'lax'`        | **현재 구현 우수** (CSRF 방어)         |
+| **토큰 만료 시간** | ✅ 7일                                | ✅ Access 15분, Refresh 7일 | **현재 구현 우수** (짧은 Access Token) |
+| **Refresh Token**  | ❌ 없음                               | ✅ 구현됨                   | **현재 구현 우수**                     |
+| **환경 변수 검증** | ✅ `if (!process.env...)`             | ⚠️ ConfigService 의존       | Docs 참조 방식 추가 권장               |
 
 **보안 점수**: 현재 구현 **9/10** ✅
 
 **개선 사항**:
+
 ```typescript
 // 환경 변수 검증 추가 (main.ts 또는 config validation)
 if (!process.env.KAKAO_CLIENT_ID || !process.env.KAKAO_CALLBACK_URL) {
@@ -129,35 +129,36 @@ if (!process.env.KAKAO_CLIENT_ID || !process.env.KAKAO_CALLBACK_URL) {
 
 ### 3. 에러 처리
 
-| 에러 시나리오 | Docs 참조 | 현재 구현 | 비고 |
-|-------------|----------|----------|------|
-| **인증 코드 없음** | ✅ 400 JSON 응답 | ✅ 302 리다이렉트 + `error` 파라미터 | 현재 구현이 UX 측면 우수 |
-| **사용자 로그인 거부** | ✅ `error` 쿼리 파라미터 감지 | ✅ Passport 자동 처리 | 동일 |
-| **토큰 발급 실패** | ✅ 500 JSON 응답 | ✅ try-catch + 리다이렉트 | 현재 구현이 UX 측면 우수 |
-| **사용자 정보 조회 실패** | ✅ 500 JSON 응답 | ✅ try-catch + 리다이렉트 | 현재 구현이 UX 측면 우수 |
+| 에러 시나리오             | Docs 참조                     | 현재 구현                            | 비고                     |
+| ------------------------- | ----------------------------- | ------------------------------------ | ------------------------ |
+| **인증 코드 없음**        | ✅ 400 JSON 응답              | ✅ 302 리다이렉트 + `error` 파라미터 | 현재 구현이 UX 측면 우수 |
+| **사용자 로그인 거부**    | ✅ `error` 쿼리 파라미터 감지 | ✅ Passport 자동 처리                | 동일                     |
+| **토큰 발급 실패**        | ✅ 500 JSON 응답              | ✅ try-catch + 리다이렉트            | 현재 구현이 UX 측면 우수 |
+| **사용자 정보 조회 실패** | ✅ 500 JSON 응답              | ✅ try-catch + 리다이렉트            | 현재 구현이 UX 측면 우수 |
 
 **결론**: API 서버라면 JSON 응답이 적절하지만, SSR 애플리케이션에서는 현재 구현의 리다이렉트 방식이 더 자연스럽습니다.
 
 ### 4. 테스트 가능성
 
-| 테스트 항목 | Docs 참조 | 현재 구현 | 개선 필요 |
-|----------|----------|----------|---------|
-| **단위 테스트** | ✅ axios 모킹 쉬움 | ⚠️ Passport Strategy 모킹 필요 | 현재 구현에 E2E 테스트 추가 |
-| **통합 테스트** | ✅ Supertest 예제 제공 | ✅ 가능 | - |
-| **모킹 복잡도** | 낮음 (axios만 모킹) | 높음 (Passport, Guard, Strategy 모킹) | - |
+| 테스트 항목     | Docs 참조              | 현재 구현                             | 개선 필요                   |
+| --------------- | ---------------------- | ------------------------------------- | --------------------------- |
+| **단위 테스트** | ✅ axios 모킹 쉬움     | ⚠️ Passport Strategy 모킹 필요        | 현재 구현에 E2E 테스트 추가 |
+| **통합 테스트** | ✅ Supertest 예제 제공 | ✅ 가능                               | -                           |
+| **모킹 복잡도** | 낮음 (axios만 모킹)    | 높음 (Passport, Guard, Strategy 모킹) | -                           |
 
 **개선 사항**:
+
 - ✅ `backend/test/auth/kakao-auth.e2e-spec.ts` 작성 완료
 - Docs 참조 자료의 테스트 케이스를 NestJS 환경에 맞게 변환
 
 ### 5. 코드 가독성 및 유지보수성
 
-| 항목 | Docs 참조 | 현재 구현 |
-|-----|----------|----------|
-| **코드 줄 수** | ~150줄 (주석 포함) | ~200줄 (분산) |
-| **모듈 분리** | 단일 파일 | ✅ Strategy, Controller, Service, Guard 분리 |
-| **의존성** | axios, jsonwebtoken | @nestjs/passport, passport-kakao, @nestjs/jwt |
-| **확장성** | 보통 | ✅ 높음 (다른 OAuth 제공자 추가 쉬움) |
+| 항목           | Docs 참조           | 현재 구현                                     |
+| -------------- | ------------------- | --------------------------------------------- |
+| **코드 줄 수** | ~150줄 (주석 포함)  | ~200줄 (분산)                                 |
+| **모듈 분리**  | 단일 파일           | ✅ Strategy, Controller, Service, Guard 분리  |
+| **의존성**     | axios, jsonwebtoken | @nestjs/passport, passport-kakao, @nestjs/jwt |
+| **확장성**     | 보통                | ✅ 높음 (다른 OAuth 제공자 추가 쉬움)         |
 
 **결론**: 현재 NestJS 구현이 대규모 애플리케이션에 더 적합합니다.
 
@@ -200,9 +201,7 @@ export class AuthModule implements OnModuleInit {
     const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
     if (missingVars.length > 0) {
-      throw new Error(
-        `필수 환경 변수가 설정되지 않았습니다: ${missingVars.join(', ')}`,
-      );
+      throw new Error(`필수 환경 변수가 설정되지 않았습니다: ${missingVars.join(', ')}`);
     }
   }
 }
@@ -270,6 +269,7 @@ npm run test:e2e kakao-auth.e2e-spec.ts
 ### 3. API 클라이언트 테스트 (Postman, Insomnia)
 
 Docs 가이드 5.2 참조하여 단계별 테스트 가능:
+
 1. 브라우저에서 인증 코드 발급
 2. Postman으로 백엔드 API 직접 호출
 3. 쿠키 확인 및 JWT 토큰 검증
@@ -278,13 +278,13 @@ Docs 가이드 5.2 참조하여 단계별 테스트 가능:
 
 ## 📊 최종 평가
 
-| 평가 항목 | 점수 | 비고 |
-|----------|------|------|
-| **OAuth 2.0 준수** | ⭐⭐⭐⭐⭐ 5/5 | 표준 흐름 완벽 구현 |
-| **보안** | ⭐⭐⭐⭐⭐ 5/5 | HTTP-only 쿠키, Refresh Token |
-| **코드 품질** | ⭐⭐⭐⭐ 4/5 | 모듈화 우수, 로깅 개선 필요 |
-| **테스트** | ⭐⭐⭐⭐ 4/5 | E2E 테스트 추가됨 |
-| **문서화** | ⭐⭐⭐⭐⭐ 5/5 | Docs 참조 자료 완비 |
+| 평가 항목          | 점수           | 비고                          |
+| ------------------ | -------------- | ----------------------------- |
+| **OAuth 2.0 준수** | ⭐⭐⭐⭐⭐ 5/5 | 표준 흐름 완벽 구현           |
+| **보안**           | ⭐⭐⭐⭐⭐ 5/5 | HTTP-only 쿠키, Refresh Token |
+| **코드 품질**      | ⭐⭐⭐⭐ 4/5   | 모듈화 우수, 로깅 개선 필요   |
+| **테스트**         | ⭐⭐⭐⭐ 4/5   | E2E 테스트 추가됨             |
+| **문서화**         | ⭐⭐⭐⭐⭐ 5/5 | Docs 참조 자료 완비           |
 
 **종합 점수**: **23/25 (92%)** ✅
 

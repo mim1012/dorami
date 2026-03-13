@@ -23,11 +23,35 @@ export function useOrders(status?: OrderStatus, page = 1, limit = 20) {
     queryFn: async () => {
       const params: Record<string, any> = { page, limit };
       if (status) params.status = status;
-      const response = await apiClient.get<{ items: Order[]; total: number }>('/orders', {
+      const response = await apiClient.get<{
+        items: Order[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>('/orders', {
         params,
       });
       return response.data;
     },
+  });
+}
+
+// Fetch all orders for status counts (cached, used for badge display)
+export function useAllOrdersForCounts() {
+  return useQuery({
+    queryKey: [...orderKeys.lists(), 'all-for-counts'] as const,
+    queryFn: async () => {
+      const response = await apiClient.get<{
+        items: Order[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>('/orders', { params: { page: 1, limit: 200 } });
+      return response.data;
+    },
+    staleTime: 30_000,
   });
 }
 
@@ -68,34 +92,6 @@ export function useCreateOrder() {
         router.push('/login?reason=session_expired');
       } else if (error.statusCode === 400) {
         showToast(error.message || '요청 실패', 'error');
-      } else {
-        showToast(error.message || '알 수 없는 오류', 'error');
-      }
-    },
-  });
-}
-
-// Cancel order mutation
-export function useCancelOrder() {
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const { showToast } = useToast();
-
-  return useMutation({
-    mutationFn: async (orderId: string) => {
-      const response = await apiClient.patch(`/orders/${orderId}/cancel`);
-      return response.data;
-    },
-    onSuccess: (_, orderId) => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: orderKeys.lists() });
-    },
-    onError: (error: any) => {
-      if (error.statusCode === 401) {
-        showToast('로그인 세션이 만료되었습니다', 'error');
-        router.push('/login?reason=session_expired');
-      } else if (error.statusCode === 400) {
-        showToast(error.message || '주문 취소 실패', 'error');
       } else {
         showToast(error.message || '알 수 없는 오류', 'error');
       }

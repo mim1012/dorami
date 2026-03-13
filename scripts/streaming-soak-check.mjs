@@ -52,7 +52,7 @@ const config = {
     user: args['ssh-user'] ?? process.env.USER ?? 'ubuntu',
     key: args['ssh-key'],
     port: Number(args['ssh-port'] ?? 22),
-    workdir: args['ssh-workdir'] ?? '/opt/dorami',
+    workdir: args['ssh-workdir'] ?? '/opt/doremi',
   },
   compose: {
     base: args['compose-base'] || 'docker-compose.base.yml',
@@ -86,7 +86,7 @@ const config = {
     warningLimit: Number(args['warning-limit'] ?? 3),
   },
   timeoutMs: Number(args['timeout-ms'] ?? 15000),
-  pollerHeaders: { 'User-Agent': 'dorami-soak-check/1.0' },
+  pollerHeaders: { 'User-Agent': 'doremi-soak-check/1.0' },
   output: args['output'],
 };
 
@@ -298,7 +298,7 @@ async function startIngestStream(cfg) {
     return null;
   }
 
-  const logFile = `/tmp/dorami-soak-ingest-${Date.now()}.log`;
+  const logFile = `/tmp/doremi-soak-ingest-${Date.now()}.log`;
   const fullDuration = Math.max(15, cfg.ingestDuration);
   const command = `${cfg.ingestCommandTemplate} "${ingestUrl}" -t ${fullDuration}`;
   const detached = `${command} > ${shellQuote(logFile)} 2>&1 < /dev/null & echo $!`;
@@ -334,4 +334,5 @@ function buildRtmpUrl(baseUrl, streamKey) {
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
 

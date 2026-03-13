@@ -84,6 +84,16 @@ export class PointsController {
     return this.pointsService.getTransactionHistory(targetUserId, query);
   }
 
+  /**
+   * Get points configuration (User-facing — read-only, for checkout UI)
+   */
+  @Get('points/config')
+  @ApiOperation({ summary: '포인트 설정 조회 (사용자용)' })
+  @ApiResponse({ status: 200, description: '포인트 설정 정보' })
+  async getPointsConfigPublic() {
+    return this.pointsConfigService.getPointsConfig();
+  }
+
   // ── Admin Endpoints ──
 
   /**

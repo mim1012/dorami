@@ -41,6 +41,30 @@ describe('useProfileGuard', () => {
       });
     });
 
+    it('does not redirect when already on login path', () => {
+      (usePathname as jest.Mock).mockReturnValue('/login');
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isLoading: false,
+      });
+
+      renderHook(() => useProfileGuard());
+
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('does not redirect when already on profile register path', () => {
+      (usePathname as jest.Mock).mockReturnValue('/profile/register');
+      mockUseAuth.mockReturnValue({
+        user: { kakaoId: 'kakao-123' },
+        isLoading: false,
+      });
+
+      renderHook(() => useProfileGuard());
+
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
     it('does not redirect when user is loading', () => {
       mockUseAuth.mockReturnValue({
         user: null,

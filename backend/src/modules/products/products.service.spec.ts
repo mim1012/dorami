@@ -172,10 +172,13 @@ describe('ProductsService', () => {
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              expect.objectContaining({ streamKey: null }),
-              expect.objectContaining({ streamKey: '' }),
-              expect.objectContaining({ liveStream: { status: 'OFFLINE' } }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  expect.objectContaining({ streamKey: null }),
+                  expect.objectContaining({ streamKey: '' }),
+                ]),
+              }),
             ]),
             status: 'AVAILABLE',
           }),
@@ -484,7 +487,7 @@ describe('ProductsService', () => {
 
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: ProductStatus.AVAILABLE },
+          where: expect.objectContaining({ status: ProductStatus.AVAILABLE }),
         }),
       );
     });
@@ -596,7 +599,7 @@ describe('ProductsService', () => {
 
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: 'AVAILABLE' },
+          where: expect.objectContaining({ status: 'AVAILABLE' }),
           take: 6,
         }),
       );

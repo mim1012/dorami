@@ -136,9 +136,9 @@ Ralph Loop has successfully completed the **complete end-to-end design, document
 
 **Sign-off:**
 
-Architect Name: **********\_**********
+Architect Name: ****\*\*****\_****\*\*****
 
-Date: **********\_**********
+Date: ****\*\*****\_****\*\*****
 
 Status: [ ] Approved [ ] Approved with conditions [ ] Rejected
 

@@ -26,6 +26,7 @@ import { UpdateAddressDto } from './dto/profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AllowIncompleteProfile } from '../auth/decorators/allow-incomplete-profile.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -39,6 +40,7 @@ export class UsersController {
    * SkipThrottle: called on every page load by useAuth hook.
    */
   @SkipThrottle({ short: true })
+  @AllowIncompleteProfile()
   @Get('me')
   @ApiOperation({
     summary: '내 기본 프로필 조회',
@@ -57,6 +59,7 @@ export class UsersController {
     description: '사용 가능 여부',
     schema: { example: { available: true } },
   })
+  @AllowIncompleteProfile()
   async checkInstagramAvailability(
     @Query('instagramId') instagramId: string,
     @CurrentUser('userId') userId: string,
@@ -76,6 +79,7 @@ export class UsersController {
   }
 
   @Patch('me')
+  @AllowIncompleteProfile()
   @ApiOperation({ summary: '내 프로필 수정' })
   @ApiResponse({ status: 200, description: '프로필 수정 성공' })
   async updateMyProfile(@CurrentUser('userId') userId: string, @Body() updateDto: UpdateUserDto) {
@@ -92,11 +96,13 @@ export class UsersController {
 
   @Post('complete-profile')
   @HttpCode(200)
+  @SkipThrottle({ short: true })
   @ApiOperation({
     summary: '프로필 완성',
     description: 'Kakao 로그인 후 필수 프로필 정보(닉네임, 전화번호 등)를 입력합니다.',
   })
   @ApiResponse({ status: 200, description: '프로필 완성 성공' })
+  @AllowIncompleteProfile()
   async completeProfile(@CurrentUser('userId') userId: string, @Body() dto: CompleteProfileDto) {
     return this.usersService.completeProfile(userId, dto);
   }
@@ -106,6 +112,7 @@ export class UsersController {
    * Use this for "My Page" where address is needed
    */
   @Get('profile/me')
+  @AllowIncompleteProfile()
   @ApiOperation({
     summary: '내 전체 프로필 조회',
     description: '복호화된 배송지 정보를 포함한 전체 프로필을 반환합니다.',
@@ -116,6 +123,7 @@ export class UsersController {
   }
 
   @Patch('profile/address')
+  @AllowIncompleteProfile()
   @ApiOperation({
     summary: '배송지 수정',
     description: '기본 배송지를 수정합니다. 주소는 AES-256-GCM으로 암호화 저장됩니다.',

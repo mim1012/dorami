@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DEPLOY_DIR="/opt/dorami"
+DEPLOY_DIR="/opt/doremi"
 ENV_FILE=".env.production"
 
 cd "$DEPLOY_DIR"
@@ -15,46 +15,50 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# Deploy backend with explicit env file passed to docker compose
-echo "⏳ Restarting backend..."
+# Load env to get IMAGE_TAG for logging
+set -a
+source "$ENV_FILE"
+set +a
+
+echo "🔖 Deploying with IMAGE_TAG: $IMAGE_TAG"
+
+# Step 1: Pull latest images from GHCR
+echo "📥 Pulling latest images..."
 docker compose \
   -f docker-compose.prod.yml \
   --project-directory "$DEPLOY_DIR" \
   --env-file "$ENV_FILE" \
-  restart backend
+  pull backend frontend srs
 
-sleep 3
+sleep 2
 
-# Deploy frontend
-echo "⏳ Restarting frontend..."
+# Step 2: Restart all services (will recreate if image changed)
+echo "🚀 Starting services..."
 docker compose \
   -f docker-compose.prod.yml \
   --project-directory "$DEPLOY_DIR" \
-  restart frontend
+  --env-file "$ENV_FILE" \
+  up -d --no-build
 
 sleep 3
 
 echo "✅ Deployment complete"
 echo ""
-echo "🔍 Verifying deployed images..."
+echo "🔍 Verifying deployed services..."
 
-# Verify backend image using docker inspect
-BACKEND_IMAGE=$(docker inspect dorami-backend-1 --format='{{.Config.Image}}' 2>/dev/null || echo "NOT_FOUND")
-if [[ "$BACKEND_IMAGE" == *"sha-"* ]]; then
-  echo "✅ Backend: $BACKEND_IMAGE"
-else
-  echo "⚠️ Backend image not found or not immutable (expected sha- tag)"
-fi
+# Get container IDs dynamically (works regardless of project name)
+docker compose \
+  -f docker-compose.prod.yml \
+  --project-directory "$DEPLOY_DIR" \
+  --env-file "$ENV_FILE" \
+  ps
 
-# Verify frontend image using docker inspect
-FRONTEND_IMAGE=$(docker inspect dorami-frontend-prod --format='{{.Config.Image}}' 2>/dev/null || echo "NOT_FOUND")
-if [[ "$FRONTEND_IMAGE" == *"sha-"* ]]; then
-  echo "✅ Frontend: $FRONTEND_IMAGE"
-else
-  echo "⚠️ Frontend image not found or not immutable (expected sha- tag)"
-fi
-
-# Verify environment variables in backend
 echo ""
-echo "🔐 Checking backend encryption keys..."
-docker exec dorami-backend-1 env | grep PROFILE || echo "⚠️ PROFILE keys not found"
+echo "🔐 Checking backend service health..."
+docker compose \
+  -f docker-compose.prod.yml \
+  --project-directory "$DEPLOY_DIR" \
+  --env-file "$ENV_FILE" \
+  exec -T backend wget -qO- http://localhost:3001/api/health/live 2>/dev/null && \
+  echo "✅ Backend healthy" || echo "⚠️ Backend health check pending"
+

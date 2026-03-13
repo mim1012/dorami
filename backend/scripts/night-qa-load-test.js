@@ -40,7 +40,7 @@ export const options = {
   ext: {
     loadimpact: {
       projectID: 3456,
-      name: 'Dorami Night QA Load Test',
+      name: 'Doremi Night QA Load Test',
     },
   },
 };
@@ -149,7 +149,7 @@ export function handleSummary(data) {
 function formatSummary(data) {
   const summary = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🌙 Dorami Night QA Load Test Summary
+  🌙 Doremi Night QA Load Test Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📊 Request Metrics:
@@ -175,3 +175,4 @@ function formatSummary(data) {
   `;
   return summary;
 }
+

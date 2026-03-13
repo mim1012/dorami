@@ -30,7 +30,7 @@ export function Select({
   const hasError = !!error;
 
   const baseStyles =
-    'rounded-button bg-content-bg text-primary-text px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink focus:ring-offset-2 focus:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed appearance-none';
+    'rounded-button bg-content-bg text-primary-text min-h-[44px] px-4 py-2.5 text-body transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-hot-pink focus:ring-offset-2 focus:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed appearance-none';
 
   const errorStyles = hasError
     ? 'border-2 border-error focus:ring-error'

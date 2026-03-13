@@ -37,3 +37,10 @@ jobs:
           docker ps -a
           cd /opt/dorami 2>/dev/null && ls -la || echo "Directory not found"
           ENDSSH
+
+      - name: Get Backend Logs
+        run: |
+          echo "=== Backend Container Logs ==="
+          ssh $USER@$HOST << 'ENDSSH' 2>&1 || true
+          docker logs dorami-backend-1 --tail=100 2>&1 || echo "Container not found"
+          ENDSSH

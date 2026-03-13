@@ -7,7 +7,7 @@
 #   ./nginx-analyzer.sh [--log FILE] [--output DIR] [--container NAME]
 #
 # Example:
-#   ./nginx-analyzer.sh --container dorami-nginx --output results/
+#   ./nginx-analyzer.sh --container doremi-nginx --output results/
 #   ./nginx-analyzer.sh --log /var/log/nginx/access.log --output results/
 
 set -euo pipefail
@@ -16,7 +16,7 @@ set -euo pipefail
 # Configuration
 # ============================================================================
 LOG_FILE=""
-CONTAINER_NAME="dorami-nginx"
+CONTAINER_NAME="doremi-nginx"
 OUTPUT_DIR="$(pwd)/monitoring"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 OUTPUT_FILE=""
@@ -280,3 +280,4 @@ if urls:
 print()
 print(f'Output: $(readlink -f "$OUTPUT_FILE" 2>/dev/null || echo "$OUTPUT_FILE")')
 " 2>/dev/null || echo "Output: $OUTPUT_FILE"
+

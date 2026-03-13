@@ -10,7 +10,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface ShippingAddressCardProps {
@@ -24,7 +23,7 @@ export function ShippingAddressCard({ address, onEditClick }: ShippingAddressCar
       <div className="flex items-center justify-between mb-4">
         <Heading2 className="text-hot-pink">배송지 정보</Heading2>
         <Button variant="primary" size="sm" onClick={onEditClick}>
-          수정
+          {address ? '수정' : '등록'}
         </Button>
       </div>
 
@@ -32,13 +31,10 @@ export function ShippingAddressCard({ address, onEditClick }: ShippingAddressCar
         <div className="space-y-1">
           <Body className="text-primary-text">{address.fullName}</Body>
           <Body className="text-primary-text">{address.address1}</Body>
-          {address.address2 && (
-            <Body className="text-primary-text">{address.address2}</Body>
-          )}
+          {address.address2 && <Body className="text-primary-text">{address.address2}</Body>}
           <Body className="text-primary-text">
             {address.city}, {address.state} {address.zip}
           </Body>
-          <Body className="text-primary-text">연락처: {address.phone}</Body>
         </div>
       ) : (
         <Body className="text-secondary-text">등록된 배송지가 없습니다</Body>

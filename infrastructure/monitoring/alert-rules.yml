@@ -1,9 +1,9 @@
 # alert-rules.yml
-# Prometheus alerting rules for Dorami Live Commerce
+# Prometheus alerting rules for Doremi Live Commerce
 # Referenced by prometheus-config.yml
 
 groups:
-  - name: dorami.infrastructure
+  - name: doremi.infrastructure
     interval: 30s
     rules:
 
@@ -45,7 +45,7 @@ groups:
           summary: "Critical memory usage"
           description: "Memory usage is {{ printf \"%.1f\" $value }}%"
 
-  - name: dorami.application
+  - name: doremi.application
     interval: 30s
     rules:
 
@@ -56,7 +56,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Dorami backend is down"
+          summary: "Doremi backend is down"
           description: "Backend health check has been failing for 1 minute"
 
       # High error rate
@@ -91,7 +91,7 @@ groups:
           summary: "PostgreSQL is down"
           description: "PostgreSQL has been unreachable for 1 minute"
 
-  - name: dorami.streaming
+  - name: doremi.streaming
     interval: 15s
     rules:
 
@@ -117,3 +117,5 @@ groups:
         annotations:
           summary: "Streaming container {{ $labels.name }} high CPU"
           description: "Container CPU is {{ printf \"%.1f\" $value }}%"
+
+

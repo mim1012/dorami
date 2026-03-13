@@ -330,9 +330,9 @@ Please review and verify the following:
 
 ## 🚀 Architect Approval
 
-**Architect Name:** **********\_**********
+**Architect Name:** ****\*\*****\_****\*\*****
 
-**Date:** **********\_**********
+**Date:** ****\*\*****\_****\*\*****
 
 **Status:**
 
@@ -346,7 +346,7 @@ Please review and verify the following:
 [Space for architect feedback and conditions]
 ```
 
-**Signature:** **********\_**********
+**Signature:** ****\*\*****\_****\*\*****
 
 ---
 

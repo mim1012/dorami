@@ -3,10 +3,11 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { isProfileComplete } from '@/lib/utils/profile';
 import { Display, Body } from '@/components/common/Typography';
 import Image from 'next/image';
 
-const POST_LOGIN_RETURN_KEY = 'dorami_post_login_return_to';
+const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
 
 function sanitizeReturnPath(raw: string | null): string {
   if (!raw) return '/';
@@ -42,7 +43,7 @@ function LoginContent() {
   const [devRole, setDevRole] = useState<'USER' | 'ADMIN'>('USER');
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
-  const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(false);
+  const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(process.env.NODE_ENV === 'development');
   const [returnTo, setReturnTo] = useState('/');
   const hasExplicitReturnTo = searchParams.has('returnTo') || searchParams.has('redirect');
 
@@ -61,6 +62,11 @@ function LoginContent() {
   useEffect(() => {
     if (!user || !isAuthenticated || isLoading) return;
 
+    if (user.role !== 'ADMIN' && !isProfileComplete(user)) {
+      router.push('/profile/register');
+      return;
+    }
+
     // All users can login without profile completion (instagramId/depositorName not required)
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
     const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
@@ -75,7 +81,10 @@ function LoginContent() {
   useEffect(() => {
     // 런타임에 체크 (docker-entrypoint.sh가 플레이스홀더를 치환한 후 실행됨)
     const val = String(process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH || '');
-    setIsDevAuthEnabled(val === 'true');
+    // In local dev (NODE_ENV=development) always show dev login regardless of env var
+    if (process.env.NODE_ENV !== 'development') {
+      setIsDevAuthEnabled(val === 'true');
+    }
   }, []);
 
   const handleKakaoLogin = () => {
@@ -241,6 +250,15 @@ function LoginContent() {
                   className="flex-1 py-1.5 text-xs rounded bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
                 >
                   관리자 계정
+                </button>
+                <button
+                  onClick={() => {
+                    setDevEmail('incomplete@test.com');
+                    setDevRole('USER');
+                  }}
+                  className="flex-1 py-1.5 text-xs rounded bg-secondary-text/10 text-secondary-text border border-secondary-text/20 hover:bg-secondary-text/20 transition-colors"
+                >
+                  미완성 프로필
                 </button>
               </div>
 

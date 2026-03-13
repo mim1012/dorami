@@ -6,8 +6,8 @@ interface ApiResponse<T> {
   data: T;
 }
 
-export interface RequestOptions {
-  params?: Record<string, any>;
+export interface RequestOptions extends Omit<RequestInit, 'signal'> {
+  params?: Record<string, string | number | boolean | string[]>;
   signal?: AbortSignal;
   timeout?: number;
 }
@@ -102,7 +102,7 @@ async function refreshAccessToken(): Promise<boolean> {
  */
 async function executeFetch(
   url: string,
-  options?: RequestInit & { params?: Record<string, any> },
+  options?: RequestInit & { params?: Record<string, string | number | boolean | string[]> },
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
   callerSignal?: AbortSignal,
 ): Promise<Response> {
@@ -173,7 +173,11 @@ async function executeFetch(
 
 async function request<T>(
   endpoint: string,
-  options?: RequestInit & { params?: Record<string, any>; timeout?: number; signal?: AbortSignal },
+  options?: RequestInit & {
+    params?: Record<string, string | number | boolean | string[]>;
+    timeout?: number;
+    signal?: AbortSignal;
+  },
 ): Promise<ApiResponse<T>> {
   let url = `${API_BASE_URL}${endpoint}`;
 
@@ -250,11 +254,21 @@ async function request<T>(
       message: 'An error occurred',
       error: response.statusText,
     }));
+    const errorCode = error.errorCode || error.error;
+
+    if (typeof window !== 'undefined' && errorCode === 'PROFILE_INCOMPLETE') {
+      const currentPath = window.location.pathname || '';
+      if (!currentPath.startsWith('/profile/register')) {
+        const returnTo = currentPath !== '/' ? `?returnTo=${encodeURIComponent(currentPath)}` : '';
+        window.location.href = `/profile/register${returnTo}`;
+      }
+    }
+
     throw new ApiError(
       error.statusCode || response.status,
       error.message || `HTTP ${response.status}`,
-      error.error || error.errorCode || response.statusText,
-      error.details,
+      errorCode || response.statusText,
+      error.details ?? error,
     );
   }
 
@@ -278,7 +292,11 @@ export const apiClient = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { method: 'GET', ...options }),
 
-  post: <T>(endpoint: string, body?: any, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
+  post: <T>(
+    endpoint: string,
+    body?: any,
+    options?: Pick<RequestOptions, 'signal' | 'timeout'> & { headers?: Record<string, string> },
+  ) =>
     request<T>(endpoint, {
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
@@ -301,4 +319,15 @@ export const apiClient = {
 
   delete: <T>(endpoint: string, options?: Pick<RequestOptions, 'signal' | 'timeout'>) =>
     request<T>(endpoint, { method: 'DELETE', ...options }),
+
+  deleteWithBody: <T>(
+    endpoint: string,
+    body?: any,
+    options?: Omit<RequestOptions, 'method' | 'body'>,
+  ) =>
+    request<T>(endpoint, {
+      method: 'DELETE',
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...options,
+    }),
 };

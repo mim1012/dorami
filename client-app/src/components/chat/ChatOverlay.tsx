@@ -22,12 +22,8 @@ export default function ChatOverlay({
   const [isAdmin, setIsAdmin] = useState(false);
   const inputRef = useRef<ChatInputHandle>(null);
 
-  const { socket, isConnected, userCount, sendMessage, deleteMessage } = useChatConnection(
-    streamKey,
-    {
-      forceLogoutOnAuthFailure: false,
-    },
-  );
+  const { socket, isConnected, userCount, sendMessage, deleteMessage } =
+    useChatConnection(streamKey);
   const { messages } = useChatMessages(socket);
 
   // Check if user is admin

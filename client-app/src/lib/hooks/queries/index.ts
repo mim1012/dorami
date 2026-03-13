@@ -22,7 +22,7 @@ export {
 } from './use-streams';
 
 // Orders
-export { orderKeys, useOrders, useOrder, useCreateOrder, useCancelOrder } from './use-orders';
+export { orderKeys, useOrders, useOrder, useCreateOrder } from './use-orders';
 
 // Cart
 export {

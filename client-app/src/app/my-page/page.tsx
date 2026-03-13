@@ -1,10 +1,15 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
-import { useProfileGuard } from '@/lib/hooks/use-profile-guard';
 import { apiClient } from '@/lib/api/client';
+import {
+  formatPhoneNumberForInput,
+  isValidProfilePhone,
+  normalizePhoneForBackend,
+  PhoneRegion,
+} from '@/lib/utils/format';
 import { Display, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import {
@@ -14,6 +19,7 @@ import {
   OrderHistoryCard,
   PointsBalanceCard,
   AddressEditModal,
+  ProfileCompletionBanner,
   type AddressFormData,
 } from '@/components/my-page';
 
@@ -24,7 +30,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface ProfileData {
@@ -36,16 +41,26 @@ interface ProfileData {
   role: string;
   depositorName?: string;
   instagramId?: string;
-  phone?: string;
+  kakaoPhone?: string;
   shippingAddress?: ShippingAddress;
   createdAt: string;
   updatedAt: string;
 }
 
+const inferPhoneRegion = (value?: string): PhoneRegion => {
+  if (!value) {
+    return 'US';
+  }
+  const compact = value.replace(/\s/g, '');
+  if (compact.startsWith('+82') || compact.startsWith('0')) {
+    return 'KR';
+  }
+  return 'US';
+};
+
 export default function MyPagePage() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
-  const { isLoading: guardLoading, isProfileComplete } = useProfileGuard();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -53,12 +68,16 @@ export default function MyPagePage() {
   const [isPhoneEditOpen, setIsPhoneEditOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>('US');
   const [isInstagramIdEditOpen, setIsInstagramIdEditOpen] = useState(false);
   const [instagramIdInput, setInstagramIdInput] = useState('');
   const [instagramIdError, setInstagramIdError] = useState<string | null>(null);
   const [isDepositorNameEditOpen, setIsDepositorNameEditOpen] = useState(false);
   const [depositorNameInput, setDepositorNameInput] = useState('');
   const [depositorNameError, setDepositorNameError] = useState<string | null>(null);
+  const [isEmailEditOpen, setIsEmailEditOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
@@ -68,7 +87,6 @@ export default function MyPagePage() {
     city: '',
     state: '',
     zip: '',
-    phone: '',
   });
 
   // Load profile
@@ -101,7 +119,6 @@ export default function MyPagePage() {
         city: address.city,
         state: address.state,
         zip: address.zip,
-        phone: address.phone,
       });
     }
   };
@@ -109,30 +126,44 @@ export default function MyPagePage() {
   const handleAddressSubmit = async (data: AddressFormData) => {
     const response = await apiClient.patch<ProfileData>('/users/profile/address', data);
     setProfile(response.data);
-    setSuccessMessage('배송지가 저장되었습니다');
+    setSuccessMessage('배송지 정보가 수정되었습니다.');
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const handlePhoneEdit = () => {
-    setPhoneInput(profile?.phone || '');
+    const nextRegion = inferPhoneRegion(profile?.kakaoPhone);
+    setPhoneRegion(nextRegion);
+    setPhoneInput(
+      profile?.kakaoPhone ? formatPhoneNumberForInput(profile.kakaoPhone, nextRegion) : '',
+    );
     setPhoneError(null);
     setIsPhoneEditOpen(true);
   };
 
   const handlePhoneSubmit = async () => {
-    if (!/^\+[0-9\s\-()]{7,20}$/.test(phoneInput)) {
-      setPhoneError('국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)');
+    const trimmed = phoneInput.trim();
+    if (!trimmed || !isValidProfilePhone(trimmed)) {
+      setPhoneError('유효한 전화번호 형식이 아닙니다. 예: +1 213-555-1234 또는 010-1234-5678');
       return;
     }
+    const normalizedPhone = normalizePhoneForBackend(trimmed);
     try {
-      const response = await apiClient.patch<ProfileData>('/users/me', { phone: phoneInput });
+      const response = await apiClient.patch<ProfileData>('/users/me', {
+        kakaoPhone: normalizedPhone,
+      });
       setProfile(response.data);
       setIsPhoneEditOpen(false);
-      setSuccessMessage('전화번호가 저장되었습니다');
+      setSuccessMessage('전화번호가 수정되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch {
-      setPhoneError('저장에 실패했습니다. 다시 시도해주세요');
+      setPhoneError('전화번호 수정에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
+  };
+
+  const handlePhoneRegionChange = (region: PhoneRegion) => {
+    setPhoneRegion(region);
+    setPhoneInput((prev) => formatPhoneNumberForInput(prev, region));
+    setPhoneError(null);
   };
 
   const handleInstagramIdEdit = () => {
@@ -144,21 +175,21 @@ export default function MyPagePage() {
   const handleInstagramIdSubmit = async () => {
     const trimmed = instagramIdInput.trim();
     if (!trimmed || trimmed === '@') {
-      setInstagramIdError('인스타그램 ID를 입력해주세요');
+      setInstagramIdError('Instagram ID를 입력해주세요.');
       return;
     }
     if (!/^@[a-zA-Z0-9._]+$/.test(trimmed)) {
-      setInstagramIdError('올바른 인스타그램 ID 형식이 아닙니다');
+      setInstagramIdError('Instagram ID 형식이 올바르지 않습니다.');
       return;
     }
     try {
       const response = await apiClient.patch<ProfileData>('/users/me', { instagramId: trimmed });
       setProfile(response.data);
       setIsInstagramIdEditOpen(false);
-      setSuccessMessage('인스타그램 ID가 저장되었습니다');
+      setSuccessMessage('Instagram ID가 저장되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch {
-      setInstagramIdError('저장에 실패했습니다. 다시 시도해주세요');
+      setInstagramIdError('Instagram ID 수정에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -168,25 +199,57 @@ export default function MyPagePage() {
     setIsDepositorNameEditOpen(true);
   };
 
+  const handleEmailEdit = () => {
+    setEmailInput(profile?.email || '');
+    setEmailError(null);
+    setIsEmailEditOpen(true);
+  };
+
+  const handleEmailSubmit = async () => {
+    const trimmed = emailInput.trim();
+    if (!trimmed) {
+      setEmailError('이메일을 입력해주세요.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailError('이메일 형식이 올바르지 않습니다.');
+      return;
+    }
+    try {
+      const response = await apiClient.patch<ProfileData>('/users/me', { email: trimmed });
+      setProfile(response.data);
+      setIsEmailEditOpen(false);
+      setSuccessMessage('이메일이 저장되었습니다.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: unknown) {
+      const status = (err as { statusCode?: number })?.statusCode;
+      if (status === 409) {
+        setEmailError('이미 사용 중인 이메일입니다.');
+      } else {
+        setEmailError('이메일 수정에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
+  };
+
   const handleDepositorNameSubmit = async () => {
     const trimmed = depositorNameInput.trim();
     if (!trimmed) {
-      setDepositorNameError('입금자명을 입력해주세요');
+      setDepositorNameError('입금자명을 입력해주세요.');
       return;
     }
     try {
       const response = await apiClient.patch<ProfileData>('/users/me', { depositorName: trimmed });
       setProfile(response.data);
       setIsDepositorNameEditOpen(false);
-      setSuccessMessage('입금자명이 저장되었습니다');
+      setSuccessMessage('입금자명이 저장되었습니다.');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch {
-      setDepositorNameError('저장에 실패했습니다. 다시 시도해주세요');
+      setDepositorNameError('입금자명 수정에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
   // Loading state (auth + profile guard + profile data)
-  if (authLoading || guardLoading || (user && isLoadingProfile)) {
+  if (authLoading || (user && isLoadingProfile)) {
     return (
       <>
         <div className="min-h-screen bg-primary-black flex items-center justify-center">
@@ -197,9 +260,7 @@ export default function MyPagePage() {
     );
   }
 
-  // useProfileGuard handles redirect for non-authenticated and incomplete profile
-  // Admin users skip profile completion requirement
-  if (!user || (user.role !== 'ADMIN' && !isProfileComplete)) {
+  if (!user) {
     return null;
   }
 
@@ -235,15 +296,18 @@ export default function MyPagePage() {
             </div>
           )}
 
+          <ProfileCompletionBanner user={user} />
+
           <ProfileInfoCard
             instagramId={profile.instagramId}
             depositorName={profile.depositorName}
             email={profile.email}
             nickname={profile.nickname}
-            phone={profile.phone}
+            kakaoPhone={profile.kakaoPhone}
             onPhoneEdit={handlePhoneEdit}
             onInstagramIdEdit={handleInstagramIdEdit}
             onDepositorNameEdit={handleDepositorNameEdit}
+            onEmailEdit={handleEmailEdit}
           />
 
           <PointsBalanceCard />
@@ -278,21 +342,27 @@ export default function MyPagePage() {
         {isPhoneEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
             <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
-              <Body className="text-primary-text font-semibold mb-4">전화번호 등록</Body>
+              <Body className="text-primary-text font-semibold mb-4">
+                카카오톡에 등록된 전화번호
+              </Body>
+              <select
+                value={phoneRegion}
+                onChange={(e) => handlePhoneRegionChange(e.target.value as PhoneRegion)}
+                className="w-full h-11 mb-3 rounded-button bg-primary-black border border-border-color px-4 text-primary-text focus:outline-none focus:border-hot-pink"
+              >
+                <option value="US">미국 (+1)</option>
+                <option value="KR">한국 (010)</option>
+              </select>
               <input
                 type="tel"
                 value={phoneInput}
                 onChange={(e) => {
-                  setPhoneInput(e.target.value);
+                  setPhoneInput(formatPhoneNumberForInput(e.target.value, phoneRegion));
                   setPhoneError(null);
                 }}
-                placeholder="+1 213-555-1234"
+                placeholder={phoneRegion === 'US' ? '+1 213-555-1234' : '010-1234-5678'}
                 className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
               />
-              {phoneError && <Body className="text-error text-caption mb-2">{phoneError}</Body>}
-              <Body className="text-secondary-text text-caption mb-4">
-                국가코드 포함 국제 번호 형식으로 입력해주세요 (예: +1 213-555-1234)
-              </Body>
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsPhoneEditOpen(false)}
@@ -314,7 +384,9 @@ export default function MyPagePage() {
         {isInstagramIdEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
             <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
-              <Body className="text-primary-text font-semibold mb-4">인스타그램 ID 등록</Body>
+              <Body className="text-primary-text font-semibold mb-4">
+                @로 시작하는 인스타그램 ID
+              </Body>
               <input
                 type="text"
                 value={instagramIdInput}
@@ -349,10 +421,43 @@ export default function MyPagePage() {
           </div>
         )}
 
+        {isEmailEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
+              <Body className="text-primary-text font-semibold mb-4">이메일 수정</Body>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => {
+                  setEmailInput(e.target.value);
+                  setEmailError(null);
+                }}
+                placeholder="example@email.com"
+                className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
+              />
+              {emailError && <Body className="text-error text-caption mb-2">{emailError}</Body>}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setIsEmailEditOpen(false)}
+                  className="flex-1 py-3 border border-border-color rounded-button text-secondary-text text-sm hover:bg-primary-black transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleEmailSubmit}
+                  className="flex-1 py-3 bg-hot-pink rounded-button text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isDepositorNameEditOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
             <div className="bg-content-bg border border-border-color rounded-button p-6 w-[calc(100%-2rem)] max-w-sm">
-              <Body className="text-primary-text font-semibold mb-4">입금자명 등록</Body>
+              <Body className="text-primary-text font-semibold mb-4">입금자명 수정</Body>
               <input
                 type="text"
                 value={depositorNameInput}
@@ -360,7 +465,7 @@ export default function MyPagePage() {
                   setDepositorNameInput(e.target.value);
                   setDepositorNameError(null);
                 }}
-                placeholder="입금자 이름"
+                placeholder="입금자명을 입력해주세요."
                 className="w-full bg-primary-black border border-border-color rounded-button px-4 py-3 text-primary-text placeholder-secondary-text focus:outline-none focus:border-hot-pink mb-2"
               />
               {depositorNameError && (

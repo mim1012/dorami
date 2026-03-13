@@ -71,13 +71,13 @@ export const useStockStore = create<StockState>((set) => ({
  * - reconnect_attempt 에서 Circuit Breaker OPEN 상태면 소켓 강제 해제
  *
  * Events handled:
- * - product:stock:changed  (global broadcast from ProductAlertHandler)
  * - live:product:updated   (stream-scoped broadcast)
  * - live:product:soldout   (stream-scoped broadcast)
+ * - product:low-stock       (stream-scoped warning event)
  */
 export function useProductStock(streamKey?: string) {
   const socketRef = useRef<Socket | null>(null);
-  const { updateStock, markSoldOut } = useStockStore();
+  const { updateStock, markSoldOut, setInitialStocks } = useStockStore();
 
   // Circuit Breaker 인스턴스: config 값 참조
   // useRef로 보관해 렌더링 사이에도 상태를 유지한다
@@ -92,9 +92,12 @@ export function useProductStock(streamKey?: string) {
   // 마지막 connect_error가 인증(토큰 만료) 에러였는지 추적
   const lastAuthErrorRef = useRef(false);
 
+  // 최초 연결 여부 추적 (재연결 시 REST 재동기화 목적)
+  const isReconnectRef = useRef(false);
+
   const connect = useCallback(() => {
     // Don't create duplicate connections
-    if (socketRef.current?.connected) return;
+    if (socketRef.current) return;
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -105,14 +108,6 @@ export function useProductStock(streamKey?: string) {
       reconnectionDelayMax: stockConfig.delays[stockConfig.delays.length - 1],
       autoConnect: true,
     });
-
-    // ── Global stock changed event ──
-    socket.on(
-      'product:stock:changed',
-      (payload: { productId: string; oldStock: number; newStock: number }) => {
-        updateStock(payload.productId, payload.newStock);
-      },
-    );
 
     // ── Stream-scoped product updated ──
     socket.on(
@@ -162,6 +157,23 @@ export function useProductStock(streamKey?: string) {
       // Join stream room if streamKey provided
       if (streamKey) {
         socket.emit('join:stream', { streamId: streamKey });
+      }
+
+      if (!isReconnectRef.current) {
+        // 최초 연결: 이후 connect 이벤트는 재연결로 간주
+        isReconnectRef.current = true;
+      } else if (streamKey) {
+        // 재연결: 이벤트 유실 대비 REST로 최신 재고 동기화
+        fetch(`/api/streams/${streamKey}/products`)
+          .then((res) => res.json())
+          .then((result) => {
+            if (result?.data?.products) {
+              setInitialStocks(result.data.products);
+            }
+          })
+          .catch(() => {
+            /* silent */
+          });
       }
     });
 
@@ -213,7 +225,11 @@ export function useProductStock(streamKey?: string) {
           }
           circuitBreakerRef.current.recordFailure();
           socket.disconnect();
-          forceLogout();
+          // Only force logout if the circuit breaker has fully opened — a single stock
+          // WebSocket auth failure should not evict the user from the session.
+          if (circuitBreakerRef.current.getState().isOpen) {
+            forceLogout();
+          }
           return;
         }
         lastAuthErrorRef.current = false;
@@ -224,7 +240,7 @@ export function useProductStock(streamKey?: string) {
     });
 
     socketRef.current = socket;
-  }, [streamKey, updateStock, markSoldOut]);
+  }, [streamKey, updateStock, markSoldOut, setInitialStocks]);
 
   useEffect(() => {
     connect();

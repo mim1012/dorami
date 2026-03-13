@@ -30,23 +30,9 @@ export async function subscribePush(
 }
 
 export async function unsubscribePush(endpoint: string): Promise<void> {
-  // Backend DELETE expects body with { endpoint }.
-  // apiClient.delete doesn't support body, so use fetch with proper auth headers.
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const csrfMatch = typeof document !== 'undefined' && document.cookie.match(/csrf-token=([^;]+)/);
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (csrfMatch) {
-    headers['X-CSRF-Token'] = csrfMatch[1];
-  }
-  const res = await fetch(`${API_BASE}/notifications/unsubscribe`, {
-    method: 'DELETE',
-    headers,
-    credentials: 'include',
-    body: JSON.stringify({ endpoint }),
+  await apiClient.deleteWithBody('/notifications/unsubscribe', {
+    endpoint,
   });
-  if (!res.ok) {
-    throw new Error(`Unsubscribe failed: ${res.status}`);
-  }
 }
 
 export async function getSubscriptions(): Promise<NotificationSubscription[]> {

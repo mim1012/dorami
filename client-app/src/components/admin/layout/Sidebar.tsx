@@ -94,7 +94,7 @@ export default function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[60] p-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+        className="lg:hidden fixed top-4 left-4 z-[60] p-2.5 min-h-[44px] min-w-[44px] bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -150,7 +150,9 @@ export default function Sidebar() {
               const isActive =
                 pathname === item.href ||
                 pathname.startsWith(item.href + '/') ||
-                (item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + '/')) ??
+                (item.aliases?.some(
+                  (alias) => pathname === alias || pathname.startsWith(alias + '/'),
+                ) ??
                   false) ||
                 (item.href === '/admin/dashboard' && pathname === '/admin');
               return (

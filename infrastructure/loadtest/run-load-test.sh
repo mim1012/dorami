@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run-load-test.sh — Dorami HLS Load Test Runner
+# run-load-test.sh — Doremi HLS Load Test Runner
 #
 # Orchestrates the full load test lifecycle:
 #   1. Start infrastructure (docker-compose)
@@ -204,7 +204,7 @@ seed_test_stream() {
     local auth_response
     auth_response=$(curl -sf -X POST "${BACKEND_URL}/api/auth/dev-login" \
       -H "Content-Type: application/json" \
-      -d '{"email":"loadtest@dorami.test","role":"ADMIN"}' \
+      -d '{"email":"loadtest@doremi.test","role":"ADMIN"}' \
       -c /tmp/loadtest-cookies.txt 2>/dev/null || echo "")
 
     if [[ -n "$auth_response" ]]; then
@@ -349,7 +349,7 @@ trap cleanup EXIT
 # Main
 # ---------------------------------------------------------------------------
 main() {
-  header "Dorami HLS Load Test Runner"
+  header "Doremi HLS Load Test Runner"
   log "Timestamp   : ${TIMESTAMP}"
   log "Scenario    : ${SCENARIO}"
   log "Stream Key  : ${STREAM_KEY}"
@@ -379,3 +379,5 @@ main() {
 }
 
 main "$@"
+
+

@@ -1,5 +1,12 @@
-import { Controller, Post, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { ReservationService } from './reservation.service';
 import { CreateOrderDto, CreateOrderFromCartDto } from './dto/order.dto';
@@ -48,25 +55,28 @@ export class OrdersController {
   // Payment confirmation should only be available via admin:
   // PATCH /api/admin/orders/:id/confirm-payment (see admin.controller.ts)
 
-  @Patch(':id/cancel')
-  @ApiOperation({ summary: '주문 취소', description: '본인의 주문을 취소합니다.' })
-  @ApiParam({
-    name: 'id',
-    description: '주문 ID (예: ORD-20240101-00001)',
-    example: 'ORD-20240101-00001',
-  })
-  @ApiResponse({ status: 200, description: '주문 취소 성공' })
-  @ApiResponse({ status: 404, description: '주문을 찾을 수 없음' })
-  async cancelOrder(@Param('id') orderId: string, @CurrentUser('userId') userId: string) {
-    await this.ordersService.cancelOrder(orderId, userId);
-    return { message: 'Order cancelled successfully' };
-  }
-
   @Get()
   @ApiOperation({ summary: '내 주문 목록 조회' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: '페이지 번호 (기본: 1)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: '페이지당 항목 수 (기본: 20, 최대: 50)',
+  })
+  @ApiQuery({ name: 'status', required: false, description: '주문 상태 필터' })
   @ApiResponse({ status: 200, description: '주문 목록' })
-  async getMyOrders(@CurrentUser('userId') userId: string) {
-    return this.ordersService.findByUserId(userId);
+  async getMyOrders(
+    @CurrentUser('userId') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.ordersService.findByUserId(userId, {
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      status,
+    });
   }
 
   @Get(':id')

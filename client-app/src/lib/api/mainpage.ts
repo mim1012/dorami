@@ -1,6 +1,17 @@
 import { apiClient } from './client';
 import type { MainPageData, PopularProductDto, ProductStatus } from '@live-commerce/shared-types';
 
+export type PastProductItem = {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number | null;
+  discountRate: number | null;
+  imageUrl: string | null;
+  stock: number;
+  streamKey: string | null;
+};
+
 // Backend response shapes (after apiClient unwraps the outer {data, success, timestamp} envelope)
 interface ActiveStreamResponse {
   id: string;
@@ -182,5 +193,35 @@ export async function getPopularProducts(
       sizeOptions: p.sizeOptions,
     })),
     meta: { page: meta.page, limit: meta.limit, total: meta.total },
+  };
+}
+
+interface PastProductsResponse {
+  data: (ProductResponse & { streamKey: string | null })[];
+  meta: { total: number; page: number; totalPages: number };
+}
+
+export async function getPastProducts(
+  page = 1,
+  limit = 8,
+): Promise<{ data: PastProductItem[]; meta: { total: number; page: number; totalPages: number } }> {
+  const res = await apiClient.get<PastProductsResponse>('/products/store', {
+    params: { page, limit },
+  });
+  // apiClient unwraps outer envelope → res.data = { data: [...], meta: {...} }
+  const data = res.data?.data ?? [];
+  const meta = res.data?.meta ?? { total: data.length, page, totalPages: 1 };
+  return {
+    data: data.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      originalPrice: p.originalPrice ?? null,
+      discountRate: p.discountRate ?? null,
+      imageUrl: p.imageUrl ?? null,
+      stock: p.stock ?? 0,
+      streamKey: p.streamKey,
+    })),
+    meta: { total: meta.total, page: meta.page, totalPages: meta.totalPages },
   };
 }

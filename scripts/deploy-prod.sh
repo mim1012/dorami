@@ -41,8 +41,8 @@ ROLLBACK_FILE="${BACKUP_DIR}/rollback-$(date +%Y%m%d_%H%M%S).env"
 save_current_state() {
   log "Saving current state for rollback..."
   local backend_img frontend_img
-  backend_img=$(docker inspect --format='{{.Config.Image}}' dorami-backend-1 2>/dev/null || echo "unknown")
-  frontend_img=$(docker inspect --format='{{.Config.Image}}' dorami-frontend-1 2>/dev/null || echo "unknown")
+  backend_img=$(docker inspect --format='{{.Config.Image}}' doremi-backend-1 2>/dev/null || echo "unknown")
+  frontend_img=$(docker inspect --format='{{.Config.Image}}' doremi-frontend-1 2>/dev/null || echo "unknown")
   cat > "$ROLLBACK_FILE" <<EOF
 # Rollback state saved at $(date)
 ROLLBACK_BACKEND_IMAGE=${backend_img}
@@ -68,7 +68,7 @@ log_ok "Preflight passed"
 # ============================================
 log "STEP 2: Database backup"
 
-DB_CONTAINER="${DB_CONTAINER:-dorami-postgres-1}"
+DB_CONTAINER="${DB_CONTAINER:-doremi-postgres-1}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-live_commerce_production}"
 BACKUP_FILE="${BACKUP_DIR}/pre-deploy-$(date +%Y%m%d_%H%M%S).sql"
@@ -93,8 +93,8 @@ log "STEP 3: Pull new images"
 
 save_current_state
 
-BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${IMAGE_TAG}"
-FRONTEND_IMAGE="${DOCKER_REGISTRY}/dorami-frontend:${IMAGE_TAG}"
+BACKEND_IMAGE="${DOCKER_REGISTRY}/doremi-backend:${IMAGE_TAG}"
+FRONTEND_IMAGE="${DOCKER_REGISTRY}/doremi-frontend:${IMAGE_TAG}"
 
 docker pull "$BACKEND_IMAGE" || { log_fail "Failed to pull backend image"; exit 1; }
 docker pull "$FRONTEND_IMAGE" || { log_fail "Failed to pull frontend image"; exit 1; }
@@ -151,3 +151,4 @@ log_ok "========================================="
 log_ok " Deployment complete: ${IMAGE_TAG}"
 log_ok " Rollback file: ${ROLLBACK_FILE}"
 log_ok "========================================="
+

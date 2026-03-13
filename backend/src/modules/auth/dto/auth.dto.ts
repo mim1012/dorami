@@ -9,6 +9,7 @@ export class LoginResponseDto {
     email?: string;
     name: string;
     role: string;
+    profileComplete: boolean;
   };
 }
 
@@ -25,6 +26,8 @@ export class TokenPayload {
   kakaoId!: string;
   name!: string; // User display name
   role!: string;
+  profileComplete?: boolean;
+  shippingAddressComplete?: boolean;
   type?: string; // 'access' or 'refresh'
   jti?: string; // unique token ID for blacklisting
   iat?: number;

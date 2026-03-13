@@ -6,12 +6,12 @@ import { apiClient } from '@/lib/api/client';
 import {
   TrendingUp,
   TrendingDown,
-  Users,
   ShoppingBag,
   Percent,
   Radio,
   Eye,
   MoreVertical,
+  Users,
 } from 'lucide-react';
 
 // --- Types ---
@@ -40,7 +40,6 @@ interface DashboardStats {
   orders: StatItem;
   messages: StatItem;
   pendingPayments: { value: number; formatted: string };
-  activeLiveStreams: { value: number; formatted: string };
   topProducts: TopProduct[];
   dailyRevenue: DailyRevenue[];
 }
@@ -88,10 +87,10 @@ const streamStatusLabels: Record<string, string> = {
   OFFLINE: '종료',
 };
 
-function formatKRW(value: number): string {
-  return new Intl.NumberFormat('ko-KR', {
+function formatUSD(value: number): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'KRW',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -176,7 +175,9 @@ export default function AdminDashboardPage() {
         activeRes.status === 'fulfilled' && activeRes.value.data ? activeRes.value.data : [];
       const upcoming =
         upcomingRes.status === 'fulfilled' && upcomingRes.value.data ? upcomingRes.value.data : [];
-      setLiveStreams([...active, ...upcoming].slice(0, 5));
+      const combined = [...active, ...upcoming];
+      const unique = combined.filter((s, i) => combined.findIndex((x) => x.id === s.id) === i);
+      setLiveStreams(unique.slice(0, 5));
 
       if (ordersRes.status === 'fulfilled') {
         setRecentOrders(ordersRes.value.data?.orders ?? []);
@@ -231,15 +232,6 @@ export default function AdminDashboardPage() {
       icon: TrendingUp,
       iconBg: 'bg-pink-100',
       iconColor: 'text-[#FF1493]',
-    },
-    {
-      label: '실시간 시청자',
-      value: stats?.activeLiveStreams.formatted ?? '-',
-      change: null,
-      trendUp: true,
-      icon: Users,
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
     },
     {
       label: '총 주문 (7일)',
@@ -430,7 +422,7 @@ export default function AdminDashboardPage() {
                           {getOrderInstagramId(order)}
                         </td>
                         <td className="px-3 py-2 align-top text-right font-semibold text-gray-900">
-                          {formatKRW(order.total)}
+                          {formatUSD(order.total)}
                         </td>
                       </tr>
                     ))}

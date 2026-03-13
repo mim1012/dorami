@@ -7,17 +7,21 @@ import { Order, OrderStatus } from '@/lib/types/order';
 import { apiClient } from '@/lib/api/client';
 import { CheckCircle, Clock, Package, Truck, Home } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { useToast } from '@/components/common/Toast';
 
 export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
+  const { showToast } = useToast();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zelleEmail, setZelleEmail] = useState('');
   const [zelleRecipientName, setZelleRecipientName] = useState('');
+  const [venmoEmail, setVenmoEmail] = useState('');
+  const [venmoRecipientName, setVenmoRecipientName] = useState('');
 
   useEffect(() => {
     if (orderId) {
@@ -27,10 +31,17 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     apiClient
-      .get<{ zelleEmail: string; zelleRecipientName: string }>('/config/payment')
+      .get<{
+        zelleEmail: string;
+        zelleRecipientName: string;
+        venmoEmail: string;
+        venmoRecipientName: string;
+      }>('/config/payment')
       .then((res) => {
         setZelleEmail(res.data.zelleEmail || '');
         setZelleRecipientName(res.data.zelleRecipientName || '');
+        setVenmoEmail(res.data.venmoEmail || '');
+        setVenmoRecipientName(res.data.venmoRecipientName || '');
       })
       .catch(() => {});
   }, []);
@@ -48,9 +59,9 @@ export default function OrderConfirmationPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
   };
@@ -170,28 +181,47 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
 
-        {/* Zelle Payment Instructions */}
-        {order.status === OrderStatus.PENDING_PAYMENT && zelleEmail && (
-          <div className="bg-hot-pink/10 rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30">
-            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 결제 방법 — Zelle</h2>
-            <div className="bg-content-bg rounded-lg p-4 space-y-3">
-              <div className="flex flex-wrap justify-between items-center gap-1">
-                <span className="text-secondary-text">수신자</span>
-                <span className="font-semibold text-primary-text">{zelleRecipientName}</span>
-              </div>
-              <div className="flex flex-wrap justify-between items-center gap-1">
-                <span className="text-secondary-text">Zelle 이메일</span>
-                <span className="font-semibold text-hot-pink">{zelleEmail}</span>
-              </div>
-              <div className="flex flex-wrap justify-between items-center gap-1 pt-3 border-t border-border-color">
+        {/* Payment Instructions */}
+        {order.status === OrderStatus.PENDING_PAYMENT && (zelleEmail || venmoEmail) && (
+          <div className="rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30 bg-hot-pink/10">
+            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 결제 방법</h2>
+            <div className="space-y-3">
+              {/* Zelle */}
+              {zelleEmail && (
+                <div className="bg-content-bg rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-bold text-primary-text">Zelle 송금</p>
+                  <div className="flex flex-wrap justify-between items-center gap-1">
+                    <span className="text-secondary-text">수신자</span>
+                    <span className="font-semibold text-primary-text">{zelleRecipientName}</span>
+                  </div>
+                  <div className="flex flex-wrap justify-between items-center gap-1">
+                    <span className="text-secondary-text">Zelle 이메일</span>
+                    <span className="font-semibold text-hot-pink">{zelleEmail}</span>
+                  </div>
+                </div>
+              )}
+              {/* Venmo */}
+              {venmoEmail && (
+                <div className="bg-content-bg rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-bold text-primary-text">Venmo 송금</p>
+                  <div className="flex flex-wrap justify-between items-center gap-1">
+                    <span className="text-secondary-text">수신자</span>
+                    <span className="font-semibold text-primary-text">{venmoRecipientName}</span>
+                  </div>
+                  <div className="flex flex-wrap justify-between items-center gap-1">
+                    <span className="text-secondary-text">Venmo</span>
+                    <span className="font-semibold text-blue-400">{venmoEmail}</span>
+                  </div>
+                </div>
+              )}
+              <div className="bg-content-bg rounded-lg p-4 flex flex-wrap justify-between items-center gap-1">
                 <span className="text-primary-text font-semibold">송금 금액</span>
                 <span className="text-2xl font-bold text-hot-pink">{formatPrice(order.total)}</span>
               </div>
             </div>
             <div className="mt-4 bg-warning-bg border border-warning/20 rounded-lg p-3">
               <p className="text-sm text-primary-text">
-                ⚠️ 주문 완료 후 위 Zelle 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로
-                전송해주세요.
+                ⚠️ 주문 완료 후 위 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로 전송해주세요.
               </p>
             </div>
           </div>

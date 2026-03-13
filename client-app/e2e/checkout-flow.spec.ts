@@ -15,7 +15,7 @@ async function createTestProduct(
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -58,7 +58,7 @@ async function deleteProduct(productId: string): Promise<void> {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop', name: 'E2E ADMIN' },
     });
     let csrfToken = '';
     try {
@@ -167,6 +167,33 @@ test.describe('Checkout Flow — cart to order', () => {
       timeout: 15000,
     });
 
+    // ── API=UI check: cart items price and name ────────────────────────────
+    try {
+      const cartApiData = await page.evaluate(async () => {
+        const res = await fetch('/api/cart', { credentials: 'include' });
+        if (!res.ok) return null;
+        const body = await res.json();
+        return body.data ?? null;
+      });
+      if (cartApiData && cartApiData.items && cartApiData.items.length > 0) {
+        const firstItem = cartApiData.items[0];
+        const apiProductName: string = firstItem.productName;
+        const apiPrice: number = Number(firstItem.price);
+        const formattedPrice = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 0,
+        }).format(apiPrice);
+        console.log('[API-UI] cart item:', { apiProductName, apiPrice, formattedPrice });
+        await expect(page.getByText(apiProductName)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(formattedPrice)).toBeVisible({ timeout: 10000 });
+      } else {
+        console.warn('[API-UI] cart API returned no items — skipping price/name assertion');
+      }
+    } catch (err) {
+      console.warn('[API-UI] cart API check failed:', err);
+    }
+
     // Sync localStorage cart for checkout page (checkout reads CartContext from localStorage)
     await page.evaluate(async () => {
       const match = document.cookie.match(/csrf-token=([^;]+)/);
@@ -255,7 +282,7 @@ test.describe('Checkout Flow — cart to order', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
-          body: JSON.stringify({ paymentMethod: 'BANK_TRANSFER' }),
+          body: JSON.stringify({}),
         });
         const body = await res.json().catch(() => null);
         return { ok: res.ok, status: res.status, body };
@@ -313,5 +340,29 @@ test.describe('Checkout Flow — cart to order', () => {
     // ── 11. Verify order completion UI ────────────────────────────────────
     await expect(page.getByText('주문이 완료되었습니다!')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('주문번호:')).toBeVisible();
+
+    // ── API=UI check: order status label and order ID in UI ───────────────
+    try {
+      const orderApiData = await page.evaluate(async (oid: string) => {
+        const res = await fetch(`/api/orders/${oid}`, { credentials: 'include' });
+        if (!res.ok) return null;
+        const body = await res.json();
+        return body.data ?? null;
+      }, orderId);
+      if (orderApiData) {
+        const apiStatus: string = orderApiData.status;
+        console.log('[API-UI] order:', { orderId, apiStatus });
+        // PENDING_PAYMENT maps to Korean label '입금 대기'
+        if (apiStatus === 'PENDING_PAYMENT') {
+          await expect(page.getByText('입금 대기')).toBeVisible({ timeout: 10000 });
+        }
+        // Order ID in ORD-YYYYMMDD-XXXXX format should be visible somewhere on the page
+        await expect(page.getByText(orderId, { exact: false })).toBeVisible({ timeout: 10000 });
+      } else {
+        console.warn('[API-UI] order API returned no data — skipping status/id assertion');
+      }
+    } catch (err) {
+      console.warn('[API-UI] order API check failed:', err);
+    }
   });
 });

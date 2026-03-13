@@ -160,9 +160,9 @@ Check all that apply, then provide decision:
 
 ## 🎬 DECISION FORM
 
-**Architect Name**: ******\_\_\_******
+**Architect Name**: **\*\***\_\_\_**\*\***
 
-**Date**: ******\_\_\_******
+**Date**: **\*\***\_\_\_**\*\***
 
 ### Question 1: Do you approve the system design?
 

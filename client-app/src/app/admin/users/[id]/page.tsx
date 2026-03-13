@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Display, Body, Heading2, Caption } from '@/components/common/Typography';
+import { Input } from '@/components/common/Input';
 import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentModal';
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { useToast } from '@/components/common/Toast';
@@ -18,7 +19,6 @@ interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  phone: string;
 }
 
 interface UserStatistics {
@@ -50,6 +50,7 @@ interface UserDetail {
   id: string;
   email: string;
   name: string;
+  kakaoPhone: string | null;
   instagramId: string | null;
   depositorName: string | null;
   shippingAddress: ShippingAddress | null;
@@ -60,6 +61,27 @@ interface UserDetail {
   suspendedAt: string | null;
   statistics: UserStatistics;
 }
+
+interface ShippingAddressForm {
+  fullName: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+interface EditableUserForm {
+  name: string;
+  email: string;
+  kakaoPhone: string;
+  instagramId: string;
+  depositorName: string;
+  shippingAddress: ShippingAddressForm;
+}
+
+type ProfileFormField = keyof Omit<EditableUserForm, 'shippingAddress'>;
+type ShippingAddressField = keyof ShippingAddressForm;
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
@@ -72,6 +94,9 @@ export default function AdminUserDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState<EditableUserForm | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -101,6 +126,7 @@ export default function AdminUserDetailPage() {
       ]);
 
       setUser(userResponse.data);
+      setProfileForm(getUserFormDefaults(userResponse.data));
       setSelectedStatus(userResponse.data.status);
       setUserOrders(orderResponse.data.orders || []);
     } catch (err: any) {
@@ -164,11 +190,187 @@ export default function AdminUserDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'KRW',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const getUserFormDefaults = (nextUser: UserDetail): EditableUserForm => ({
+    name: nextUser.name || '',
+    email: nextUser.email || '',
+    kakaoPhone: nextUser.kakaoPhone || '',
+    instagramId: nextUser.instagramId || '',
+    depositorName: nextUser.depositorName || '',
+    shippingAddress: {
+      fullName: nextUser.shippingAddress?.fullName || '',
+      address1: nextUser.shippingAddress?.address1 || '',
+      address2: nextUser.shippingAddress?.address2 || '',
+      city: nextUser.shippingAddress?.city || '',
+      state: nextUser.shippingAddress?.state || '',
+      zip: nextUser.shippingAddress?.zip || '',
+    },
+  });
+
+  const handleProfileInputChange = (field: ProfileFormField, value: string) => {
+    setProfileForm((prev) => {
+      if (!prev) return null;
+
+      return {
+        ...prev,
+        [field]: value,
+      } as EditableUserForm;
+    });
+  };
+
+  const handleShippingAddressChange = (field: ShippingAddressField, value: string) => {
+    setProfileForm((prev) => {
+      if (!prev) return null;
+
+      return {
+        ...prev,
+        shippingAddress: {
+          ...prev.shippingAddress,
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const startEditingProfile = () => {
+    if (!user) return;
+    setProfileForm(getUserFormDefaults(user));
+    setIsEditingProfile(true);
+  };
+
+  const cancelProfileUpdate = () => {
+    if (!user) return;
+    setProfileForm(getUserFormDefaults(user));
+    setIsEditingProfile(false);
+  };
+
+  const confirmProfileUpdate = async () => {
+    if (!profileForm || !user) {
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+    setError(null);
+
+    const normalizeText = (value: string) => value.trim();
+    const baseProfile = getUserFormDefaults(user);
+    const payload: Record<string, unknown> = {};
+
+    try {
+      const name = normalizeText(profileForm.name);
+      const email = normalizeText(profileForm.email);
+      const kakaoPhone = normalizeText(profileForm.kakaoPhone);
+      const instagramId = normalizeText(profileForm.instagramId);
+      const depositorName = normalizeText(profileForm.depositorName);
+
+      const profileChanged =
+        name !== normalizeText(baseProfile.name) ||
+        email !== normalizeText(baseProfile.email) ||
+        kakaoPhone !== normalizeText(baseProfile.kakaoPhone) ||
+        instagramId !== normalizeText(baseProfile.instagramId) ||
+        depositorName !== normalizeText(baseProfile.depositorName);
+
+      if (name !== normalizeText(baseProfile.name)) {
+        if (!name) {
+          showToast('이름은 비워둘 수 없습니다', 'error');
+          return;
+        }
+        payload.name = name;
+      }
+
+      if (email !== normalizeText(baseProfile.email)) {
+        if (!email) {
+          showToast('이메일은 비워둘 수 없습니다', 'error');
+          return;
+        }
+        payload.email = email;
+      }
+
+      if (kakaoPhone !== normalizeText(baseProfile.kakaoPhone)) {
+        if (!kakaoPhone) {
+          showToast('연락처는 비워둘 수 없습니다', 'error');
+          return;
+        }
+        payload.kakaoPhone = kakaoPhone;
+      }
+
+      if (instagramId !== normalizeText(baseProfile.instagramId)) {
+        if (!instagramId) {
+          showToast('인스타그램 ID는 비워둘 수 없습니다', 'error');
+          return;
+        }
+        payload.instagramId = instagramId;
+      }
+
+      if (depositorName !== normalizeText(baseProfile.depositorName)) {
+        if (!depositorName) {
+          showToast('입금자명을 비워둘 수 없습니다', 'error');
+          return;
+        }
+        payload.depositorName = depositorName;
+      }
+
+      const shippingChanged =
+        normalizeText(profileForm.shippingAddress.fullName) !==
+          normalizeText(baseProfile.shippingAddress.fullName) ||
+        normalizeText(profileForm.shippingAddress.address1) !==
+          normalizeText(baseProfile.shippingAddress.address1) ||
+        normalizeText(profileForm.shippingAddress.address2) !==
+          normalizeText(baseProfile.shippingAddress.address2) ||
+        normalizeText(profileForm.shippingAddress.city) !==
+          normalizeText(baseProfile.shippingAddress.city) ||
+        normalizeText(profileForm.shippingAddress.state) !==
+          normalizeText(baseProfile.shippingAddress.state) ||
+        normalizeText(profileForm.shippingAddress.zip) !==
+          normalizeText(baseProfile.shippingAddress.zip);
+
+      if (shippingChanged) {
+        const shippingPayload = {
+          fullName: normalizeText(profileForm.shippingAddress.fullName),
+          address1: normalizeText(profileForm.shippingAddress.address1),
+          address2: normalizeText(profileForm.shippingAddress.address2),
+          city: normalizeText(profileForm.shippingAddress.city),
+          state: normalizeText(profileForm.shippingAddress.state),
+          zip: normalizeText(profileForm.shippingAddress.zip),
+        };
+
+        if (
+          !shippingPayload.fullName ||
+          !shippingPayload.address1 ||
+          !shippingPayload.city ||
+          !shippingPayload.state ||
+          !shippingPayload.zip
+        ) {
+          showToast('배송지 필수 항목(수령인, 주소, 도시, 주, ZIP)을 입력해 주세요', 'error');
+          return;
+        }
+
+        payload.shippingAddress = shippingPayload;
+      }
+
+      if (Object.keys(payload).length === 0 && !profileChanged && !shippingChanged) {
+        showToast('변경된 항목이 없습니다', 'error');
+        return;
+      }
+
+      await apiClient.patch(`/admin/users/${userId}`, payload);
+      showToast('회원 정보가 저장되었습니다.', 'success');
+      setIsEditingProfile(false);
+      await fetchUserDetail();
+    } catch (err: any) {
+      console.error('Failed to update user:', err);
+      setError(err.response?.data?.message || '회원 정보 저장에 실패했습니다');
+      setProfileForm(user ? getUserFormDefaults(user) : null);
+      setIsEditingProfile(true);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const getOrderStatusLabel = (status: string) => {
@@ -275,63 +477,182 @@ export default function AdminUserDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* User Profile Card */}
         <div className="bg-content-bg rounded-button p-6">
-          <Heading2 className="text-hot-pink mb-4">회원 정보</Heading2>
-
-          <div className="space-y-4">
-            <div>
-              <Body className="text-secondary-text text-caption">인스타그램</Body>
-              <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">이메일</Body>
-              <Body>{user.email}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">이름</Body>
-              <Body>{user.name}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">입금자명</Body>
-              <Body>{user.depositorName || '-'}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">가입일</Body>
-              <Body>{formatDate(user.createdAt)}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">최근 접속</Body>
-              <Body>{formatDate(user.lastLoginAt)}</Body>
-            </div>
-
-            <div>
-              <Body className="text-secondary-text text-caption">상태</Body>
-              <select
-                value={selectedStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className={`mt-1 block w-full px-4 py-2 border rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink ${
-                  selectedStatus === 'SUSPENDED'
-                    ? 'border-error bg-error/5 text-error font-bold'
-                    : 'border-gray-300'
-                }`}
-              >
-                <option value="ACTIVE">활성</option>
-                <option value="INACTIVE">비활성</option>
-                <option value="SUSPENDED">차단 (블랙리스트)</option>
-              </select>
-            </div>
-
-            {user.suspendedAt && (
-              <div>
-                <Body className="text-secondary-text text-caption">차단일</Body>
-                <Body className="text-error">{formatDate(user.suspendedAt)}</Body>
+          <div className="flex items-start justify-between mb-4">
+            <Heading2 className="text-hot-pink">회원 정보</Heading2>
+            {!isEditingProfile ? (
+              <Button variant="outline" size="sm" onClick={startEditingProfile}>
+                수정
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelProfileUpdate}
+                  disabled={isUpdatingProfile}
+                >
+                  취소
+                </Button>
+                <Button size="sm" onClick={confirmProfileUpdate} disabled={isUpdatingProfile}>
+                  {isUpdatingProfile ? '저장 중...' : '저장'}
+                </Button>
               </div>
             )}
           </div>
+
+          {isEditingProfile && profileForm ? (
+            <div className="space-y-4">
+              <Input
+                label="이름"
+                value={profileForm.name}
+                onChange={(e) => handleProfileInputChange('name', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="이메일"
+                type="email"
+                value={profileForm.email}
+                onChange={(e) => handleProfileInputChange('email', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="카카오 연락처"
+                value={profileForm.kakaoPhone}
+                onChange={(e) => handleProfileInputChange('kakaoPhone', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="인스타그램 ID"
+                value={profileForm.instagramId}
+                onChange={(e) => handleProfileInputChange('instagramId', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="입금자명"
+                value={profileForm.depositorName}
+                onChange={(e) => handleProfileInputChange('depositorName', e.target.value)}
+                fullWidth
+                required
+              />
+
+              <Input
+                label="수령인"
+                value={profileForm.shippingAddress.fullName}
+                onChange={(e) => handleShippingAddressChange('fullName', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="주소 1"
+                value={profileForm.shippingAddress.address1}
+                onChange={(e) => handleShippingAddressChange('address1', e.target.value)}
+                fullWidth
+                required
+              />
+              <Input
+                label="주소 2"
+                value={profileForm.shippingAddress.address2}
+                onChange={(e) => handleShippingAddressChange('address2', e.target.value)}
+                fullWidth
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="도시"
+                  value={profileForm.shippingAddress.city}
+                  onChange={(e) => handleShippingAddressChange('city', e.target.value)}
+                  fullWidth
+                  required
+                />
+                <Input
+                  label="주"
+                  value={profileForm.shippingAddress.state}
+                  onChange={(e) =>
+                    handleShippingAddressChange('state', e.target.value.toUpperCase())
+                  }
+                  fullWidth
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="ZIP"
+                  value={profileForm.shippingAddress.zip}
+                  onChange={(e) => handleShippingAddressChange('zip', e.target.value)}
+                  fullWidth
+                  required
+                />
+              </div>
+
+              <Body className="text-caption text-secondary-text">
+                사용자 정보/배송지 정보는 저장 버튼으로 일괄 반영됩니다.
+              </Body>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Body className="text-secondary-text text-caption">인스타그램</Body>
+                <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">이메일</Body>
+                <Body>{user.email}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">이름</Body>
+                <Body>{user.name}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">카카오 연락처</Body>
+                <Body>{user.kakaoPhone || '-'}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">입금자명</Body>
+                <Body>{user.depositorName || '-'}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">가입일</Body>
+                <Body>{formatDate(user.createdAt)}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">최근 접속</Body>
+                <Body>{formatDate(user.lastLoginAt)}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">상태</Body>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className={`mt-1 block w-full px-4 py-2 border rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink ${
+                    selectedStatus === 'SUSPENDED'
+                      ? 'border-error bg-error/5 text-error font-bold'
+                      : 'border-gray-300'
+                  }`}
+                >
+                  <option value="ACTIVE">활성</option>
+                  <option value="INACTIVE">비활성</option>
+                  <option value="SUSPENDED">차단 (블랙리스트)</option>
+                </select>
+              </div>
+
+              {user.suspendedAt && (
+                <div>
+                  <Body className="text-secondary-text text-caption">차단일</Body>
+                  <Body className="text-error">{formatDate(user.suspendedAt)}</Body>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Shipping Address Card */}
@@ -346,7 +667,6 @@ export default function AdminUserDetailPage() {
               <Body>
                 {user.shippingAddress.city} {user.shippingAddress.state} {user.shippingAddress.zip}
               </Body>
-              <Body>연락처: {user.shippingAddress.phone}</Body>
             </div>
           ) : (
             <Body className="text-secondary-text">배송지 미등록</Body>
@@ -526,4 +846,3 @@ export default function AdminUserDetailPage() {
     </div>
   );
 }
-

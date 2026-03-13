@@ -1,5 +1,5 @@
 # prometheus-config.yml
-# Prometheus scrape configuration for Dorami Live Commerce
+# Prometheus scrape configuration for Doremi Live Commerce
 #
 # Usage:
 #   docker run -d \
@@ -20,7 +20,7 @@ global:
   evaluation_interval: 15s
   scrape_timeout: 10s
   external_labels:
-    project: "dorami"
+    project: "doremi"
     env: "staging"
 
 # ============================================================================
@@ -64,7 +64,7 @@ scrape_configs:
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
-        replacement: "dorami-host"
+        replacement: "doremi-host"
 
   # --------------------------------------------------------------------------
   # cAdvisor — Docker container metrics (CPU, memory, network per container)
@@ -85,9 +85,9 @@ scrape_configs:
         labels:
           service: "docker"
     metric_relabel_configs:
-      # Keep only Dorami-related containers
+      # Keep only Doremi-related containers
       - source_labels: [container_label_com_docker_compose_project]
-        regex: "dorami.*"
+        regex: "doremi.*"
         action: keep
       # Drop high-cardinality metrics we don't need
       - source_labels: [__name__]
@@ -202,3 +202,5 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: "blackbox:9115"
+
+

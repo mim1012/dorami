@@ -54,7 +54,7 @@ export class PointsEventsListener {
       }
 
       // Calculate points: floor(orderTotal * rate / 100)
-      const orderTotal = Number(order.total);
+      const orderTotal = Number(order.subtotal);
       const earnedPoints = Math.floor((orderTotal * config.pointEarningRate) / 100);
 
       if (earnedPoints <= 0) {

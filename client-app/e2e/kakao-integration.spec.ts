@@ -89,7 +89,6 @@ test.describe('카카오 연동 테스트', () => {
         data: {
           email: 'kakao_test@example.com',
           name: '카카오 테스트',
-          role: 'USER',
         },
       });
 

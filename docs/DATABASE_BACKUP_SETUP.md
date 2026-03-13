@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide documents the automated database backup system for Dorami's production PostgreSQL database. The system provides:
+This guide documents the automated database backup system for Doremi's production PostgreSQL database. The system provides:
 
 - **Automated daily backups** at 02:00 UTC (11:00 KST)
 - **S3 offsite storage** for disaster recovery
@@ -25,7 +25,7 @@ This guide documents the automated database backup system for Dorami's productio
                        │ SSH
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Production Server (/opt/dorami)                             │
+│ Production Server (/opt/doremi)                             │
 │  ├─ scripts/backup-postgres.sh (local backup + S3 upload)   │
 │  ├─ scripts/restore-postgres.sh (restore from backup)       │
 │  ├─ scripts/list-backups.sh (list backups)                  │
@@ -34,7 +34,7 @@ This guide documents the automated database backup system for Dorami's productio
                        │
         ┌──────────────┼──────────────┐
         ▼              ▼              ▼
-    /opt/dorami/   AWS S3         Docker
+    /opt/doremi/   AWS S3         Docker
     backups/       S3 Bucket      PostgreSQL
    (7 backups)     (30 days)       Container
 ```
@@ -47,7 +47,7 @@ Add the following secrets to your GitHub repository settings:
 
 | Secret Name                  | Description                   | Example                  |
 | ---------------------------- | ----------------------------- | ------------------------ |
-| `PROD_S3_BACKUP_BUCKET`      | S3 bucket for offsite backups | `dorami-db-backups-prod` |
+| `PROD_S3_BACKUP_BUCKET`      | S3 bucket for offsite backups | `doremi-db-backups-prod` |
 | `PROD_AWS_ACCESS_KEY_ID`     | AWS IAM user access key       | (64-char hex)            |
 | `PROD_AWS_SECRET_ACCESS_KEY` | AWS IAM user secret key       | (40-char hex)            |
 | `PROD_POSTGRES_PASSWORD`     | Database password             | (existing secret)        |
@@ -64,7 +64,7 @@ Add the following secrets to your GitHub repository settings:
 
 ```bash
 aws s3api create-bucket \
-  --bucket dorami-db-backups-prod \
+  --bucket doremi-db-backups-prod \
   --region ap-northeast-2 \
   --create-bucket-configuration LocationConstraint=ap-northeast-2
 ```
@@ -73,7 +73,7 @@ aws s3api create-bucket \
 
 ```bash
 aws s3api put-bucket-encryption \
-  --bucket dorami-db-backups-prod \
+  --bucket doremi-db-backups-prod \
   --server-side-encryption-configuration '{
     "Rules": [{
       "ApplyServerSideEncryptionByDefault": {
@@ -87,7 +87,7 @@ aws s3api put-bucket-encryption \
 
 ```bash
 aws s3api put-public-access-block \
-  --bucket dorami-db-backups-prod \
+  --bucket doremi-db-backups-prod \
   --public-access-block-configuration \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 ```
@@ -96,7 +96,7 @@ aws s3api put-public-access-block \
 
 ```bash
 aws s3api put-bucket-lifecycle-configuration \
-  --bucket dorami-db-backups-prod \
+  --bucket doremi-db-backups-prod \
   --lifecycle-configuration file:///dev/stdin << 'EOF'
 {
   "Rules": [{
@@ -117,7 +117,7 @@ EOF
 #### 2.5 Create IAM User
 
 1. Go to AWS Console → IAM → Users → Create user
-2. User name: `dorami-backup-automation`
+2. User name: `doremi-backup-automation`
 3. Attach policy:
 
 ```json
@@ -127,7 +127,7 @@ EOF
     {
       "Effect": "Allow",
       "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
-      "Resource": ["arn:aws:s3:::dorami-db-backups-prod", "arn:aws:s3:::dorami-db-backups-prod/*"]
+      "Resource": ["arn:aws:s3:::doremi-db-backups-prod", "arn:aws:s3:::doremi-db-backups-prod/*"]
     }
   ]
 }
@@ -143,18 +143,18 @@ The scripts are automatically copied during deployment via GitHub Actions. To ma
 
 ```bash
 scp scripts/backup-postgres.sh scripts/restore-postgres.sh scripts/list-backups.sh \
-  ubuntu@prod-server:/opt/dorami/scripts/
+  ubuntu@prod-server:/opt/doremi/scripts/
 
 ssh ubuntu@prod-server \
-  'chmod +x /opt/dorami/scripts/{backup,restore,list}-postgres.sh'
+  'chmod +x /opt/doremi/scripts/{backup,restore,list}-postgres.sh'
 ```
 
 #### 3.2 Create Backup Directory
 
 ```bash
-sudo mkdir -p /opt/dorami/backups
-sudo chown ubuntu:ubuntu /opt/dorami/backups
-sudo chmod 755 /opt/dorami/backups
+sudo mkdir -p /opt/doremi/backups
+sudo chown ubuntu:ubuntu /opt/doremi/backups
+sudo chmod 755 /opt/doremi/backups
 ```
 
 #### 3.3 Install AWS CLI (if not present)
@@ -171,7 +171,7 @@ aws --version
 #### 3.4 Configure AWS Credentials (Optional, for manual testing)
 
 ```bash
-aws configure --profile dorami-backup
+aws configure --profile doremi-backup
 # Enter access key, secret key, region: ap-northeast-2
 ```
 
@@ -183,18 +183,18 @@ aws configure --profile dorami-backup
 
 ```bash
 ssh ubuntu@prod-server \
-  'POSTGRES_PASSWORD=<pwd> POSTGRES_USER=dorami_prod POSTGRES_DB=dorami_production \
-   /opt/dorami/scripts/backup-postgres.sh'
+  'POSTGRES_PASSWORD=<pwd> POSTGRES_USER=doremi_prod POSTGRES_DB=doremi_production \
+   /opt/doremi/scripts/backup-postgres.sh'
 ```
 
 #### With S3 Upload
 
 ```bash
 ssh ubuntu@prod-server \
-  'POSTGRES_PASSWORD=<pwd> POSTGRES_USER=dorami_prod POSTGRES_DB=dorami_production \
-   S3_BUCKET=dorami-db-backups-prod \
+  'POSTGRES_PASSWORD=<pwd> POSTGRES_USER=doremi_prod POSTGRES_DB=doremi_production \
+   S3_BUCKET=doremi-db-backups-prod \
    AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret> \
-   /opt/dorami/scripts/backup-postgres.sh'
+   /opt/doremi/scripts/backup-postgres.sh'
 ```
 
 ### List Backups
@@ -202,7 +202,7 @@ ssh ubuntu@prod-server \
 #### Local Backups
 
 ```bash
-ssh ubuntu@prod-server '/opt/dorami/scripts/list-backups.sh local'
+ssh ubuntu@prod-server '/opt/doremi/scripts/list-backups.sh local'
 ```
 
 #### S3 Backups
@@ -210,8 +210,8 @@ ssh ubuntu@prod-server '/opt/dorami/scripts/list-backups.sh local'
 ```bash
 ssh ubuntu@prod-server \
   'AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret> \
-   S3_BUCKET=dorami-db-backups-prod \
-   /opt/dorami/scripts/list-backups.sh s3'
+   S3_BUCKET=doremi-db-backups-prod \
+   /opt/doremi/scripts/list-backups.sh s3'
 ```
 
 #### All Backups
@@ -219,8 +219,8 @@ ssh ubuntu@prod-server \
 ```bash
 ssh ubuntu@prod-server \
   'AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret> \
-   S3_BUCKET=dorami-db-backups-prod \
-   /opt/dorami/scripts/list-backups.sh all'
+   S3_BUCKET=doremi-db-backups-prod \
+   /opt/doremi/scripts/list-backups.sh all'
 ```
 
 ### Restore Database
@@ -229,15 +229,15 @@ ssh ubuntu@prod-server \
 
 ```bash
 ssh ubuntu@prod-server \
-  'POSTGRES_PASSWORD=<pwd> /opt/dorami/scripts/restore-postgres.sh latest'
+  'POSTGRES_PASSWORD=<pwd> /opt/doremi/scripts/restore-postgres.sh latest'
 ```
 
 #### From Specific Local Backup
 
 ```bash
 ssh ubuntu@prod-server \
-  'POSTGRES_PASSWORD=<pwd> /opt/dorami/scripts/restore-postgres.sh \
-   /opt/dorami/backups/db_backup_20260228_110000.sql.gz'
+  'POSTGRES_PASSWORD=<pwd> /opt/doremi/scripts/restore-postgres.sh \
+   /opt/doremi/backups/db_backup_20260228_110000.sql.gz'
 ```
 
 #### From S3 Backup
@@ -246,15 +246,15 @@ ssh ubuntu@prod-server \
 ssh ubuntu@prod-server \
   'POSTGRES_PASSWORD=<pwd> \
    AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret> \
-   /opt/dorami/scripts/restore-postgres.sh \
-   s3://dorami-db-backups-prod/backups/2026/02/db_backup_20260228_110000.sql.gz'
+   /opt/doremi/scripts/restore-postgres.sh \
+   s3://doremi-db-backups-prod/backups/2026/02/db_backup_20260228_110000.sql.gz'
 ```
 
 #### Dry Run (Preview)
 
 ```bash
 ssh ubuntu@prod-server \
-  'DRY_RUN=true /opt/dorami/scripts/restore-postgres.sh latest'
+  'DRY_RUN=true /opt/doremi/scripts/restore-postgres.sh latest'
 ```
 
 ## Workflows
@@ -300,15 +300,15 @@ ssh ubuntu@prod-server \
 
 ### Local Storage
 
-- **Path**: `/opt/dorami/backups/`
+- **Path**: `/opt/doremi/backups/`
 - **Retention**: 7 most recent backups
 - **Format**: `db_backup_YYYYMMDD_HHMMSS.sql.gz`
 - **Checksum**: `db_backup_YYYYMMDD_HHMMSS.sql.gz.sha256`
 
 ### S3 Storage
 
-- **Bucket**: `dorami-db-backups-prod`
-- **Path**: `s3://dorami-db-backups-prod/backups/YYYY/MM/db_backup_YYYYMMDD_HHMMSS.sql.gz`
+- **Bucket**: `doremi-db-backups-prod`
+- **Path**: `s3://doremi-db-backups-prod/backups/YYYY/MM/db_backup_YYYYMMDD_HHMMSS.sql.gz`
 - **Retention**: 30 days (auto-delete via lifecycle policy)
 - **Encryption**: AES-256 (SSE-S3)
 - **Metadata**: `created`, `hostname`
@@ -333,10 +333,10 @@ GitHub → Repository → Actions → Backup Database → Latest Run
 
 ```bash
 # Check latest local backup age
-ssh ubuntu@prod-server 'ls -lh /opt/dorami/backups/ | head -5'
+ssh ubuntu@prod-server 'ls -lh /opt/doremi/backups/ | head -5'
 
 # Check S3 backup status
-aws s3 ls s3://dorami-db-backups-prod/backups/ --recursive --human-readable
+aws s3 ls s3://doremi-db-backups-prod/backups/ --recursive --human-readable
 
 # Test restore on staging (never production)
 ./scripts/restore-postgres.sh s3://...backup.sql.gz
@@ -357,10 +357,10 @@ ssh ubuntu@prod-server bash -s << 'EOF'
 
   # Check AWS CLI
   aws --version
-  aws s3 ls dorami-db-backups-prod/backups/ || echo "AWS error"
+  aws s3 ls doremi-db-backups-prod/backups/ || echo "AWS error"
 
   # Check disk space
-  df -h /opt/dorami/backups/
+  df -h /opt/doremi/backups/
 EOF
 ```
 
@@ -371,7 +371,7 @@ EOF
 | `pg_dump: command not found` | PostgreSQL not in PATH; use full container exec                           |
 | `aws: command not found`     | AWS CLI not installed; `sudo apt install awscli`                          |
 | `403 Forbidden`              | AWS credentials invalid; check `PROD_AWS_ACCESS_KEY_ID` secret            |
-| `Disk space full`            | Clean old backups; `ls -t /opt/dorami/backups/ \| tail -n +8 \| xargs rm` |
+| `Disk space full`            | Clean old backups; `ls -t /opt/doremi/backups/ \| tail -n +8 \| xargs rm` |
 
 ### Restore Fails
 
@@ -382,12 +382,12 @@ EOF
 ```bash
 # Verify backup integrity
 ssh ubuntu@prod-server \
-  'gunzip -t /opt/dorami/backups/db_backup_*.sql.gz | head -1'
+  'gunzip -t /opt/doremi/backups/db_backup_*.sql.gz | head -1'
 
 # Test restore (dry run)
 ssh ubuntu@prod-server \
   'POSTGRES_PASSWORD=<pwd> DRY_RUN=true \
-   /opt/dorami/scripts/restore-postgres.sh latest'
+   /opt/doremi/scripts/restore-postgres.sh latest'
 ```
 
 **Common issues**:

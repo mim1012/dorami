@@ -121,7 +121,7 @@ jobs:
               CMD="df -h / && docker system df"
               ;;
             docker-cleanup)
-              CMD="docker system prune -af --volumes --filter 'until=24h' && docker builder prune -af"
+              CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
               ;;
             *)
               echo "Unknown command: $COMMAND"

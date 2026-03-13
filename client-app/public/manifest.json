@@ -1,6 +1,6 @@
 {
-  "name": "도라미 라이브",
-  "short_name": "도라미",
+  "name": "도레미 라이브",
+  "short_name": "도레미",
   "description": "실시간 라이브 커머스 플랫폼",
   "start_url": "/",
   "display": "standalone",

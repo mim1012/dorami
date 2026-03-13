@@ -17,6 +17,7 @@ export const configValidationSchema = Joi.object({
 
   // Server
   PORT: Joi.number().default(3001),
+  LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug', 'verbose').default('info'),
 
   // Database
   DATABASE_URL: Joi.string().required().messages({
@@ -87,19 +88,15 @@ export const configValidationSchema = Joi.object({
   }),
 
   // Bank Transfer (Optional)
-  BANK_NAME: Joi.string().optional(),
-  BANK_ACCOUNT_NUMBER: Joi.string().optional(),
-  BANK_ACCOUNT_HOLDER: Joi.string().optional(),
+  BANK_NAME: Joi.string().optional().allow(''),
+  BANK_ACCOUNT_NUMBER: Joi.string().optional().allow(''),
+  BANK_ACCOUNT_HOLDER: Joi.string().optional().allow(''),
 
   // Admin
   ADMIN_EMAILS: Joi.string().optional().allow(''),
 
-  // Encryption - Required in all environments
-  PROFILE_ENCRYPTION_KEY: Joi.string().length(64).required().messages({
-    'string.length': 'PROFILE_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)',
-    'any.required': 'PROFILE_ENCRYPTION_KEY is required',
-  }),
-  // Legacy encryption keys for fallback decryption (comma-separated 64-char hex strings)
+  // Encryption keys - no longer used (shipping addresses stored as plain JSON)
+  PROFILE_ENCRYPTION_KEY: Joi.string().optional().allow(''),
   PROFILE_LEGACY_ENCRYPTION_KEYS: Joi.string().optional().allow(''),
 
   // Cart/Order Settings
@@ -135,9 +132,9 @@ export const configValidationSchema = Joi.object({
   SOLAPI_API_URL: Joi.string().uri().default('https://api.solapi.com/messages/v4/send-many'),
 
   // Web Push (VAPID) - Optional
-  VAPID_PUBLIC_KEY: Joi.string().optional(),
-  VAPID_PRIVATE_KEY: Joi.string().optional(),
-  VAPID_SUBJECT: Joi.string().optional(),
+  VAPID_PUBLIC_KEY: Joi.string().optional().allow(''),
+  VAPID_PRIVATE_KEY: Joi.string().optional().allow(''),
+  VAPID_SUBJECT: Joi.string().optional().allow(''),
 
   // WebSocket / Redis Timeouts
   REDIS_CONNECTION_TIMEOUT_MS: Joi.number().default(10000),

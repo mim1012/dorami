@@ -126,7 +126,7 @@ test.describe('Live Featured Product → 구매 전환', () => {
         console.log(`✅ L-FP-01: 추천 상품 "${testProductName}" 라이브 페이지에 표시 확인`);
       } else {
         // 상품명이 아닌 가격이나 다른 요소로 확인 시도
-        const priceText = userPage.getByText('25,000').first();
+        const priceText = userPage.getByText('$25,000').first();
         const priceVisible = await priceText.isVisible({ timeout: 5000 }).catch(() => false);
 
         if (priceVisible) {

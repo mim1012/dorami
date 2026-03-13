@@ -10,6 +10,7 @@ import {
   ReservationListDto,
   ReservationStatus,
 } from './dto/reservation.dto';
+import { ProductStatus, CartStatus } from '@live-commerce/shared-types';
 
 @Injectable()
 export class ReservationService {
@@ -47,7 +48,7 @@ export class ReservationService {
       throw new NotFoundException(`Product ${productId} not found`);
     }
 
-    if (product.status !== 'AVAILABLE') {
+    if (product.status !== ProductStatus.AVAILABLE) {
       throw new BadRequestException('Product is not available');
     }
 
@@ -68,7 +69,7 @@ export class ReservationService {
         userId,
         productId,
         status: {
-          in: ['WAITING', 'PROMOTED'],
+          in: [ReservationStatus.WAITING, ReservationStatus.PROMOTED],
         },
       },
     });
@@ -88,7 +89,7 @@ export class ReservationService {
         productName: product.name,
         quantity,
         reservationNumber: nextReservationNumber as number,
-        status: 'WAITING',
+        status: ReservationStatus.WAITING,
       },
     });
 
@@ -116,7 +117,7 @@ export class ReservationService {
       where: {
         userId,
         status: {
-          in: ['WAITING', 'PROMOTED'],
+          in: [ReservationStatus.WAITING, ReservationStatus.PROMOTED],
         },
       },
       orderBy: {
@@ -130,12 +131,12 @@ export class ReservationService {
 
     const mapped = reservations.map((r) => {
       const queuePosition =
-        r.status === 'PROMOTED'
+        r.status === ReservationStatus.PROMOTED
           ? 0
           : queuePositionsMap.get(`${r.productId}:${r.reservationNumber}`) || 0;
 
       let remainingSeconds: number | undefined;
-      if (r.status === 'PROMOTED' && r.expiresAt) {
+      if (r.status === ReservationStatus.PROMOTED && r.expiresAt) {
         const now = new Date();
         const expiresAt = new Date(r.expiresAt);
         remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
@@ -160,8 +161,8 @@ export class ReservationService {
     return {
       reservations: mapped,
       totalCount: mapped.length,
-      waitingCount: mapped.filter((r) => r.status === 'WAITING').length,
-      promotedCount: mapped.filter((r) => r.status === 'PROMOTED').length,
+      waitingCount: mapped.filter((r) => r.status === ReservationStatus.WAITING).length,
+      promotedCount: mapped.filter((r) => r.status === ReservationStatus.PROMOTED).length,
     };
   }
 
@@ -174,7 +175,7 @@ export class ReservationService {
         id: reservationId,
         userId,
         status: {
-          in: ['WAITING', 'PROMOTED'],
+          in: [ReservationStatus.WAITING, ReservationStatus.PROMOTED],
         },
       },
     });
@@ -185,13 +186,13 @@ export class ReservationService {
 
     await this.prisma.reservation.update({
       where: { id: reservationId },
-      data: { status: 'CANCELLED' },
+      data: { status: ReservationStatus.CANCELLED },
     });
 
     this.logger.log(`Reservation cancelled: ${reservationId}`);
 
     // If this was a promoted reservation, promote next in queue
-    if (reservation.status === 'PROMOTED') {
+    if (reservation.status === ReservationStatus.PROMOTED) {
       await this.promoteNextInQueue(reservation.productId);
     }
   }
@@ -208,7 +209,7 @@ export class ReservationService {
     const nextReservation = await this.prisma.reservation.findFirst({
       where: {
         productId,
-        status: 'WAITING',
+        status: ReservationStatus.WAITING,
       },
       orderBy: {
         reservationNumber: 'asc',
@@ -226,7 +227,7 @@ export class ReservationService {
     await this.prisma.reservation.update({
       where: { id: nextReservation.id },
       data: {
-        status: 'PROMOTED',
+        status: ReservationStatus.PROMOTED,
         promotedAt: new Date(),
         expiresAt,
       },
@@ -259,7 +260,7 @@ export class ReservationService {
 
       const expiredReservations = await this.prisma.reservation.findMany({
         where: {
-          status: 'PROMOTED',
+          status: ReservationStatus.PROMOTED,
           expiresAt: {
             lte: now,
           },
@@ -276,7 +277,7 @@ export class ReservationService {
         // Mark as expired
         await this.prisma.reservation.update({
           where: { id: reservation.id },
-          data: { status: 'EXPIRED' },
+          data: { status: ReservationStatus.EXPIRED },
         });
 
         this.logger.log(`Reservation expired: ${reservation.id}`);
@@ -286,9 +287,9 @@ export class ReservationService {
           where: {
             userId: reservation.userId,
             productId: reservation.productId,
-            status: 'ACTIVE',
+            status: CartStatus.ACTIVE,
           },
-          data: { status: 'EXPIRED' },
+          data: { status: CartStatus.EXPIRED },
         });
 
         // Emit cart product released event to trigger next promotion
@@ -312,7 +313,7 @@ export class ReservationService {
     const result = await this.prisma.cart.aggregate({
       where: {
         productId,
-        status: 'ACTIVE',
+        status: CartStatus.ACTIVE,
       },
       _sum: {
         quantity: true,
@@ -329,7 +330,7 @@ export class ReservationService {
     const result = await this.prisma.reservation.aggregate({
       where: {
         productId,
-        status: 'PROMOTED',
+        status: ReservationStatus.PROMOTED,
       },
       _sum: {
         quantity: true,
@@ -351,7 +352,7 @@ export class ReservationService {
     const waitingReservations = await this.prisma.reservation.findMany({
       where: {
         productId: { in: productIds },
-        status: 'WAITING',
+        status: ReservationStatus.WAITING,
       },
       orderBy: [{ productId: 'asc' }, { reservationNumber: 'asc' }],
       select: {
@@ -383,7 +384,7 @@ export class ReservationService {
     const waitingAhead = await this.prisma.reservation.count({
       where: {
         productId,
-        status: 'WAITING',
+        status: ReservationStatus.WAITING,
         reservationNumber: {
           lt: reservationNumber,
         },
@@ -403,12 +404,12 @@ export class ReservationService {
     let remainingSeconds: number | undefined;
     let queuePosition: number | undefined;
 
-    if (reservation.status === 'PROMOTED' && reservation.expiresAt) {
+    if (reservation.status === ReservationStatus.PROMOTED && reservation.expiresAt) {
       const now = new Date();
       const expiresAt = new Date(reservation.expiresAt);
       remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
       queuePosition = 0; // Promoted = position 0
-    } else if (reservation.status === 'WAITING') {
+    } else if (reservation.status === ReservationStatus.WAITING) {
       queuePosition = await this.getQueuePosition(productId, reservation.reservationNumber);
     }
 

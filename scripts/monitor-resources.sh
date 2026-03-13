@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Docker Resource Monitoring Script — Task #22
-# Tracks CPU, memory, and network for all dorami containers
+# Tracks CPU, memory, and network for all doremi containers
 # Usage: bash scripts/monitor-resources.sh [--once] [--interval 10]
 
 set -euo pipefail
@@ -46,20 +46,20 @@ monitor_once() {
 
   # Container status
   log "--- Container Status ---"
-  docker ps --filter "name=dorami" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | while IFS= read -r line; do
+  docker ps --filter "name=doremi" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | while IFS= read -r line; do
     log "  $line"
   done
 
   # Resource usage (CPU / MEM / NET)
   log "--- Resource Usage ---"
   docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}" 2>/dev/null | \
-    grep -E "dorami|NAME" | while IFS= read -r line; do
+    grep -E "doremi|NAME" | while IFS= read -r line; do
     log "  $line"
   done
 
   # Disk usage for volumes
   log "--- Volume Disk Usage ---"
-  docker system df -v 2>/dev/null | grep -E "VOLUME|dorami|postgres" | head -10 | while IFS= read -r line; do
+  docker system df -v 2>/dev/null | grep -E "VOLUME|doremi|postgres" | head -10 | while IFS= read -r line; do
     log "  $line"
   done
 
@@ -74,7 +74,7 @@ monitor_once() {
       log "${YELLOW}WARNING: ${name} memory at ${pct}%${NC}"
       ((mem_warnings++))
     fi
-  done < <(docker stats --no-stream --format "{{.Name}} {{.MemPerc}}" 2>/dev/null | grep dorami)
+  done < <(docker stats --no-stream --format "{{.Name}} {{.MemPerc}}" 2>/dev/null | grep doremi)
 
   if [[ $mem_warnings -eq 0 ]]; then
     log "${GREEN}All containers within normal resource limits.${NC}"
@@ -95,3 +95,4 @@ while true; do
   echo ""
   sleep "$INTERVAL"
 done
+

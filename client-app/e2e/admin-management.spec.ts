@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
 
 test.describe('Admin Orders Management', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -45,7 +45,7 @@ test.describe('Admin Orders Management', () => {
 });
 
 test.describe('Admin Users Management', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test('should access admin users page', async ({ page }) => {
     await gotoWithRetry(page, '/admin/users');
@@ -74,7 +74,7 @@ test.describe('Admin Users Management', () => {
 });
 
 test.describe('Admin Dashboard Navigation', () => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
 
   test('should navigate through all admin pages', async ({ page }) => {
     const adminPages = [

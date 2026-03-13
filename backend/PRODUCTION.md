@@ -1,10 +1,11 @@
-# 도라미 백엔드 프로덕션 배포 가이드
+# 도레미 백엔드 프로덕션 배포 가이드
 
 ## 📋 개요
 
 NestJS + Socket.IO 기반 라이브 커머스 플랫폼 백엔드
 
 **주요 기능:**
+
 - REST API (상품, 주문, 사용자, 스트리밍)
 - WebSocket (실시간 채팅, 스트리밍, 상품 업데이트)
 - JWT 인증
@@ -19,7 +20,7 @@ NestJS + Socket.IO 기반 라이브 커머스 플랫폼 백엔드
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@host:5432/dorami
+DATABASE_URL=postgresql://user:password@host:5432/doremi
 
 # JWT
 JWT_SECRET=your-secret-key-min-32-chars
@@ -42,15 +43,18 @@ PORT=3001
 ### 2. 보안 설정
 
 **JWT Secret 생성:**
+
 ```bash
 openssl rand -base64 32
 ```
 
 **CSRF 보호:**
+
 - 프로덕션에서는 `CSRF_ENABLED=true` (기본값)
 - 개발 환경에서만 `CSRF_ENABLED=false`
 
 **CORS:**
+
 - 프로덕션 도메인만 허용
 - 와일드카드(`*`) 사용 금지
 
@@ -67,11 +71,13 @@ npx prisma db pull
 ### 4. Redis 설정
 
 **Redis 클러스터 (권장):**
+
 ```bash
 REDIS_URL=redis://primary-node:6379
 ```
 
 **Redis Sentinel:**
+
 ```bash
 REDIS_URL=redis-sentinel://sentinel1:26379,sentinel2:26379
 ```
@@ -108,42 +114,47 @@ pm2 start ecosystem.config.js --env production
 pm2 start ecosystem.config.js --env production -i max
 
 # 로그 확인
-pm2 logs dorami-backend
+pm2 logs doremi-backend
 
 # 모니터링
 pm2 monit
 ```
 
 **ecosystem.config.js:**
+
 ```javascript
 module.exports = {
-  apps: [{
-    name: 'dorami-backend',
-    script: 'dist/main.js',
-    instances: 'max',
-    exec_mode: 'cluster',
-    env_production: {
-      NODE_ENV: 'production',
-      PORT: 3001
+  apps: [
+    {
+      name: 'doremi-backend',
+      script: 'dist/main.js',
+      instances: 'max',
+      exec_mode: 'cluster',
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 3001,
+      },
+      error_file: 'logs/err.log',
+      out_file: 'logs/out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      max_memory_restart: '1G',
+      autorestart: true,
+      watch: false,
     },
-    error_file: 'logs/err.log',
-    out_file: 'logs/out.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    max_memory_restart: '1G',
-    autorestart: true,
-    watch: false
-  }]
+  ],
 };
 ```
 
 ## 🏥 헬스체크 엔드포인트
 
 ### Liveness Probe
+
 ```bash
 GET /api/v1/health/live
 ```
 
 응답:
+
 ```json
 {
   "status": "ok",
@@ -152,11 +163,13 @@ GET /api/v1/health/live
 ```
 
 ### Readiness Probe
+
 ```bash
 GET /api/v1/health/ready
 ```
 
 응답:
+
 ```json
 {
   "status": "ok",
@@ -168,6 +181,7 @@ GET /api/v1/health/ready
 ```
 
 **Kubernetes 설정 예시:**
+
 ```yaml
 livenessProbe:
   httpGet:
@@ -187,6 +201,7 @@ readinessProbe:
 ## 🔌 Socket.IO 네임스페이스
 
 ### `/chat` - 실시간 채팅
+
 - **인증:** JWT 필수
 - **이벤트:**
   - `chat:join-room` - 라이브 방 참여
@@ -195,6 +210,7 @@ readinessProbe:
   - `chat:delete-message` - 메시지 삭제 (ADMIN만)
 
 ### `/streaming` - 스트리밍
+
 - **인증:** JWT 필수
 - **이벤트:**
   - `stream:viewer:join` - 시청자 참여
@@ -202,6 +218,7 @@ readinessProbe:
 - **Redis 키:** `stream:{streamKey}:viewers`
 
 ### `/` - 루트 (범용)
+
 - **인증:** JWT 필수
 - **이벤트:**
   - `join:stream` - 스트림 룸 참여
@@ -215,22 +232,26 @@ readinessProbe:
 ## 📊 모니터링
 
 ### 로그 수준
+
 - **Production:** `warn`, `error` (default)
 - **Development:** `log`, `debug`, `verbose`
 
 ### 메트릭 수집
 
 **PM2 Plus (권장):**
+
 ```bash
 pm2 link <secret> <public>
 pm2 install pm2-server-monit
 ```
 
 **Prometheus:**
+
 - `/metrics` 엔드포인트 추가 필요
 - `prom-client` 패키지 사용
 
 ### 주요 메트릭
+
 - HTTP 요청 수 및 응답 시간
 - WebSocket 연결 수
 - Redis 연결 상태
@@ -242,10 +263,12 @@ pm2 install pm2-server-monit
 ### 1. Rate Limiting
 
 **Socket.IO 이벤트:**
+
 - `chat:send-message`: 20msg/10s
 - 기타 이벤트: 기본 100req/10s
 
 **HTTP API:**
+
 - Throttler 설정 (`ThrottlerModule`)
 - 기본: 10req/1min
 
@@ -254,12 +277,13 @@ pm2 install pm2-server-monit
 프로덕션에서는 명시적 도메인만 허용:
 
 ```typescript
-CORS_ORIGINS=https://dorami.com,https://app.dorami.com
+CORS_ORIGINS=https://doremi.com,https://app.doremi.com
 ```
 
 ### 3. Helmet 보안 헤더
 
 자동 적용됨:
+
 - Content-Security-Policy
 - X-Frame-Options
 - X-Content-Type-Options
@@ -286,26 +310,29 @@ CORS_ORIGINS=https://dorami.com,https://app.dorami.com
 ### 재시작 전략
 
 **PM2:**
+
 ```bash
 # 무중단 재시작
-pm2 reload dorami-backend
+pm2 reload doremi-backend
 
 # 강제 재시작
-pm2 restart dorami-backend
+pm2 restart doremi-backend
 ```
 
 ### 백업 및 복구
 
 **데이터베이스:**
+
 ```bash
 # 백업
-pg_dump -h localhost -U user -d dorami > backup.sql
+pg_dump -h localhost -U user -d doremi > backup.sql
 
 # 복구
-psql -h localhost -U user -d dorami < backup.sql
+psql -h localhost -U user -d doremi < backup.sql
 ```
 
 **Redis:**
+
 ```bash
 # AOF 백업 (권장)
 redis-cli BGREWRITEAOF
@@ -319,9 +346,11 @@ redis-cli BGSAVE
 ### 1. Database Connection Pool
 
 Prisma 기본 설정:
+
 - Pool size: 20 connections
 
 조정:
+
 ```typescript
 // prisma/schema.prisma
 datasource db {
@@ -334,6 +363,7 @@ datasource db {
 ### 2. Redis Connection Reuse
 
 Socket.IO Redis Adapter는 connection pool 사용:
+
 - Pub client: 1개
 - Sub client: 1개
 
@@ -341,16 +371,17 @@ Socket.IO Redis Adapter는 connection pool 사용:
 
 ```typescript
 // Transports 우선순위
-transports: ['websocket', 'polling']
+transports: ['websocket', 'polling'];
 
 // Ping 간격
-pingInterval: 25000
-pingTimeout: 60000
+pingInterval: 25000;
+pingTimeout: 60000;
 ```
 
 ## 🐳 Docker 배포
 
 **Dockerfile:**
+
 ```dockerfile
 FROM node:18-alpine
 
@@ -370,6 +401,7 @@ CMD ["node", "dist/main.js"]
 ```
 
 **docker-compose.yml:**
+
 ```yaml
 version: '3.8'
 
@@ -377,10 +409,10 @@ services:
   backend:
     build: .
     ports:
-      - "3001:3001"
+      - '3001:3001'
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:password@db:5432/dorami
+      - DATABASE_URL=postgresql://postgres:password@db:5432/doremi
       - REDIS_URL=redis://redis:6379
     depends_on:
       - db
@@ -392,7 +424,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=dorami
+      - POSTGRES_DB=doremi
       - POSTGRES_PASSWORD=password
 
   redis:

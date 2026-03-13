@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
-import { apiClient } from '../api/client';
+import { apiClient, ApiError } from '../api/client';
 import { isProfileComplete } from '../utils/profile';
 
 export function useAuth() {
@@ -35,9 +35,12 @@ export function useAuth() {
         updatedAt: string;
       }>('/users/me');
       setUser(response.data);
-    } catch {
-      // API 실패 시 인증 해제 (mock user 사용하지 않음)
-      setUser(null);
+    } catch (error) {
+      // 401: 세션 만료 → 인증 해제
+      // 그 외(네트워크, 429, 5xx): 기존 상태 유지 (spurious logout 방지)
+      if (error instanceof ApiError && error.statusCode === 401) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,9 +52,36 @@ export function useAuth() {
 
     if (!isLoginPage && !fetchedRef.current && isLoading) {
       fetchedRef.current = true;
-      fetchProfile();
+
+      // Zustand persist uses async/await internally: even with synchronous localStorage,
+      // hydration completes on a microtask AFTER the first React render. The closure
+      // value of `user` may therefore be null even when localStorage has user data.
+      // Call getState() here to read the current (post-hydration) store value instead
+      // of relying on the possibly-stale closure — this prevents a 30s fetchProfile()
+      // call when the user is already authenticated via localStorage.
+      //
+      // If persist has not yet hydrated (edge case in concurrent mode / SSR), fall back
+      // to subscribing via onFinishHydration to decide once hydration completes.
+      if (!useAuthStore.persist.hasHydrated()) {
+        const unsub = useAuthStore.persist.onFinishHydration((hydratedState) => {
+          unsub();
+          if (hydratedState.user) {
+            setLoading(false);
+          } else {
+            fetchProfile();
+          }
+        });
+        return unsub;
+      }
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        setLoading(false);
+      } else {
+        fetchProfile();
+      }
     }
-  }, [fetchProfile]);
+  }, [fetchProfile, user, setLoading, isLoading]);
 
   const handleLogout = async () => {
     // Clear client state first — prevents ProtectedRoute from rendering
@@ -70,8 +100,9 @@ export function useAuth() {
   const isUserAuthenticated = !!(user?.kakaoId || user?.email);
   // Profile completion: user has filled in required profile fields
   const isUserProfileComplete = isProfileComplete(user);
-  // Convenience: needs profile if authenticated but profile incomplete
-  const needsProfileCompletion = isUserAuthenticated && !isUserProfileComplete;
+  // Convenience: needs profile if authenticated but profile incomplete (admin exempt)
+  const needsProfileCompletion =
+    isUserAuthenticated && !isUserProfileComplete && user?.role !== 'ADMIN';
 
   return {
     user,

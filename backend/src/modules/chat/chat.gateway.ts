@@ -8,15 +8,13 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
 } from '@nestjs/websockets';
-import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   AuthenticatedSocket,
   authenticateSocket,
 } from '../../common/middleware/ws-jwt-auth.middleware';
-import { MessageQueueService } from '../../common/services/message-queue.service';
 
 interface ChatMessagePayload {
   liveId: string;
@@ -28,102 +26,55 @@ interface DeleteMessagePayload {
   messageId: string;
 }
 
-// Stream keys are 32-char hex strings
-const STREAM_KEY_REGEX = /^[a-f0-9]{32}$/;
-
-// Rate limit: max messages per window
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_MS = 5000;
-
 @WebSocketGateway({
   namespace: 'chat',
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(','),
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
     credentials: true,
   },
+  transports: ['websocket', 'polling'],
 })
-export class ChatGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy
-{
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server!: Server;
 
-  private readonly logger = new Logger(ChatGateway.name);
-  private readonly roomMembers = new Map<string, Set<string>>();
-  private readonly userSockets = new Map<string, Set<string>>();
-  private readonly socketRooms = new Map<string, Set<string>>();
-  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-  // Per-user message timestamps for rate limiting
-  private readonly messageTimes = new Map<string, number[]>();
-
   constructor(
     private readonly jwtService: JwtService,
-    private readonly messageQueueService: MessageQueueService,
-  ) {}
-
-  afterInit(_server: Server) {
-    this.logger.log('Chat Gateway initialized');
-
-    // Periodic cleanup of messageTimes to prevent memory leaks
-    // Every 1 minute, remove timestamps older than the rate limit window
-    this.cleanupTimer = setInterval(() => {
-      const now = Date.now();
-      let cleanedCount = 0;
-
-      for (const [userId, times] of this.messageTimes.entries()) {
-        const recentTimes = times.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-        if (recentTimes.length > 0) {
-          this.messageTimes.set(userId, recentTimes);
-        } else {
-          this.messageTimes.delete(userId);
-          cleanedCount++;
-        }
-      }
-
-      if (cleanedCount > 0) {
-        this.logger.debug(`Chat rate limit cleanup: removed ${cleanedCount} expired user entries`);
-      }
-    }, 60000); // Run every 60 seconds
+    private readonly prismaService: PrismaService,
+  ) {
+    console.log('🔥 ChatGateway constructor called');
   }
 
-  onModuleDestroy() {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
-
-    this.roomMembers.clear();
-    this.userSockets.clear();
-    this.socketRooms.clear();
-    this.messageTimes.clear();
+  afterInit(server: Server) {
+    console.log('✅ Chat Gateway initialized');
+    console.log('   Server namespaces:', Array.from(server._nsps.keys()));
+    console.log('   Chat namespace path:', '/chat');
   }
 
   async handleConnection(client: Socket) {
     try {
-      const authenticatedClient = await authenticateSocket(client, this.jwtService);
-      const userId = authenticatedClient.user.userId;
+      // Authenticate client
+      const authenticatedClient = await authenticateSocket(
+        client,
+        this.jwtService,
+        this.prismaService,
+      );
 
-      // Track socket ids by user for online/offline evaluation
-      const userSocketIds = this.userSockets.get(userId) ?? new Set<string>();
-      userSocketIds.add(authenticatedClient.id);
-      this.userSockets.set(userId, userSocketIds);
+      console.log(
+        `✅ Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`,
+      );
 
-      this.logger.log(`Client connected: ${authenticatedClient.id} (User: ${userId})`);
-
+      // Send welcome message
       client.emit('connection:success', {
         type: 'connection:success',
         data: {
           message: 'Connected to chat server',
-          userId,
+          userId: authenticatedClient.user.userId,
           timestamp: new Date().toISOString(),
         },
       });
-
-      // Deliver queued messages for this user after re-authentication
-      await this.flushQueuedMessages(authenticatedClient, userId);
     } catch (error) {
-      this.logger.error(`Connection failed: ${(error as Error).message}`);
+      console.error('❌ Connection failed:', (error as Error).message);
       client.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -135,87 +86,7 @@ export class ChatGateway
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
-    const authClient = client as AuthenticatedSocket;
-    const userId = authClient.user?.userId;
-
-    if (!userId) {
-      return;
-    }
-
-    const userSocketIds = this.userSockets.get(userId);
-    if (userSocketIds) {
-      userSocketIds.delete(client.id);
-      if (userSocketIds.size === 0) {
-        this.userSockets.delete(userId);
-      }
-    }
-
-    const socketRoomNames = this.socketRooms.get(client.id);
-    if (socketRoomNames) {
-      for (const roomName of socketRoomNames) {
-        this.removeUserFromRoom(userId, roomName);
-      }
-      this.socketRooms.delete(client.id);
-    }
-
-    // Clean up rate limit entries for disconnected user
-    this.messageTimes.delete(userId);
-  }
-
-  private async flushQueuedMessages(authenticatedClient: AuthenticatedSocket, userId: string) {
-    const queuedMessages = await this.messageQueueService.getQueuedMessages(userId);
-    if (queuedMessages.length === 0) {
-      return;
-    }
-
-    this.logger.debug(`Flushing ${queuedMessages.length} queued message(s) to user=${userId}`);
-    for (const queuedMessage of queuedMessages) {
-      authenticatedClient.emit(queuedMessage.event, queuedMessage.data);
-    }
-  }
-
-  private addUserToRoom(userId: string, roomName: string) {
-    const members = this.roomMembers.get(roomName) ?? new Set<string>();
-    members.add(userId);
-    this.roomMembers.set(roomName, members);
-  }
-
-  private removeUserFromRoom(userId: string, roomName: string) {
-    const members = this.roomMembers.get(roomName);
-    if (!members) {
-      return;
-    }
-    members.delete(userId);
-    if (members.size === 0) {
-      this.roomMembers.delete(roomName);
-    } else {
-      this.roomMembers.set(roomName, members);
-    }
-  }
-
-  private addSocketToRoom(socketId: string, roomName: string) {
-    const rooms = this.socketRooms.get(socketId) ?? new Set<string>();
-    rooms.add(roomName);
-    this.socketRooms.set(socketId, rooms);
-  }
-
-  private removeSocketFromRoom(socketId: string, roomName: string) {
-    const rooms = this.socketRooms.get(socketId);
-    if (!rooms) {
-      return;
-    }
-
-    rooms.delete(roomName);
-    if (rooms.size === 0) {
-      this.socketRooms.delete(socketId);
-    } else {
-      this.socketRooms.set(socketId, rooms);
-    }
-  }
-
-  private isUserOnline(userId: string): boolean {
-    return (this.userSockets.get(userId)?.size ?? 0) > 0;
+    console.log(`👋 Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('chat:join-room')
@@ -223,36 +94,23 @@ export class ChatGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: { liveId: string },
   ) {
-    const { liveId } = payload;
-
-    // Validate stream key format
-    if (!liveId || !STREAM_KEY_REGEX.test(liveId)) {
-      client.emit('error', {
-        type: 'error',
-        errorCode: 'INVALID_STREAM_KEY',
-        message: 'Invalid stream key format',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const roomName = `live:${liveId}`;
+    const roomName = `live:${payload.liveId}`;
 
     await client.join(roomName);
-    this.addUserToRoom(client.user.userId, roomName);
-    this.addSocketToRoom(client.id, roomName);
 
-    this.logger.log(`User ${client.user.userId} joined room ${roomName}`);
+    console.log(`📥 User ${client.user.userId} joined room ${roomName}`);
 
+    // Notify room members
     this.server.to(roomName).emit('chat:user-joined', {
       type: 'chat:user-joined',
       data: {
         userId: client.user.userId,
-        liveId,
+        liveId: payload.liveId,
         timestamp: new Date().toISOString(),
       },
     });
 
+    // Confirm to client
     return {
       type: 'chat:join-room:success',
       data: {
@@ -270,11 +128,10 @@ export class ChatGateway
     const roomName = `live:${payload.liveId}`;
 
     await client.leave(roomName);
-    this.removeUserFromRoom(client.user.userId, roomName);
-    this.removeSocketFromRoom(client.id, roomName);
 
-    this.logger.log(`User ${client.user.userId} left room ${roomName}`);
+    console.log(`📤 User ${client.user.userId} left room ${roomName}`);
 
+    // Notify room members
     this.server.to(roomName).emit('chat:user-left', {
       type: 'chat:user-left',
       data: {
@@ -309,28 +166,8 @@ export class ChatGateway
       return;
     }
 
-    // Rate limiting: max RATE_LIMIT_MAX messages per RATE_LIMIT_WINDOW_MS
-    const userId = client.user.userId;
-    const now = Date.now();
-    const times = this.messageTimes.get(userId) ?? [];
-    const recentTimes = times.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-    if (recentTimes.length >= RATE_LIMIT_MAX) {
-      client.emit('error', {
-        type: 'error',
-        errorCode: 'RATE_LIMITED',
-        message: '메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-    recentTimes.push(now);
-    this.messageTimes.set(userId, recentTimes);
-
-    // Sanitize: strip all HTML tags including unclosed ones and remaining angle brackets
-    const sanitizedMessage = payload.message
-      .replace(/<[^>]*>?/g, '')
-      .replace(/[<>]/g, '')
-      .trim();
+    // Sanitize: strip HTML tags to prevent XSS
+    const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
 
     // Validate length (max 500 characters)
     if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
@@ -344,37 +181,18 @@ export class ChatGateway
     }
 
     const roomName = `live:${payload.liveId}`;
-    const chatMessage = {
+
+    // Broadcast to all clients in room (including sender)
+    this.server.to(roomName).emit('chat:message', {
       type: 'chat:message',
       data: {
-        id: randomUUID(),
+        id: Date.now().toString(),
         liveId: payload.liveId,
         userId: client.user.userId,
-        username: client.user.name,
         message: sanitizedMessage,
         timestamp: new Date().toISOString(),
       },
-    };
-
-    this.server.to(roomName).emit('chat:message', chatMessage);
-
-    const roomMembers = this.roomMembers.get(roomName);
-    if (roomMembers) {
-      const offlineUserIds = Array.from(roomMembers).filter(
-        (memberUserId) => !this.isUserOnline(memberUserId),
-      );
-
-      if (offlineUserIds.length > 0) {
-        await Promise.allSettled(
-          offlineUserIds.map((memberUserId) =>
-            this.messageQueueService.queueMessage(memberUserId, {
-              event: 'chat:message',
-              data: chatMessage,
-            }),
-          ),
-        );
-      }
-    }
+    });
 
     return {
       type: 'chat:send-message:success',
@@ -389,6 +207,7 @@ export class ChatGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: DeleteMessagePayload,
   ) {
+    // Check if user is ADMIN
     if (client.user.role !== 'ADMIN') {
       client.emit('error', {
         type: 'error',
@@ -399,6 +218,7 @@ export class ChatGateway
       return;
     }
 
+    // Validate messageId
     if (!payload.messageId) {
       client.emit('error', {
         type: 'error',
@@ -411,10 +231,11 @@ export class ChatGateway
 
     const roomName = `live:${payload.liveId}`;
 
-    this.logger.log(
-      `Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+    console.log(
+      `🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`,
     );
 
+    // Broadcast deletion to all clients in room
     this.server.to(roomName).emit('chat:message-deleted', {
       type: 'chat:message-deleted',
       data: {

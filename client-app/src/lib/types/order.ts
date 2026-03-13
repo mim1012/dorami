@@ -10,6 +10,8 @@ export interface OrderItem {
   quantity: number;
   price: number;
   shippingFee: number;
+  color?: string;
+  size?: string;
 }
 
 export interface BankTransferInfo {

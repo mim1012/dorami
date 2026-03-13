@@ -1,4 +1,4 @@
-# 도라미 (Live Commerce Platform) 코드 리뷰 종합 보고서
+# 도레미 (Live Commerce Platform) 코드 리뷰 종합 보고서
 
 **작성일**: 2026-02-03
 **분석 범위**: 전체 코드베이스 (Backend, Frontend, Shared Types)
@@ -25,19 +25,19 @@
 
 ### 1.1 기술 스택
 
-| 영역 | 기술 |
-|------|------|
-| **Frontend** | Next.js 16.1, React 19, TypeScript 5.7, Tailwind CSS 4.0 |
-| **Backend** | NestJS 11.1, TypeScript 5.9, Prisma 6.19 |
-| **Database** | PostgreSQL 16 |
-| **Cache** | Redis 7 |
-| **Real-time** | Socket.IO 4.8 |
-| **인증** | Kakao OAuth, JWT |
+| 영역          | 기술                                                     |
+| ------------- | -------------------------------------------------------- |
+| **Frontend**  | Next.js 16.1, React 19, TypeScript 5.7, Tailwind CSS 4.0 |
+| **Backend**   | NestJS 11.1, TypeScript 5.9, Prisma 6.19                 |
+| **Database**  | PostgreSQL 16                                            |
+| **Cache**     | Redis 7                                                  |
+| **Real-time** | Socket.IO 4.8                                            |
+| **인증**      | Kakao OAuth, JWT                                         |
 
 ### 1.2 프로젝트 구조
 
 ```
-dorami/
+doremi/
 ├── packages/
 │   └── shared-types/          # 공유 TypeScript 타입
 ├── client-app/                # Next.js Frontend (포트 3000)
@@ -68,34 +68,34 @@ dorami/
 
 ### 2.1 코드 품질 메트릭
 
-| 영역 | 점수 | 상태 |
-|------|------|------|
+| 영역        | 점수 | 상태         |
+| ----------- | ---- | ------------ |
 | 타입 안전성 | 5/10 | ⚠️ 개선 필요 |
-| 보안 | 4/10 | 🔴 즉시 조치 |
-| 성능 | 6/10 | ⚠️ 개선 필요 |
-| 아키텍처 | 7/10 | ✅ 양호 |
-| 유지보수성 | 6/10 | ⚠️ 개선 필요 |
-| 테스트 | 4/10 | ⚠️ 개선 필요 |
+| 보안        | 4/10 | 🔴 즉시 조치 |
+| 성능        | 6/10 | ⚠️ 개선 필요 |
+| 아키텍처    | 7/10 | ✅ 양호      |
+| 유지보수성  | 6/10 | ⚠️ 개선 필요 |
+| 테스트      | 4/10 | ⚠️ 개선 필요 |
 
 ### 2.2 발견된 문제 요약
 
-| 심각도 | 개수 | 주요 항목 |
-|--------|------|----------|
-| 🔴 Critical | 4 | CORS, ValidationPipe, 파일 업로드, JWT |
-| 🟠 High | 10 | any 타입, N+1 쿼리, 테스트 커버리지, Rate Limiting |
-| 🟡 Medium | 14 | 순환 의존성, Redis Adapter, 로깅, 에러 처리, 타입 공유 |
-| 🟢 Low | 6 | 문서화, 코드 스타일 |
+| 심각도      | 개수 | 주요 항목                                              |
+| ----------- | ---- | ------------------------------------------------------ |
+| 🔴 Critical | 4    | CORS, ValidationPipe, 파일 업로드, JWT                 |
+| 🟠 High     | 10   | any 타입, N+1 쿼리, 테스트 커버리지, Rate Limiting     |
+| 🟡 Medium   | 14   | 순환 의존성, Redis Adapter, 로깅, 에러 처리, 타입 공유 |
+| 🟢 Low      | 6    | 문서화, 코드 스타일                                    |
 
 ### 2.3 우선순위 조정 사항
 
 > **Developer Agent 리뷰 결과 반영**
 
-| 항목 | 기존 | 조정 | 이유 |
-|------|------|------|------|
-| 테스트 커버리지 | Low | **High** | 4/10 점수는 즉시 개선 필요 |
-| Rate Limiting | 미포함 | **High** | DoS 공격 취약점 |
-| Redis Adapter | High | **Medium** | 수평 확장 시에만 필요 |
-| 순환 의존성 | High | **Medium** | `forwardRef`로 동작 중 |
+| 항목            | 기존   | 조정       | 이유                       |
+| --------------- | ------ | ---------- | -------------------------- |
+| 테스트 커버리지 | Low    | **High**   | 4/10 점수는 즉시 개선 필요 |
+| Rate Limiting   | 미포함 | **High**   | DoS 공격 취약점            |
+| Redis Adapter   | High   | **Medium** | 수평 확장 시에만 필요      |
+| 순환 의존성     | High   | **Medium** | `forwardRef`로 동작 중     |
 
 ### 2.4 강점
 
@@ -116,22 +116,21 @@ dorami/
 ```typescript
 // 현재 코드 (위험)
 app.enableCors({
-  origin: true,  // 모든 출처 허용
+  origin: true, // 모든 출처 허용
   credentials: true,
 });
 ```
 
 **위험**:
+
 - CSRF 공격 가능
 - 크로스 도메인 데이터 탈취
 - 세션 하이재킹
 
 **해결 방안**:
+
 ```typescript
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://your-domain.com',
-];
+const allowedOrigins = ['http://localhost:3000', 'https://your-domain.com'];
 
 app.enableCors({
   origin: (origin, callback) => {
@@ -165,11 +164,13 @@ app.enableCors({
 ```
 
 **위험**:
+
 - 모든 DTO 검증 미작동
 - 악의적 입력 데이터 처리
 - SQL Injection 위험 증가
 
 **해결 방안**:
+
 ```bash
 # 1. 의존성 재설치
 npm install class-validator class-transformer --save
@@ -200,27 +201,26 @@ app.useGlobalPipes(
 // 현재 코드 (위험)
 @Controller('upload')
 export class UploadController {
-  @Public()  // 누구나 접근 가능
+  @Public() // 누구나 접근 가능
   @Post('image')
-  uploadImage() { }
+  uploadImage() {}
 }
 ```
 
 **위험**:
+
 - 인증 없이 파일 업로드 가능
 - 서버 리소스 남용
 - 악성 파일 저장
 
 **해결 방안**:
+
 ```typescript
 @Controller('upload')
 export class UploadController {
   @Post('image')
   @UseGuards(JwtAuthGuard)
-  uploadImage(
-    @CurrentUser('userId') userId: string,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
+  uploadImage(@CurrentUser('userId') userId: string, @UploadedFile() file: Express.Multer.File) {
     // 사용자별 저장 경로 격리
   }
 }
@@ -238,11 +238,13 @@ JWT_SECRET=your-jwt-secret-change-in-production-min-32-chars
 ```
 
 **위험**:
+
 - 예측 가능한 시크릿
 - 토큰 위변조 가능
 - 세션 탈취
 
 **해결 방안**:
+
 ```bash
 # 강력한 랜덤 시크릿 생성
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
@@ -260,6 +262,7 @@ JWT_SECRET=<64자 이상의 랜덤 문자열>
 ### 4.1 에러 핸들링
 
 #### 강점
+
 - `BusinessException` 기반 커스텀 예외 체계
 - `BusinessExceptionFilter`로 일관된 에러 응답
 - 환경별 스택 트레이스 노출 제어
@@ -269,6 +272,7 @@ JWT_SECRET=<64자 이상의 랜덤 문자열>
 **1. 불완전한 예외 처리**
 
 파일: `backend/src/modules/auth/auth.controller.ts:121-124`
+
 ```typescript
 catch (error) {
   this.logger.error('Kakao callback error:', error.stack);
@@ -288,6 +292,7 @@ this.logger.log(`Product created: ${product.id}`);
 ```
 
 #### 개선 제안
+
 ```typescript
 // 일관된 에러 핸들링 유틸리티
 export class ErrorHandler {
@@ -303,10 +308,12 @@ export class ErrorHandler {
 ### 4.2 입력 검증
 
 #### 현황
+
 - DTO에 117개의 class-validator 데코레이터 정의
 - **ValidationPipe 비활성화로 모든 검증 미작동**
 
 #### DTO 예시
+
 ```typescript
 // backend/src/modules/orders/dto/order.dto.ts
 class OrderItemDto {
@@ -321,6 +328,7 @@ class OrderItemDto {
 ```
 
 #### 문제점
+
 - ValidationPipe 비활성화
 - 일부 DTO에 검증 데코레이터 누락
 - 중첩 객체 검증 불완전
@@ -330,6 +338,7 @@ class OrderItemDto {
 ### 4.3 데이터베이스 접근
 
 #### 강점
+
 - Prisma 트랜잭션 적절히 사용 (6개 파일)
 - Serializable 격리 수준 적용
 
@@ -349,6 +358,7 @@ await this.prisma.$transaction(
 #### N+1 쿼리 문제
 
 **문제 위치**: `backend/src/modules/cart/cart.service.ts:48`
+
 ```typescript
 async addToCart(userId: string, addToCartDto: AddToCartDto) {
   const product = await this.prisma.product.findUnique({ ... });
@@ -361,6 +371,7 @@ async addToCart(userId: string, addToCartDto: AddToCartDto) {
 ```
 
 **해결 제안**:
+
 ```typescript
 // 단일 쿼리로 모든 정보 조회
 const [product, reservedQuantity, existingCartItem] = await Promise.all([
@@ -390,6 +401,7 @@ const [product, reservedQuantity, existingCartItem] = await Promise.all([
 | products.service.ts | 133 | `status as any` |
 
 **개선 제안**:
+
 ```typescript
 // 변경 전
 private mapToResponseDto(cartItem: any): CartItemResponseDto
@@ -428,6 +440,7 @@ async createOrder(userId: string, createOrderDto: CreateOrderDto) {
 ```
 
 **해결 제안**:
+
 ```typescript
 // 공통 로직 추출
 private calculateOrderTotals(
@@ -455,10 +468,10 @@ private calculateOrderTotals(
 
 **1. 컴포넌트 크기 초과**
 
-| 컴포넌트 | 라인 수 | 책임 |
-|----------|---------|------|
-| ProductDetailModal.tsx | ~200줄 | UI + 상태 + WebSocket + API |
-| ProductList.tsx | ~190줄 | UI + 상태 + WebSocket |
+| 컴포넌트               | 라인 수 | 책임                        |
+| ---------------------- | ------- | --------------------------- |
+| ProductDetailModal.tsx | ~200줄  | UI + 상태 + WebSocket + API |
+| ProductList.tsx        | ~190줄  | UI + 상태 + WebSocket       |
 
 **2. 타입 정의 분산**
 
@@ -479,6 +492,7 @@ interface Product {
 ```
 
 **해결 제안**:
+
 ```typescript
 // lib/types/product.ts (공유 타입)
 export interface Product {
@@ -498,6 +512,7 @@ import type { Product } from '@/lib/types/product';
 ### 5.2 상태 관리
 
 #### 현황
+
 - Zustand: auth store
 - React Context: cart context
 - React Query: 설정만 존재, 미사용
@@ -505,6 +520,7 @@ import type { Product } from '@/lib/types/product';
 #### React Query 미활용 문제
 
 **현재**: 모든 API 호출이 직접 async/await
+
 ```typescript
 // 현재 방식
 const [products, setProducts] = useState([]);
@@ -522,6 +538,7 @@ useEffect(() => {
 ```
 
 **개선 제안**:
+
 ```typescript
 // React Query 활용
 export function useProducts(status?: string) {
@@ -545,6 +562,7 @@ function ProductList() {
 #### 응답 구조 불일치
 
 **파일**: `client-app/src/lib/api/products.ts:26-31`
+
 ```typescript
 export async function getFeaturedProducts(limit: number = 6): Promise<Product[]> {
   const response = await apiClient.get<any>(`/products/featured?limit=${limit}`);
@@ -553,6 +571,7 @@ export async function getFeaturedProducts(limit: number = 6): Promise<Product[]>
 ```
 
 **해결 제안**:
+
 ```typescript
 // API 클라이언트에서 응답 정규화
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -577,6 +596,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 #### 의존성 배열 문제
 
 **파일**: `client-app/src/lib/hooks/use-auth.ts:13`
+
 ```typescript
 useEffect(() => {
   if (isLoading && !user) {
@@ -586,6 +606,7 @@ useEffect(() => {
 ```
 
 **해결**:
+
 ```typescript
 useEffect(() => {
   if (isLoading && !user) {
@@ -599,6 +620,7 @@ useEffect(() => {
 ### 5.5 `any` 타입 사용
 
 **파일**: `client-app/src/lib/hooks/use-chat.ts`
+
 ```typescript
 // 라인 74, 89, 96
 socket.on('connection:success', (data: any) => { ... });
@@ -607,6 +629,7 @@ socket.on('chat:message', (data: any) => { ... });
 ```
 
 **해결 제안**:
+
 ```typescript
 interface ConnectionSuccessEvent {
   type: string;
@@ -628,36 +651,36 @@ socket.on('chat:message', (data: ChatMessageEvent) => { ... });
 
 ### 6.1 인증/인가
 
-| 취약점 | 심각도 | 파일 |
-|--------|--------|------|
-| CORS 모든 출처 허용 | 🔴 Critical | main.ts:46 |
-| 파일 업로드 인증 없음 | 🔴 Critical | upload.controller.ts:13 |
-| JWT SECRET 약함 | 🔴 Critical | .env |
-| WebSocket JWT 검증 불일치 | 🟠 High | ws-jwt-auth.middleware.ts |
+| 취약점                    | 심각도      | 파일                      |
+| ------------------------- | ----------- | ------------------------- |
+| CORS 모든 출처 허용       | 🔴 Critical | main.ts:46                |
+| 파일 업로드 인증 없음     | 🔴 Critical | upload.controller.ts:13   |
+| JWT SECRET 약함           | 🔴 Critical | .env                      |
+| WebSocket JWT 검증 불일치 | 🟠 High     | ws-jwt-auth.middleware.ts |
 
 ### 6.2 입력 검증
 
-| 취약점 | 심각도 | 파일 |
-|--------|--------|------|
-| ValidationPipe 비활성화 | 🔴 Critical | main.ts:29 |
-| 파일 매직 바이트 검증 없음 | 🟠 High | upload.controller.ts |
-| 채팅 메시지 이스케이프 없음 | 🟡 Medium | chat.gateway.ts |
+| 취약점                      | 심각도      | 파일                 |
+| --------------------------- | ----------- | -------------------- |
+| ValidationPipe 비활성화     | 🔴 Critical | main.ts:29           |
+| 파일 매직 바이트 검증 없음  | 🟠 High     | upload.controller.ts |
+| 채팅 메시지 이스케이프 없음 | 🟡 Medium   | chat.gateway.ts      |
 
 ### 6.3 데이터 노출
 
-| 취약점 | 심각도 | 파일 |
-|--------|--------|------|
-| 사용자 이메일 로깅 | 🟡 Medium | auth.service.ts:61 |
-| 에러 컨텍스트 노출 | 🟡 Medium | business.exception.ts |
-| 개발 모드 콘솔 로그 | 🟡 Medium | chat.gateway.ts |
+| 취약점              | 심각도    | 파일                  |
+| ------------------- | --------- | --------------------- |
+| 사용자 이메일 로깅  | 🟡 Medium | auth.service.ts:61    |
+| 에러 컨텍스트 노출  | 🟡 Medium | business.exception.ts |
+| 개발 모드 콘솔 로그 | 🟡 Medium | chat.gateway.ts       |
 
 ### 6.4 환경 설정
 
-| 취약점 | 심각도 | 파일 |
-|--------|--------|------|
-| .env 파일 커밋 가능성 | 🟠 High | backend/.env |
-| 환경 변수 검증 없음 | 🟡 Medium | app.module.ts |
-| 프로덕션 설정 미분리 | 🟡 Medium | - |
+| 취약점                | 심각도    | 파일          |
+| --------------------- | --------- | ------------- |
+| .env 파일 커밋 가능성 | 🟠 High   | backend/.env  |
+| 환경 변수 검증 없음   | 🟡 Medium | app.module.ts |
+| 프로덕션 설정 미분리  | 🟡 Medium | -             |
 
 ---
 
@@ -699,6 +722,7 @@ AppModule (root)
 **문제**: `AdminModule ↔ WebsocketModule`
 
 **파일**: `backend/src/modules/admin/admin.module.ts`
+
 ```typescript
 @Module({
   imports: [forwardRef(() => WebsocketModule), NotificationsModule],
@@ -714,6 +738,7 @@ AppModule (root)
 ```
 
 **해결 제안**: Event-Driven 패턴으로 전환
+
 ```typescript
 // AdminService에서 이벤트 발행
 this.eventEmitter.emit('admin:notification', payload);
@@ -745,6 +770,7 @@ Reservation Events:
 ```
 
 #### 문제점
+
 - 이벤트명 불일치: `order.created` vs `order:created`
 - 이벤트 스키마 검증 부재
 - 에러 처리 전략 미흡
@@ -752,14 +778,16 @@ Reservation Events:
 ### 7.4 WebSocket 아키텍처
 
 #### Gateway 구조
-| Gateway | Namespace | 용도 |
-|---------|-----------|------|
-| WebsocketGateway | `/` | 스트림, 알림 |
-| ChatGateway | `/chat` | 채팅 |
+
+| Gateway          | Namespace | 용도         |
+| ---------------- | --------- | ------------ |
+| WebsocketGateway | `/`       | 스트림, 알림 |
+| ChatGateway      | `/chat`   | 채팅         |
 
 #### Redis Adapter 비활성화
 
 **파일**: `backend/src/main.ts:56-61`
+
 ```typescript
 // TODO: Fix Redis adapter connection hanging issue
 // const redisIoAdapter = new RedisIoAdapter(app);
@@ -768,12 +796,14 @@ Reservation Events:
 ```
 
 **영향**:
+
 - 수평 확장 불가
 - 다중 서버 환경에서 메시지 손실
 
 ### 7.5 공유 타입 (shared-types)
 
 #### 구조
+
 ```
 packages/shared-types/src/
 ├── index.ts    # 주요 타입 (14,600줄)
@@ -781,10 +811,11 @@ packages/shared-types/src/
 ```
 
 #### 활용 현황
-| 영역 | 상태 |
-|------|------|
-| Backend | 부분 사용 |
-| Frontend | 미사용 |
+
+| 영역     | 상태      |
+| -------- | --------- |
+| Backend  | 부분 사용 |
+| Frontend | 미사용    |
 
 ---
 
@@ -799,6 +830,7 @@ packages/shared-types/src/
 **위험**: DoS 공격 취약
 
 **해결 방안**:
+
 ```bash
 npm install @nestjs/throttler
 ```
@@ -843,6 +875,7 @@ async kakaoCallback() { }
 **위험**: 상태 변경 공격
 
 **해결 방안**:
+
 ```bash
 npm install csurf
 ```
@@ -860,6 +893,7 @@ app.use(csurf({ cookie: true }));
 **위험**: XSS, Clickjacking 등
 
 **해결 방안**:
+
 ```bash
 npm install helmet
 ```
@@ -869,14 +903,16 @@ npm install helmet
 import helmet from 'helmet';
 
 app.use(helmet());
-app.use(helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:", "https:"],
-  },
-}));
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  }),
+);
 ```
 
 #### 8.1.4 Prisma Raw Query 감사
@@ -891,9 +927,7 @@ const result = await prisma.$queryRaw`SELECT * FROM users WHERE id = ${userId}`;
 
 // 안전한 패턴 (Prisma.sql 사용)
 import { Prisma } from '@prisma/client';
-const result = await prisma.$queryRaw(
-  Prisma.sql`SELECT * FROM users WHERE id = ${userId}`
-);
+const result = await prisma.$queryRaw(Prisma.sql`SELECT * FROM users WHERE id = ${userId}`);
 ```
 
 ---
@@ -905,6 +939,7 @@ const result = await prisma.$queryRaw(
 **영향**: 쿼리 성능 저하
 
 **권장 인덱스**:
+
 ```prisma
 // prisma/schema.prisma
 
@@ -945,6 +980,7 @@ model LiveStream {
 **영향**: DB 연결 고갈
 
 **해결 방안**:
+
 ```env
 # .env
 DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=20&pool_timeout=30"
@@ -961,9 +997,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
           url: process.env.DATABASE_URL,
         },
       },
-      log: process.env.NODE_ENV === 'development'
-        ? ['query', 'info', 'warn', 'error']
-        : ['error'],
+      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
     });
   }
 }
@@ -974,6 +1008,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 **영향**: 대역폭 낭비
 
 **해결 방안**:
+
 ```bash
 npm install compression
 ```
@@ -982,15 +1017,17 @@ npm install compression
 // main.ts
 import * as compression from 'compression';
 
-app.use(compression({
-  filter: (req, res) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  },
-  level: 6,  // 압축 레벨 (1-9)
-}));
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+    level: 6, // 압축 레벨 (1-9)
+  }),
+);
 ```
 
 ---
@@ -1002,6 +1039,7 @@ app.use(compression({
 **영향**: 모니터링 사각지대
 
 **해결 방안**:
+
 ```bash
 npm install @nestjs/terminus
 ```
@@ -1057,6 +1095,7 @@ export class HealthController {
 ```
 
 **응답 예시**:
+
 ```json
 {
   "status": "ok",
@@ -1076,6 +1115,7 @@ export class HealthController {
 **영향**: 로그 분석 어려움
 
 **해결 방안**:
+
 ```typescript
 // common/logger/logger.config.ts
 import { WinstonModule } from 'nest-winston';
@@ -1086,29 +1126,24 @@ export const winstonConfig = WinstonModule.forRoot({
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json(),  // JSON 포맷
+        winston.format.json(), // JSON 포맷
       ),
     }),
     new winston.transports.File({
       filename: 'logs/error.log',
       level: 'error',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json(),
-      ),
+      format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
     }),
     new winston.transports.File({
       filename: 'logs/combined.log',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json(),
-      ),
+      format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
     }),
   ],
 });
 ```
 
 **로그 출력 예시**:
+
 ```json
 {
   "timestamp": "2026-02-03T10:30:00.000Z",
@@ -1126,6 +1161,7 @@ export const winstonConfig = WinstonModule.forRoot({
 **영향**: 장애 대응 지연
 
 **해결 방안**:
+
 ```bash
 npm install @sentry/nestjs @sentry/profiling-node
 ```
@@ -1162,10 +1198,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 
 ```javascript
 module.exports = {
-  extends: [
-    'plugin:@typescript-eslint/strict',
-    'plugin:@typescript-eslint/stylistic',
-  ],
+  extends: ['plugin:@typescript-eslint/strict', 'plugin:@typescript-eslint/stylistic'],
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/explicit-function-return-type': 'warn',
@@ -1178,6 +1211,7 @@ module.exports = {
 #### 8.4.2 Pre-commit Hooks
 
 **해결 방안**:
+
 ```bash
 npm install -D husky lint-staged
 npx husky init
@@ -1187,13 +1221,8 @@ npx husky init
 // package.json
 {
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md}": [
-      "prettier --write"
-    ]
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md}": ["prettier --write"]
   }
 }
 ```
@@ -1207,6 +1236,7 @@ npm run type-check
 #### 8.4.3 API 버전관리
 
 **해결 방안**:
+
 ```typescript
 // main.ts
 app.enableVersioning({
@@ -1217,7 +1247,7 @@ app.enableVersioning({
 
 // 컨트롤러에서 버전 지정
 @Controller({ path: 'orders', version: '1' })
-export class OrdersController { }
+export class OrdersController {}
 
 // 결과: /api/v1/orders
 ```
@@ -1230,60 +1260,60 @@ export class OrdersController { }
 
 ### Phase 1: 즉시 조치 (Week 1)
 
-| 항목 | 난이도 | 예상 시간 | 비고 |
-|------|--------|----------|------|
-| CORS 화이트리스트 설정 | 낮음 | 30분 | Critical |
-| ValidationPipe 재활성화 | 중간 | 2시간 | Critical |
-| 파일 업로드 인증 추가 | 낮음 | 1시간 | Critical |
-| JWT_SECRET 강화 | 낮음 | 30분 | Critical |
-| **Rate Limiting 추가** | 낮음 | 2시간 | **신규** |
-| **Health Check 추가** | 낮음 | 2시간 | **신규** |
+| 항목                    | 난이도 | 예상 시간 | 비고     |
+| ----------------------- | ------ | --------- | -------- |
+| CORS 화이트리스트 설정  | 낮음   | 30분      | Critical |
+| ValidationPipe 재활성화 | 중간   | 2시간     | Critical |
+| 파일 업로드 인증 추가   | 낮음   | 1시간     | Critical |
+| JWT_SECRET 강화         | 낮음   | 30분      | Critical |
+| **Rate Limiting 추가**  | 낮음   | 2시간     | **신규** |
+| **Health Check 추가**   | 낮음   | 2시간     | **신규** |
 
 ### Phase 2: 단기 개선 (Week 2-3)
 
-| 항목 | 난이도 | 예상 시간 | 비고 |
-|------|--------|----------|------|
-| any 타입 제거 (핵심 서비스) | 중간 | 8시간 | High |
-| N+1 쿼리 최적화 | 중간 | 4시간 | High |
-| **테스트 커버리지 개선** | 높음 | 12시간 | **Low→High 상향** |
-| **DB 인덱스 추가** | 낮음 | 2시간 | **신규** |
-| **보안 헤더 (helmet)** | 낮음 | 1시간 | **Low→High 상향** |
-| 이벤트명 표준화 | 낮음 | 4시간 | Medium |
+| 항목                        | 난이도 | 예상 시간 | 비고              |
+| --------------------------- | ------ | --------- | ----------------- |
+| any 타입 제거 (핵심 서비스) | 중간   | 8시간     | High              |
+| N+1 쿼리 최적화             | 중간   | 4시간     | High              |
+| **테스트 커버리지 개선**    | 높음   | 12시간    | **Low→High 상향** |
+| **DB 인덱스 추가**          | 낮음   | 2시간     | **신규**          |
+| **보안 헤더 (helmet)**      | 낮음   | 1시간     | **Low→High 상향** |
+| 이벤트명 표준화             | 낮음   | 4시간     | Medium            |
 
 ### Phase 3: 중기 개선 (Week 4-6)
 
-| 항목 | 난이도 | 예상 시간 | 비고 |
-|------|--------|----------|------|
-| Redis Adapter 활성화 | 중간 | 4시간 | **High→Medium 하향** |
-| 순환 의존성 제거 | 중간 | 8시간 | **High→Medium 하향** |
-| React Query 적용 | 중간 | 8시간 | Medium |
-| 컴포넌트 분리 | 중간 | 6시간 | Medium |
-| 설정 검증 (Joi) 추가 | 중간 | 4시간 | Medium |
-| **CSRF 보호 추가** | 낮음 | 2시간 | **신규** |
-| **응답 압축 설정** | 낮음 | 1시간 | **신규** |
-| **Prisma 연결 풀링** | 낮음 | 1시간 | **신규** |
+| 항목                 | 난이도 | 예상 시간 | 비고                 |
+| -------------------- | ------ | --------- | -------------------- |
+| Redis Adapter 활성화 | 중간   | 4시간     | **High→Medium 하향** |
+| 순환 의존성 제거     | 중간   | 8시간     | **High→Medium 하향** |
+| React Query 적용     | 중간   | 8시간     | Medium               |
+| 컴포넌트 분리        | 중간   | 6시간     | Medium               |
+| 설정 검증 (Joi) 추가 | 중간   | 4시간     | Medium               |
+| **CSRF 보호 추가**   | 낮음   | 2시간     | **신규**             |
+| **응답 압축 설정**   | 낮음   | 1시간     | **신규**             |
+| **Prisma 연결 풀링** | 낮음   | 1시간     | **신규**             |
 
 ### Phase 4: 장기 개선 (Month 2-3)
 
-| 항목 | 난이도 | 예상 시간 | 비고 |
-|------|--------|----------|------|
-| 통합 테스트 작성 | 높음 | 16시간 | Low |
-| E2E 테스트 확대 | 높음 | 16시간 | Low |
-| 성능 모니터링 | 중간 | 8시간 | Low |
-| 문서화 개선 | 중간 | 8시간 | Low |
-| **Sentry 에러 트래킹** | 중간 | 4시간 | **신규** |
-| **Pre-commit hooks** | 낮음 | 2시간 | **신규** |
-| **API 버전관리** | 중간 | 4시간 | **신규** |
-| **ESLint strict 규칙** | 낮음 | 2시간 | **신규** |
+| 항목                   | 난이도 | 예상 시간 | 비고     |
+| ---------------------- | ------ | --------- | -------- |
+| 통합 테스트 작성       | 높음   | 16시간    | Low      |
+| E2E 테스트 확대        | 높음   | 16시간    | Low      |
+| 성능 모니터링          | 중간   | 8시간     | Low      |
+| 문서화 개선            | 중간   | 8시간     | Low      |
+| **Sentry 에러 트래킹** | 중간   | 4시간     | **신규** |
+| **Pre-commit hooks**   | 낮음   | 2시간     | **신규** |
+| **API 버전관리**       | 중간   | 4시간     | **신규** |
+| **ESLint strict 규칙** | 낮음   | 2시간     | **신규** |
 
 ### 총 예상 소요 시간
 
-| Phase | 예상 시간 | 기간 |
-|-------|----------|------|
-| Phase 1 | ~8시간 | Week 1 |
-| Phase 2 | ~31시간 | Week 2-3 |
-| Phase 3 | ~34시간 | Week 4-6 |
-| Phase 4 | ~60시간 | Month 2-3 |
+| Phase    | 예상 시간    | 기간       |
+| -------- | ------------ | ---------- |
+| Phase 1  | ~8시간       | Week 1     |
+| Phase 2  | ~31시간      | Week 2-3   |
+| Phase 3  | ~34시간      | Week 4-6   |
+| Phase 4  | ~60시간      | Month 2-3  |
 | **합계** | **~133시간** | **~3개월** |
 
 ---
@@ -1347,16 +1377,16 @@ export class OrdersController { }
 
 ### A. 주요 파일 위치
 
-| 항목 | 경로 |
-|------|------|
-| Backend 진입점 | `backend/src/main.ts` |
-| App Module | `backend/src/app.module.ts` |
-| 예외 필터 | `backend/src/common/filters/business-exception.filter.ts` |
-| Prisma 스키마 | `backend/prisma/schema.prisma` |
-| Frontend 진입점 | `client-app/src/app/layout.tsx` |
-| API 클라이언트 | `client-app/src/lib/api/client.ts` |
-| Auth Store | `client-app/src/lib/store/auth.ts` |
-| 공유 타입 | `packages/shared-types/src/index.ts` |
+| 항목            | 경로                                                      |
+| --------------- | --------------------------------------------------------- |
+| Backend 진입점  | `backend/src/main.ts`                                     |
+| App Module      | `backend/src/app.module.ts`                               |
+| 예외 필터       | `backend/src/common/filters/business-exception.filter.ts` |
+| Prisma 스키마   | `backend/prisma/schema.prisma`                            |
+| Frontend 진입점 | `client-app/src/app/layout.tsx`                           |
+| API 클라이언트  | `client-app/src/lib/api/client.ts`                        |
+| Auth Store      | `client-app/src/lib/store/auth.ts`                        |
+| 공유 타입       | `packages/shared-types/src/index.ts`                      |
 
 ### B. 참고 문서
 
@@ -1371,6 +1401,7 @@ export class OrdersController { }
 **리뷰 검토**: Developer Agent (Amelia)
 **최종 수정**: 2026-02-03
 **변경 이력**:
+
 - 2026-02-03: 초안 작성
 - 2026-02-03: Developer Agent 리뷰 반영 (우선순위 조정, 누락 항목 추가)
 - 2026-02-03: Critical/High 이슈 수정 완료

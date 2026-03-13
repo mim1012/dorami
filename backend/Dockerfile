@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Build trigger: Fix FFmpeg RTMPS stream key truncation (commit 54dd099)
+# Build trigger: Fix workspace-nested module merge via COPY in runner stage
 
 # ============================================
 # Stage 1: 의존성 설치 (deps)
@@ -13,14 +13,17 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY backend/package.json ./backend/
+COPY client-app/package.json ./client-app/
 
 # BuildKit 캐시 마운트로 npm 캐시 영속화
-# 프로덕션 의존성만 먼저 설치하여 별도 보관
+# 1단계: 프로덕션 의존성만 설치 후 루트·workspace node_modules를 별도 보존
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev --ignore-scripts && \
-    cp -R node_modules prod_node_modules
+    cp -R node_modules prod_node_modules && \
+    [ -d backend/node_modules ] && cp -R backend/node_modules prod_backend_node_modules || true
 
-# 빌드를 위해 전체 의존성 설치 (devDependencies 포함)
+# 2단계: 빌드를 위해 전체 의존성 설치 (devDependencies 포함, builder stage와 공유)
+# 주의: 이 단계 후 node_modules는 devDeps 포함 — runner는 prod_node_modules 사용
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts
 
@@ -31,11 +34,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 의존성 복사 (npm workspaces는 루트 node_modules에 호이스팅)
-COPY --from=deps /app/node_modules ./node_modules
+# 의존성 파일 복사 (캐시 레이어 최적화)
+COPY package.json package-lock.json ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY backend/package.json ./backend/
+COPY client-app/package.json ./client-app/
+
+# devDependencies 포함 전체 의존성 설치 (nest CLI, prisma 등 빌드 도구 포함)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
 # 소스 코드 복사
-COPY package.json ./
 COPY packages/shared-types ./packages/shared-types
 COPY backend ./backend
 
@@ -43,7 +52,7 @@ COPY backend ./backend
 RUN npm run build:shared
 
 # Prisma Client 생성 및 Backend 빌드
-RUN cd backend && npx prisma generate && npm run build
+RUN cd backend && npx prisma generate && npx nest build
 
 # ============================================
 # Stage 3: 프로덕션 이미지 (runner)
@@ -59,8 +68,15 @@ RUN apk add --no-cache ffmpeg openssl && \
     adduser --system --uid 1001 nestjs && \
     mkdir -p /app/uploads && chown nestjs:nodejs /app/uploads
 
-# 프로덕션 의존성만 복사 (devDependencies 제외)
+# 프로덕션 의존성 복사 (루트 prod_node_modules — devDeps 제외)
 COPY --from=deps --chown=nestjs:nodejs /app/prod_node_modules ./node_modules
+
+# workspace-nested 모듈 병합 (ioredis 등 backend/node_modules에만 있는 패키지)
+# find로 각 패키지를 개별 복사 — BusyBox cp "dir/." 이슈 우회, 심볼릭 링크 안전
+COPY --from=deps /app/prod_backend_node_modules /tmp/ws_nm
+RUN find /tmp/ws_nm -maxdepth 1 -mindepth 1 -exec cp -R {} ./node_modules/ \; && \
+    chown -R nestjs:nodejs ./node_modules && \
+    rm -rf /tmp/ws_nm
 
 # Prisma 생성 클라이언트 복사 (builder에서 prisma generate로 생성됨)
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma

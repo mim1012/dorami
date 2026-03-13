@@ -51,7 +51,7 @@ export function Table<T extends { id: string }>({
                 <th
                   key={column.key}
                   onClick={() => handleSort(column.key, column.sortable)}
-                  className={`px-6 py-3 text-left text-caption font-medium text-secondary-text uppercase tracking-wider ${
+                  className={`px-4 py-3 md:px-6 md:py-4 text-left text-sm md:text-caption font-medium text-secondary-text uppercase tracking-wider ${
                     column.sortable ? 'cursor-pointer hover:text-hot-pink transition-colors' : ''
                   }`}
                 >
@@ -94,7 +94,7 @@ export function Table<T extends { id: string }>({
                     className={`hover:bg-content-bg/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''} ${customRowClass}`}
                   >
                     {columns.map((column) => (
-                      <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                      <td key={column.key} className="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                         {column.render ? (
                           column.render(item)
                         ) : (

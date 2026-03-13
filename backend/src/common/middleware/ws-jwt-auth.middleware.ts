@@ -2,6 +2,7 @@ import { Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import Redis from 'ioredis';
+import { PrismaService } from '../prisma/prisma.service';
 
 let redisClient: Redis | null = null;
 
@@ -13,7 +14,9 @@ function getRedisClient(): Redis {
       password: process.env.REDIS_PASSWORD ?? undefined,
       lazyConnect: true,
     });
-    redisClient.connect().catch(() => {});
+    void redisClient.connect().catch(() => {
+      // intentional: lazy connect errors are ignored
+    });
   }
   return redisClient;
 }
@@ -48,6 +51,7 @@ function parseCookieToken(cookieHeader: string | undefined): string | null {
 export async function authenticateSocket(
   socket: Socket,
   jwtService: JwtService,
+  prismaService: PrismaService,
 ): Promise<AuthenticatedSocket> {
   const token =
     (socket.handshake.auth.token as string | undefined) ??
@@ -68,20 +72,23 @@ export async function authenticateSocket(
       throw new WsException('Invalid token type');
     }
 
-    // Check Redis blacklist by jti
-    if (payload.jti) {
-      try {
-        const redis = getRedisClient();
-        const isBlacklisted = await redis.exists(`blacklist:${payload.jti}`);
-        if (isBlacklisted === 1) {
-          throw new WsException('Token has been revoked');
-        }
-      } catch (err) {
-        if (err instanceof WsException) {
-          throw err;
-        }
-        // Graceful degradation if Redis unavailable
+    // Check Redis blacklist by both jti AND userId.
+    // logout() writes blacklist:{userId}; checking both ensures logout revokes WebSocket connections.
+    try {
+      const redis = getRedisClient();
+      const uid = payload.userId ?? payload.sub;
+      const [jtiBlacklisted, userBlacklisted] = await Promise.all([
+        payload.jti ? redis.exists(`blacklist:${payload.jti}`) : Promise.resolve(0),
+        uid ? redis.exists(`blacklist:${uid}`) : Promise.resolve(0),
+      ]);
+      if (jtiBlacklisted === 1 || userBlacklisted === 1) {
+        throw new WsException('Token has been revoked');
       }
+    } catch (err) {
+      if (err instanceof WsException) {
+        throw err;
+      }
+      // Graceful degradation if Redis unavailable
     }
 
     // Check if user is suspended via Redis blacklist
@@ -89,8 +96,21 @@ export async function authenticateSocket(
     try {
       const redis = getRedisClient();
       const uid = payload.userId ?? payload.sub;
+      if (!uid) {
+        throw new WsException('Invalid token');
+      }
       const isSuspended = await redis.exists(`suspended:${uid}`);
       if (isSuspended === 1) {
+        throw new WsException('Account is suspended');
+      }
+      const user = await prismaService.user.findUnique({
+        where: { id: uid },
+        select: { status: true },
+      });
+      if (!user) {
+        throw new WsException('User not found');
+      }
+      if (user.status === 'SUSPENDED') {
         throw new WsException('Account is suspended');
       }
     } catch (err) {

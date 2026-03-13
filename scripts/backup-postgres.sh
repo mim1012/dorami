@@ -7,9 +7,9 @@
 #   ./backup-postgres.sh
 #
 # Environment variables required:
-#   POSTGRES_USER       - Database user (default: dorami_prod)
+#   POSTGRES_USER       - Database user (default: doremi_prod)
 #   POSTGRES_PASSWORD   - Database password
-#   POSTGRES_DB         - Database name (default: dorami_production)
+#   POSTGRES_DB         - Database name (default: doremi_production)
 #   S3_BUCKET           - S3 bucket name for offsite backups
 #   AWS_ACCESS_KEY_ID   - AWS credentials
 #   AWS_SECRET_ACCESS_KEY
@@ -27,20 +27,24 @@ set -euo pipefail
 # Configuration
 # ============================================================================
 
-POSTGRES_USER="${POSTGRES_USER:-dorami_prod}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
-POSTGRES_DB="${POSTGRES_DB:-dorami_production}"
+POSTGRES_USER="${POSTGRES_USER:-doremi_prod}"
+# Extract password from DATABASE_URL if POSTGRES_PASSWORD is not explicitly set
+if [ -z "${POSTGRES_PASSWORD:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+  POSTGRES_PASSWORD=$(echo "${DATABASE_URL}" | sed -n 's|^[^:]*://[^:]*:\([^@]*\)@.*|\1|p')
+fi
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
+POSTGRES_DB="${POSTGRES_DB:-doremi_production}"
 S3_BUCKET="${S3_BUCKET}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 
-BACKUP_DIR="/opt/dorami/backups"
+BACKUP_DIR="/opt/doremi/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILENAME="db_backup_${TIMESTAMP}.sql.gz"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
 BACKUP_CHECKSUM="${BACKUP_PATH}.sha256"
 
 # Docker container names to try
-CONTAINER_NAMES=("dorami-postgres-prod" "live-commerce-postgres")
+CONTAINER_NAMES=("doremi-postgres-prod" "live-commerce-postgres")
 
 # S3 paths
 S3_YEAR=$(date +%Y)
@@ -266,3 +270,4 @@ main() {
 
 # Run main function
 main "$@"
+

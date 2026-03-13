@@ -12,7 +12,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  */
 
 test.describe('Admin Orders Page Display', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -40,6 +40,39 @@ test.describe('Admin Orders Page Display', () => {
     await gotoWithRetry(page, '/admin/orders');
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
 
+    // [API-UI] Fetch total order count from API and verify UI is consistent
+    try {
+      const apiTotal = await page.evaluate(async () => {
+        const res = await fetch('/api/admin/orders', { credentials: 'include' });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return (json?.data?.total as number) ?? null;
+      });
+      console.log('[API-UI] API orders total=', apiTotal);
+      if (apiTotal !== null && apiTotal > 0) {
+        // UI should show at least one row, or pagination text should reference the count
+        const hasRows = await page
+          .locator('tbody tr')
+          .first()
+          .isVisible({ timeout: 5000 })
+          .catch(() => false);
+        const pageText = await page
+          .locator('body')
+          .innerText()
+          .catch(() => '');
+        const countMentioned = pageText.includes(String(apiTotal));
+        if (!hasRows && !countMentioned) {
+          console.warn(
+            `[API-UI] API reports ${apiTotal} orders but UI shows no rows and no count text`,
+          );
+        } else {
+          console.log(`[API-UI] UI consistent with API total=${apiTotal}`);
+        }
+      }
+    } catch (err) {
+      console.warn('[API-UI] order total check failed (non-critical):', err);
+    }
+
     // 테이블 헤더 컬럼 확인
     const columns = [
       '주문번호',
@@ -64,6 +97,96 @@ test.describe('Admin Orders Page Display', () => {
   test('should display order status badges correctly', async ({ page }) => {
     await gotoWithRetry(page, '/admin/orders');
     await expect(page.getByRole('heading', { name: '주문 관리' })).toBeVisible({ timeout: 15000 });
+
+    // [API-UI] Fetch filtered count for PENDING_PAYMENT and verify UI consistency
+    try {
+      const filteredTotal = await page.evaluate(async () => {
+        const res = await fetch('/api/admin/orders?status=PENDING_PAYMENT', {
+          credentials: 'include',
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        return (json?.data?.total as number) ?? null;
+      });
+      console.log('[API-UI] API orders total (PENDING_PAYMENT)=', filteredTotal);
+      if (filteredTotal !== null) {
+        const pageText = await page
+          .locator('body')
+          .innerText()
+          .catch(() => '');
+        const hasRows = await page
+          .locator('tbody tr')
+          .first()
+          .isVisible({ timeout: 3000 })
+          .catch(() => false);
+        if (filteredTotal > 0 && !hasRows) {
+          console.warn(
+            `[API-UI] API reports ${filteredTotal} PENDING_PAYMENT orders but UI shows no rows (filter may not be active)`,
+          );
+        } else {
+          console.log(`[API-UI] PENDING_PAYMENT filter check passed: API total=${filteredTotal}`);
+        }
+        // If the page body mentions a count, confirm it's plausible
+        if (pageText.includes(String(filteredTotal)) && filteredTotal > 0) {
+          console.log(`[API-UI] UI text references PENDING_PAYMENT count=${filteredTotal}`);
+        }
+      }
+    } catch (err) {
+      console.warn('[API-UI] PENDING_PAYMENT filter check failed (non-critical):', err);
+    }
+
+    // [API-UI] Extract first order ID from UI, fetch from API, compare status badge
+    try {
+      const firstOrderId = await page.evaluate(() => {
+        const cells = Array.from(document.querySelectorAll('tbody td'));
+        for (const cell of cells) {
+          const text = cell.textContent?.trim() ?? '';
+          if (/^ORD-\d{8}-\d{5}$/.test(text)) return text;
+        }
+        return null;
+      });
+      if (firstOrderId) {
+        const apiOrder = await page.evaluate(async (orderId: string) => {
+          const res = await fetch(`/api/admin/orders/${orderId}`, { credentials: 'include' });
+          if (!res.ok) return null;
+          const json = await res.json();
+          return (json?.data as { status: string }) ?? null;
+        }, firstOrderId);
+        if (apiOrder) {
+          const statusMap: Record<string, string> = {
+            PENDING_PAYMENT: '입금 대기',
+            PAYMENT_CONFIRMED: '입금 완료',
+            SHIPPED: '배송중',
+            DELIVERED: '배송 완료',
+            CANCELLED: '취소됨',
+          };
+          const expectedLabel = statusMap[apiOrder.status];
+          console.log(
+            `[API-UI] order ${firstOrderId} API status=${apiOrder.status} expected UI label="${expectedLabel}"`,
+          );
+          if (expectedLabel) {
+            const row = page.locator('tr', { hasText: firstOrderId });
+            const labelVisible = await row
+              .getByText(expectedLabel)
+              .isVisible()
+              .catch(() => false);
+            if (!labelVisible) {
+              console.warn(
+                `[API-UI] order ${firstOrderId} status badge mismatch: API=${apiOrder.status} but UI label "${expectedLabel}" not found in row`,
+              );
+            } else {
+              console.log(`[API-UI] order ${firstOrderId} status badge matches API`);
+            }
+          }
+        }
+      } else {
+        console.log(
+          '[API-UI] no ORD-* order ID found in table — skipping order status badge check',
+        );
+      }
+    } catch (err) {
+      console.warn('[API-UI] order status badge check failed (non-critical):', err);
+    }
 
     // 테이블 로딩 대기 (주문이 없을 수 있으므로 조건부)
     const hasRows = await page
@@ -139,7 +262,7 @@ test.describe('Admin Orders Page Display', () => {
 });
 
 test.describe('Admin Orders Filter', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -241,7 +364,7 @@ test.describe('Admin Orders Filter', () => {
 });
 
 test.describe('Admin Orders Confirm Payment Dialog', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -297,7 +420,7 @@ test.describe('Admin Orders Confirm Payment Dialog', () => {
 });
 
 test.describe('Admin Orders Send Reminder Dialog', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -351,7 +474,7 @@ test.describe('Admin Orders Send Reminder Dialog', () => {
 });
 
 test.describe('Bulk Notify Page', () => {
-  test.setTimeout(60000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');

@@ -8,6 +8,32 @@ ENV_FILE="/opt/dorami/.env.staging"
 
 echo "Fixing staging environment variables..."
 
+# Create .env.staging if it doesn't exist (git reset may have deleted it)
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Creating .env.staging from environment variables..."
+  cat > "$ENV_FILE" << 'EOF'
+DATABASE_URL="postgresql://postgres:postgres@postgres:5432/live_commerce_staging"
+REDIS_URL="redis://redis:6379"
+JWT_SECRET="dev-jwt-secret-change-in-production"
+PROFILE_ENCRYPTION_KEY="012345678901234567890123456789ab012345678901234567890123456789ab"
+KAKAO_CLIENT_ID=""
+KAKAO_CLIENT_SECRET=""
+KAKAO_CALLBACK_URL=""
+ADMIN_EMAILS=""
+APP_ENV="staging"
+NODE_ENV="production"
+PORT="3001"
+CORS_ORIGINS="http://staging.doremi-live.com,http://localhost:3000,http://localhost:8080"
+CSRF_ENABLED="true"
+RTMP_SERVER_URL="rtmp://staging.doremi-live.com/live"
+HLS_SERVER_URL="http://staging.doremi-live.com/hls"
+MEDIA_SERVER_URL="http://localhost:8080"
+ENABLE_DEV_AUTH="false"
+LOG_LEVEL="debug"
+EOF
+  echo "✓ .env.staging created"
+fi
+
 # Ensure RTMP_SERVER_URL has explicit port 1935
 if [ -f "$ENV_FILE" ]; then
   # Check if RTMP_SERVER_URL exists but without port

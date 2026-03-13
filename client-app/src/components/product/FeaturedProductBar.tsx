@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api/client';
 import { io } from 'socket.io-client';
 import type { Product } from '@/lib/types';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { formatPrice } from '@/lib/utils/price';
 
 type FeaturedProduct = Pick<
   Product,
@@ -95,13 +96,13 @@ export default function FeaturedProductBar({ streamKey, onProductClick }: Featur
             {product.discountRate && product.discountRate > 0 ? (
               <>
                 <span className="text-small text-secondary-text line-through">
-                  ${(product.originalPrice ?? product.price).toLocaleString()}
+                  {formatPrice(product.originalPrice ?? product.price)}
                 </span>
                 <span className="text-small text-error font-bold">{product.discountRate}%</span>
-                <p className="text-h2 text-hot-pink font-bold">${product.price.toLocaleString()}</p>
+                <p className="text-h2 text-hot-pink font-bold">{formatPrice(product.price)}</p>
               </>
             ) : (
-              <p className="text-h2 text-hot-pink font-bold">${product.price.toLocaleString()}</p>
+              <p className="text-h2 text-hot-pink font-bold">{formatPrice(product.price)}</p>
             )}
             <p className="text-small text-secondary-text">재고 {product.stock}</p>
           </div>

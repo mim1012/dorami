@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { EncryptionService } from '../../common/services/encryption.service';
+import { isCaliforniaAddress } from '../../common/utils/address.util';
 import {
   AddToCartDto,
   UpdateCartItemDto,
@@ -10,6 +10,11 @@ import {
   CartSummaryDto,
   CartStatus,
 } from './dto/cart.dto';
+import {
+  ProductStatus,
+  CartStatus as SharedCartStatus,
+  ReservationStatus,
+} from '@live-commerce/shared-types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Cart, Prisma } from '@prisma/client';
 
@@ -40,32 +45,7 @@ export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly encryptionService: EncryptionService,
   ) {}
-
-  private isCaliforniaAddress(shippingAddress: unknown): boolean {
-    if (!shippingAddress) {
-      return false;
-    }
-
-    // Legacy/plain JSON address shape
-    if (typeof shippingAddress === 'object') {
-      const state = (shippingAddress as Record<string, unknown>).state;
-      return typeof state === 'string' && state.toUpperCase() === 'CA';
-    }
-
-    // Current encrypted address shape (stored as string in JSON column)
-    if (typeof shippingAddress === 'string') {
-      try {
-        const decrypted = this.encryptionService.decryptAddress(shippingAddress);
-        return decrypted.state.toUpperCase() === 'CA';
-      } catch {
-        this.logger.warn('Failed to decrypt shipping address while calculating shipping fee');
-      }
-    }
-
-    return false;
-  }
 
   /**
    * Epic 6: Add product to cart with timer
@@ -85,7 +65,7 @@ export class CartService {
           productId,
           color: color ?? null,
           size: size ?? null,
-          status: 'ACTIVE',
+          status: SharedCartStatus.ACTIVE,
         },
       }),
     ]);
@@ -94,7 +74,7 @@ export class CartService {
       throw new NotFoundException(`Product ${productId} not found`);
     }
 
-    if (product.status !== 'AVAILABLE') {
+    if (product.status !== ProductStatus.AVAILABLE) {
       throw new BadRequestException('Product is not available for purchase');
     }
 
@@ -108,7 +88,7 @@ export class CartService {
         async (tx) => {
           // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
           const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-          if (freshProduct.status !== 'AVAILABLE') {
+          if (freshProduct.status !== ProductStatus.AVAILABLE) {
             throw new BadRequestException('Product is not available for purchase');
           }
           // Re-check available stock within transaction
@@ -123,15 +103,15 @@ export class CartService {
           }
 
           // Also sync timer settings from product in case they changed after item was first added
-          const newExpiresAt = product.timerEnabled
-            ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+          const newExpiresAt = freshProduct.timerEnabled
+            ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
             : null;
 
           return await tx.cart.update({
             where: { id: existingCartItem.id },
             data: {
               quantity: newQuantity,
-              timerEnabled: product.timerEnabled,
+              timerEnabled: freshProduct.timerEnabled,
               expiresAt: newExpiresAt,
             },
           });
@@ -149,7 +129,7 @@ export class CartService {
       async (tx) => {
         // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
         const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-        if (freshProduct.status !== 'AVAILABLE') {
+        if (freshProduct.status !== ProductStatus.AVAILABLE) {
           throw new BadRequestException('Product is not available for purchase');
         }
         // Re-check available stock within transaction to prevent TOCTOU race condition
@@ -162,8 +142,8 @@ export class CartService {
           );
         }
 
-        const expiresAt = product.timerEnabled
-          ? new Date(Date.now() + product.timerDuration * 60 * 1000)
+        const expiresAt = freshProduct.timerEnabled
+          ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
           : null;
 
         return await tx.cart.create({
@@ -176,9 +156,9 @@ export class CartService {
             color,
             size,
             shippingFee: new Decimal(0),
-            timerEnabled: product.timerEnabled,
+            timerEnabled: freshProduct.timerEnabled,
             expiresAt,
-            status: 'ACTIVE',
+            status: SharedCartStatus.ACTIVE,
           },
         });
       },
@@ -224,7 +204,7 @@ export class CartService {
     const cartItems = await this.prisma.cart.findMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       orderBy: {
         createdAt: 'desc',
@@ -248,7 +228,7 @@ export class CartService {
       where: {
         id: cartItemId,
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -256,17 +236,12 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
-    // Check stock availability
-    const product = await this.prisma.product.findUnique({
-      where: { id: cartItem.productId },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Product not found');
-    }
-
     const updatedItem = await this.prisma.$transaction(
       async (tx) => {
+        const product = await tx.product.findUniqueOrThrow({
+          where: { id: cartItem.productId },
+        });
+
         // Re-check stock within transaction to prevent TOCTOU race condition
         const reservedQuantity = await this.getReservedQuantityInTransaction(
           tx,
@@ -310,7 +285,7 @@ export class CartService {
       where: {
         id: cartItemId,
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -341,14 +316,14 @@ export class CartService {
     const cartItems = await this.prisma.cart.findMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
     await this.prisma.cart.deleteMany({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
     });
 
@@ -376,7 +351,7 @@ export class CartService {
       // Find expired carts first to get product IDs
       const expiredCarts = await this.prisma.cart.findMany({
         where: {
-          status: 'ACTIVE',
+          status: SharedCartStatus.ACTIVE,
           timerEnabled: true,
           expiresAt: {
             lte: now,
@@ -396,7 +371,7 @@ export class CartService {
           },
         },
         data: {
-          status: 'EXPIRED',
+          status: SharedCartStatus.EXPIRED,
         },
       });
 
@@ -408,9 +383,9 @@ export class CartService {
           where: {
             userId: cart.userId,
             productId: cart.productId,
-            status: 'PROMOTED',
+            status: ReservationStatus.PROMOTED,
           },
-          data: { status: 'EXPIRED' },
+          data: { status: ReservationStatus.EXPIRED },
         });
       }
 
@@ -440,7 +415,7 @@ export class CartService {
     const result = await this.prisma.cart.aggregate({
       where: {
         productId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       _sum: {
         quantity: true,
@@ -460,7 +435,7 @@ export class CartService {
     const result = await tx.cart.aggregate({
       where: {
         productId,
-        status: 'ACTIVE',
+        status: SharedCartStatus.ACTIVE,
       },
       _sum: {
         quantity: true,
@@ -534,7 +509,7 @@ export class CartService {
             select: { shippingAddress: true },
           });
           if (user?.shippingAddress) {
-            isCA = this.isCaliforniaAddress(user.shippingAddress);
+            isCA = isCaliforniaAddress(user.shippingAddress);
           }
         }
         totalShippingFee = isCA ? caShippingFee : defaultShippingFee;

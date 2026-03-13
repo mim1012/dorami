@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { isCaliforniaAddress } from '../../common/utils/address.util';
 import { RedisService } from '../../common/redis/redis.service';
-import { EncryptionService } from '../../common/services/encryption.service';
 import { InventoryService } from './inventory.service';
 import {
   CreateOrderDto,
@@ -22,6 +22,7 @@ import { OrderCreatedEvent, OrderPaidEvent } from '../../common/events/order.eve
 import { PointsService } from '../points/points.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PointTransactionType, Order, OrderItem, Prisma } from '@prisma/client';
+import { CartStatus } from '@live-commerce/shared-types';
 
 // Type for Order with items
 interface OrderWithItems extends Order {
@@ -62,33 +63,8 @@ export class OrdersService {
     private notificationsService: NotificationsService,
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
-    private encryptionService: EncryptionService,
   ) {
     this.orderExpirationMinutes = this.configService.get<number>('ORDER_EXPIRATION_MINUTES', 10);
-  }
-
-  private isCaliforniaAddress(shippingAddress: unknown): boolean {
-    if (!shippingAddress) {
-      return false;
-    }
-
-    // Legacy/plain JSON address shape
-    if (typeof shippingAddress === 'object') {
-      const state = (shippingAddress as Record<string, unknown>).state;
-      return typeof state === 'string' && state.toUpperCase() === 'CA';
-    }
-
-    // Current encrypted address shape (stored as string in JSON column)
-    if (typeof shippingAddress === 'string') {
-      try {
-        const decrypted = this.encryptionService.decryptAddress(shippingAddress);
-        return decrypted.state.toUpperCase() === 'CA';
-      } catch {
-        this.logger.warn('Failed to decrypt shipping address while calculating shipping fee');
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -111,7 +87,7 @@ export class OrdersService {
         const cartItems = await tx.cart.findMany({
           where: {
             userId,
-            status: 'ACTIVE',
+            status: CartStatus.ACTIVE,
           },
           include: {
             product: true,
@@ -200,7 +176,7 @@ export class OrdersService {
             depositorName: user.depositorName ?? user.name,
             instagramId: user.instagramId ?? '',
             shippingAddress: user.shippingAddress ?? {},
-            status: 'PENDING_PAYMENT',
+            status: OrderStatus.PENDING_PAYMENT,
             paymentMethod: 'BANK_TRANSFER',
             paymentStatus: 'PENDING',
             shippingStatus: 'PENDING',
@@ -221,10 +197,10 @@ export class OrdersService {
         await tx.cart.updateMany({
           where: {
             userId,
-            status: 'ACTIVE',
+            status: CartStatus.ACTIVE,
           },
           data: {
-            status: 'COMPLETED',
+            status: CartStatus.COMPLETED,
           },
         });
 
@@ -332,6 +308,24 @@ export class OrdersService {
       productIds,
     );
 
+    // Apply point discount with validation
+    const pointsToUse = createOrderDto.pointsToUse;
+    let effectivePointsUsed = 0;
+    if (pointsToUse && pointsToUse > 0) {
+      await this.pointsService.validateRedemption(userId, pointsToUse, totals.total);
+      effectivePointsUsed = pointsToUse;
+    }
+
+    // Ensure final total is never negative
+    const finalTotal = Math.max(0, totals.total - effectivePointsUsed);
+    if (finalTotal === 0 && totals.total > 0) {
+      throw new BusinessException(
+        'INVALID_ORDER_TOTAL',
+        { total: finalTotal, pointsUsed: effectivePointsUsed },
+        'Order total cannot be zero after points redemption',
+      );
+    }
+
     // Generate unique order ID outside transaction (uses Redis, not transactional)
     const orderId = await this.generateOrderId();
 
@@ -347,7 +341,7 @@ export class OrdersService {
           })),
         );
 
-        return tx.order.create({
+        const createdOrder = await tx.order.create({
           data: {
             id: orderId,
             userId,
@@ -355,10 +349,11 @@ export class OrdersService {
             depositorName: user.depositorName ?? user.name,
             instagramId: user.instagramId ?? '',
             shippingAddress: user.shippingAddress ?? {},
-            status: 'PENDING_PAYMENT',
+            status: OrderStatus.PENDING_PAYMENT,
             subtotal: new Decimal(totals.subtotal),
             shippingFee: new Decimal(totals.totalShippingFee),
-            total: new Decimal(totals.total),
+            total: new Decimal(finalTotal),
+            pointsUsed: effectivePointsUsed,
             orderItems: {
               create: orderItemsData,
             },
@@ -367,6 +362,18 @@ export class OrdersService {
             orderItems: true,
           },
         });
+
+        if (pointsToUse && pointsToUse > 0) {
+          await this.pointsService.deductPointsTx(
+            tx,
+            userId,
+            pointsToUse,
+            PointTransactionType.USED_ORDER,
+            createdOrder.id,
+          );
+        }
+
+        return createdOrder;
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -435,12 +442,14 @@ export class OrdersService {
     userId?: string,
     productIds?: string[],
   ): Promise<OrderTotals> {
-    let subtotal = 0;
+    let subtotalCents = 0;
 
     items.forEach((item) => {
       const price = typeof item.price === 'number' ? item.price : Number(item.price);
-      subtotal += price * item.quantity;
+      subtotalCents += Math.round(price * 100) * item.quantity;
     });
+
+    const subtotal = subtotalCents / 100;
 
     // Calculate global shipping fee
     let totalShippingFee = 0;
@@ -483,7 +492,7 @@ export class OrdersService {
             select: { shippingAddress: true },
           });
           if (user?.shippingAddress) {
-            isCA = this.isCaliforniaAddress(user.shippingAddress);
+            isCA = isCaliforniaAddress(user.shippingAddress);
           }
         }
         totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
@@ -507,14 +516,14 @@ export class OrdersService {
       throw new OrderNotFoundException(orderId);
     }
 
-    if (order.status !== 'PENDING_PAYMENT') {
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new BusinessException('ORDER_NOT_PENDING', { orderId });
     }
 
     const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
       data: {
-        status: 'PAYMENT_CONFIRMED',
+        status: OrderStatus.PAYMENT_CONFIRMED,
         paidAt: new Date(),
       },
       include: { orderItems: true },
@@ -528,30 +537,6 @@ export class OrdersService {
     this.eventEmitter.emit('order:paid', paidEvent);
 
     return this.mapToResponseDto(updatedOrder);
-  }
-
-  async cancelOrder(orderId: string, userId: string): Promise<void> {
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
-      include: { orderItems: true },
-    });
-
-    if (!order) {
-      throw new OrderNotFoundException(orderId);
-    }
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.inventoryService.batchRestoreStockTx(
-        tx,
-        order.orderItems as { productId: string; quantity: number }[],
-      );
-      await tx.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
-    });
-
-    // Remove timer
-    await this.redisService.del(`order:timer:${orderId}`);
-
-    this.eventEmitter.emit('order:cancelled', { orderId });
   }
 
   /**
@@ -624,14 +609,43 @@ export class OrdersService {
     return responseDto;
   }
 
-  async findByUserId(userId: string): Promise<OrderResponseDto[]> {
-    const orders = await this.prisma.order.findMany({
-      where: { userId },
-      include: { orderItems: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findByUserId(
+    userId: string,
+    options?: { page?: number; limit?: number; status?: string },
+  ): Promise<{
+    items: OrderResponseDto[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const page = options?.page ?? 1;
+    const limit = Math.min(options?.limit ?? 20, 50);
+    const skip = (page - 1) * limit;
 
-    return orders.map((o) => this.mapToResponseDto(o));
+    const where: Prisma.OrderWhereInput = { userId };
+    if (options?.status) {
+      where.status = options.status as OrderStatus;
+    }
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        include: { orderItems: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      items: orders.map((o) => this.mapToResponseDto(o)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**
@@ -659,7 +673,7 @@ export class OrdersService {
       // Find orders that should be expired
       const expiredOrders = await this.prisma.order.findMany({
         where: {
-          status: 'PENDING_PAYMENT',
+          status: OrderStatus.PENDING_PAYMENT,
           createdAt: {
             lte: expirationTime,
           },
@@ -696,7 +710,7 @@ export class OrdersService {
               tx,
               order.orderItems as { productId: string; quantity: number }[],
             );
-            await tx.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } });
+            await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED } });
           });
 
           this.logger.log(`Auto-cancelled expired order: ${order.id}`);
@@ -722,7 +736,7 @@ export class OrdersService {
       const unpaidOrders = await this.prisma.order.findMany({
         where: {
           paymentStatus: 'PENDING',
-          status: 'PENDING_PAYMENT',
+          status: OrderStatus.PENDING_PAYMENT,
           createdAt: { lte: sixHoursAgo },
         },
         select: {
@@ -755,8 +769,8 @@ export class OrdersService {
             order.depositorName,
           );
 
-          // Mark as sent, expire after 24 hours
-          await this.redisService.set(reminderKey, '1', 60 * 60 * 24);
+          // Mark as sent, expire after 7 days
+          await this.redisService.set(reminderKey, '1', 60 * 60 * 24 * 7);
 
           this.logger.log(`Payment reminder sent for order ${order.id}`);
         } catch (error) {

@@ -177,7 +177,7 @@ function collectNetwork() {
 
 function collectResources() {
   try {
-    const result = execSync('docker stats --no-stream --format "{{.Name}} {{.MemPerc}}" 2>/dev/null | grep dorami', {
+    const result = execSync('docker stats --no-stream --format "{{.Name}} {{.MemPerc}}" 2>/dev/null | grep doremi', {
       encoding: 'utf-8',
       timeout: 10000,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -348,3 +348,4 @@ console.log(`\n=== TOTAL SCORE: ${totalScore} / 100 ===\n`);
 const report = generateReport();
 fs.writeFileSync(OUTPUT_FILE, report);
 console.log(`Report saved: ${OUTPUT_FILE}`);
+

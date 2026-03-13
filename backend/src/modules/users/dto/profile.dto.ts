@@ -46,14 +46,6 @@ export class UpdateAddressDto {
     message: 'ZIP code must be in format 12345 or 12345-6789',
   })
   zip!: string;
-
-  @ApiProperty({ description: '전화번호', example: '(213) 555-1234' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\(\d{3}\) \d{3}-\d{4}$/, {
-    message: 'Phone number must be in format (123) 456-7890',
-  })
-  phone!: string;
 }
 
 export class ProfileResponseDto {
@@ -81,8 +73,11 @@ export class ProfileResponseDto {
   @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
   instagramId?: string;
 
-  @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
-  phone?: string;
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (알림톡용)',
+    example: '010-1234-5678',
+  })
+  kakaoPhone?: string;
 
   @ApiPropertyOptional({ description: '배송지 정보 (복호화됨)' })
   shippingAddress?: {
@@ -92,8 +87,13 @@ export class ProfileResponseDto {
     city: string;
     state: string;
     zip: string;
-    phone: string;
   };
+
+  @ApiProperty({ description: '프로필 완료 여부', example: true })
+  profileComplete!: boolean;
+
+  @ApiPropertyOptional({ description: '프로필 완료 시각 (ISO 문자열)' })
+  profileCompletedAt?: Date;
 
   @ApiProperty({ description: '계정 생성일' })
   createdAt!: Date;

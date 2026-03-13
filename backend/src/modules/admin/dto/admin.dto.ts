@@ -1,4 +1,5 @@
 import {
+  IsEmail,
   IsOptional,
   IsInt,
   Min,
@@ -10,9 +11,17 @@ import {
   IsNumber,
   IsBoolean,
   IsNotEmpty,
+  Matches,
+  Length,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { Role, UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export class GetUsersQueryDto {
   @IsOptional()
@@ -100,14 +109,16 @@ export class UserListItemDto {
   id!: string;
   email!: string;
   name!: string;
-  phone!: string | null;
+  depositorName!: string | null;
+  kakaoPhone!: string | null;
   instagramId!: string | null;
   shippingAddressSummary?: string | null;
+  profileCompletedAt!: string | null;
   createdAt!: string;
   lastLoginAt!: string | null;
   lastPurchaseAt?: string | null;
-  status!: string;
-  role!: string;
+  status!: UserStatus;
+  role!: Role;
   totalOrders!: number;
   totalPurchaseAmount!: string;
 }
@@ -334,9 +345,9 @@ export class OrderListItemDto {
   userEmail!: string;
   depositorName!: string;
   instagramId!: string;
-  status!: string;
-  paymentStatus!: string;
-  shippingStatus!: string;
+  status!: OrderStatus;
+  paymentStatus!: PaymentStatus;
+  shippingStatus!: ShippingStatus;
   subtotal!: string;
   shippingFee!: string;
   total!: string;
@@ -370,7 +381,6 @@ export class ShippingAddressDto {
   city!: string;
   state!: string;
   zip!: string;
-  phone!: string;
 }
 
 export class UserStatisticsDto {
@@ -380,27 +390,111 @@ export class UserStatisticsDto {
   orderFrequency!: number; // orders per month
 }
 
+export class UpdateAdminUserAddressDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  fullName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  address1!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  address2?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  city!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^[A-Z]{2}$/, {
+    message: 'State must be 2-letter US code',
+  })
+  state!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{5}(-\d{4})?$/, {
+    message: 'ZIP code must be in format 12345 or 12345-6789',
+  })
+  zip!: string;
+}
+
+export class UpdateAdminUserDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsEmail()
+  @IsNotEmpty()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  depositorName?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^@?[a-zA-Z0-9._]+$/, {
+    message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
+  })
+  @Transform(({ value }: { value: string }) => {
+    if (!value) {
+      return value;
+    }
+    return value.startsWith('@') ? value : `@${value}`;
+  })
+  instagramId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
+  })
+  kakaoPhone?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateAdminUserAddressDto)
+  shippingAddress?: UpdateAdminUserAddressDto;
+}
+
 export class UserDetailDto {
   id!: string;
   email!: string;
   name!: string;
+  kakaoPhone?: string;
   instagramId!: string | null;
   depositorName!: string | null;
   shippingAddress!: ShippingAddressDto | null;
   createdAt!: string;
   lastLoginAt!: string | null;
-  status!: string;
-  role!: string;
+  status!: UserStatus;
+  role!: Role;
   suspendedAt!: string | null;
   statistics!: UserStatisticsDto;
 }
 
 export class UpdateUserStatusDto {
   @IsString()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'SUSPENDED'], {
+  @IsEnum(UserStatus, {
     message: 'status must be one of ACTIVE, INACTIVE, SUSPENDED',
   })
-  status!: string;
+  status!: UserStatus;
 
   @IsOptional()
   @IsString()
@@ -444,10 +538,6 @@ export class UpdateSystemSettingsDto {
 
   @IsOptional()
   @IsBoolean()
-  emailNotificationsEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   alimtalkEnabled?: boolean;
 
   @IsOptional()
@@ -469,6 +559,26 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   zelleRecipientName?: string;
+
+  @IsOptional()
+  @IsString()
+  venmoEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  venmoRecipientName?: string;
+
+  @IsOptional()
+  @IsString()
+  businessRegistrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  businessAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  onlineSalesRegistrationNumber?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -535,8 +645,8 @@ export class UpdateNotificationTemplateDto {
 
 export class UpdateOrderStatusDto {
   @IsString()
-  @IsEnum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
-  status!: string;
+  @IsEnum(OrderStatus)
+  status!: OrderStatus;
 }
 
 export class UpdateOrderShippingStatusDto {

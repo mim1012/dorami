@@ -4,11 +4,19 @@ import { useEffect } from 'react';
 
 function detectKakaoInApp(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return navigator.userAgent.toLowerCase().includes('kakaotalk');
+  return /kakaotalk/i.test(navigator.userAgent);
 }
 
 function detectAndroid(): boolean {
   return /android/i.test(navigator.userAgent);
+}
+
+function detectIOS(): boolean {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function hasOpenExternalRequest(searchParams: URLSearchParams): boolean {
+  return searchParams.get('openExternal') === '1';
 }
 
 function buildIntentUrl(url: string): string {
@@ -23,19 +31,32 @@ export function KakaoInAppBrowserGuard() {
   useEffect(() => {
     if (!detectKakaoInApp()) return;
 
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
 
-    // Android: Intent URL로 자동 오픈
+    const url = new URL(window.location.href);
+    const shouldHandle = hasOpenExternalRequest(url.searchParams) || detectAndroid();
+
+    if (!shouldHandle) return;
+
+    const marker = `kakao-inapp-redirected:${url.pathname}`;
+    if (sessionStorage.getItem(marker) === '1') return;
+    sessionStorage.setItem(marker, '1');
+
+    url.searchParams.delete('openExternal');
+
     if (detectAndroid()) {
+      const currentUrl = url.toString();
       const intentUrl = buildIntentUrl(currentUrl);
       setTimeout(() => {
         window.location.href = intentUrl;
       }, 100);
+      return;
     }
-    // iOS: window.open()으로 외부 브라우저에서 열기 (무한 새로고침 방지)
-    else {
+
+    if (detectIOS()) {
+      window.history.replaceState({}, '', url.toString());
       setTimeout(() => {
-        window.open(currentUrl, '_blank');
+        window.open(url.toString(), '_blank');
       }, 100);
     }
   }, []);

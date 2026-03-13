@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationsService } from '../notifications.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
@@ -32,15 +32,16 @@ export class NotificationEventsListener {
         this.logger.log(`Order ${payload.orderId} used ${order.pointsUsed} points`);
       }
 
-      // Send alimtalk if user has phone number
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
-        select: { phone: true },
+        select: { kakaoPhone: true },
       });
 
-      if (user?.phone && order) {
+      const effectivePhone = user?.kakaoPhone ?? null;
+
+      if (effectivePhone && order) {
         await this.alimtalkService.sendOrderAlimtalk(
-          user.phone,
+          effectivePhone,
           payload.orderId,
           Number(order.total),
         );
@@ -120,5 +121,15 @@ export class NotificationEventsListener {
     } catch (error) {
       this.logger.error('Failed to send cart expired notification', (error as Error).message);
     }
+  }
+
+  @OnEvent('stream:started')
+  async handleStreamStarted(payload: { streamId: string; userId: string }) {
+    // 라이브 시작 시 판매자에게 알림톡 발송 (선택적)
+    // 현재는 로그만 기록 (알림톡 템플릿 미정)
+    Logger.log(
+      `Stream started: ${payload.streamId} by user: ${payload.userId}`,
+      'NotificationEventsListener',
+    );
   }
 }

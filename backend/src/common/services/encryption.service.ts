@@ -1,16 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-
-export interface ShippingAddress {
-  fullName: string;
-  address1: string;
-  address2?: string;
-  city: string;
-  state: string; // 2-letter code: CA, NY, TX, etc.
-  zip: string; // 12345 or 12345-6789
-  phone: string; // (XXX) XXX-XXXX
-}
+import type { ShippingAddress } from '@live-commerce/shared-types';
+export type { ShippingAddress } from '@live-commerce/shared-types';
 
 @Injectable()
 export class EncryptionService {

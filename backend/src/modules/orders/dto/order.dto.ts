@@ -78,13 +78,13 @@ export class OrderResponseDto {
   })
   status!: OrderStatus;
 
-  @ApiProperty({ description: '소계 (원)', example: '29000.00' })
+  @ApiProperty({ description: '소계 (USD)', example: '29000.00' })
   subtotal!: string;
 
-  @ApiProperty({ description: '배송비 (원)', example: '3000.00' })
+  @ApiProperty({ description: '배송비 (USD)', example: '3000.00' })
   shippingFee!: string;
 
-  @ApiProperty({ description: '합계 (원)', example: '32000.00' })
+  @ApiProperty({ description: '합계 (USD)', example: '32000.00' })
   total!: string;
 
   @ApiProperty({ description: '적립 포인트', example: 290 })

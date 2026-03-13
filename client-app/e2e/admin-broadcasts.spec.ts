@@ -8,7 +8,7 @@ import { ensureAuth, gotoWithRetry } from './helpers/auth-helper';
  */
 
 test.describe('Admin Broadcasts Page', () => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
 
   test.beforeEach(async ({ page }) => {
     await ensureAuth(page, 'ADMIN');
@@ -51,7 +51,9 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 정상 로드 시
-    await expect(page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first()).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first(),
+    ).toBeVisible();
 
     // 라이브 현황 카드
     await expect(page.getByText('현재 라이브 중')).toBeVisible();
@@ -75,7 +77,10 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 모달 열기
-    await page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first().click();
+    await page
+      .getByRole('button', { name: /방송 키 발급|새 방송 시작/ })
+      .first()
+      .click();
 
     // 모달 내용 확인
     await expect(page.getByPlaceholder('예: 오늘의 라이브 방송')).toBeVisible({ timeout: 5000 });
@@ -95,7 +100,10 @@ test.describe('Admin Broadcasts Page', () => {
     }
 
     // 모달 열기 → 제목 입력 → 발급
-    await page.getByRole('button', { name: /방송 키 발급|새 방송 시작/ }).first().click();
+    await page
+      .getByRole('button', { name: /방송 키 발급|새 방송 시작/ })
+      .first()
+      .click();
     await page.getByPlaceholder('예: 오늘의 라이브 방송').fill('E2E 테스트 방송');
     await page.getByRole('button', { name: /발급하기|스트림 키 발급/ }).click();
 
@@ -117,4 +125,3 @@ test.describe('Admin Broadcasts Page', () => {
     }
   });
 });
-

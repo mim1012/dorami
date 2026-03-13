@@ -1,19 +1,19 @@
-# Dorami Monitoring Suite
+# Doremi Monitoring Suite
 
-Infrastructure monitoring and metrics collection for Dorami Live Commerce load tests.
+Infrastructure monitoring and metrics collection for Doremi Live Commerce load tests.
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `run-monitoring-suite.sh` | Master orchestrator — start everything |
-| `metrics-collector.sh` | Continuous Docker + system metrics (JSON, 1s granularity) |
-| `nginx-analyzer.sh` | Post-test nginx log analysis (response times, error rates) |
-| `srs-metrics.sh` | SRS streaming server log analysis (drops, disconnects, BW) |
-| `backend-metrics.sh` | NestJS/Socket.IO log analysis (connections, throughput) |
-| `health-check-dashboard.html` | Real-time browser dashboard |
-| `prometheus-config.yml` | Prometheus scrape configuration |
-| `alert-rules.yml` | Prometheus alerting rules |
+| Script                        | Purpose                                                    |
+| ----------------------------- | ---------------------------------------------------------- |
+| `run-monitoring-suite.sh`     | Master orchestrator — start everything                     |
+| `metrics-collector.sh`        | Continuous Docker + system metrics (JSON, 1s granularity)  |
+| `nginx-analyzer.sh`           | Post-test nginx log analysis (response times, error rates) |
+| `srs-metrics.sh`              | SRS streaming server log analysis (drops, disconnects, BW) |
+| `backend-metrics.sh`          | NestJS/Socket.IO log analysis (connections, throughput)    |
+| `health-check-dashboard.html` | Real-time browser dashboard                                |
+| `prometheus-config.yml`       | Prometheus scrape configuration                            |
+| `alert-rules.yml`             | Prometheus alerting rules                                  |
 
 ## Quick Start
 
@@ -46,13 +46,13 @@ bash scripts/load-test-combined.sh https://staging.doremi-live.com my-stream-key
 
 ```bash
 # Nginx logs
-./nginx-analyzer.sh --container dorami-nginx --output ./results/
+./nginx-analyzer.sh --container doremi-nginx --output ./results/
 
 # SRS logs
-./srs-metrics.sh --container dorami-srs --output ./results/ --since 2h
+./srs-metrics.sh --container doremi-srs --output ./results/ --since 2h
 
 # Backend logs
-./backend-metrics.sh --container dorami-backend --output ./results/ --since 2h
+./backend-metrics.sh --container doremi-backend --output ./results/ --since 2h
 ```
 
 ## Dashboard
@@ -63,6 +63,7 @@ bash scripts/load-test-combined.sh https://staging.doremi-live.com my-stream-key
 4. Dashboard auto-parses and renders all metrics with sparklines and color-coded thresholds
 
 **Thresholds:**
+
 - Green: < 50%
 - Yellow: 50–75%
 - Red: > 75%
@@ -84,7 +85,7 @@ results/
   SUMMARY_REPORT.md                  # Human-readable summary
 ```
 
-### metrics-*.json schema
+### metrics-\*.json schema
 
 ```json
 [
@@ -103,7 +104,7 @@ results/
     },
     "containers": [
       {
-        "name": "dorami-backend",
+        "name": "doremi-backend",
         "cpu_pct": 5.2,
         "mem_usage": "256MiB",
         "mem_limit": "4GiB",
@@ -122,37 +123,37 @@ results/
 For long-term metrics retention, add to `docker-compose.yml`:
 
 ```yaml
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infrastructure/monitoring/prometheus-config.yml:/etc/prometheus/prometheus.yml
-      - ./infrastructure/monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=7d'
+prometheus:
+  image: prom/prometheus:latest
+  ports:
+    - '9090:9090'
+  volumes:
+    - ./infrastructure/monitoring/prometheus-config.yml:/etc/prometheus/prometheus.yml
+    - ./infrastructure/monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml
+  command:
+    - '--config.file=/etc/prometheus/prometheus.yml'
+    - '--storage.tsdb.retention.time=7d'
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    ports:
-      - "8081:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
+cadvisor:
+  image: gcr.io/cadvisor/cadvisor:latest
+  ports:
+    - '8081:8080'
+  volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:ro
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
+node-exporter:
+  image: prom/node-exporter:latest
+  ports:
+    - '9100:9100'
+  volumes:
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+  command:
+    - '--path.procfs=/host/proc'
+    - '--path.sysfs=/host/sys'
 ```
 
 Then access Prometheus at `http://localhost:9090`.
@@ -177,13 +178,13 @@ kill $MONITOR_PID 2>/dev/null || true
 
 ## Success Criteria (KPIs)
 
-| KPI | Target | Source |
-|-----|--------|--------|
-| HLS 5xx error rate | < 0.1% | nginx-analysis JSON |
-| WebSocket success rate | > 95% | backend-metrics JSON |
-| API response time p95 | < 2000ms | nginx-analysis JSON |
-| Peak CPU | < 80% | metrics JSON |
-| Peak Memory | < 85% | metrics JSON |
-| SRS frame drops | < 100 | srs-metrics JSON |
-| SRS publisher timeouts | 0 | srs-metrics JSON |
-| Socket.IO error rate | < 1% | backend-metrics JSON |
+| KPI                    | Target   | Source               |
+| ---------------------- | -------- | -------------------- |
+| HLS 5xx error rate     | < 0.1%   | nginx-analysis JSON  |
+| WebSocket success rate | > 95%    | backend-metrics JSON |
+| API response time p95  | < 2000ms | nginx-analysis JSON  |
+| Peak CPU               | < 80%    | metrics JSON         |
+| Peak Memory            | < 85%    | metrics JSON         |
+| SRS frame drops        | < 100    | srs-metrics JSON     |
+| SRS publisher timeouts | 0        | srs-metrics JSON     |
+| Socket.IO error rate   | < 1%     | backend-metrics JSON |

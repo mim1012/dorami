@@ -1,4 +1,4 @@
-# Dorami 라이브 커머스 - 코드 리뷰 보고서 v3
+# Doremi 라이브 커머스 - 코드 리뷰 보고서 v3
 
 **분석 일시**: 2026-02-03
 **분석 방법**: 자동화 스캔 + 수동 검증
@@ -10,15 +10,15 @@
 
 ### 전체 품질 스코어: 5.5/10 (개선 필요)
 
-| 카테고리 | 점수 | 상태 | 근거 |
-|---------|------|------|------|
-| 코드 품질 | 4/10 | 🔴 | any 타입 189개, console.log 17개 |
-| 보안 | 4/10 | 🔴 | Rate Limiting 미구현, WebSocket CORS *, npm 취약점 |
-| 성능 | 6/10 | ⚠️ | Promise.all 사용 양호, 캐싱 미구현 |
-| 아키텍처 | 7/10 | ✅ | NestJS 모듈 구조 양호 |
-| 에러 처리 | 5/10 | ⚠️ | 패턴 존재하나 일관성 부족 |
-| 테스트 | 3/10 | 🔴 | 7개 spec 파일, Controller 테스트 0% |
-| 의존성 보안 | 4/10 | 🔴 | High 1개, Moderate 5개 취약점 |
+| 카테고리    | 점수 | 상태 | 근거                                                |
+| ----------- | ---- | ---- | --------------------------------------------------- |
+| 코드 품질   | 4/10 | 🔴   | any 타입 189개, console.log 17개                    |
+| 보안        | 4/10 | 🔴   | Rate Limiting 미구현, WebSocket CORS \*, npm 취약점 |
+| 성능        | 6/10 | ⚠️   | Promise.all 사용 양호, 캐싱 미구현                  |
+| 아키텍처    | 7/10 | ✅   | NestJS 모듈 구조 양호                               |
+| 에러 처리   | 5/10 | ⚠️   | 패턴 존재하나 일관성 부족                           |
+| 테스트      | 3/10 | 🔴   | 7개 spec 파일, Controller 테스트 0%                 |
+| 의존성 보안 | 4/10 | 🔴   | High 1개, Moderate 5개 취약점                       |
 
 ---
 
@@ -35,6 +35,7 @@
 **현재 상태**: `@Throttle` 데코레이터 사용 없음
 
 **권장 수정**:
+
 ```typescript
 // app.module.ts에 ThrottlerModule 추가
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -68,6 +69,7 @@ async login(@Body() loginDto: LoginDto) {
 **위치**: `backend/src/modules/websocket/websocket.gateway.ts:18-23`
 
 **현재 상태**:
+
 ```typescript
 @WebSocketGateway({
   cors: {
@@ -80,6 +82,7 @@ async login(@Body() loginDto: LoginDto) {
 **문제**: Cross-site WebSocket hijacking 가능
 
 **권장 수정**:
+
 ```typescript
 @WebSocketGateway({
   cors: {
@@ -97,6 +100,7 @@ async login(@Body() loginDto: LoginDto) {
 **위치**: `backend/src/modules/auth/auth.service.ts:118-147`
 
 **현재 상태**:
+
 ```typescript
 async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
   // ... 검증 로직 ...
@@ -109,6 +113,7 @@ async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
 **문제**: 토큰 탈취 시 공격자가 계속 사용 가능
 
 **권장 수정**:
+
 ```typescript
 async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
   // ... 검증 로직 ...
@@ -135,6 +140,7 @@ async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
 | Moderate | 5 | @nestjs/config, @nestjs/swagger 등 |
 
 **권장 수정**:
+
 ```bash
 npm audit fix
 # 또는 major 업데이트 필요 시
@@ -150,14 +156,15 @@ npm audit fix --force
 
 **실제 테스트 현황**:
 
-| 카테고리 | 파일 수 | 테스트 파일 | 커버리지 |
-|---------|--------|------------|---------|
-| Controllers | 15 | 0 | 0% |
-| Services | 15+ | 7 | ~47% |
-| Guards | 3 | 0 | 0% |
-| Gateways | 3 | 0 | 0% |
+| 카테고리    | 파일 수 | 테스트 파일 | 커버리지 |
+| ----------- | ------- | ----------- | -------- |
+| Controllers | 15      | 0           | 0%       |
+| Services    | 15+     | 7           | ~47%     |
+| Guards      | 3       | 0           | 0%       |
+| Gateways    | 3       | 0           | 0%       |
 
 **테스트 파일 목록**:
+
 ```
 backend/src/common/services/encryption.service.spec.ts
 backend/src/modules/admin/admin.service.spec.ts
@@ -169,6 +176,7 @@ backend/src/modules/users/users.service.spec.ts
 ```
 
 **필수 추가 테스트** (Priority 순):
+
 1. `auth.service.spec.ts` - 인증 핵심 로직
 2. `auth.controller.spec.ts` - 인증 엔드포인트
 3. `roles.guard.spec.ts` - 권한 검증
@@ -186,12 +194,13 @@ backend/src/modules/users/users.service.spec.ts
 **분포**:
 | 위치 | 개수 | 주요 패턴 |
 |------|------|----------|
-| 테스트 파일 (*.spec.ts) | ~50 | `as any` mock 타입 |
+| 테스트 파일 (\*.spec.ts) | ~50 | `as any` mock 타입 |
 | 서비스 파일 | ~60 | 반환 타입, 매개변수 |
 | 컨트롤러 | ~30 | 요청/응답 타입 |
 | 유틸리티 | ~49 | 제네릭 처리 |
 
 **주요 문제 위치**:
+
 ```typescript
 // redis-io.adapter.ts
 createIOServer(port: number, options?: ServerOptions): any
@@ -213,6 +222,7 @@ const items = results.data.map((row: any) => ({
 **검증 방법**: `grep -r "console\.\(log\|error\|warn\)" backend/src | wc -l` → 17
 
 **권장 수정**:
+
 ```typescript
 // Before
 console.log('✅ Chat Gateway initialized');
@@ -297,32 +307,32 @@ handleDisconnect(client: Socket) {
 
 ### 인증/인가
 
-| 항목 | 상태 | 검증 |
-|------|------|------|
-| OAuth 2.0 (Kakao) | ✅ | kakao.strategy.ts 확인 |
-| JWT Access Token | ✅ | 15분 만료 설정 확인 |
-| JWT Refresh Token | ⚠️ | Rotation 미구현 |
-| Token Blacklist | ✅ | Redis 사용 확인 |
-| Rate Limiting | 🔴 | @Throttle 없음 |
-| PKCE | ❓ | 미확인 |
+| 항목              | 상태 | 검증                   |
+| ----------------- | ---- | ---------------------- |
+| OAuth 2.0 (Kakao) | ✅   | kakao.strategy.ts 확인 |
+| JWT Access Token  | ✅   | 15분 만료 설정 확인    |
+| JWT Refresh Token | ⚠️   | Rotation 미구현        |
+| Token Blacklist   | ✅   | Redis 사용 확인        |
+| Rate Limiting     | 🔴   | @Throttle 없음         |
+| PKCE              | ❓   | 미확인                 |
 
 ### 공격 방어
 
-| 항목 | 상태 | 검증 |
-|------|------|------|
-| SQL Injection | ✅ | Prisma ORM 사용 |
-| XSS | ⚠️ | CSP unsafe-inline 허용 |
-| CSRF | ⚠️ | httpOnly: false |
-| Brute Force | 🔴 | Rate Limiting 없음 |
-| WebSocket Hijacking | 🔴 | CORS origin: '*' |
+| 항목                | 상태 | 검증                   |
+| ------------------- | ---- | ---------------------- |
+| SQL Injection       | ✅   | Prisma ORM 사용        |
+| XSS                 | ⚠️   | CSP unsafe-inline 허용 |
+| CSRF                | ⚠️   | httpOnly: false        |
+| Brute Force         | 🔴   | Rate Limiting 없음     |
+| WebSocket Hijacking | 🔴   | CORS origin: '\*'      |
 
 ### 의존성 보안
 
-| 심각도 | 개수 | 조치 |
-|--------|------|------|
-| Critical | 0 | - |
-| High | 1 | npm audit fix 필요 |
-| Moderate | 5 | npm audit fix 필요 |
+| 심각도   | 개수 | 조치               |
+| -------- | ---- | ------------------ |
+| Critical | 0    | -                  |
+| High     | 1    | npm audit fix 필요 |
+| Moderate | 5    | npm audit fix 필요 |
 
 ---
 
@@ -348,14 +358,14 @@ handleDisconnect(client: Socket) {
 
 ### Backend (검증 기반)
 
-| 파일 | 이슈 | 점수 |
-|------|------|------|
-| `main.ts` | CSP unsafe, ValidationPipe | 5/10 |
-| `auth.service.ts` | Token Rotation 없음 | 5/10 |
-| `auth.controller.ts` | Rate Limiting 없음 | 4/10 |
-| `websocket.gateway.ts` | CORS *, 메모리 정리 | 3/10 |
-| `orders.service.ts` | Cron 락 없음 | 6/10 |
-| `cart.service.ts` | Promise.all 양호 | 7/10 |
+| 파일                   | 이슈                       | 점수 |
+| ---------------------- | -------------------------- | ---- |
+| `main.ts`              | CSP unsafe, ValidationPipe | 5/10 |
+| `auth.service.ts`      | Token Rotation 없음        | 5/10 |
+| `auth.controller.ts`   | Rate Limiting 없음         | 4/10 |
+| `websocket.gateway.ts` | CORS \*, 메모리 정리       | 3/10 |
+| `orders.service.ts`    | Cron 락 없음               | 6/10 |
+| `cart.service.ts`      | Promise.all 양호           | 7/10 |
 
 ---
 
@@ -363,32 +373,32 @@ handleDisconnect(client: Socket) {
 
 ### Phase 1: Critical (1주차)
 
-| # | 작업 | 파일 | 복잡도 |
-|---|------|------|--------|
-| 1 | Rate Limiting 추가 | app.module.ts, auth.controller.ts | 중 |
-| 2 | WebSocket CORS 수정 | websocket.gateway.ts | 하 |
-| 3 | JWT Token Rotation | auth.service.ts | 중 |
-| 4 | npm audit fix | package.json | 하 |
-| 5 | Auth 테스트 작성 | auth.service.spec.ts | 상 |
+| #   | 작업                | 파일                              | 복잡도 |
+| --- | ------------------- | --------------------------------- | ------ |
+| 1   | Rate Limiting 추가  | app.module.ts, auth.controller.ts | 중     |
+| 2   | WebSocket CORS 수정 | websocket.gateway.ts              | 하     |
+| 3   | JWT Token Rotation  | auth.service.ts                   | 중     |
+| 4   | npm audit fix       | package.json                      | 하     |
+| 5   | Auth 테스트 작성    | auth.service.spec.ts              | 상     |
 
 ### Phase 2: High (2-3주차)
 
-| # | 작업 | 파일 | 복잡도 |
-|---|------|------|--------|
-| 6 | any 타입 제거 (우선 50개) | 다수 | 상 |
-| 7 | console.log → Logger | 17개 위치 | 중 |
-| 8 | CSP 강화 | main.ts | 중 |
-| 9 | CSRF httpOnly 개선 | csrf.guard.ts | 중 |
-| 10 | Controller 테스트 | *controller.spec.ts | 상 |
+| #   | 작업                      | 파일                 | 복잡도 |
+| --- | ------------------------- | -------------------- | ------ |
+| 6   | any 타입 제거 (우선 50개) | 다수                 | 상     |
+| 7   | console.log → Logger      | 17개 위치            | 중     |
+| 8   | CSP 강화                  | main.ts              | 중     |
+| 9   | CSRF httpOnly 개선        | csrf.guard.ts        | 중     |
+| 10  | Controller 테스트         | \*controller.spec.ts | 상     |
 
 ### Phase 3: Medium (4주차+)
 
-| # | 작업 | 복잡도 |
-|---|------|--------|
-| 11 | Cron 분산 락 | 중 |
-| 12 | WebSocket 메모리 정리 | 하 |
-| 13 | 캐싱 전략 구현 | 상 |
-| 14 | 테스트 커버리지 70% | 상 |
+| #   | 작업                  | 복잡도 |
+| --- | --------------------- | ------ |
+| 11  | Cron 분산 락          | 중     |
+| 12  | WebSocket 메모리 정리 | 하     |
+| 13  | 캐싱 전략 구현        | 상     |
+| 14  | 테스트 커버리지 70%   | 상     |
 
 ---
 
@@ -416,14 +426,14 @@ handleDisconnect(client: Socket) {
 
 ### 권장 목표
 
-| 메트릭 | 현재 | 1개월 | 3개월 |
-|--------|------|-------|-------|
-| 테스트 커버리지 | ~20% | 50% | 70% |
-| any 타입 | 189개 | 100개 | 30개 |
-| 보안 점수 | 4/10 | 6/10 | 8/10 |
-| 전체 품질 | 5.5/10 | 6.5/10 | 8/10 |
+| 메트릭          | 현재   | 1개월  | 3개월 |
+| --------------- | ------ | ------ | ----- |
+| 테스트 커버리지 | ~20%   | 50%    | 70%   |
+| any 타입        | 189개  | 100개  | 30개  |
+| 보안 점수       | 4/10   | 6/10   | 8/10  |
+| 전체 품질       | 5.5/10 | 6.5/10 | 8/10  |
 
 ---
 
-*검증된 데이터 기반 분석: 2026-02-03*
-*다음 리뷰: Phase 1 완료 후 (1주 후)*
+_검증된 데이터 기반 분석: 2026-02-03_
+_다음 리뷰: Phase 1 완료 후 (1주 후)_

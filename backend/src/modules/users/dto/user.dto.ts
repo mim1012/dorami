@@ -1,5 +1,10 @@
-import { IsString, IsEmail, IsOptional, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, Matches, Length, IsNotEmpty } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import {
+  KAKAO_PHONE_MESSAGE,
+  PHONE_PAYLOAD_PATTERN,
+} from '../../../common/validators/phone-number.validator';
 
 export enum UserRole {
   BUYER = 'BUYER',
@@ -11,11 +16,13 @@ export class UpdateUserDto {
   @ApiPropertyOptional({ description: '닉네임', example: '홍길동' })
   @IsString()
   @IsOptional()
+  @IsNotEmpty()
   nickname?: string;
 
   @ApiPropertyOptional({ description: '이메일', example: 'user@example.com' })
-  @IsEmail()
   @IsOptional()
+  @IsEmail()
+  @IsNotEmpty()
   email?: string;
 
   @ApiPropertyOptional({
@@ -24,15 +31,42 @@ export class UpdateUserDto {
   })
   @IsString()
   @IsOptional()
+  @IsNotEmpty()
   profileImage?: string;
 
-  @ApiPropertyOptional({ description: '전화번호 (국제 형식)', example: '+1 213-555-1234' })
+  @ApiPropertyOptional({
+    description: '카카오톡에 등록된 전화번호 (미국: +1 213-555-1234 / 한국: 010-1234-5678)',
+    example: '+1 213-555-1234',
+  })
   @IsOptional()
   @IsString()
-  @Matches(/^\+[0-9\s\-()]{7,20}$/, {
-    message: '전화번호는 +국가코드 번호 형식이어야 합니다 (예: +1 213-555-1234)',
+  @IsNotEmpty()
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
   })
-  phone?: string;
+  kakaoPhone?: string;
+
+  @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^@?[a-zA-Z0-9._]+$/, {
+    message: 'Instagram ID must contain only letters, numbers, periods, and underscores',
+  })
+  @Transform(({ value }: { value: string }) => {
+    if (!value) {
+      return value;
+    }
+    return value.startsWith('@') ? value : `@${value}`;
+  })
+  instagramId?: string;
+
+  @ApiPropertyOptional({ description: '입금자명', example: '홍길동' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 100)
+  depositorName?: string;
 }
 
 export class UserResponseDto {
@@ -60,8 +94,11 @@ export class UserResponseDto {
   @ApiPropertyOptional({ description: '인스타그램 ID', example: '@my_instagram' })
   instagramId?: string;
 
-  @ApiPropertyOptional({ description: '전화번호', example: '01012345678' })
-  phone?: string;
+  @ApiPropertyOptional({
+    description: '카카오 전화번호 (알림톡용)',
+    example: '010-1234-5678',
+  })
+  kakaoPhone?: string;
 
   @ApiPropertyOptional({ description: '배송지 (복호화됨)' })
   shippingAddress?: {
@@ -71,8 +108,13 @@ export class UserResponseDto {
     city?: string;
     state?: string;
     zip?: string;
-    phone?: string;
   };
+
+  @ApiProperty({ description: '프로필 완료 여부', example: true })
+  profileComplete!: boolean;
+
+  @ApiPropertyOptional({ description: '프로필 완료 시각 (ISO 문자열)' })
+  profileCompletedAt?: Date;
 
   @ApiProperty({ description: '계정 생성일' })
   createdAt!: Date;

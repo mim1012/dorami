@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "1.0",
-  "project": "dorami-live-commerce",
+  "project": "doremi-live-commerce",
   "created": "2026-02-28",
   "description": "Machine-readable KPI definitions for performance testing and monitoring",
 

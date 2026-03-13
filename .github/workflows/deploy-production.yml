@@ -19,6 +19,11 @@ on:
         description: 'Version to deploy (e.g., v1.0.0)'
         required: true
         type: string
+      image_tag:
+        description: 'Staging-tested image tag to promote (e.g., sha-abc123...). If provided, skips build and promotes this exact image to production.'
+        required: false
+        type: string
+        default: ''
       skip_tests:
         description: 'Skip tests before deployment'
         required: false
@@ -164,6 +169,8 @@ jobs:
 
   # ===========================================
   # Build and Promote Images to Production
+  # If image_tag input is provided, promotes the staging-tested image (no rebuild).
+  # If not provided, builds fresh images from the release tag.
   # ===========================================
   build:
     name: Build and Promote Images
@@ -176,15 +183,6 @@ jobs:
     outputs:
       image_tag: ${{ steps.resolve.outputs.image_tag }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - service: backend
-            dockerfile: ./backend/Dockerfile
-          - service: frontend
-            dockerfile: ./client-app/Dockerfile
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -193,20 +191,34 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Resolve image tag from git SHA
+      - name: Resolve image tag
         id: resolve
+        env:
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          STAGING_LATEST: ${{ vars.STAGING_LATEST_IMAGE_TAG }}
         run: |
-          SHA=$(git rev-parse HEAD)
-          IMAGE_TAG="sha-${SHA}"
+          if [ -n "${INPUT_IMAGE_TAG}" ]; then
+            IMAGE_TAG="${INPUT_IMAGE_TAG}"
+            echo "Using provided image_tag (manual input): ${IMAGE_TAG}"
+          elif [ -n "${STAGING_LATEST}" ]; then
+            IMAGE_TAG="${STAGING_LATEST}"
+            echo "Using STAGING_LATEST_IMAGE_TAG from repo variables: ${IMAGE_TAG}"
+          else
+            SHA=$(git rev-parse HEAD)
+            IMAGE_TAG="sha-${SHA}"
+            echo "Fallback: resolved image_tag from git SHA: ${IMAGE_TAG}"
+          fi
           if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
             echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
             exit 1
           fi
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "Resolved image tag: ${IMAGE_TAG}"
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          # should_build=true only when falling back to git SHA (no existing image to promote)
+          if [ -z "${INPUT_IMAGE_TAG}" ] && [ -z "${STAGING_LATEST}" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -215,17 +227,54 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push ${{ matrix.service }}
+      # --- Promote path: staging-tested image available (from input or repo variable) ---
+      - name: Verify staging-tested images exist in GHCR
+        if: steps.resolve.outputs.should_build == 'false'
+        run: |
+          IMAGE_TAG="${{ steps.resolve.outputs.image_tag }}"
+          echo "=== Verifying staging-tested images ==="
+          for SERVICE in backend frontend; do
+            IMAGE_REF="ghcr.io/${{ github.repository_owner }}/dorami-${SERVICE}:${IMAGE_TAG}"
+            if docker manifest inspect "${IMAGE_REF}" > /dev/null 2>&1; then
+              echo "✅ ${IMAGE_REF} verified"
+            else
+              echo "ERROR: Image not found: ${IMAGE_REF}"
+              echo "Ensure staging built this image before promoting to production."
+              exit 1
+            fi
+          done
+          echo "✅ All images verified — promoting staging image to production (no rebuild)"
+
+      # --- Build path: no existing image to promote (release event or forced rebuild) ---
+      - name: Setup Docker Buildx
+        if: steps.resolve.outputs.should_build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push backend
+        if: steps.resolve.outputs.should_build == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: ./backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:${{ steps.resolve.outputs.image_tag }}
-            ghcr.io/${{ github.repository_owner }}/dorami-${{ matrix.service }}:${{ needs.validate.outputs.version }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+            ghcr.io/${{ github.repository_owner }}/dorami-backend:${{ steps.resolve.outputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/dorami-backend:${{ needs.validate.outputs.version }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build and Push frontend
+        if: steps.resolve.outputs.should_build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./client-app/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:${{ steps.resolve.outputs.image_tag }}
+            ghcr.io/${{ github.repository_owner }}/dorami-frontend:${{ needs.validate.outputs.version }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
 
   # ===========================================
   # Pre-deployment Backup
@@ -237,7 +286,6 @@ jobs:
     # GitHub's success() evaluates the full upstream graph and returns false.
     if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -284,7 +332,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
         run: |
-          ssh $USER@$HOST bash -s << 'ENDSSH'
+          ssh $USER@$HOST bash -s << ENDSSH
             set -e
 
             export POSTGRES_USER="dorami_prod"
@@ -334,8 +382,8 @@ jobs:
     name: Deploy to Production
     needs: [validate, build, backup]
     # always() avoids transitive skip propagation. Handles both normal deploy and rollback.
-    # backup has continue-on-error so its result is always 'success' when it runs.
-    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && needs.backup.result != 'cancelled'
+    # backup must succeed (no continue-on-error) — a failed backup blocks the deploy.
+    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && needs.backup.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -383,7 +431,7 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker'
+          ssh $USER@$HOST 'mkdir -p /opt/dorami/nginx /opt/dorami/infrastructure/docker && mkdir -p /opt/dorami/backend/uploads && chmod 777 /opt/dorami/backend/uploads'
           scp docker-compose.base.yml docker-compose.prod.yml nginx/production.conf nginx/streaming-routing.conf \
             $USER@$HOST:/opt/dorami/
           scp -r infrastructure/docker/srs $USER@$HOST:/opt/dorami/infrastructure/docker/
@@ -406,6 +454,11 @@ jobs:
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
           PROD_ADMIN_EMAILS: ${{ secrets.PROD_ADMIN_EMAILS }}
           PROD_SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
+          KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Write .env.production locally (GitHub Actions runner is ephemeral & isolated).
@@ -416,13 +469,21 @@ jobs:
           FRONTEND_URL=https://www.doremi-live.com
           CORS_ORIGINS=https://doremi-live.com,https://www.doremi-live.com
 
-          POSTGRES_USER=dorami_prod
+          APP_ENV=production
+
+          POSTGRES_USER=app_user
           POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
           POSTGRES_DB=live_commerce_production
+          DATABASE_URL=postgresql://app_user:${PROD_POSTGRES_PASSWORD}@postgres:5432/live_commerce_production?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30
 
           REDIS_HOST=redis
           REDIS_PORT=6379
           REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
+          REDIS_URL=redis://:${PROD_REDIS_PASSWORD}@redis:6379
+
+          CSRF_ENABLED=true
+          ENABLE_DEV_AUTH=false
+          COOKIE_SECURE=true
 
           JWT_SECRET=${PROD_JWT_SECRET}
           JWT_ACCESS_EXPIRES_IN=15m
@@ -433,6 +494,7 @@ jobs:
 
           KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
           KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}
+          NEXT_PUBLIC_KAKAO_JS_KEY=${KAKAO_JS_KEY}
           KAKAO_CALLBACK_URL=https://www.doremi-live.com/api/auth/kakao/callback
 
           RTMP_SERVER_URL=rtmp://www.doremi-live.com:1935/live
@@ -443,6 +505,14 @@ jobs:
           NEXT_PUBLIC_API_URL=https://www.doremi-live.com/api
           NEXT_PUBLIC_WS_URL=https://www.doremi-live.com
           NEXT_PUBLIC_CDN_URL=https://www.doremi-live.com/hls
+
+          BACKEND_URL=http://backend:3001
+          MEDIA_SERVER_URL=http://srs:8080
+
+          VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+          VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+          VAPID_SUBJECT=${VAPID_SUBJECT}
+          SRS_WEBHOOK_SECRET=${SRS_WEBHOOK_SECRET}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
           SENTRY_DSN=${PROD_SENTRY_DSN}
@@ -618,16 +688,24 @@ jobs:
           DB_PORT="${POSTGRES_PORT:-5432}"
           DB_NAME="live_commerce_production"
 
-          # Use trust auth for both migrations and backend connections
-          # Trust auth works reliably on docker networks and doesn't require password management
-          DATABASE_URL="postgresql://postgres@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer"
-          echo "INFO: Attempting migrations with postgres superuser (trust auth on docker network)"
+          # Use password auth for both migrations and backend connections
+          POSTGRES_USER_VAL=$(grep '^POSTGRES_USER=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+          POSTGRES_PASSWORD_VAL=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
+          DATABASE_URL="postgresql://${POSTGRES_USER_VAL:-postgres}:${POSTGRES_PASSWORD_VAL}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30"
+          echo "INFO: Attempting migrations with password auth"
+
+          echo "=== Checking for destructive migrations (BLOCKING) ==="
+          if [ "${SKIP_DESTRUCTIVE_CHECK:-false}" != "true" ]; then
+            bash scripts/check-destructive-migrations.sh . || { echo "ERROR: Destructive migration detected — deploy blocked. Set SKIP_DESTRUCTIVE_CHECK=true to override."; exit 1; }
+          else
+            echo "⚠️ SKIP_DESTRUCTIVE_CHECK=true — skipping safety check"
+          fi
 
           eval "$COMPOSE_CMD run --rm -T -e \"DATABASE_URL=${DATABASE_URL}\" backend npx prisma migrate deploy" || { echo "ERROR: Migration failed"; exit 1; }
           echo "Migrations completed successfully"
 
-          # Set backend to use same trust auth connection string for consistency
-          echo "INFO: Configuring backend for trust auth (same as migrations)"
+          # Set backend to use same connection string for consistency
+          echo "INFO: Configuring backend DATABASE_URL"
           sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" "${INFRA_DIR}/.env.production"
 
           # 7. Start backend (force-recreate to use new image)
@@ -951,23 +1029,27 @@ jobs:
     steps:
       - name: Send Success Notification
         if: needs.deploy.result == 'success' && needs.verify.result == 'success'
+              - name: Telegram - Production Success
+        if: needs.deploy.result == 'success' && needs.verify.result == 'success'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "=========================================="
-          echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
-          echo "=========================================="
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "URL: ${{ vars.PRODUCTION_URL }}"
-          echo "Deployed by: ${{ github.actor }}"
-          echo "=========================================="
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          MSG="✅ *Production 배포 성공*%0A버전: \`${{ needs.validate.outputs.version }}\`%0A커밋: ${SHORT_SHA}%0A배포자: ${{ github.actor }}"
+          [ -n "$TELEGRAM_BOT_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${MSG}" -d "parse_mode=Markdown" -d "disable_web_page_preview=true"
 
-      - name: Send Failure Notification
+      - name: Telegram - Production Failure
         if: needs.deploy.result == 'failure' || needs.verify.result == 'failure'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "=========================================="
-          echo "PRODUCTION DEPLOYMENT FAILED"
-          echo "=========================================="
-          echo "Version: ${{ needs.validate.outputs.version }}"
-          echo "Deploy Result: ${{ needs.deploy.result }}"
-          echo "Verify Result: ${{ needs.verify.result }}"
-          echo "=========================================="
-          exit 1
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MSG="🚨 *Production 배포 실패*%0A버전: \`${{ needs.validate.outputs.version }}\`%0A커밋: ${SHORT_SHA}%0A[로그 보기](${RUN_URL})"
+          [ -n "$TELEGRAM_BOT_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${MSG}" -d "parse_mode=Markdown" -d "disable_web_page_preview=true"

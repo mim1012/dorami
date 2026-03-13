@@ -6,7 +6,7 @@
 #   - IMAGE_TAG environment variable (docker image tag)
 #   - .env.production file with DB credentials
 #   - docker-compose.base.yml and docker-compose.prod.yml in current directory
-#   - All containers on dorami-internal network (backend, postgres, redis, nginx)
+#   - All containers on doremi-internal network (backend, postgres, redis, nginx)
 
 set -euo pipefail
 
@@ -20,11 +20,11 @@ NC='\033[0m' # No Color
 BACKUP_DIR="${BACKUP_DIR:-.backups}"
 IMAGE_TAG="${IMAGE_TAG:?ERROR: IMAGE_TAG environment variable required (e.g., sha-abc123def)}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-ghcr.io/your-org}"
-BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${IMAGE_TAG}"
-DOCKER_NETWORK="${DOCKER_NETWORK:-dorami-internal}"
+BACKEND_IMAGE="${DOCKER_REGISTRY}/doremi-backend:${IMAGE_TAG}"
+DOCKER_NETWORK="${DOCKER_NETWORK:-doremi-internal}"
 COMPOSE_BASE="${COMPOSE_BASE:-docker-compose.base.yml}"
 COMPOSE_PROD="${COMPOSE_PROD:-docker-compose.prod.yml}"
-DB_HOST="${DB_HOST:-dorami-postgres-prod}"
+DB_HOST="${DB_HOST:-doremi-postgres-prod}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-live_commerce_production}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
@@ -264,7 +264,8 @@ echo ""
 # Optional: Archive backup if requested
 if [ "${ARCHIVE_BACKUP:-false}" = "true" ]; then
   log_step "Archiving backup to S3..."
-  # Example: aws s3 cp "$BACKUP_FILE" s3://dorami-db-backups-prod/
+  # Example: aws s3 cp "$BACKUP_FILE" s3://doremi-db-backups-prod/
 fi
 
 exit 0
+

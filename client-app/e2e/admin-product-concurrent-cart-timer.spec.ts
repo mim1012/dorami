@@ -28,7 +28,7 @@ async function createLiveStreamViaApi(streamKey: string) {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     const loginRes = await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop' },
     });
     if (!loginRes.ok()) return null;
     let csrfToken = '';
@@ -58,7 +58,7 @@ async function createLiveStreamViaApi(streamKey: string) {
 
 async function createAndLoginUser(email: string) {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
-  const loginRes = await apiCtx.post('/api/auth/dev-login', { data: { email, role: 'USER' } });
+  const loginRes = await apiCtx.post('/api/auth/dev-login', { data: { email } });
   if (!loginRes.ok()) {
     await apiCtx.dispose();
     throw new Error(`Failed to login: ${loginRes.status()}`);
@@ -67,7 +67,8 @@ async function createAndLoginUser(email: string) {
     await apiCtx.post('/api/users/complete-profile', {
       data: {
         depositorName: 'E2E',
-        instagramId: `@e2e_${email.split('@')[0]}`,
+        email: email,
+        instagramId: `e2e_${email.split('@')[0].replace(/-/g, '_')}`,
         fullName: 'E2E User',
         address1: '123 St',
         address2: 'Apt',
@@ -85,7 +86,7 @@ async function deleteProductViaApi(productId: string) {
   const apiCtx = await playwrightRequest.newContext({ baseURL: BASE_URL });
   try {
     await apiCtx.post('/api/auth/dev-login', {
-      data: { email: 'admin@dorami.shop', role: 'ADMIN' },
+      data: { email: 'admin@doremi.shop' },
     });
     let csrfToken = '';
     try {
@@ -126,7 +127,8 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
   test.beforeAll(async () => {
     const requestedKey = `admin-test-${Date.now()}`;
     const stream = await createLiveStreamViaApi(requestedKey);
-    streamKey = stream?.streamKey || requestedKey;
+    // 스트림 생성 실패 시 기존 스트림 키 폴백 (임의 키로는 상품 등록 400 오류 발생)
+    streamKey = stream?.streamKey || 'doremi-fashion-live-002';
   });
 
   test('A-ADMIN-01: Admin register product with images, colors, sizes, timer, badge', async ({
@@ -158,7 +160,7 @@ test.describe('Admin Product Registration & Concurrent Cart', () => {
     console.log(`📏 사이즈: S, M, L, XL`);
     console.log(`⏱️  타이머: 10분 활성화`);
     console.log(`✨ NEW 뱃지: 활성화`);
-    console.log(`💰 가격: 29,000원 | 재고: 10개`);
+    console.log(`💰 가격: $29,000 | 재고: 10개`);
     console.log(`📍 관리자 페이지 확인: ${BASE_URL}/admin/products`);
   });
 

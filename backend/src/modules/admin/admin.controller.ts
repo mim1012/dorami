@@ -29,6 +29,7 @@ import {
   UpdateNoticeDto,
   GetOrdersQueryDto,
   UpdateUserStatusDto,
+  UpdateAdminUserDto,
   UpdateOrderStatusDto,
   UpdateOrderShippingStatusDto,
   UpdateSystemSettingsDto,
@@ -39,6 +40,8 @@ import {
   UpdateNotificationTemplateDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { parsePagination } from '../../common/utils/pagination.util';
 import { RedisService } from '../../common/redis/redis.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -82,6 +85,15 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '최근 활동 목록' })
   async getRecentActivities(@Query('limit') limit?: number) {
     return this.adminService.getRecentActivities(limit ? parseInt(limit.toString(), 10) : 10);
+  }
+
+  @Get('config/public-footer')
+  @Public()
+  @Roles()
+  @ApiOperation({ summary: '공개 푸터 정보 조회' })
+  @ApiResponse({ status: 200, description: '사업자 번호, 주소, 통신판매업 번호' })
+  async getPublicFooterConfig() {
+    return this.adminService.getPublicFooterConfig();
   }
 
   @Get('config/settings')
@@ -250,6 +262,17 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '사용자 상세 정보' })
   async getUserDetail(@Param('id') userId: string) {
     return this.adminService.getUserDetail(userId);
+  }
+
+  @Patch('users/:id')
+  @ApiOperation({
+    summary: '회원 정보 수정 (관리자)',
+    description: '회원 기본 정보(이름, 이메일, 연락처, 인스타그램 ID, 배송지) 수정',
+  })
+  @ApiParam({ name: 'id', description: '사용자 ID' })
+  @ApiResponse({ status: 200, description: '회원 정보 수정 성공' })
+  async updateUser(@Param('id') userId: string, @Body() dto: UpdateAdminUserDto) {
+    return this.adminService.updateUser(userId, dto);
   }
 
   @Patch('users/:id/status')

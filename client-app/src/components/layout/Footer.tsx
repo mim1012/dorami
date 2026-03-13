@@ -1,14 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { LegalModal } from '@/components/legal/LegalModal';
 
 const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
 const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
 
+const DEFAULT_FOOTER_CONFIG = {
+  businessRegistrationNumber: '194-44-00522',
+  businessAddress: '경기도 용인시 수지구 상현로 5, 401-40호 (상현동,상현프라자)',
+  onlineSalesRegistrationNumber: '제 2021-대전유성-1024 호',
+};
+
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);
+  const [footerConfig, setFooterConfig] = useState(DEFAULT_FOOTER_CONFIG);
+
+  useEffect(() => {
+    const fetchFooterConfig = async () => {
+      try {
+        const res = await fetch('/api/admin/config/public-footer');
+        if (!res.ok) return;
+        const json = await res.json();
+        const data = json?.data ?? json;
+        setFooterConfig({
+          businessRegistrationNumber:
+            data.businessRegistrationNumber || DEFAULT_FOOTER_CONFIG.businessRegistrationNumber,
+          businessAddress: data.businessAddress || DEFAULT_FOOTER_CONFIG.businessAddress,
+          onlineSalesRegistrationNumber:
+            data.onlineSalesRegistrationNumber ||
+            DEFAULT_FOOTER_CONFIG.onlineSalesRegistrationNumber,
+        });
+      } catch {
+        // silently fall back to defaults
+      }
+    };
+    fetchFooterConfig();
+  }, []);
 
   return (
     <>
@@ -116,11 +145,15 @@ export function Footer() {
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">사업자 번호</span>
-                <span className="text-primary-text/80 font-medium">194-44-00522</span>
+                <span className="text-primary-text/80 font-medium">
+                  {footerConfig.businessRegistrationNumber}
+                </span>
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">통신판매업</span>
-                <span className="text-primary-text/80 font-medium">제 2021-대전유성-1024 호</span>
+                <span className="text-primary-text/80 font-medium">
+                  {footerConfig.onlineSalesRegistrationNumber}
+                </span>
               </div>
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">문의</span>
@@ -136,7 +169,7 @@ export function Footer() {
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">사업장 주소</span>
                 <span className="text-primary-text/80 font-medium">
-                  경기도 용인시 수지구 상현로 5, 401-40호 (상현동,상현프라자)
+                  {footerConfig.businessAddress}
                 </span>
               </div>
               <div className="flex gap-2">

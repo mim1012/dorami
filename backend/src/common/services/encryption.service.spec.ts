@@ -40,7 +40,6 @@ describe('EncryptionService', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0123',
       };
 
       const encrypted = service.encryptAddress(address);
@@ -62,7 +61,6 @@ describe('EncryptionService', () => {
         city: 'New York',
         state: 'NY',
         zip: '10001',
-        phone: '(212) 555-9999',
       };
 
       const encrypted1 = service.encryptAddress(address);
@@ -79,7 +77,6 @@ describe('EncryptionService', () => {
         city: 'Chicago',
         state: 'IL',
         zip: '60601',
-        phone: '(312) 555-7777',
       };
 
       const encrypted = service.encryptAddress(address);
@@ -98,7 +95,6 @@ describe('EncryptionService', () => {
         city: 'San Francisco',
         state: 'CA',
         zip: '94102-1234',
-        phone: '(415) 555-4444',
       };
 
       const encrypted = service.encryptAddress(originalAddress);
@@ -114,7 +110,6 @@ describe('EncryptionService', () => {
         city: 'Seattle',
         state: 'WA',
         zip: '98101',
-        phone: '(206) 555-3333',
       };
 
       const encrypted = service.encryptAddress(originalAddress);
@@ -147,7 +142,6 @@ describe('EncryptionService', () => {
         city: 'Test City',
         state: 'TX',
         zip: '12345',
-        phone: '(123) 456-7890',
       };
 
       const encrypted = service.encryptAddress(address);
@@ -257,7 +251,6 @@ describe('EncryptionService', () => {
         city: 'Legacy City',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0000',
       };
 
       // Encrypt with legacy key
@@ -285,7 +278,6 @@ describe('EncryptionService', () => {
         city: 'City',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0000',
       };
       const encrypted = legacyService.encryptAddress(address);
 
@@ -299,7 +291,6 @@ describe('EncryptionService', () => {
         city: 'Plain City',
         state: 'NY',
         zip: '10001',
-        phone: '(212) 555-1111',
       };
 
       const plainJson = JSON.stringify(address);
@@ -314,7 +305,6 @@ describe('EncryptionService', () => {
         city: 'Info City',
         state: 'TX',
         zip: '75001',
-        phone: '(214) 555-2222',
       };
 
       // Encrypted with current key -> keyIndex 0
@@ -346,7 +336,6 @@ describe('EncryptionService', () => {
         city: 'Round Trip City',
         state: 'RT',
         zip: '99999',
-        phone: '(999) 999-9999',
       };
 
       // First round-trip
@@ -371,7 +360,6 @@ describe('EncryptionService', () => {
         city: "St. Mary's",
         state: 'CA',
         zip: '90001-1234',
-        phone: '(310) 555-0123',
       };
 
       const encrypted = service.encryptAddress(address);
@@ -389,7 +377,6 @@ describe('EncryptionService', () => {
         city: 'Los Angeles',
         state: 'CA',
         zip: '90001',
-        phone: '(310) 555-0123',
       };
 
       const encrypted = service.encryptAddress(address);

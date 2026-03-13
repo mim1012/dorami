@@ -34,6 +34,21 @@ export class AppController {
     return {
       zelleEmail: config?.zelleEmail ?? '',
       zelleRecipientName: config?.zelleRecipientName ?? '',
+      venmoEmail: config?.venmoEmail ?? '',
+      venmoRecipientName: config?.venmoRecipientName ?? '',
+    };
+  }
+
+  @Public()
+  @Get('config/business')
+  async getBusinessConfig() {
+    const config = await this.prisma.systemConfig.findUnique({
+      where: { id: 'system' },
+    });
+    return {
+      businessRegistrationNumber: config?.businessRegistrationNumber ?? '',
+      businessAddress: config?.businessAddress ?? '',
+      onlineSalesRegistrationNumber: config?.onlineSalesRegistrationNumber ?? '',
     };
   }
 }

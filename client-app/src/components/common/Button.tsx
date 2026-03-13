@@ -17,7 +17,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    'rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
     primary: 'bg-hot-pink text-white enabled:hover:bg-hot-pink/90 enabled:active:scale-95',
@@ -29,9 +29,9 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-2 text-caption',
-    md: 'px-4 py-2.5 text-body',
-    lg: 'px-4 py-3 text-body sm:px-6 sm:py-3 sm:text-h2',
+    sm: 'min-h-[44px] px-3 py-2.5 text-caption',
+    md: 'min-h-[44px] px-4 py-2.5 text-body',
+    lg: 'min-h-[44px] px-4 py-3 text-body sm:px-6 sm:py-3.5 sm:text-h2',
   };
 
   const widthStyles = fullWidth ? 'w-full' : '';
