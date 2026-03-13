@@ -21,6 +21,7 @@ BACKUP_DIR="${BACKUP_DIR:-.backups}"
 IMAGE_TAG="${IMAGE_TAG:?ERROR: IMAGE_TAG environment variable required (e.g., sha-abc123def)}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-ghcr.io/mim1012}"
 BACKEND_IMAGE="${DOCKER_REGISTRY}/dorami-backend:${IMAGE_TAG}"
+FRONTEND_IMAGE="${DOCKER_REGISTRY}/dorami-frontend:${IMAGE_TAG}"
 DOCKER_NETWORK="${DOCKER_NETWORK:-dorami-internal}"
 COMPOSE_BASE="${COMPOSE_BASE:-docker-compose.base.yml}"
 COMPOSE_PROD="${COMPOSE_PROD:-docker-compose.prod.yml}"
@@ -180,6 +181,27 @@ fi
 log_success "Backend container deployed"
 
 # ============================================
+# STEP 7b: Deploy Frontend Container
+# ============================================
+log_step "STEP 7b: Deploy Frontend Container"
+
+log_warning "Pulling latest frontend image..."
+
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production pull frontend; then
+  log_error "Failed to pull frontend image"
+  exit 1
+fi
+
+log_warning "Starting new frontend container..."
+
+if ! docker compose -f "$COMPOSE_BASE" -f "$COMPOSE_PROD" --env-file .env.production up -d frontend; then
+  log_error "Failed to start frontend container"
+  exit 1
+fi
+
+log_success "Frontend container deployed"
+
+# ============================================
 # STEP 8: Wait for Backend Startup
 # ============================================
 log_step "STEP 8: Wait for Backend Startup"
@@ -190,7 +212,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker-compose -f docker-compose.prod.yml ps backend-prod 2>/dev/null | grep -q "running"; then
+  if docker inspect --format='{{.State.Health.Status}}' backend-prod 2>/dev/null | grep -q "healthy"; then
     log_success "Backend container running"
     break
   fi
