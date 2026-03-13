@@ -308,7 +308,7 @@ describe('AdminService', () => {
         lastPurchaseAt: null,
         profileCompletedAt: null,
         kakaoPhone: undefined,
-        shippingAddressSummary: '-',
+        shippingAddressSummary: null,
         status: 'ACTIVE',
         role: 'USER',
         totalOrders: 0,
