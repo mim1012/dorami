@@ -179,7 +179,7 @@ function AdminUsersContent() {
       label: '프로필',
       sortable: false,
       render: (user) =>
-        user.profileCompletedAt ? (
+        user.profileCompletedAt && user.shippingAddressSummary ? (
           <span className="text-xs text-green-600 font-medium">완성</span>
         ) : (
           <span className="text-xs text-orange-500 font-medium">미완성</span>
