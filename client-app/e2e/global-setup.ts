@@ -236,7 +236,6 @@ async function authenticate(
           city: 'New York',
           state: 'NY',
           zip: '10001',
-          phone: '(212) 555-1234',
         },
       });
       if (!profileRes.ok()) {
