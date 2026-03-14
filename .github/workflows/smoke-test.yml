@@ -99,8 +99,10 @@ jobs:
 
       # ── Build backend ──────────────────────────────────────────────────────
       - name: Build backend
-        working-directory: backend
-        run: npm run build
+        run: npm run build:backend
+
+      - name: Verify backend dist
+        run: ls -la backend/dist/main.js
 
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server
