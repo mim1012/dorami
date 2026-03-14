@@ -281,7 +281,8 @@ jobs:
           ssh "$USER@$HOST" bash << 'ENDSSH'
           set -euo pipefail
           cd /opt/dorami
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production ps
