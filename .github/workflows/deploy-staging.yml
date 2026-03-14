@@ -150,12 +150,12 @@ jobs:
           SOURCE_CHANGED: ${{ needs.check.outputs.source_changed }}
           STAGING_LATEST_IMAGE_TAG: ${{ vars.STAGING_LATEST_IMAGE_TAG }}
         run: |
-          # source 변경 없으면 마지막 성공한 이미지 태그 재사용
-          if [ "$SOURCE_CHANGED" = "false" ]; then
-            IMAGE_TAG="${STAGING_LATEST_IMAGE_TAG:-sha-${GITHUB_SHA}}"
-            echo "♻️  Reusing last image (no source changes): ${IMAGE_TAG}"
+          # build job이 새 이미지를 만들었으면 사용, 없으면 마지막 성공 이미지 재사용
+          if [[ "${BUILD_IMAGE_TAG}" =~ ^sha-[0-9a-f]{40}$ ]]; then
+            IMAGE_TAG="${BUILD_IMAGE_TAG}"
           else
-            IMAGE_TAG="${BUILD_IMAGE_TAG:-sha-${GITHUB_SHA}}"
+            IMAGE_TAG="${STAGING_LATEST_IMAGE_TAG:-sha-${GITHUB_SHA}}"
+            echo "♻️  Reusing last image: ${IMAGE_TAG}"
           fi
           if [[ ! "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
             echo "ERROR: IMAGE_TAG must match sha-<40hex>, got: ${IMAGE_TAG}"
