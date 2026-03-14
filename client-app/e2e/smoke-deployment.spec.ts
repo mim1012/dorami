@@ -147,17 +147,16 @@ test.describe('Deployment Smoke Tests', () => {
   // -------------------------------------------------------------------------
   // SMOKE-03: Active streams list (viewer perspective)
   // -------------------------------------------------------------------------
-  test('SMOKE-03: GET /api/streaming/streams/active returns 200 with streams array', async () => {
+  test('SMOKE-03: GET /api/streaming/active returns 200 with streams array', async () => {
     // This endpoint is @Public — no auth needed, but we use auth context for
     // consistency with how the live page fetches it.
     const ctx = await createAuthContext('USER');
     try {
-      const res = await ctx.get('/api/streaming/streams/active');
+      const res = await ctx.get('/api/streaming/active');
 
-      expect(
-        res.status(),
-        `GET /api/streaming/streams/active should return 200, got ${res.status()}`,
-      ).toBe(200);
+      expect(res.status(), `GET /api/streaming/active should return 200, got ${res.status()}`).toBe(
+        200,
+      );
 
       const body = await res.json();
       expect(body.success, 'response envelope should have success:true').toBe(true);
