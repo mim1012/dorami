@@ -278,11 +278,12 @@ jobs:
 
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          ssh "$USER@$HOST" bash << 'ENDSSH'
+          ssh "$USER@$HOST" bash << ENDSSH
           set -euo pipefail
           cd /opt/dorami
           git fetch origin main
           git reset --hard origin/main
+          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${REPO_OWNER}" --password-stdin
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production pull backend frontend
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d
           docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production ps
