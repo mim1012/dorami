@@ -1,72 +1,102 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getOrderById } from '@/lib/api/orders';
-import { Order, OrderStatus } from '@/lib/types/order';
+import { useQuery } from '@tanstack/react-query';
+import { useOrder } from '@/lib/hooks/queries/use-orders';
 import { apiClient } from '@/lib/api/client';
-import { CheckCircle, Clock, Package, Truck, Home } from 'lucide-react';
+import { OrderStatus } from '@/lib/types/order';
+import { CheckCircle, Clock, Package, Truck, Home, ChevronLeft, Copy } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { Display, Heading2, Body } from '@/components/common/Typography';
+import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { useToast } from '@/components/common/Toast';
 
-export default function OrderConfirmationPage() {
+type PaymentConfig = {
+  zelleEmail: string;
+  zelleRecipientName: string;
+  venmoEmail: string;
+  venmoRecipientName: string;
+};
+
+function OrderDetailSkeleton() {
+  return (
+    <div className="min-h-screen bg-primary-black py-6 px-4 pb-24 animate-pulse">
+      <div className="max-w-2xl mx-auto">
+        {/* Back button */}
+        <div className="h-8 w-28 bg-border-color/50 rounded mb-6" />
+        {/* Header card */}
+        <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+          <div className="h-5 bg-border-color/50 rounded w-40 mb-3" />
+          <div className="h-4 bg-border-color/50 rounded w-56" />
+        </div>
+        {/* Timeline card */}
+        <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+          <div className="h-5 bg-border-color/50 rounded w-24 mb-6" />
+          <div className="space-y-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-border-color/50 flex-shrink-0" />
+                <div className="pt-2">
+                  <div className="h-4 bg-border-color/50 rounded w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Payment card */}
+        <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+          <div className="h-5 bg-border-color/50 rounded w-32 mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 bg-border-color/30 rounded-lg" />
+            ))}
+          </div>
+        </div>
+        {/* Items card */}
+        <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+          <div className="h-5 bg-border-color/50 rounded w-24 mb-4" />
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-14 bg-border-color/30 rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
   const { showToast } = useToast();
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [zelleEmail, setZelleEmail] = useState('');
-  const [zelleRecipientName, setZelleRecipientName] = useState('');
-  const [venmoEmail, setVenmoEmail] = useState('');
-  const [venmoRecipientName, setVenmoRecipientName] = useState('');
+  const { data: order, isLoading: orderLoading, error: orderError } = useOrder(orderId);
 
-  useEffect(() => {
-    if (orderId) {
-      fetchOrder();
-    }
-  }, [orderId]);
+  const { data: paymentConfig } = useQuery({
+    queryKey: ['config', 'payment'],
+    queryFn: async () => {
+      const res = await apiClient.get<PaymentConfig>('/config/payment');
+      return res.data;
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => {
-    apiClient
-      .get<{
-        zelleEmail: string;
-        zelleRecipientName: string;
-        venmoEmail: string;
-        venmoRecipientName: string;
-      }>('/config/payment')
-      .then((res) => {
-        setZelleEmail(res.data.zelleEmail || '');
-        setZelleRecipientName(res.data.zelleRecipientName || '');
-        setVenmoEmail(res.data.venmoEmail || '');
-        setVenmoRecipientName(res.data.venmoRecipientName || '');
-      })
-      .catch(() => {});
-  }, []);
-
-  const fetchOrder = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getOrderById(orderId);
-      setOrder(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load order');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
+
+  const copyToClipboard = (value: string) => {
+    navigator.clipboard.writeText(value).then(() => showToast('복사되었습니다', 'success'));
   };
 
   const getStatusSteps = () => {
+    if (!order) return [];
+
     const steps = [
       { label: '주문 완료', icon: CheckCircle, status: 'ORDER_CREATED' },
       { label: '입금 대기', icon: Clock, status: 'PENDING_PAYMENT' },
@@ -82,7 +112,7 @@ export default function OrderConfirmationPage() {
       OrderStatus.DELIVERED,
     ];
 
-    const currentIndex = statusOrder.indexOf(order!.status);
+    const currentIndex = statusOrder.indexOf(order.status);
 
     return steps.map((step, index) => {
       if (index === 0) return { ...step, completed: true, current: false };
@@ -98,182 +128,287 @@ export default function OrderConfirmationPage() {
     });
   };
 
-  if (isLoading) {
+  if (orderLoading) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-info"></div>
-      </div>
+      <>
+        <OrderDetailSkeleton />
+        <BottomTabBar />
+      </>
     );
   }
 
-  if (error || !order) {
+  if (orderError || !order) {
     return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-content-bg rounded-lg shadow-lg p-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-primary-text mb-2">주문을 찾을 수 없습니다</h1>
-            <p className="text-secondary-text mb-6">{error || '주문 정보를 불러올 수 없습니다'}</p>
-            <button
-              onClick={() => router.push('/orders')}
-              className="px-6 py-2 bg-info text-white rounded-lg hover:bg-info/80"
-            >
+      <>
+        <div className="min-h-screen bg-primary-black py-12 px-4 pb-24">
+          <div className="max-w-2xl mx-auto text-center">
+            <Display className="text-error mb-4">주문을 찾을 수 없습니다</Display>
+            <Body className="text-secondary-text mb-6">
+              {orderError
+                ? (orderError as any).message || '주문 정보를 불러올 수 없습니다'
+                : '주문 정보를 불러올 수 없습니다'}
+            </Body>
+            <Button variant="primary" onClick={() => router.push('/orders')}>
               주문 목록 보기
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+        <BottomTabBar />
+      </>
     );
   }
 
   const statusSteps = getStatusSteps();
+  const isCancelled = order.status === OrderStatus.CANCELLED;
+  const isPendingPayment = order.status === OrderStatus.PENDING_PAYMENT;
+  const zelleEmail = paymentConfig?.zelleEmail ?? '';
+  const zelleRecipientName = paymentConfig?.zelleRecipientName ?? '';
+  const venmoEmail = paymentConfig?.venmoEmail ?? '';
+  const venmoRecipientName = paymentConfig?.venmoRecipientName ?? '';
 
   return (
-    <div className="min-h-screen bg-primary-black py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Success Message */}
-        <div className="bg-success-bg border border-success/20 rounded-lg p-6 mb-6">
-          <div className="flex items-center">
-            <CheckCircle className="w-8 h-8 text-success mr-3" />
-            <div>
-              <h1 className="text-2xl font-bold text-primary-text">주문이 완료되었습니다!</h1>
-              <p className="text-success mt-1">
-                주문번호: {order.id} • {new Date(order.createdAt).toLocaleString('ko-KR')}
-              </p>
-            </div>
-          </div>
-        </div>
+    <>
+      <div className="min-h-screen bg-primary-black py-6 px-4 pb-24">
+        <div className="max-w-2xl mx-auto">
+          {/* Back button */}
+          <button
+            onClick={() => router.push('/orders')}
+            className="flex items-center gap-1.5 text-secondary-text hover:text-primary-text transition-colors mb-6"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <Body className="text-sm">주문 목록</Body>
+          </button>
 
-        {/* Status Timeline */}
-        <div className="bg-content-bg rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-primary-text mb-6">주문 상태</h2>
-          <div className="relative">
-            <div className="absolute top-5 left-0 right-0 h-0.5 bg-border-color"></div>
-            <div className="relative flex flex-nowrap overflow-x-auto gap-2">
-              {statusSteps.map((step, index) => (
-                <div key={index} className="flex flex-col items-center min-w-0 flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                      step.completed
-                        ? 'bg-success border-success'
-                        : step.current
-                          ? 'bg-hot-pink border-hot-pink animate-pulse'
-                          : 'bg-content-bg border-border-color'
-                    }`}
-                  >
-                    <step.icon
-                      className={`w-5 h-5 ${
-                        step.completed || step.current ? 'text-white' : 'text-secondary-text'
-                      }`}
-                    />
+          {/* Header card */}
+          <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <CheckCircle className="w-6 h-6 text-success flex-shrink-0" />
+              <Heading2 className="text-primary-text">주문이 완료되었습니다</Heading2>
+            </div>
+            <Body className="text-secondary-text text-sm font-mono">{order.id}</Body>
+            <Body className="text-secondary-text text-xs mt-1">
+              {new Date(order.createdAt).toLocaleString('ko-KR')}
+            </Body>
+          </div>
+
+          {/* Status Timeline */}
+          <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+            <Heading2 className="text-primary-text mb-5">주문 상태</Heading2>
+
+            {isCancelled ? (
+              <div className="bg-error/10 border border-error/30 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-error/20 flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 text-error" />
+                </div>
+                <Body className="text-error font-semibold">주문 취소됨</Body>
+              </div>
+            ) : (
+              <div>
+                {statusSteps.map((step, index) => {
+                  const StepIcon = step.icon;
+                  const isLast = index === statusSteps.length - 1;
+                  return (
+                    <div key={index}>
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 flex-shrink-0 ${
+                              step.completed
+                                ? 'bg-success border-success'
+                                : step.current
+                                  ? 'bg-hot-pink border-hot-pink animate-pulse'
+                                  : 'bg-content-bg border-border-color'
+                            }`}
+                          >
+                            <StepIcon
+                              className={`w-5 h-5 ${
+                                step.completed || step.current
+                                  ? 'text-white'
+                                  : 'text-secondary-text'
+                              }`}
+                            />
+                          </div>
+                          {!isLast && (
+                            <div className="w-0.5 bg-border-color mx-auto mt-1 mb-1 h-6" />
+                          )}
+                        </div>
+                        <div className="pt-2">
+                          <Body
+                            className={`text-sm font-medium ${
+                              step.completed
+                                ? 'text-success'
+                                : step.current
+                                  ? 'text-hot-pink'
+                                  : 'text-secondary-text'
+                            }`}
+                          >
+                            {step.label}
+                          </Body>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Payment Instructions */}
+          {isPendingPayment && (zelleEmail || venmoEmail) && (
+            <div className="rounded-2xl border-2 border-hot-pink/30 bg-hot-pink/5 p-5 mb-4">
+              <Heading2 className="text-hot-pink mb-4">결제 방법</Heading2>
+              <div className="space-y-3">
+                {/* Zelle */}
+                {zelleEmail && (
+                  <div className="bg-content-bg rounded-xl p-4 space-y-3">
+                    <Body className="text-primary-text font-bold text-sm">Zelle 송금</Body>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">수신자</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-primary-text font-semibold text-sm">
+                          {zelleRecipientName}
+                        </Body>
+                        <button
+                          onClick={() => copyToClipboard(zelleRecipientName)}
+                          className="flex-shrink-0"
+                          aria-label="수신자 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">Zelle 이메일</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-hot-pink font-semibold text-sm">{zelleEmail}</Body>
+                        <button
+                          onClick={() => copyToClipboard(zelleEmail)}
+                          className="flex-shrink-0"
+                          aria-label="Zelle 이메일 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p
-                    className={`text-xs mt-2 text-center break-words ${
-                      step.completed || step.current
-                        ? 'text-primary-text font-medium'
-                        : 'text-secondary-text'
-                    }`}
-                  >
-                    {step.label}
-                  </p>
+                )}
+
+                {/* Venmo */}
+                {venmoEmail && (
+                  <div className="bg-content-bg rounded-xl p-4 space-y-3">
+                    <Body className="text-primary-text font-bold text-sm">Venmo 송금</Body>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">수신자</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-primary-text font-semibold text-sm">
+                          {venmoRecipientName}
+                        </Body>
+                        <button
+                          onClick={() => copyToClipboard(venmoRecipientName)}
+                          className="flex-shrink-0"
+                          aria-label="수신자 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">Venmo</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-blue-400 font-semibold text-sm">{venmoEmail}</Body>
+                        <button
+                          onClick={() => copyToClipboard(venmoEmail)}
+                          className="flex-shrink-0"
+                          aria-label="Venmo 이메일 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount */}
+                <div className="bg-content-bg rounded-xl p-4 flex items-center justify-between gap-2">
+                  <Body className="text-primary-text font-semibold">송금 금액</Body>
+                  <div className="flex items-center gap-2">
+                    <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
+                    <button
+                      onClick={() => copyToClipboard(String(order.total))}
+                      className="flex-shrink-0"
+                      aria-label="금액 복사"
+                    >
+                      <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 bg-warning/10 border border-warning/20 rounded-xl p-3">
+                <Body className="text-primary-text text-sm">
+                  ⚠️ 주문 완료 후 위 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로 전송해주세요.
+                </Body>
+              </div>
+            </div>
+          )}
+
+          {/* Order Items */}
+          <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
+            <Heading2 className="text-primary-text mb-4">주문 상품</Heading2>
+            <div className="space-y-3">
+              {order.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex justify-between items-center py-3 border-b border-border-color last:border-0"
+                >
+                  <div className="flex-1 min-w-0 pr-2">
+                    <Body className="text-primary-text font-medium truncate">
+                      {item.productName}
+                    </Body>
+                    {(item.color || item.size) && (
+                      <Body className="text-secondary-text text-xs">
+                        {[item.color, item.size].filter(Boolean).join(' · ')}
+                      </Body>
+                    )}
+                    <Body className="text-secondary-text text-sm">
+                      수량: {item.quantity} × {formatPrice(item.price)}
+                    </Body>
+                  </div>
+                  <Body className="text-primary-text font-semibold flex-shrink-0">
+                    {formatPrice(item.price * item.quantity)}
+                  </Body>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* Payment Instructions */}
-        {order.status === OrderStatus.PENDING_PAYMENT && (zelleEmail || venmoEmail) && (
-          <div className="rounded-lg shadow-md p-6 mb-6 border-2 border-hot-pink/30 bg-hot-pink/10">
-            <h2 className="text-xl font-semibold text-hot-pink mb-4">💳 결제 방법</h2>
-            <div className="space-y-3">
-              {/* Zelle */}
-              {zelleEmail && (
-                <div className="bg-content-bg rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-bold text-primary-text">Zelle 송금</p>
-                  <div className="flex flex-wrap justify-between items-center gap-1">
-                    <span className="text-secondary-text">수신자</span>
-                    <span className="font-semibold text-primary-text">{zelleRecipientName}</span>
-                  </div>
-                  <div className="flex flex-wrap justify-between items-center gap-1">
-                    <span className="text-secondary-text">Zelle 이메일</span>
-                    <span className="font-semibold text-hot-pink">{zelleEmail}</span>
-                  </div>
-                </div>
-              )}
-              {/* Venmo */}
-              {venmoEmail && (
-                <div className="bg-content-bg rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-bold text-primary-text">Venmo 송금</p>
-                  <div className="flex flex-wrap justify-between items-center gap-1">
-                    <span className="text-secondary-text">수신자</span>
-                    <span className="font-semibold text-primary-text">{venmoRecipientName}</span>
-                  </div>
-                  <div className="flex flex-wrap justify-between items-center gap-1">
-                    <span className="text-secondary-text">Venmo</span>
-                    <span className="font-semibold text-blue-400">{venmoEmail}</span>
-                  </div>
-                </div>
-              )}
-              <div className="bg-content-bg rounded-lg p-4 flex flex-wrap justify-between items-center gap-1">
-                <span className="text-primary-text font-semibold">송금 금액</span>
-                <span className="text-2xl font-bold text-hot-pink">{formatPrice(order.total)}</span>
+            <div className="mt-4 pt-4 border-t border-border-color space-y-2">
+              <div className="flex justify-between gap-1">
+                <Body className="text-secondary-text text-sm">소계</Body>
+                <Body className="text-secondary-text text-sm">{formatPrice(order.subtotal)}</Body>
+              </div>
+              <div className="flex justify-between gap-1">
+                <Body className="text-secondary-text text-sm">배송비</Body>
+                <Body className="text-secondary-text text-sm">
+                  {formatPrice(order.shippingFee)}
+                </Body>
+              </div>
+              <div className="flex justify-between gap-1 pt-2">
+                <Body className="text-primary-text font-bold">합계</Body>
+                <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
               </div>
             </div>
-            <div className="mt-4 bg-warning-bg border border-warning/20 rounded-lg p-3">
-              <p className="text-sm text-primary-text">
-                ⚠️ 주문 완료 후 위 계정으로 송금 후 스크린샷을 DM 또는 카톡 채널로 전송해주세요.
-              </p>
-            </div>
           </div>
-        )}
 
-        {/* Order Items */}
-        <div className="bg-content-bg rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-primary-text mb-4">주문 상품</h2>
-          <div className="space-y-3">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center py-3 border-b border-border-color last:border-0"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-primary-text">{item.productName}</p>
-                  <p className="text-sm text-secondary-text">
-                    수량: {item.quantity} × {formatPrice(item.price)}
-                  </p>
-                </div>
-                <p className="font-semibold text-primary-text">
-                  {formatPrice(item.price * item.quantity)}
-                </p>
-              </div>
-            ))}
+          {/* Actions */}
+          <div className="flex flex-col gap-3">
+            <Button variant="primary" onClick={() => router.push('/')}>
+              쇼핑 계속하기
+            </Button>
           </div>
-          <div className="mt-4 pt-4 border-t border-border-color space-y-2">
-            <div className="flex flex-wrap justify-between gap-1 text-secondary-text">
-              <span>소계</span>
-              <span>{formatPrice(order.subtotal)}</span>
-            </div>
-            <div className="flex flex-wrap justify-between gap-1 text-secondary-text">
-              <span>배송비</span>
-              <span>{formatPrice(order.shippingFee)}</span>
-            </div>
-            <div className="flex flex-wrap justify-between gap-1 text-xl font-bold text-primary-text pt-2">
-              <span>합계</span>
-              <span>{formatPrice(order.total)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-center gap-4">
-          <Button variant="secondary" onClick={() => router.push('/orders')}>
-            내 주문 보기
-          </Button>
-          <Button variant="primary" onClick={() => router.push('/')}>
-            쇼핑 계속하기
-          </Button>
         </div>
       </div>
-    </div>
+
+      <BottomTabBar />
+    </>
   );
 }

@@ -1,39 +1,55 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/components/common/Toast';
 import type { Order, OrderStatus } from '@/lib/types';
 
-// Query Keys
 export const orderKeys = {
   all: ['orders'] as const,
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (filters: { status?: OrderStatus; page?: number }) =>
     [...orderKeys.lists(), filters] as const,
+  listInfinite: (status?: OrderStatus) => [...orderKeys.lists(), 'infinite', { status }] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
 };
 
-// Fetch user's orders
+type OrdersPage = {
+  items: Order[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+// Fetch user's orders (paginated)
 export function useOrders(status?: OrderStatus, page = 1, limit = 20) {
   return useQuery({
     queryKey: orderKeys.list({ status, page }),
     queryFn: async () => {
       const params: Record<string, any> = { page, limit };
       if (status) params.status = status;
-      const response = await apiClient.get<{
-        items: Order[];
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-      }>('/orders', {
-        params,
-      });
+      const response = await apiClient.get<OrdersPage>('/orders', { params });
       return response.data;
     },
+  });
+}
+
+// Infinite scroll version
+export function useOrdersInfinite(status?: OrderStatus) {
+  return useInfiniteQuery<OrdersPage, Error>({
+    queryKey: orderKeys.listInfinite(status),
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const params: Record<string, any> = { page: pageParam, limit: 10 };
+      if (status) params.status = status;
+      const response = await apiClient.get<OrdersPage>('/orders', { params });
+      return response.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
   });
 }
 
@@ -42,13 +58,9 @@ export function useAllOrdersForCounts() {
   return useQuery({
     queryKey: [...orderKeys.lists(), 'all-for-counts'] as const,
     queryFn: async () => {
-      const response = await apiClient.get<{
-        items: Order[];
-        total: number;
-        page: number;
-        limit: number;
-        totalPages: number;
-      }>('/orders', { params: { page: 1, limit: 200 } });
+      const response = await apiClient.get<OrdersPage>('/orders', {
+        params: { page: 1, limit: 200 },
+      });
       return response.data;
     },
     staleTime: 30_000,
