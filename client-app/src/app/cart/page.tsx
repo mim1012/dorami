@@ -31,7 +31,13 @@ function CartPageContent() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
 
-  const { data: cart, isLoading, isError, refetch } = useCart({ enabled: !authLoading });
+  const {
+    data: cart,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useCart({ enabled: !authLoading });
 
   const updateCartItem = useUpdateCartItem();
   const removeCartItem = useRemoveCartItem();
@@ -144,7 +150,7 @@ function CartPageContent() {
             </div>
           )}
 
-          {cart && cart.items.length === 0 ? (
+          {cart && cart.items.length === 0 && !isFetching ? (
             <CartEmptyState />
           ) : (
             cart && (
