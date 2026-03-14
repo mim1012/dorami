@@ -98,8 +98,8 @@ export default function ProductDetailModal({
         {/* Product Image Gallery */}
         {(() => {
           const images = (product.images ?? []).filter(Boolean);
-          if (images.length === 0 && product.imageUrl) {
-            images.push(product.imageUrl);
+          if (product.imageUrl && !images.includes(product.imageUrl)) {
+            images.unshift(product.imageUrl);
           }
           return (
             <ImageGallery images={images} productName={product.name} aspectRatio="aspect-square" />

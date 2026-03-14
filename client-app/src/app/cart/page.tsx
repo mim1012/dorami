@@ -206,12 +206,24 @@ function CartPageContent() {
                     variant="primary"
                     size="md"
                     fullWidth
-                    onClick={() => {
-                      if (!hasExpiredItems) {
+                    onClick={async () => {
+                      const result = await refetch();
+                      const freshCart = result.data;
+                      const freshHasExpired = freshCart?.items.some(
+                        (item) =>
+                          item.status === 'EXPIRED' ||
+                          (item.expiresAt &&
+                            item.status === 'ACTIVE' &&
+                            new Date(item.expiresAt).getTime() <= Date.now()),
+                      );
+                      if (!freshHasExpired) {
                         router.push('/checkout');
+                      } else {
+                        showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
+                        queryClient.invalidateQueries({ queryKey: cartKeys.all });
                       }
                     }}
-                    disabled={hasExpiredItems}
+                    disabled={hasExpiredItems || isFetching}
                   >
                     {hasExpiredItems
                       ? '만료된 상품이 있습니다'

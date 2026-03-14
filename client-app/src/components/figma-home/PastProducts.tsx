@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { Clock } from 'lucide-react';
 import type { PastProductItem } from '@/lib/api/mainpage';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -11,11 +10,10 @@ const PLACEHOLDER_IMAGE =
 type PastProductsProps = {
   products: PastProductItem[];
   isLoading?: boolean;
+  onProductClick?: (product: PastProductItem) => void;
 };
 
-export function PastProducts({ products, isLoading = false }: PastProductsProps) {
-  const router = useRouter();
-
+export function PastProducts({ products, isLoading = false, onProductClick }: PastProductsProps) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -54,7 +52,7 @@ export function PastProducts({ products, isLoading = false }: PastProductsProps)
             <button
               key={product.id}
               type="button"
-              onClick={() => router.push(`/products/${product.id}`)}
+              onClick={() => (onProductClick ? onProductClick(product) : undefined)}
               className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 text-left"
             >
               <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">

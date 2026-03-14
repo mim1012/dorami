@@ -67,9 +67,15 @@ export function ProductDetailModal({
   const hasSizeOptions = sizeOptions.length > 0;
   const hasColorOptions = colorOptions.length > 0;
 
-  // Build image list: prefer product.images if present, else use product.image
-  const imageList: string[] =
-    product.images && product.images.length > 0 ? product.images : [product.image];
+  // Build image list: thumbnail first, then additional images (dedup), filter empty strings
+  const baseImages: string[] = (product.images ?? []).filter(Boolean);
+  const imageList: string[] = (
+    product.image && !baseImages.includes(product.image)
+      ? [product.image, ...baseImages]
+      : baseImages.length > 0
+        ? baseImages
+        : [product.image]
+  ).filter(Boolean);
   const hasMultipleImages = imageList.length > 1;
 
   useEffect(() => {
@@ -350,27 +356,16 @@ export function ProductDetailModal({
             <p className="text-xs text-error text-center md:text-left">{validationMessage}</p>
           )}
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-              className={`flex-1 bg-white border-2 border-gray-300 text-gray-900 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 ${
-                isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {isOutOfStock ? '일시품절' : '장바구니'}
-            </button>
-            <button
-              onClick={handlePurchase}
-              disabled={isOutOfStock}
-              className={`flex-[2] bg-gradient-to-r from-[#FF4D8D] to-[#FF6B9D] text-white py-4 rounded-2xl font-bold transition-all ${
-                isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'
-              }`}
-            >
-              {isOutOfStock ? '일시품절' : '구매하기'}
-            </button>
-          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className={`w-full bg-white border-2 border-gray-300 text-gray-900 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 ${
+              isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {isOutOfStock ? '일시품절' : '장바구니'}
+          </button>
         </div>
       </div>
 

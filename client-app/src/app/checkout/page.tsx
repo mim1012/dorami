@@ -59,7 +59,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     // cartData 로딩 중엔 리다이렉트 방지, 로드 후 빈 경우만 /cart로 이동
     if (cartData && items.length === 0 && !orderCompleted) {
-      router.push('/cart');
+      router.push('/cart?expired=1');
     }
   }, [cartData, items, router, orderCompleted]);
 
