@@ -1,22 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { useOrders, useAllOrdersForCounts } from '@/lib/hooks/queries/use-orders';
+import { useOrdersInfinite, useAllOrdersForCounts } from '@/lib/hooks/queries/use-orders';
 import { OrderStatus } from '@/lib/types';
-import {
-  Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Truck,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, Truck } from 'lucide-react';
 
 const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
   { label: '전체', value: 'ALL' },
@@ -29,34 +21,54 @@ const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error } = useOrders(
-    selectedStatus === 'ALL' ? undefined : selectedStatus,
-    page,
-    10,
-  );
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useOrdersInfinite(selectedStatus === 'ALL' ? undefined : selectedStatus);
 
   const { data: allOrdersData } = useAllOrdersForCounts();
 
-  const orders = data?.items ?? [];
-  const totalPages = data?.totalPages ?? 1;
-  const total = data?.total ?? 0;
+  const allOrders = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
-  const allOrders = allOrdersData?.items ?? [];
-  const statusCounts = allOrders.reduce<Record<string, number>>((acc, order) => {
+  const allOrdersForCounts = allOrdersData?.items ?? [];
+  const statusCounts = allOrdersForCounts.reduce<Record<string, number>>((acc, order) => {
     acc[order.status] = (acc[order.status] ?? 0) + 1;
     return acc;
   }, {});
-  const pendingOrders = allOrders.filter(
+  const pendingOrders = allOrdersForCounts.filter(
     (o) => o.status === 'PENDING_PAYMENT' && o.paymentStatus === 'PENDING',
   );
 
+  // Deduplicate pinned orders from main list
+  const pinnedOrderIds = new Set(pendingOrders.map((o) => o.id));
+  const displayOrders =
+    selectedStatus === 'ALL' && pendingOrders.length > 0
+      ? allOrders.filter((o) => !pinnedOrderIds.has(o.id))
+      : allOrders;
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const handleStatusChange = (status: OrderStatus | 'ALL') => {
     setSelectedStatus(status);
-    setPage(1);
   };
 
   const formatPrice = (price: number) =>
@@ -131,7 +143,7 @@ export default function OrdersPage() {
     }
   };
 
-  if (authLoading || (isLoading && orders.length === 0)) {
+  if (authLoading || (isLoading && allOrders.length === 0)) {
     return (
       <>
         <div className="min-h-screen bg-primary-black py-6 px-4 pb-24">
@@ -255,7 +267,7 @@ export default function OrdersPage() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/order-complete?orderId=${order.id}`);
+                          router.push(`/orders/${order.id}`);
                         }}
                       >
                         입금 확인 →
@@ -268,7 +280,7 @@ export default function OrdersPage() {
           )}
 
           {/* Empty State */}
-          {orders.length === 0 && (
+          {displayOrders.length === 0 && !isLoading && (
             <div className="text-center py-16">
               <Package className="w-12 h-12 text-secondary-text mx-auto mb-4 opacity-30" />
               <Heading2 className="text-primary-text mb-2">
@@ -292,9 +304,9 @@ export default function OrdersPage() {
           )}
 
           {/* Orders List */}
-          {orders.length > 0 && (
+          {displayOrders.length > 0 && (
             <div className="space-y-4">
-              {orders.map((order) => {
+              {displayOrders.map((order) => {
                 const paymentStatus = getOrderRowStatusInfo(order.status, order.paymentStatus);
                 const shippingStatus = getShippingStatusInfo(order.shippingStatus);
                 const StatusIcon = paymentStatus.icon;
@@ -387,7 +399,7 @@ export default function OrdersPage() {
                           fullWidth
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/order-complete?orderId=${order.id}`);
+                            router.push(`/orders/${order.id}`);
                           }}
                         >
                           입금 정보 확인 →
@@ -400,51 +412,13 @@ export default function OrdersPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 mt-8">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-2 rounded-lg border border-border-color text-secondary-text disabled:opacity-30 hover:border-hot-pink/40 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                  .reduce<(number | '...')[]>((acc, p, idx, arr) => {
-                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, idx) =>
-                    p === '...' ? (
-                      <span key={`ellipsis-${idx}`} className="px-1 text-secondary-text text-sm">
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p as number)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          page === p
-                            ? 'bg-hot-pink text-white'
-                            : 'text-secondary-text hover:text-primary-text'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
-              </div>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-2 rounded-lg border border-border-color text-secondary-text disabled:opacity-30 hover:border-hot-pink/40 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-4" />
+
+          {/* Loading more spinner */}
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
             </div>
           )}
         </div>

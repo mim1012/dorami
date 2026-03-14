@@ -99,7 +99,7 @@ export function UpcomingLives({ upcomingLives, isLoading = false }: UpcomingLive
                     tabIndex={0}
                     className="group w-full text-left bg-gradient-to-br from-white to-[#FFF9FC] rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-[#FFE5EE] cursor-pointer"
                   >
-                    <div className="relative aspect-[3/4] overflow-hidden bg-gray-50">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
                       <ImageWithFallback
                         src={show.thumbnailUrl ?? PLACEHOLDER_IMAGE}
                         alt={show.title}

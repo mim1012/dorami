@@ -59,7 +59,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     // cartData 로딩 중엔 리다이렉트 방지, 로드 후 빈 경우만 /cart로 이동
     if (cartData && items.length === 0 && !orderCompleted) {
-      router.push('/cart');
+      router.push('/cart?expired=1');
     }
   }, [cartData, items, router, orderCompleted]);
 
@@ -168,7 +168,15 @@ export default function CheckoutPage() {
     }
   };
 
-  if (!cartData || items.length === 0) {
+  if (!cartData) {
+    return (
+      <div className="min-h-screen bg-primary-black flex items-center justify-center">
+        <Body className="text-primary-text">주문 정보를 불러오는 중...</Body>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
     return null;
   }
 

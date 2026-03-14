@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { generateId } from '@/lib/utils/uuid';
 import { cartKeys } from '@/lib/hooks/queries/use-cart';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 export interface CartActivityEvent {
   id: string;
@@ -34,11 +35,7 @@ export function useCartActivity(streamKey: string) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_WS_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : '');
-
-    const socket = io(baseUrl + '/', {
+    const socket = io(SOCKET_URL + '/', {
       transports: ['websocket'],
       withCredentials: true,
       reconnection: true,

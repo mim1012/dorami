@@ -27,7 +27,12 @@ env:
   # ── Backend ────────────────────────────────────────────────────────────────
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/smoke_db?schema=public
   REDIS_URL: redis://localhost:6379
-  JWT_SECRET: smoke-jwt-secret-for-ci-only
+  REDIS_HOST: localhost
+  REDIS_PORT: '6379'
+  JWT_SECRET: smoke-jwt-secret-for-ci-only-32chars-ok
+  KAKAO_CLIENT_ID: smoke-kakao-client-id
+  KAKAO_CLIENT_SECRET: smoke-kakao-client-secret
+  KAKAO_CALLBACK_URL: http://localhost:3001/api/auth/kakao/callback
   PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   CSRF_ENABLED: 'false'
   ENABLE_DEV_AUTH: 'true'
@@ -96,6 +101,11 @@ jobs:
       # ── Build shared-types (already built by postinstall, but make explicit) ─
       - name: Build shared-types
         run: npm run build:shared
+
+      # ── Build backend ──────────────────────────────────────────────────────
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
 
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server

@@ -2,7 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { cartKeys } from '@/lib/hooks/queries/use-cart';
 import { ProductCard } from '@/components/home/ProductCard';
 import ProductDetailModal from '@/components/product/ProductDetailModal';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
@@ -25,6 +27,7 @@ function StoreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [products, setProducts] = useState<Product[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [isLoading, setIsLoading] = useState(true);
@@ -122,6 +125,7 @@ function StoreContent() {
         size: selectedSize,
       });
 
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
       showToast('장바구니에 담았습니다. (스토어 상품은 타이머 미적용)', 'success');
       setIsModalOpen(false);
       setSelectedProduct(null);

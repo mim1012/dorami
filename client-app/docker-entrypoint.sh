@@ -6,7 +6,7 @@ find /app/client-app/.next -name "*.js" -type f | while read file; do
   if grep -q '__NEXT_PUBLIC_' "$file" 2>/dev/null; then
     sed -i \
       -e "s|__NEXT_PUBLIC_API_URL__|${NEXT_PUBLIC_API_URL:-/api}|g" \
-      -e "s|__NEXT_PUBLIC_WS_URL__|${NEXT_PUBLIC_WS_URL:-}|g" \
+      -e "s|__NEXT_PUBLIC_WS_URL__|${NEXT_PUBLIC_WS_URL:-https://www.doremi-live.com}|g" \
       -e "s|__NEXT_PUBLIC_CDN_URL__|${NEXT_PUBLIC_CDN_URL:-}|g" \
       -e "s|__NEXT_PUBLIC_ENABLE_DEV_AUTH__|${NEXT_PUBLIC_ENABLE_DEV_AUTH:-false}|g" \
       -e "s|__NEXT_PUBLIC_PREVIEW_ENABLED__|${NEXT_PUBLIC_PREVIEW_ENABLED:-false}|g" \

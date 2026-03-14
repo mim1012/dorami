@@ -99,3 +99,6 @@ tmp/
 nul
 backend/uploads/
 ssh/
+
+# Duplicate project copy
+dorami/

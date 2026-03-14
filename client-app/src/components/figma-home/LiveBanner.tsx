@@ -111,11 +111,11 @@ export function LiveBanner({ currentLive, isLoading = false }: LiveBannerProps) 
 
         {/* Right Image */}
         <div className="relative h-64 md:h-auto md:min-h-[400px] lg:min-h-[500px]">
-          <div className="absolute inset-0 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
+          <div className="absolute inset-0 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl bg-white">
             <ImageWithFallback
               src={currentLive.thumbnailUrl || placeholderImage}
               alt={currentLive.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
             {/* Play Icon Overlay */}
             <Link
