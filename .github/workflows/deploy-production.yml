@@ -1027,9 +1027,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Success Notification
-        if: needs.deploy.result == 'success' && needs.verify.result == 'success'
-              - name: Telegram - Production Success
+      - name: Telegram - Production Success
         if: needs.deploy.result == 'success' && needs.verify.result == 'success'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
