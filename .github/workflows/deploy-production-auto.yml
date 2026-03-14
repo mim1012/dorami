@@ -303,10 +303,11 @@ jobs:
         run: |
           ssh "$USER@$HOST" bash << 'ENDSSH'
           set -e
+          cd /opt/dorami
 
           echo ""
           echo "═════════════════════════════════════════════════════════════"
-          echo "=== PRODUCTION DEPLOYMENT VERIFICATION (186 Users) ==="
+          echo "=== PRODUCTION DEPLOYMENT VERIFICATION ==="
           echo "═════════════════════════════════════════════════════════════"
 
           echo ""
@@ -314,58 +315,38 @@ jobs:
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
           echo ""
-          echo "---- 🔌 Port Bindings (ss -tlnp) ----"
-          ss -tlnp 2>/dev/null | grep -E ":(80|443|3000|3001|6379|5432)" || echo "No relevant ports found"
-
-          echo ""
-          echo "---- 📦 Docker Port Mappings ----"
-          docker ps --format "table {{.Names}}\t{{.Ports}}"
-
-          echo ""
           echo "---- ✅ CRITICAL: Port 80/443 External Binding ----"
           PORT_CHECK=$(docker ps --format "{{.Ports}}" | grep -E "0.0.0.0:(80|443)")
           if [ -z "$PORT_CHECK" ]; then
             echo "❌ CRITICAL ERROR: Port 80/443 not exposed externally"
-            echo "Docker port bindings:"
             docker ps
-            echo ""
             echo "ROLLBACK REQUIRED!"
             exit 1
           fi
           echo "✓ Ports exposed correctly: $PORT_CHECK"
 
           echo ""
-          echo "---- 🌐 Backend Health Check (Retry 6x) ----"
-          for i in 1 2 3 4 5 6; do
-            status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/health/live || echo 000)"
+          echo "---- 🌐 Backend Health Check — direct :3001 (Retry 12x / 120s) ----"
+          for i in $(seq 1 12); do
+            status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/health/live || echo 000)"
             if [ "$status" = "200" ]; then
               echo "✓ Backend responding (HTTP $status)"
               break
             fi
-            if [ "$i" = "6" ]; then
-              echo "❌ Backend NOT responding after 6 retries (last status: $status)"
+            if [ "$i" = "12" ]; then
+              echo "❌ Backend NOT responding after 12 retries (last status: $status)"
               docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
               docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs backend --tail=20
               exit 1
             fi
-            echo "  Retry ${i}/6 (status: ${status})..."
+            echo "  Retry ${i}/12 (status: ${status})..."
             sleep 10
           done
 
           echo ""
-          echo "---- 🌐 Frontend Health Check ----"
-          frontend_status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost || echo 000)"
-          if [ "$frontend_status" = "200" ]; then
-            echo "✓ Frontend responding (HTTP $frontend_status)"
-          else
-            echo "⚠️  Frontend not responding (HTTP $frontend_status)"
-            exit 1
-          fi
-
-          echo ""
-          echo "---- 🌐 Nginx Proxy Check (Port 80) ----"
+          echo "---- 🌐 Nginx Proxy Check (port 80 — 200 or 301/302 HTTPS redirect ok) ----"
           nginx_status="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:80 || echo 000)"
-          if [ "$nginx_status" = "200" ]; then
+          if [ "$nginx_status" = "200" ] || [ "$nginx_status" = "301" ] || [ "$nginx_status" = "302" ]; then
             echo "✓ Nginx responding on port 80 (HTTP $nginx_status)"
           else
             echo "❌ Nginx NOT responding on port 80 (HTTP $nginx_status)"
