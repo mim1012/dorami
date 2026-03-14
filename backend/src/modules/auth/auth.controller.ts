@@ -196,8 +196,10 @@ export class AuthController {
 
       const loginResponse = await this.authService.refreshToken(refreshToken);
 
-      // Set new access token in cookie per Story 2.1 AC3
+      // Set new tokens in cookies — refreshToken must also be rotated so the
+      // browser cookie matches the newly-stored Redis token on the next refresh.
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
+      res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
       return res.json({
         success: true,

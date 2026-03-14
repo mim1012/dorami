@@ -29,19 +29,36 @@ export async function POST(request: NextRequest) {
     const body = await backendResponse.json();
     const response = NextResponse.json(body);
 
-    // Parse accessToken from backend Set-Cookie and set it directly
-    const setCookieHeader = backendResponse.headers.get('set-cookie');
-    if (setCookieHeader) {
-      const tokenMatch = setCookieHeader.match(/accessToken=([^;]+)/);
-      if (tokenMatch) {
-        const proto = request.headers.get('x-forwarded-proto') ?? '';
-        const isHttps = proto === 'https' || request.url.startsWith('https://');
+    // Forward all Set-Cookie headers from backend — both accessToken and refreshToken
+    // must be updated so the browser cookie stays in sync with Redis.
+    const proto = request.headers.get('x-forwarded-proto') ?? '';
+    const isHttps = proto === 'https' || request.url.startsWith('https://');
 
-        response.cookies.set('accessToken', tokenMatch[1], {
+    // Node.js fetch returns multiple Set-Cookie headers as an array via getSetCookie()
+    const setCookies: string[] =
+      typeof (backendResponse.headers as { getSetCookie?: () => string[] }).getSetCookie ===
+      'function'
+        ? (backendResponse.headers as { getSetCookie: () => string[] }).getSetCookie()
+        : [backendResponse.headers.get('set-cookie') ?? ''].filter(Boolean);
+
+    for (const raw of setCookies) {
+      const accessMatch = raw.match(/^accessToken=([^;]+)/);
+      const refreshMatch = raw.match(/^refreshToken=([^;]+)/);
+
+      if (accessMatch) {
+        response.cookies.set('accessToken', accessMatch[1], {
           httpOnly: true,
           secure: isHttps,
           sameSite: isHttps ? 'strict' : 'lax',
           maxAge: 15 * 60,
+          path: '/',
+        });
+      } else if (refreshMatch) {
+        response.cookies.set('refreshToken', refreshMatch[1], {
+          httpOnly: true,
+          secure: isHttps,
+          sameSite: isHttps ? 'strict' : 'lax',
+          maxAge: 7 * 24 * 60 * 60,
           path: '/',
         });
       }
