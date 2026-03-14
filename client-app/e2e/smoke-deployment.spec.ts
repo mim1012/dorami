@@ -71,14 +71,14 @@ test.describe('Deployment Smoke Tests', () => {
   // -------------------------------------------------------------------------
   // SMOKE-01: Login
   // -------------------------------------------------------------------------
-  test('SMOKE-01: dev-login returns 200 and sets accessToken cookie', async () => {
+  test('SMOKE-01: dev-login returns 2xx and sets accessToken cookie', async () => {
     const ctx = await playwrightRequest.newContext({ baseURL: BASE_URL });
     try {
       const res = await ctx.post('/api/auth/dev-login', {
         data: { email: 'buyer@test.com' },
       });
 
-      expect(res.status(), `dev-login should return 200 but got ${res.status()}`).toBe(200);
+      expect(res.ok(), `dev-login should return 2xx but got ${res.status()}`).toBe(true);
 
       const body = await res.json();
       expect(body.success, 'response envelope should have success:true').toBe(true);

@@ -37,6 +37,7 @@ env:
   CSRF_ENABLED: 'false'
   COOKIE_SECURE: 'false'
   ENABLE_DEV_AUTH: 'true'
+  ADMIN_EMAILS: admin@doremi.shop
   PORT: '3001'
   APP_ENV: development
   # ── Frontend ───────────────────────────────────────────────────────────────
