@@ -64,7 +64,7 @@ jobs:
   build:
     name: Build Images
     needs: [check, test]
-    if: always() && needs.check.outputs.source_changed == 'true' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
     uses: ./.github/workflows/build-images.yml
     permissions:
       contents: read
