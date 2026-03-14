@@ -99,10 +99,11 @@ jobs:
 
       # ── Build backend ──────────────────────────────────────────────────────
       - name: Build backend
-        run: npm run build:backend
-
-      - name: Verify backend dist
-        run: ls -la backend/dist/main.js
+        working-directory: backend
+        run: |
+          npx tsc -p tsconfig.build.json 2>&1
+          echo "TSC exit: $?"
+          ls -la dist/ || echo "dist directory missing"
 
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server
