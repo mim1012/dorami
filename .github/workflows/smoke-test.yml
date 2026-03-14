@@ -97,6 +97,11 @@ jobs:
       - name: Build shared-types
         run: npm run build:shared
 
+      # ── Build backend ──────────────────────────────────────────────────────
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server
         working-directory: backend
