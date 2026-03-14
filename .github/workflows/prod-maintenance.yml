@@ -26,6 +26,7 @@ on:
           - find-data
           - restart-backend
           - restart-frontend
+          - restart-nginx
           - restart-srs
           - restart-all
 
@@ -409,6 +410,13 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: ssh $USER@$HOST 'docker restart dorami-frontend-prod && echo "완료"'
 
+      - name: restart-nginx
+        if: inputs.command == 'restart-nginx'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: ssh $USER@$HOST 'docker restart dorami-nginx-prod && echo "nginx 재시작 완료"'
+
       - name: restart-srs
         if: inputs.command == 'restart-srs'
         env:
@@ -423,6 +431,6 @@ jobs:
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
           ssh $USER@$HOST bash << 'EOF'
-          docker restart backend-prod dorami-frontend-prod dorami-srs-prod
+          docker restart backend-prod dorami-frontend-prod dorami-nginx-prod dorami-srs-prod
           docker ps --format "table {{.Names}}\t{{.Status}}"
           EOF
