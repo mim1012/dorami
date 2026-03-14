@@ -27,6 +27,8 @@ env:
   # ── Backend ────────────────────────────────────────────────────────────────
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/smoke_db?schema=public
   REDIS_URL: redis://localhost:6379
+  REDIS_HOST: localhost
+  REDIS_PORT: '6379'
   JWT_SECRET: smoke-jwt-secret-for-ci-only
   PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   CSRF_ENABLED: 'false'
