@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
+import {
+  useCart,
+  useUpdateCartItem,
+  useRemoveCartItem,
+  cartKeys,
+} from '@/lib/hooks/queries/use-cart';
 import { Heading1, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -16,38 +23,18 @@ import { ShoppingCart, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 
-interface CartItem {
-  id: string;
-  productName: string;
-  price: number;
-  quantity: number;
-  color?: string;
-  size?: string;
-  shippingFee: number;
-  timerEnabled: boolean;
-  expiresAt?: string;
-  status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED';
-  total: number;
-}
-
-interface CartSummary {
-  items: CartItem[];
-  itemCount: number;
-  subtotal: number;
-  totalShippingFee: number;
-  grandTotal: number;
-  earliestExpiration?: string;
-}
-
 function CartPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
-  const [cart, setCart] = useState<CartSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: cart, isLoading, isError, refetch } = useCart({ enabled: !authLoading });
+
+  const updateCartItem = useUpdateCartItem();
+  const removeCartItem = useRemoveCartItem();
 
   useEffect(() => {
     if (searchParams.get('expired') === '1') {
@@ -55,42 +42,24 @@ function CartPageContent() {
     }
   }, [searchParams, showToast]);
 
-  const fetchCart = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.get<CartSummary>('/cart');
-      setCart(response.data);
-    } catch (err: any) {
-      console.error('Failed to fetch cart:', err);
-      setError('장바구니를 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchCart();
-    }
-  }, [authLoading, user, fetchCart]);
-
-  const handleCartExpired = async () => {
+  const handleCartExpired = () => {
     showToast(
       '예약 시간이 만료되어 장바구니에서 제거되었습니다. 라이브 방송에서 다시 담아주세요.',
       'error',
     );
-    await fetchCart();
+    queryClient.invalidateQueries({ queryKey: cartKeys.all });
   };
 
-  const handleUpdateQuantity = async (cartItemId: string, newQuantity: number) => {
+  const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
     if (newQuantity < 1 || newQuantity > 10) return;
-    try {
-      await apiClient.patch(`/cart/${cartItemId}`, { quantity: newQuantity });
-      await fetchCart();
-    } catch (err: any) {
-      console.error('Failed to update quantity:', err);
-      showToast(`수량 변경에 실패했습니다: ${err.message}`, 'error');
-    }
+    updateCartItem.mutate(
+      { itemId: cartItemId, quantity: newQuantity },
+      {
+        onError: (err: any) => {
+          showToast(`수량 변경에 실패했습니다: ${err.message}`, 'error');
+        },
+      },
+    );
   };
 
   const handleRemoveItem = async (cartItemId: string) => {
@@ -101,13 +70,11 @@ function CartPageContent() {
       variant: 'danger',
     });
     if (!confirmed) return;
-    try {
-      await apiClient.delete(`/cart/${cartItemId}`);
-      await fetchCart();
-    } catch (err: any) {
-      console.error('Failed to remove item:', err);
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    removeCartItem.mutate(cartItemId, {
+      onError: () => {
+        showToast('삭제에 실패했습니다.', 'error');
+      },
+    });
   };
 
   const handleRemoveExpiredItems = async () => {
@@ -122,7 +89,7 @@ function CartPageContent() {
     if (expiredItems.length === 0) return;
     try {
       await Promise.all(expiredItems.map((item) => apiClient.delete(`/cart/${item.id}`)));
-      await fetchCart();
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
       showToast('만료된 상품을 삭제했습니다.', 'success');
     } catch {
       showToast('삭제 중 오류가 발생했습니다.', 'error');
@@ -137,7 +104,7 @@ function CartPageContent() {
         new Date(item.expiresAt).getTime() <= Date.now()),
   );
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <>
         <div className="min-h-screen bg-primary-black flex items-center justify-center">
@@ -168,10 +135,10 @@ function CartPageContent() {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-6">
-          {error && (
+          {isError && (
             <div className="bg-error/10 border border-error rounded-xl p-4 mb-6 flex items-center justify-between gap-3">
-              <Body className="text-error flex-1">{error}</Body>
-              <Button variant="outline" size="sm" onClick={fetchCart}>
+              <Body className="text-error flex-1">장바구니를 불러오는데 실패했습니다.</Body>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
                 재시도
               </Button>
             </div>
@@ -212,9 +179,9 @@ function CartPageContent() {
 
                 <CartSummaryCard
                   itemCount={cart.itemCount}
-                  subtotal={cart.subtotal}
-                  totalShippingFee={cart.totalShippingFee}
-                  grandTotal={cart.grandTotal}
+                  subtotal={parseFloat(cart.subtotal)}
+                  totalShippingFee={parseFloat(cart.totalShippingFee)}
+                  grandTotal={parseFloat(cart.grandTotal)}
                 />
 
                 {/* Action Buttons */}
@@ -242,7 +209,7 @@ function CartPageContent() {
                   >
                     {hasExpiredItems
                       ? '만료된 상품이 있습니다'
-                      : `${formatPrice(cart.grandTotal)} 결제하기`}
+                      : `${formatPrice(parseFloat(cart.grandTotal))} 결제하기`}
                   </Button>
                   <Button
                     variant="outline"
