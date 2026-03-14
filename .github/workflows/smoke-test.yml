@@ -102,6 +102,12 @@ jobs:
         working-directory: backend
         run: npm run build
 
+      - name: Debug dist contents
+        working-directory: backend
+        run: |
+          echo "=== dist/ contents ===" && find dist/ -name "*.js" | head -20 || echo "No .js files or dist/ missing"
+          ls -la dist/ || echo "dist/ does not exist"
+
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server
         working-directory: backend
