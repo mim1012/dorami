@@ -35,6 +35,7 @@ env:
   KAKAO_CALLBACK_URL: http://localhost:3001/api/auth/kakao/callback
   PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   CSRF_ENABLED: 'false'
+  COOKIE_SECURE: 'false'
   ENABLE_DEV_AUTH: 'true'
   PORT: '3001'
   APP_ENV: development
