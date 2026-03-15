@@ -151,7 +151,11 @@ function AdminUsersContent() {
       label: '인스타아이디',
       sortable: false,
       render: (user) =>
-        user.instagramId || <span className="text-secondary-text text-xs">미설정</span>,
+        user.instagramId ? (
+          user.instagramId.replace(/^@/, '')
+        ) : (
+          <span className="text-secondary-text text-xs">미설정</span>
+        ),
     },
     {
       key: 'depositorName',

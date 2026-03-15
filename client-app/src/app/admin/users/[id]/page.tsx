@@ -595,7 +595,9 @@ export default function AdminUserDetailPage() {
             <div className="space-y-4">
               <div>
                 <Body className="text-secondary-text text-caption">인스타그램</Body>
-                <Body className="text-hot-pink font-medium">{user.instagramId || '-'}</Body>
+                <Body className="text-hot-pink font-medium">
+                  {user.instagramId ? user.instagramId.replace(/^@/, '') : '-'}
+                </Body>
               </div>
 
               <div>
