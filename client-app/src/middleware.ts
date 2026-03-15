@@ -12,9 +12,7 @@ const KAKAO_OPEN_EXTERNAL_VALUE = '1';
  * which cannot use Node.js crypto).  We only need the `exp` and `role` claims to detect
  * obviously-expired tokens and unauthorized role access before doing a full server-side validation.
  */
-function decodeJwtPayload(
-  token: string,
-): {
+function decodeJwtPayload(token: string): {
   exp?: number;
   role?: string;
   profileComplete?: boolean;
@@ -84,6 +82,14 @@ function buildUrlWithOpenExternalFlag(source: URL): URL {
   return url;
 }
 
+function getPublicUrl(request: NextRequest): URL {
+  // request.url may return internal Docker address (e.g. http://0.0.0.0:3000/path)
+  // when running in standalone mode. Reconstruct the public URL from forwarded headers.
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https';
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '';
+  return new URL(`${proto}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`);
+}
+
 function handleKakaoInAppRedirect(request: NextRequest): NextResponse | null {
   const userAgent = request.headers.get('user-agent') ?? '';
   if (!isKakaoInAppBrowser(userAgent)) {
@@ -94,7 +100,7 @@ function handleKakaoInAppRedirect(request: NextRequest): NextResponse | null {
     return null;
   }
 
-  const targetUrl = new URL(request.url);
+  const targetUrl = getPublicUrl(request);
 
   if (isAndroidUserAgent(userAgent)) {
     const fallbackUrl = buildUrlWithOpenExternalFlag(targetUrl);
