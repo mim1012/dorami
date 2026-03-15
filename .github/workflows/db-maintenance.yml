@@ -30,5 +30,19 @@ jobs:
           EMAIL: ${{ inputs.email }}
         run: |
           ssh "$USER@$HOST" bash << ENDSSH
-          docker exec dorami-postgres-1 psql -U app_user -d live_commerce_production -c "UPDATE users SET role = 'USER', profile_completed_at = NULL, \"instagramId\" = NULL, \"depositorName\" = NULL, kakao_phone = NULL WHERE email = '$EMAIL' RETURNING id, email, role, profile_completed_at;"
+          docker exec dorami-postgres-1 psql -U app_user -d live_commerce_production -c "
+            BEGIN;
+            DELETE FROM order_items;
+            DELETE FROM settlements;
+            DELETE FROM orders;
+            DELETE FROM reservations;
+            DELETE FROM carts;
+            DELETE FROM products;
+            COMMIT;
+            SELECT 'order_items' as tbl, COUNT(*) FROM order_items
+            UNION ALL SELECT 'orders', COUNT(*) FROM orders
+            UNION ALL SELECT 'products', COUNT(*) FROM products
+            UNION ALL SELECT 'carts', COUNT(*) FROM carts
+            UNION ALL SELECT 'reservations', COUNT(*) FROM reservations;
+          "
           ENDSSH
