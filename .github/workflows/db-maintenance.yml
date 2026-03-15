@@ -30,6 +30,5 @@ jobs:
           EMAIL: ${{ inputs.email }}
         run: |
           ssh "$USER@$HOST" bash << ENDSSH
-          docker exec dorami-postgres-1 psql -U app_user -d live_commerce_production -c "SELECT email, \"instagramId\" FROM users WHERE \"instagramId\" LIKE '@@%' LIMIT 20;"
-          docker exec dorami-postgres-1 psql -U app_user -d live_commerce_production -c "SELECT COUNT(*) as double_at FROM users WHERE \"instagramId\" LIKE '@@%';"
+          docker exec dorami-postgres-1 psql -U app_user -d live_commerce_production -c "SELECT email, \"instagramId\", length(\"instagramId\") as len FROM users WHERE \"instagramId\" IS NOT NULL ORDER BY len DESC LIMIT 10;"
           ENDSSH
