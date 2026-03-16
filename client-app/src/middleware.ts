@@ -6,6 +6,29 @@ const PUBLIC_PREFIX_ROUTES = ['/login', '/auth', '/profile/register'];
 const PROFILE_OPTIONAL_PATHS = ['/profile/register'];
 const KAKAO_OPEN_EXTERNAL_QUERY = 'openExternal';
 const KAKAO_OPEN_EXTERNAL_VALUE = '1';
+const KAKAO_EXTERNAL_ORIGIN = (
+  process.env.NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN ??
+  process.env.KAKAO_EXTERNAL_ORIGIN ??
+  process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ??
+  ''
+).trim();
+
+function normalizeOrigin(origin: string): string | null {
+  if (!origin) {
+    return null;
+  }
+  if (origin.includes('0.0.0.0')) {
+    return null;
+  }
+  return origin.startsWith('http://') || origin.startsWith('https://')
+    ? origin
+    : `https://${origin}`;
+}
+
+function isRoutableHost(host: string): boolean {
+  const value = host.trim().toLowerCase();
+  return Boolean(value) && !value.startsWith('0.0.0.0') && !value.startsWith('[::]');
+}
 
 /**
  * Decode a JWT without verifying the signature (middleware runs on the Edge runtime
@@ -87,9 +110,33 @@ function buildUrlWithOpenExternalFlag(source: URL): URL {
 function getPublicUrl(request: NextRequest): URL {
   // request.url may return internal Docker address (e.g. http://0.0.0.0:3000/path)
   // when running in standalone mode. Reconstruct the public URL from forwarded headers.
+  const canonicalOrigin = normalizeOrigin(KAKAO_EXTERNAL_ORIGIN);
+  if (canonicalOrigin) {
+    return new URL(`${canonicalOrigin}${request.nextUrl.pathname}${request.nextUrl.search}`);
+  }
+
   const proto = request.headers.get('x-forwarded-proto') ?? 'https';
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '';
-  return new URL(`${proto}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`);
+  const hostHeader = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '';
+  const host = hostHeader.split(',')[0]?.trim() ?? '';
+  if (isRoutableHost(host)) {
+    return new URL(`${proto}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`);
+  }
+
+  const referer = request.headers.get('referer');
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      if (isRoutableHost(refererUrl.host)) {
+        return new URL(
+          `${proto}://${refererUrl.host}${request.nextUrl.pathname}${request.nextUrl.search}`,
+        );
+      }
+    } catch {
+      // fallthrough
+    }
+  }
+
+  return request.nextUrl;
 }
 
 function handleKakaoInAppRedirect(request: NextRequest): NextResponse | null {
