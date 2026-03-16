@@ -51,6 +51,7 @@ export class UsersController {
     return this.usersService.findById(userId);
   }
 
+  @SkipThrottle({ short: true })
   @Get('check-instagram')
   @ApiOperation({ summary: '인스타그램 ID 사용 가능 여부 확인' })
   @ApiQuery({ name: 'instagramId', description: '확인할 인스타그램 ID', example: 'my_instagram' })
@@ -78,6 +79,7 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
+  @SkipThrottle({ short: true })
   @Patch('me')
   @AllowIncompleteProfile()
   @ApiOperation({ summary: '내 프로필 수정' })
@@ -111,6 +113,7 @@ export class UsersController {
    * Get full profile including decrypted shipping address
    * Use this for "My Page" where address is needed
    */
+  @SkipThrottle({ short: true })
   @Get('profile/me')
   @AllowIncompleteProfile()
   @ApiOperation({
@@ -122,6 +125,7 @@ export class UsersController {
     return this.usersService.getProfile(userId);
   }
 
+  @SkipThrottle({ short: true })
   @Patch('profile/address')
   @AllowIncompleteProfile()
   @ApiOperation({
