@@ -313,6 +313,7 @@ jobs:
               echo "SRS_API_URL=\"http://srs:1985\""
               echo "ENABLE_DEV_AUTH=\"true\""
               echo "NEXT_PUBLIC_KAKAO_JS_KEY=\"${KAKAO_JS_KEY}\""
+              echo "NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN=\"https://staging.doremi-live.com\""
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
             } > /opt/dorami/.env.staging
