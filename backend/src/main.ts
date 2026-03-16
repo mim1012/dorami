@@ -44,7 +44,7 @@ async function bootstrap() {
   }
 
   // Validate REDIS_URL format
-  const redisUrl = process.env.REDIS_URL;
+  const redisUrl = process.env.REDIS_URL!; // Non-null assertion: guaranteed by earlier validation
   if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
     logger.error(`❌ Invalid REDIS_URL format: must start with 'redis://' or 'rediss://'`);
     process.exit(1);
