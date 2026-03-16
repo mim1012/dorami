@@ -386,3 +386,43 @@ DEBUG=socket.io:* npm run dev:backend   # Enable debug logs
 | `client-app/lib/api/client.ts`       | HTTP + auth retry logic                |
 | `client-app/lib/store/auth.ts`       | Zustand auth store                     |
 | `packages/shared-types/src/index.ts` | Shared enums + utilities               |
+
+## Lessons Learned (2026-03-16)
+
+### 1. **Code Reuse: Follow Existing Guard Patterns**
+
+**Issue:** Initial chat WebSocket guard used `streamKey === 'undefined'` string check, deviating from similar guards elsewhere in the codebase.
+**Rule:** Always analyze existing hooks/components for established patterns before creating guards. Match the style (e.g., `use-stream-viewer.ts` uses simple `!streamKey`, not string comparison).
+**Action:** Remove stringly-typed defensive checks unless there's explicit evidence of that data shape.
+
+### 2. **Early Returns: Require Explicit Cleanup**
+
+**Issue:** Guard clause with early return didn't clean up stale socket and pending message queue refs, causing potential memory leaks and unexpected state when dependencies changed.
+**Rule:** Any `useEffect` with an early `return;` statement MUST explicitly clean up resources before returning:
+
+```typescript
+if (!valid) {
+  if (socketRef.current) socketRef.current.disconnect();
+  otherRef.current = [];
+  setState(false);
+  return; // NOW it's safe to return
+}
+```
+
+**Why:** Early returns skip the cleanup function (lines after the main logic). Always clean inline before returning.
+
+### 3. **Socket.IO Dependencies: Watch for Reference Changes**
+
+**Issue:** Hook dependency arrays including socket objects can cause cascading cleanup/reconnect if socket reference changes on every render.
+**Rule:** When using Socket.IO in dependency arrays, verify:
+
+- Is the socket reference stable across renders?
+- Does the `useSocket` hook memoize the socket instance?
+- If socket changes, does it trigger unintended cleanup in dependent hooks?
+  **Action:** Use refs or memoization for socket objects; avoid including them in dependency arrays unless explicitly intentional.
+
+### 4. **useParams() Hydration: Guard Against Undefined During SSR**
+
+**Issue:** `useParams().streamKey` can be undefined initially in client components during hydration, causing hooks to be called with undefined parameters.
+**Rule:** Function signatures should declare the actual type (e.g., `streamKey: string | undefined`) rather than lying with `as string` casts.
+**Action:** Either guard at the call site (only render hooks when params are ready) or add guards inside hooks and handle cleanup properly (see #2).
