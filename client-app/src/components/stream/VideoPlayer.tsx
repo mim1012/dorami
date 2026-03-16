@@ -520,14 +520,10 @@ export default function VideoPlayer({
     video.addEventListener('ratechange', onRateChange);
 
     // Try HTTP-FLV first (low-latency), fall back to HLS
-    console.log(`[VideoPlayer] MOUNT effect streamKey=${streamKey}`);
-    console.trace('[VideoPlayer] mount stacktrace');
     initializeFlvPlayer();
     connectWebSocket();
 
     return () => {
-      console.log(`[VideoPlayer] CLEANUP effect streamKey=${streamKey}`);
-      console.trace('[VideoPlayer] cleanup stacktrace');
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);

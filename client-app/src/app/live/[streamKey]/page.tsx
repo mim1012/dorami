@@ -79,11 +79,10 @@ export default function LiveStreamPage() {
   useTokenAutoRefresh(streamKey, { suspendForBroadcast: true });
 
   const isMobile = useIsMobile(1024);
-
-  // Debug: track isMobile and isLoading changes
+  const [isMobileReady, setIsMobileReady] = useState(false);
   useEffect(() => {
-    console.log(`[LivePage] isMobile changed: ${isMobile}`);
-  }, [isMobile]);
+    setIsMobileReady(true);
+  }, []);
 
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -484,10 +483,6 @@ export default function LiveStreamPage() {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
       const nextStatus = response.data.status;
       const previousStatus = previousStreamStatusRef.current;
-      console.log(
-        `[LivePage] fetchStreamStatus: prev=${previousStatus} next=${nextStatus} isMobile=${isMobile} seed=${playerSessionSeed}`,
-      );
-
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
         setError(null);
@@ -591,7 +586,9 @@ export default function LiveStreamPage() {
   };
 
   // Profile completion guard: prevent rendering while redirecting
-  if (isLoading) {
+  // isMobileReady ensures useIsMobile has read window.innerWidth before
+  // VideoPlayer renders — prevents Desktop→Mobile remount race condition.
+  if (isLoading || !isMobileReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
