@@ -19,6 +19,7 @@ import {
 interface ChatMessagePayload {
   liveId: string;
   message: string;
+  clientMessageId?: string;
 }
 
 interface DeleteMessagePayload {
@@ -189,6 +190,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         id: Date.now().toString(),
         liveId: payload.liveId,
         userId: client.user.userId,
+        clientMessageId: payload.clientMessageId,
         message: sanitizedMessage,
         timestamp: new Date().toISOString(),
       },

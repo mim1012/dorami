@@ -397,7 +397,7 @@ async function bootstrap() {
         // Send recent chat history (last 50 messages from Redis)
         try {
           const historyKey = `chat:${payload.liveId}:history`;
-          const messages = await pubClient.lRange(historyKey, -50, -1);
+          const messages = await pubClient.lRange(historyKey, -100, -1);
           if (messages.length > 0) {
             socket.emit('chat:history', {
               type: 'chat:history',
@@ -461,81 +461,85 @@ async function bootstrap() {
       });
 
       // Handle chat:send-message
-      socket.on('chat:send-message', async (payload: { liveId: string; message: string }) => {
-        // Rate limiting: max 20 messages per 10 seconds
-        if (!rateLimitCheck(socket, 'chat:send-message', { windowMs: 10000, maxEvents: 20 })) {
-          return;
-        }
+      socket.on(
+        'chat:send-message',
+        async (payload: { liveId: string; message: string; clientMessageId?: string }) => {
+          // Rate limiting: max 20 messages per 10 seconds
+          if (!rateLimitCheck(socket, 'chat:send-message', { windowMs: 10000, maxEvents: 20 })) {
+            return;
+          }
 
-        // Validate message
-        if (!payload.message || typeof payload.message !== 'string') {
-          socket.emit('error', {
-            type: 'error',
-            errorCode: 'INVALID_MESSAGE',
-            message: 'Message is required and must be a string',
+          // Validate message
+          if (!payload.message || typeof payload.message !== 'string') {
+            socket.emit('error', {
+              type: 'error',
+              errorCode: 'INVALID_MESSAGE',
+              message: 'Message is required and must be a string',
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+
+          // Sanitize: strip HTML tags to prevent XSS
+          const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
+
+          // Validate length (max 500 characters)
+          if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
+            socket.emit('error', {
+              type: 'error',
+              errorCode: 'MESSAGE_TOO_LONG',
+              message: 'Message must be between 1 and 500 characters',
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+
+          const roomName = `live:${payload.liveId}`;
+
+          // Fetch user's instagramId for display in chat
+          let username = '익명';
+          try {
+            const user = await prismaService.user.findUnique({
+              where: { id: authenticatedSocket.user.userId },
+              select: { instagramId: true },
+            });
+            username = user?.instagramId ?? '익명';
+          } catch {
+            // Fallback to anonymous
+          }
+
+          const messageData = {
+            id: randomUUID(),
+            liveId: payload.liveId,
+            userId: authenticatedSocket.user.userId,
+            username,
+            message: sanitizedMessage,
+            clientMessageId: payload.clientMessageId,
             timestamp: new Date().toISOString(),
+          };
+
+          // Store message in Redis (async, non-blocking, max 100 messages, 24h TTL)
+          const historyKey = `chat:${payload.liveId}:history`;
+          pubClient
+            .rPush(historyKey, JSON.stringify(messageData))
+            .then(() => pubClient.lTrim(historyKey, -100, -1))
+            .then(() => pubClient.expire(historyKey, 86400))
+            .catch((err) => logger.warn(`Failed to cache chat message: ${err}`));
+
+          // Broadcast to all clients in room
+          chatNamespace.to(roomName).emit('chat:message', {
+            type: 'chat:message',
+            data: messageData,
           });
-          return;
-        }
 
-        // Sanitize: strip HTML tags to prevent XSS
-        const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
-
-        // Validate length (max 500 characters)
-        if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
-          socket.emit('error', {
-            type: 'error',
-            errorCode: 'MESSAGE_TOO_LONG',
-            message: 'Message must be between 1 and 500 characters',
-            timestamp: new Date().toISOString(),
+          socket.emit('chat:send-message:success', {
+            type: 'chat:send-message:success',
+            data: {
+              timestamp: new Date().toISOString(),
+            },
           });
-          return;
-        }
-
-        const roomName = `live:${payload.liveId}`;
-
-        // Fetch user's instagramId for display in chat
-        let username = '익명';
-        try {
-          const user = await prismaService.user.findUnique({
-            where: { id: authenticatedSocket.user.userId },
-            select: { instagramId: true },
-          });
-          username = user?.instagramId ?? '익명';
-        } catch {
-          // Fallback to anonymous
-        }
-
-        const messageData = {
-          id: randomUUID(),
-          liveId: payload.liveId,
-          userId: authenticatedSocket.user.userId,
-          username,
-          message: sanitizedMessage,
-          timestamp: new Date().toISOString(),
-        };
-
-        // Store message in Redis (async, non-blocking, max 100 messages, 24h TTL)
-        const historyKey = `chat:${payload.liveId}:history`;
-        pubClient
-          .rPush(historyKey, JSON.stringify(messageData))
-          .then(() => pubClient.lTrim(historyKey, -100, -1))
-          .then(() => pubClient.expire(historyKey, 86400))
-          .catch((err) => logger.warn(`Failed to cache chat message: ${err}`));
-
-        // Broadcast to all clients in room
-        chatNamespace.to(roomName).emit('chat:message', {
-          type: 'chat:message',
-          data: messageData,
-        });
-
-        socket.emit('chat:send-message:success', {
-          type: 'chat:send-message:success',
-          data: {
-            timestamp: new Date().toISOString(),
-          },
-        });
-      });
+        },
+      );
 
       // Handle chat:delete-message
       socket.on('chat:delete-message', async (payload: { liveId: string; messageId: string }) => {

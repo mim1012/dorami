@@ -227,7 +227,7 @@ export function useProductStock(streamKey?: string) {
           socket.disconnect();
           // Only force logout if the circuit breaker has fully opened — a single stock
           // WebSocket auth failure should not evict the user from the session.
-          if (circuitBreakerRef.current.getState().isOpen) {
+          if (circuitBreakerRef.current.getState().isOpen && !streamKey) {
             forceLogout();
           }
           return;

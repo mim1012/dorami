@@ -76,7 +76,7 @@ export default function LiveStreamPage() {
   const streamKey = params.streamKey as string;
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
-  useTokenAutoRefresh(streamKey);
+  useTokenAutoRefresh(streamKey, { suspendForBroadcast: true });
 
   const isMobile = useIsMobile(1024);
 
@@ -115,6 +115,7 @@ export default function LiveStreamPage() {
   const previousStreamStatusRef = useRef<StreamStatus['status'] | null>(null);
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
+  const hasShownSessionExpiredToast = useRef(false);
   const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
 
   // ── Auth guard: redirect unauthenticated users to login ───────────────────
@@ -123,6 +124,23 @@ export default function LiveStreamPage() {
       router.push('/login');
     }
   }, [isAuthenticated, isAuthLoading, pathname, router]);
+
+  useEffect(() => {
+    const onSessionExpired = () => {
+      if (!hasShownSessionExpiredToast.current) {
+        hasShownSessionExpiredToast.current = true;
+        showToast(
+          '세션 갱신이 반복 실패했습니다. 화면이 다시 이어지지 않으면 새로고침 또는 재로그인이 필요할 수 있습니다.',
+          'warning',
+        );
+      }
+    };
+
+    if (typeof window === 'undefined') return;
+    window.addEventListener('dorami-live-session-expired', onSessionExpired as EventListener);
+    return () =>
+      window.removeEventListener('dorami-live-session-expired', onSessionExpired as EventListener);
+  }, [showToast]);
 
   // ── FSM ────────────────────────────────────────────────────────────────────
   const { snapshot, stream, dispatch } = useLiveLayoutMachine();
@@ -449,7 +467,10 @@ export default function LiveStreamPage() {
     };
   }, [streamKey]);
 
+  const isFetchingStatusRef = useRef(false);
   const fetchStreamStatus = useCallback(async () => {
+    if (isFetchingStatusRef.current) return;
+    isFetchingStatusRef.current = true;
     try {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
       const nextStatus = response.data.status;
@@ -483,19 +504,23 @@ export default function LiveStreamPage() {
       }
     } finally {
       setIsLoading(false);
+      isFetchingStatusRef.current = false;
     }
   }, [dispatch, streamKey]);
 
   // Poll stream status so UI can recover without manual refresh after transient disconnects.
+  // NOTE: snapshot/stream are intentionally NOT in deps to avoid rapid concurrent fetches
+  // that cause playerSessionSeed race conditions. Interval is adjusted via a separate effect.
   useEffect(() => {
     void fetchStreamStatus();
+    const interval = setInterval(() => void fetchStreamStatus(), 15000);
+    return () => clearInterval(interval);
+  }, [fetchStreamStatus]);
 
-    const intervalMs =
-      snapshot === 'ENDED' || snapshot === 'RETRYING' || stream === 'no_stream' ? 5000 : 15000;
-    const interval = setInterval(() => {
-      void fetchStreamStatus();
-    }, intervalMs);
-
+  // Accelerate polling when reconnecting or stream is down
+  useEffect(() => {
+    if (snapshot !== 'ENDED' && snapshot !== 'RETRYING' && stream !== 'no_stream') return;
+    const interval = setInterval(() => void fetchStreamStatus(), 5000);
     return () => clearInterval(interval);
   }, [fetchStreamStatus, snapshot, stream]);
 
