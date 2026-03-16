@@ -14,15 +14,16 @@ const KAKAO_EXTERNAL_ORIGIN = (
 ).trim();
 
 function normalizeOrigin(origin: string): string | null {
-  if (!origin) {
+  if (!origin) return null;
+  try {
+    const url = new URL(origin.startsWith('http') ? origin : `https://${origin}`);
+    if (url.hostname === '0.0.0.0' || url.hostname === '[::]' || url.hostname === '::') {
+      return null;
+    }
+    return url.origin;
+  } catch {
     return null;
   }
-  if (origin.includes('0.0.0.0')) {
-    return null;
-  }
-  return origin.startsWith('http://') || origin.startsWith('https://')
-    ? origin
-    : `https://${origin}`;
 }
 
 function isRoutableHost(host: string): boolean {
@@ -120,20 +121,6 @@ function getPublicUrl(request: NextRequest): URL {
   const host = hostHeader.split(',')[0]?.trim() ?? '';
   if (isRoutableHost(host)) {
     return new URL(`${proto}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`);
-  }
-
-  const referer = request.headers.get('referer');
-  if (referer) {
-    try {
-      const refererUrl = new URL(referer);
-      if (isRoutableHost(refererUrl.host)) {
-        return new URL(
-          `${proto}://${refererUrl.host}${request.nextUrl.pathname}${request.nextUrl.search}`,
-        );
-      }
-    } catch {
-      // fallthrough
-    }
   }
 
   return request.nextUrl;
