@@ -78,6 +78,9 @@ jobs:
     needs: [check, build]
     if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      variables: write
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
