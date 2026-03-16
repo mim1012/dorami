@@ -1,5 +1,5 @@
 # Docker Compose Production Overlay
-# 사용법: docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
+# 사용법: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.production up -d
 # Env: --env-file .env.production
 #
 # 특징:
