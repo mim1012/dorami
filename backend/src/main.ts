@@ -28,11 +28,18 @@ async function bootstrap() {
   logger.log('🚀 Bootstrap starting...');
 
   // Validate critical environment variables
-  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_HOST', 'REDIS_PORT'];
+  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_URL', 'REDIS_HOST', 'REDIS_PORT'];
 
   const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
   if (missingEnvVars.length > 0) {
     logger.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    process.exit(1);
+  }
+
+  // Validate REDIS_URL format
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+    logger.error(`❌ Invalid REDIS_URL format: must start with 'redis://' or 'rediss://'`);
     process.exit(1);
   }
 
