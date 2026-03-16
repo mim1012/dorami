@@ -80,6 +80,11 @@ export default function LiveStreamPage() {
 
   const isMobile = useIsMobile(1024);
 
+  // Debug: track isMobile and isLoading changes
+  useEffect(() => {
+    console.log(`[LivePage] isMobile changed: ${isMobile}`);
+  }, [isMobile]);
+
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -479,6 +484,9 @@ export default function LiveStreamPage() {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
       const nextStatus = response.data.status;
       const previousStatus = previousStreamStatusRef.current;
+      console.log(
+        `[LivePage] fetchStreamStatus: prev=${previousStatus} next=${nextStatus} isMobile=${isMobile} seed=${playerSessionSeed}`,
+      );
 
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
