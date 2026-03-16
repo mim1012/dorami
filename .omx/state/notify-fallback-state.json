@@ -1,0 +1,9 @@
+{
+  "pid": 1011,
+  "started_at": "2026-03-07T06:42:31.984Z",
+  "cwd": "/mnt/d/Project/dorami",
+  "notify_script": "/mnt/d/npm-global/node_modules/oh-my-codex/scripts/notify-hook.js",
+  "poll_ms": 700,
+  "tracked_files": 2,
+  "seen_turns": 0
+}

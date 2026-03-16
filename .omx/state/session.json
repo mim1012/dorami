@@ -1,0 +1,9 @@
+{
+  "session_id": "omx-1772865751380-lxc0qb",
+  "started_at": "2026-03-07T06:42:31.709Z",
+  "cwd": "/mnt/d/Project/dorami",
+  "pid": 992,
+  "platform": "linux",
+  "pid_start_ticks": 10159,
+  "pid_cmdline": "node /mnt/d/npm-global/node_modules/oh-my-codex/bin/omx.js"
+}
