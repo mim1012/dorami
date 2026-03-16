@@ -78,8 +78,8 @@ export function useChatConnection(streamKey: string) {
       flushPendingMessages();
     });
 
-    socket.on('disconnect', () => {
-      console.log('[Chat] WebSocket disconnected');
+    socket.on('disconnect', (reason) => {
+      console.log('[Chat] WebSocket disconnected:', reason);
       setIsConnected(false);
     });
 
