@@ -131,7 +131,7 @@ export default function LiveStreamPage() {
         hasShownSessionExpiredToast.current = true;
         showToast(
           '세션 갱신이 반복 실패했습니다. 화면이 다시 이어지지 않으면 새로고침 또는 재로그인이 필요할 수 있습니다.',
-          'warning',
+          'info',
         );
       }
     };
