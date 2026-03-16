@@ -38,7 +38,8 @@ function decodeJwtPayload(token: string): {
 }
 
 function redirectToLogin(request: NextRequest, pathname: string): NextResponse {
-  const loginUrl = new URL('/login', request.url);
+  const base = getPublicUrl(request);
+  const loginUrl = new URL('/login', base);
   const redirectTarget =
     pathname +
     (request.nextUrl.search && request.nextUrl.search !== '' ? request.nextUrl.search : '');
@@ -47,7 +48,8 @@ function redirectToLogin(request: NextRequest, pathname: string): NextResponse {
 }
 
 function redirectToForbidden(request: NextRequest): NextResponse {
-  const forbiddenUrl = new URL('/403', request.url);
+  const base = getPublicUrl(request);
+  const forbiddenUrl = new URL('/403', base);
   return NextResponse.redirect(forbiddenUrl);
 }
 
@@ -161,7 +163,7 @@ export function middleware(request: NextRequest) {
   // /my-page 접근 시 admin은 /admin으로 리다이렉트
   const isMyPage = pathname.startsWith('/my-page');
   if (isMyPage && payload.role === 'ADMIN') {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return NextResponse.redirect(new URL('/admin', getPublicUrl(request)));
   }
 
   // Check admin role for admin-only routes
@@ -175,7 +177,7 @@ export function middleware(request: NextRequest) {
   );
 
   if (requiresProfileCompletion && payload.role !== 'ADMIN' && payload.profileComplete !== true) {
-    const profileUrl = new URL('/profile/register', request.url);
+    const profileUrl = new URL('/profile/register', getPublicUrl(request));
     if (pathname !== '/profile/register') {
       const search = request.nextUrl.search ?? '';
       const target = `${pathname}${search}`;
@@ -190,7 +192,7 @@ export function middleware(request: NextRequest) {
     payload.profileComplete === true &&
     payload.shippingAddressComplete === false
   ) {
-    const profileUrl = new URL('/profile/register', request.url);
+    const profileUrl = new URL('/profile/register', getPublicUrl(request));
     if (pathname !== '/profile/register') {
       const search = request.nextUrl.search ?? '';
       const target = `${pathname}${search}`;
