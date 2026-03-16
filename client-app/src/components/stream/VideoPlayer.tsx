@@ -166,6 +166,7 @@ export default function VideoPlayer({
         () => {
           videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
+          connectWebSocket();
         },
         { once: true },
       );
@@ -186,6 +187,7 @@ export default function VideoPlayer({
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         videoRef.current?.play().catch(() => {});
         setIsPlaying(true);
+        connectWebSocket();
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -279,6 +281,7 @@ export default function VideoPlayer({
         () => {
           videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
+          connectWebSocket();
         },
         { once: true },
       );
@@ -519,17 +522,13 @@ export default function VideoPlayer({
     video.addEventListener('stalled', onStalled);
     video.addEventListener('ratechange', onRateChange);
 
-    // Defer player + WebSocket initialization by one frame so that
-    // a rapid unmount/remount cycle (e.g. React reconciliation or
-    // isMobile flip) skips the connection entirely instead of
-    // creating and immediately tearing down an FLV session.
-    const initTimer = setTimeout(() => {
-      initializeFlvPlayer();
-      connectWebSocket();
-    }, 0);
+    // Player initialization starts immediately; WebSocket connects
+    // only after player is ready (loadedmetadata / MANIFEST_PARSED).
+    // This prevents wasted WebSocket connections when the component
+    // unmounts before the player has loaded any data.
+    initializeFlvPlayer();
 
     return () => {
-      clearTimeout(initTimer);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
@@ -580,6 +579,9 @@ export default function VideoPlayer({
   };
 
   const connectWebSocket = () => {
+    // Guard: prevent duplicate connections on re-render
+    if (socketRef.current) return;
+
     const streamingConfig = RECONNECT_CONFIG.streaming;
     const socket = io(`${SOCKET_URL}/streaming`, {
       transports: ['websocket', 'polling'],
