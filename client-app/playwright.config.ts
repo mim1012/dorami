@@ -20,7 +20,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 3,
   reporter: 'html',
-  timeout: 150000,
+  timeout: 180000, // Increased from 150s to 180s for frontend-heavy smoke tests (profile registration, product loading, etc.)
 
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',

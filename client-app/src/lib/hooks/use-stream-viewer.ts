@@ -14,8 +14,16 @@ export function useStreamViewer(streamKey: string, enabled: boolean = true): Use
   useEffect(() => {
     if (!socket || !enabled || !streamKey) return;
 
-    // Join the stream as a viewer
-    socket.emit('stream:viewer:join', { streamKey });
+    // Helper function to join the stream
+    const joinStream = () => {
+      socket.emit('stream:viewer:join', { streamKey });
+    };
+
+    // Initial join
+    joinStream();
+
+    // Rejoin after reconnection
+    socket.on('connect', joinStream);
 
     // Listen for viewer count updates
     const handleViewerCount = (data: { streamKey: string; viewerCount: number }) => {
@@ -29,6 +37,7 @@ export function useStreamViewer(streamKey: string, enabled: boolean = true): Use
     // Leave the stream when unmounting
     return () => {
       socket.emit('stream:viewer:leave', { streamKey });
+      socket.off('connect', joinStream);
       socket.off('stream:viewer:update', handleViewerCount);
     };
   }, [socket, streamKey, enabled]);

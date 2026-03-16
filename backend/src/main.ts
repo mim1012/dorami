@@ -28,11 +28,25 @@ async function bootstrap() {
   logger.log('🚀 Bootstrap starting...');
 
   // Validate critical environment variables
-  const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'REDIS_HOST', 'REDIS_PORT'];
+  const requiredEnvVars = [
+    'DATABASE_URL',
+    'JWT_SECRET',
+    'REDIS_URL',
+    'REDIS_HOST',
+    'REDIS_PORT',
+    'SRS_WEBHOOK_SECRET',
+  ];
 
   const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
   if (missingEnvVars.length > 0) {
     logger.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    process.exit(1);
+  }
+
+  // Validate REDIS_URL format
+  const redisUrl = process.env.REDIS_URL!; // Non-null assertion: guaranteed by earlier validation
+  if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+    logger.error(`❌ Invalid REDIS_URL format: must start with 'redis://' or 'rediss://'`);
     process.exit(1);
   }
 
@@ -239,12 +253,12 @@ async function bootstrap() {
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
   // REDIS_URL is validated by config.validation.ts: required in production/staging,
   // defaults to redis://localhost:6379 in development. Guard here for adapter safety.
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
+  const redisUrlForAdapter = process.env.REDIS_URL;
+  if (!redisUrlForAdapter) {
     throw new Error('REDIS_URL must be set (config validation should have caught this)');
   }
   const pubClient = createClient({
-    url: redisUrl,
+    url: redisUrlForAdapter,
     socket: {
       connectTimeout: 30000, // 30 seconds
       reconnectStrategy: (retries) => Math.min(retries * 100, 5000), // exponential backoff

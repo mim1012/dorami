@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { RECONNECT_CONFIG, ReconnectProfile } from './reconnect-config';
 import { SOCKET_URL } from '../config/socket-url';
+import { isAuthError, refreshAuthToken } from '../auth/token-manager';
 
 type SocketNamespace = string;
 interface QueuedEmit {
@@ -84,16 +85,37 @@ export class SocketClient {
 
     socket.on('connect', () => {
       state.reconnectAttempts = 0;
-      console.log(`✅ WebSocket connected: ${namespace} (${socket.id})`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`✅ WebSocket connected: ${namespace} (${socket.id})`);
+      }
       clearQueue();
     });
 
     socket.on('disconnect', (reason) => {
-      console.warn(`👋 WebSocket disconnected (${namespace}): ${reason}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`👋 WebSocket disconnected (${namespace}): ${reason}`);
+      }
     });
 
-    socket.on('connect_error', (error) => {
+    socket.on('connect_error', async (error) => {
       console.error(`❌ WebSocket connect_error (${namespace}):`, error);
+
+      // Handle auth errors: try refreshing token and reconnecting
+      if (isAuthError(error)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`🔄 Auth error detected for ${namespace}, attempting token refresh...`);
+        }
+        const success = await refreshAuthToken();
+        if (success) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`✅ Token refreshed for ${namespace}, reconnecting...`);
+          }
+          state.reconnectAttempts = 0;
+          socket.connect();
+          return;
+        }
+      }
+
       state.reconnectAttempts += 1;
 
       if (state.reconnectAttempts >= config.maxAttempts) {
@@ -102,15 +124,21 @@ export class SocketClient {
     });
 
     socket.on('error', (error) => {
-      console.error(`❌ Socket error (${namespace}):`, error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(`❌ Socket error (${namespace}):`, error);
+      }
     });
 
     socket.on('reconnect', (attemptNumber) => {
-      console.log(`🔄 Reconnected (${namespace}) after ${attemptNumber} attempts`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔄 Reconnected (${namespace}) after ${attemptNumber} attempts`);
+      }
     });
 
     socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`🔄 Reconnect attempt ${attemptNumber}/${config.maxAttempts} (${namespace})`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔄 Reconnect attempt ${attemptNumber}/${config.maxAttempts} (${namespace})`);
+      }
     });
 
     socket.on('reconnect_failed', () => {
