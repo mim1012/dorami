@@ -468,6 +468,10 @@ export default function LiveStreamPage() {
   }, [streamKey]);
 
   const isFetchingStatusRef = useRef(false);
+  // Grace timer: Prism Live / SRS reconnects cause transient OFFLINE (~1-3s).
+  // Wait 10s before treating OFFLINE as real stream end to avoid VideoPlayer remounts.
+  const offlineGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchStreamStatus = useCallback(async () => {
     if (isFetchingStatusRef.current) return;
     isFetchingStatusRef.current = true;
@@ -475,25 +479,40 @@ export default function LiveStreamPage() {
       const response = await apiClient.get<StreamStatus>(`/streaming/key/${streamKey}/status`);
       const nextStatus = response.data.status;
       const previousStatus = previousStreamStatusRef.current;
-      setStreamStatus(response.data);
 
       if (nextStatus === 'LIVE') {
+        setStreamStatus(response.data);
         setError(null);
+        // Cancel pending offline grace timer — stream recovered before 10s elapsed
+        if (offlineGraceTimerRef.current) {
+          clearTimeout(offlineGraceTimerRef.current);
+          offlineGraceTimerRef.current = null;
+        }
         if (previousStatus !== 'LIVE') {
           dispatch({ type: 'STREAM_RECOVERED' });
-          // OFFLINE/PENDING -> LIVE transition should recreate player to clear stale ended state.
+          // Only force-remount player if stream was genuinely offline long enough
+          // (grace timer had fired). Transient SRS reconnects don't set previousStatus to null.
           if (previousStatus !== null) {
             setPlayerSessionSeed((prev) => prev + 1);
           }
         }
       } else if (nextStatus === 'OFFLINE') {
-        if (previousStatus === 'LIVE') {
-          dispatch({ type: 'STREAM_ENDED' });
-        }
-        // Show OFFLINE message only on initial fetch. During runtime we keep current UI state.
         if (previousStatus === null) {
+          // Initial load: stream not live yet — show waiting screen immediately
+          setStreamStatus(response.data);
           setError('현재 방송 중이 아닙니다');
+        } else if (previousStatus === 'LIVE') {
+          // Stream was live → start 10s grace period before acting
+          // Do NOT update streamStatus or dispatch STREAM_ENDED yet
+          if (!offlineGraceTimerRef.current) {
+            offlineGraceTimerRef.current = setTimeout(() => {
+              offlineGraceTimerRef.current = null;
+              setStreamStatus((prev) => (prev ? { ...prev, status: 'OFFLINE' } : prev));
+              dispatch({ type: 'STREAM_ENDED' });
+            }, 10_000);
+          }
         }
+        // else: was already OFFLINE — grace timer already running or initial state
       }
 
       previousStreamStatusRef.current = nextStatus;
@@ -507,6 +526,16 @@ export default function LiveStreamPage() {
       isFetchingStatusRef.current = false;
     }
   }, [dispatch, streamKey]);
+
+  // Clean up grace timer on unmount
+  useEffect(() => {
+    return () => {
+      if (offlineGraceTimerRef.current) {
+        clearTimeout(offlineGraceTimerRef.current);
+        offlineGraceTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Poll stream status so UI can recover without manual refresh after transient disconnects.
   // NOTE: snapshot/stream are intentionally NOT in deps to avoid rapid concurrent fetches
