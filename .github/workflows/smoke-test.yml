@@ -104,7 +104,9 @@ jobs:
 
       - name: Run Prisma Migrations
         working-directory: backend
-        run: npx prisma migrate deploy
+        run: |
+          echo "DATABASE_URL is: $DATABASE_URL"
+          npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
