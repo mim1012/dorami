@@ -127,10 +127,17 @@ jobs:
           NODE_ENV: production
           DATABASE_URL: ${{ env.DATABASE_URL }}
           REDIS_URL: ${{ env.REDIS_URL }}
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PORT: ${{ env.REDIS_PORT }}
           JWT_SECRET: ${{ env.JWT_SECRET }}
+          KAKAO_CLIENT_ID: ${{ env.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ env.KAKAO_CLIENT_SECRET }}
+          KAKAO_CALLBACK_URL: ${{ env.KAKAO_CALLBACK_URL }}
           PROFILE_ENCRYPTION_KEY: ${{ env.PROFILE_ENCRYPTION_KEY }}
           CSRF_ENABLED: ${{ env.CSRF_ENABLED }}
+          COOKIE_SECURE: ${{ env.COOKIE_SECURE }}
           ENABLE_DEV_AUTH: ${{ env.ENABLE_DEV_AUTH }}
+          ADMIN_EMAILS: ${{ env.ADMIN_EMAILS }}
           PORT: ${{ env.PORT }}
           APP_ENV: ${{ env.APP_ENV }}
           CORS_ORIGINS: http://localhost:3000
