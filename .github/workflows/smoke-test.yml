@@ -122,25 +122,26 @@ jobs:
       # ── Start backend in background ────────────────────────────────────────
       - name: Start backend server
         working-directory: backend
-        run: npm run start:prod &
-        env:
-          NODE_ENV: production
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          REDIS_URL: ${{ env.REDIS_URL }}
-          REDIS_HOST: ${{ env.REDIS_HOST }}
-          REDIS_PORT: ${{ env.REDIS_PORT }}
-          JWT_SECRET: ${{ env.JWT_SECRET }}
-          KAKAO_CLIENT_ID: ${{ env.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET: ${{ env.KAKAO_CLIENT_SECRET }}
-          KAKAO_CALLBACK_URL: ${{ env.KAKAO_CALLBACK_URL }}
-          PROFILE_ENCRYPTION_KEY: ${{ env.PROFILE_ENCRYPTION_KEY }}
-          CSRF_ENABLED: ${{ env.CSRF_ENABLED }}
-          COOKIE_SECURE: ${{ env.COOKIE_SECURE }}
-          ENABLE_DEV_AUTH: ${{ env.ENABLE_DEV_AUTH }}
-          ADMIN_EMAILS: ${{ env.ADMIN_EMAILS }}
-          PORT: ${{ env.PORT }}
-          APP_ENV: ${{ env.APP_ENV }}
-          CORS_ORIGINS: http://localhost:3000
+        shell: bash
+        run: |
+          export NODE_ENV=production
+          export DATABASE_URL="${{ env.DATABASE_URL }}"
+          export REDIS_URL="${{ env.REDIS_URL }}"
+          export REDIS_HOST="${{ env.REDIS_HOST }}"
+          export REDIS_PORT="${{ env.REDIS_PORT }}"
+          export JWT_SECRET="${{ env.JWT_SECRET }}"
+          export KAKAO_CLIENT_ID="${{ env.KAKAO_CLIENT_ID }}"
+          export KAKAO_CLIENT_SECRET="${{ env.KAKAO_CLIENT_SECRET }}"
+          export KAKAO_CALLBACK_URL="${{ env.KAKAO_CALLBACK_URL }}"
+          export PROFILE_ENCRYPTION_KEY="${{ env.PROFILE_ENCRYPTION_KEY }}"
+          export CSRF_ENABLED="${{ env.CSRF_ENABLED }}"
+          export COOKIE_SECURE="${{ env.COOKIE_SECURE }}"
+          export ENABLE_DEV_AUTH="${{ env.ENABLE_DEV_AUTH }}"
+          export ADMIN_EMAILS="${{ env.ADMIN_EMAILS }}"
+          export PORT="${{ env.PORT }}"
+          export APP_ENV="${{ env.APP_ENV }}"
+          export CORS_ORIGINS="http://localhost:3000"
+          npm run start:prod > backend-startup.log 2>&1 &
 
       # ── Build & start frontend ─────────────────────────────────────────────
       - name: Build frontend
