@@ -164,7 +164,7 @@ export default function VideoPlayer({
       videoRef.current.addEventListener(
         'loadedmetadata',
         () => {
-          videoRef.current?.play();
+          videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
         },
         { once: true },
@@ -184,7 +184,7 @@ export default function VideoPlayer({
       hls.attachMedia(videoRef.current);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoRef.current?.play();
+        videoRef.current?.play().catch(() => {});
         setIsPlaying(true);
       });
 
@@ -277,7 +277,7 @@ export default function VideoPlayer({
       videoRef.current.addEventListener(
         'loadedmetadata',
         () => {
-          videoRef.current?.play();
+          videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
         },
         { once: true },
