@@ -37,7 +37,13 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // Guard: Don't connect if streamKey is not available
-    if (!streamKey || streamKey === 'undefined') {
+    if (!streamKey) {
+      // Clean up any stale socket and queue from previous renders
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      pendingMessageQueueRef.current = [];
       setIsConnected(false);
       return;
     }
