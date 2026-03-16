@@ -452,8 +452,11 @@ function ProfileRegisterContent() {
       }
 
       const storedReturnTo = consumeStoredReturnTo();
-      const redirectPath =
-        updatedUser?.role === 'ADMIN' ? '/admin' : storedReturnTo || queryReturnTo || '/live';
+      const isAdmin = updatedUser?.role === 'ADMIN';
+      // USER는 /admin/* 경로로 리디렉트하지 않음 (이전 세션에서 admin으로 방문한 경로 방지)
+      const safeReturnTo =
+        storedReturnTo && (!storedReturnTo.startsWith('/admin') || isAdmin) ? storedReturnTo : null;
+      const redirectPath = isAdmin ? '/admin' : safeReturnTo || queryReturnTo || '/live';
       router.push(redirectPath);
     } catch (error) {
       if (error instanceof ApiError) {
