@@ -92,12 +92,10 @@ export class UsersService {
    * Complete user profile
    */
   async completeProfile(userId: string, dto: CompleteProfileDto): Promise<UserResponseDto> {
-    // Check Instagram ID uniqueness (only if provided)
-    if (dto.instagramId) {
-      const isAvailable = await this.isInstagramIdAvailable(dto.instagramId, userId);
-      if (!isAvailable) {
-        throw new ConflictException('This Instagram ID is already registered');
-      }
+    // Check Instagram ID uniqueness (required field)
+    const isAvailable = await this.isInstagramIdAvailable(dto.instagramId, userId);
+    if (!isAvailable) {
+      throw new ConflictException('This Instagram ID is already registered');
     }
 
     const shippingAddress: ShippingAddress = {
