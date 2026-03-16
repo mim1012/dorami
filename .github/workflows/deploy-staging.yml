@@ -313,18 +313,30 @@ jobs:
             docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} &
             FRONTEND_PID=\$!
 
-            # Wait for both with 60s timeout
+            # Wait for both with 60s timeout (timeout can't wrap shell built-ins)
             echo "Waiting for images to pull (max 60s)..."
-            if ! timeout 60 wait \${BACKEND_PID}; then
-              echo "❌ Backend image pull timeout or failed"
-              exit 1
-            fi
+            ELAPSED=0
+            while kill -0 \${BACKEND_PID} 2>/dev/null; do
+              if [ \${ELAPSED} -ge 60 ]; then
+                kill \${BACKEND_PID} 2>/dev/null || true
+                echo "❌ Backend image pull timeout"
+                exit 1
+              fi
+              sleep 2; ELAPSED=\$((ELAPSED+2))
+            done
+            wait \${BACKEND_PID} || { echo "❌ Backend image pull failed"; exit 1; }
             echo "✓ Backend image pulled"
 
-            if ! timeout 60 wait \${FRONTEND_PID}; then
-              echo "❌ Frontend image pull timeout or failed"
-              exit 1
-            fi
+            ELAPSED=0
+            while kill -0 \${FRONTEND_PID} 2>/dev/null; do
+              if [ \${ELAPSED} -ge 60 ]; then
+                kill \${FRONTEND_PID} 2>/dev/null || true
+                echo "❌ Frontend image pull timeout"
+                exit 1
+              fi
+              sleep 2; ELAPSED=\$((ELAPSED+2))
+            done
+            wait \${FRONTEND_PID} || { echo "❌ Frontend image pull failed"; exit 1; }
             echo "✓ Frontend image pulled"
 
             # ============================================================
