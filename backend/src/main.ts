@@ -253,12 +253,12 @@ async function bootstrap() {
   logger.log('🔌 Connecting to Redis for Socket.IO adapter...');
   // REDIS_URL is validated by config.validation.ts: required in production/staging,
   // defaults to redis://localhost:6379 in development. Guard here for adapter safety.
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
+  const redisUrlForAdapter = process.env.REDIS_URL;
+  if (!redisUrlForAdapter) {
     throw new Error('REDIS_URL must be set (config validation should have caught this)');
   }
   const pubClient = createClient({
-    url: redisUrl,
+    url: redisUrlForAdapter,
     socket: {
       connectTimeout: 30000, // 30 seconds
       reconnectStrategy: (retries) => Math.min(retries * 100, 5000), // exponential backoff
