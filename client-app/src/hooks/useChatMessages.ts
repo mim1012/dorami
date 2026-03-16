@@ -55,6 +55,8 @@ export function useChatMessages(socket: Socket | null) {
 
   useEffect(() => {
     if (!socket) return;
+    seenMessageKeysRef.current.clear();
+    setMessages([]);
 
     // Receive chat history on join/rejoin
     socket.on('chat:history', (data: any) => {
@@ -78,11 +80,26 @@ export function useChatMessages(socket: Socket | null) {
       const normalizedHistory = historyMessages.sort(
         (a: ChatMessage, b: ChatMessage) => a.timestamp.getTime() - b.timestamp.getTime(),
       );
-      const slicedHistory = normalizedHistory.slice(-historySizeLimit);
-      setMessages(slicedHistory);
-      seenMessageKeysRef.current = new Set(
-        slicedHistory.map((message: ChatMessage) => buildMessageKey(message)),
-      );
+      setMessages((prev) => {
+        const next = [...prev];
+        const prevKeys = new Set(prev.map((message: ChatMessage) => buildMessageKey(message)));
+
+        for (const message of normalizedHistory) {
+          const key = buildMessageKey(message);
+          if (prevKeys.has(key)) {
+            continue;
+          }
+          prevKeys.add(key);
+          next.push(message);
+        }
+
+        next.sort(
+          (a: ChatMessage, b: ChatMessage) => a.timestamp.getTime() - b.timestamp.getTime(),
+        );
+        const sliced = next.length > historySizeLimit ? next.slice(-historySizeLimit) : next;
+        seenMessageKeysRef.current = new Set(sliced.map((msg) => buildMessageKey(msg)));
+        return sliced;
+      });
     });
 
     // Receive messages
@@ -101,15 +118,10 @@ export function useChatMessages(socket: Socket | null) {
       );
     });
 
-    socket.io?.on('reconnect', () => {
-      seenMessageKeysRef.current.clear();
-    });
-
     return () => {
       socket.off('chat:history');
       socket.off('chat:message');
       socket.off('chat:message-deleted');
-      socket.io?.off('reconnect');
     };
   }, [socket]);
 

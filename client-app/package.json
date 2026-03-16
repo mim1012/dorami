@@ -56,6 +56,7 @@
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/jest": "^30.0.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
@@ -68,9 +69,11 @@
     "eslint-config-next": "^16.1.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "jest": "^30.3.0",
     "postcss": "^8.4.0",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^4.0.0",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.7.0"
   }
 }

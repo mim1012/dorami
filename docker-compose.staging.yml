@@ -103,7 +103,7 @@ services:
       BACKEND_URL: http://backend:3001
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: /api
-      NEXT_PUBLIC_WS_URL: ws://staging.doremi-live.com
+      NEXT_PUBLIC_WS_URL: wss://staging.doremi-live.com
       NEXT_PUBLIC_CDN_URL: ${CDN_URL:-}
       NEXT_PUBLIC_KAKAO_JS_KEY: ${NEXT_PUBLIC_KAKAO_JS_KEY:-}
       NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN: ${NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN:-}

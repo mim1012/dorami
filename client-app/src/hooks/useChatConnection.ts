@@ -1,24 +1,72 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
+import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
+import { SOCKET_URL } from '@/lib/config/socket-url';
+
+interface QueuedMessage {
+  clientMessageId: string;
+  liveId: string;
+  message: string;
+}
 
 export function useChatConnection(streamKey: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
+  const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
+
+  const createMessageId = () =>
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const flushPendingMessages = useCallback(() => {
+    const socket = socketRef.current;
+    const queuedMessages = pendingMessageQueueRef.current;
+
+    if (!socket || !socket.connected || queuedMessages.length === 0) {
+      return;
+    }
+
+    pendingMessageQueueRef.current = [];
+    for (const payload of queuedMessages) {
+      socket.emit('chat:send-message', payload);
+    }
+  }, []);
 
   useEffect(() => {
+    const reconnectConfig = RECONNECT_CONFIG.chat;
+
     // WebSocket connection - connect to /chat namespace
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
-    const chatUrl = `${baseUrl}/chat`;
+    const chatUrl = `${SOCKET_URL}/chat`;
     console.log('[useChatConnection] Connecting to:', chatUrl);
+
     const socket = io(chatUrl, {
-      transports: ['websocket'],
-      auth: {
-        token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null,
-      },
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: reconnectConfig.maxAttempts,
+      reconnectionDelay: reconnectConfig.delays[0],
+      reconnectionDelayMax: reconnectConfig.delays[reconnectConfig.delays.length - 1],
+      randomizationFactor: reconnectConfig.jitterFactor,
+      timeout: 20000,
     });
 
     socketRef.current = socket;
+
+    const emitJoin = () => {
+      socket.emit('chat:join-room', { liveId: streamKey });
+    };
+
+    const handleAuthReconnect = async () => {
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        socket.connect();
+      } else {
+        socket.disconnect();
+      }
+    };
 
     // Connection events
     socket.on('connect', () => {
@@ -26,7 +74,8 @@ export function useChatConnection(streamKey: string) {
       setIsConnected(true);
 
       // Join chat room
-      socket.emit('chat:join-room', { streamKey });
+      emitJoin();
+      flushPendingMessages();
     });
 
     socket.on('disconnect', () => {
@@ -34,9 +83,17 @@ export function useChatConnection(streamKey: string) {
       setIsConnected(false);
     });
 
-    socket.on('connect_error', (error) => {
+    socket.on('connect_error', async (error) => {
       console.error('[Chat] Connection error:', error);
       setIsConnected(false);
+
+      if (!socket.disconnected) {
+        return;
+      }
+
+      if (isAuthError(error as Error)) {
+        await handleAuthReconnect();
+      }
     });
 
     // Track user count locally via join/leave events
@@ -49,20 +106,47 @@ export function useChatConnection(streamKey: string) {
       setUserCount((prev) => Math.max(0, prev - 1));
     });
 
+    socket.io.on('reconnect_attempt', (attemptNumber) => {
+      console.log('[Chat] Reconnect attempt:', attemptNumber + 1);
+    });
+
+    socket.io.on('reconnect', () => {
+      emitJoin();
+      flushPendingMessages();
+    });
+
     return () => {
       if (socketRef.current) {
-        socketRef.current.emit('chat:leave-room', { streamKey });
+        socketRef.current.emit('chat:leave-room', { liveId: streamKey });
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
+      pendingMessageQueueRef.current = [];
     };
   }, [streamKey]);
 
   const sendMessage = (message: string) => {
-    if (socketRef.current && isConnected) {
-      socketRef.current.emit('chat:send-message', {
-        liveId: streamKey,
-        message,
-      });
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
+      return;
+    }
+
+    const payload: QueuedMessage = {
+      clientMessageId: createMessageId(),
+      liveId: streamKey,
+      message: trimmedMessage,
+    };
+
+    const socket = socketRef.current;
+    if (socket && isConnected && socket.connected) {
+      socket.emit('chat:send-message', payload);
+      return;
+    }
+
+    pendingMessageQueueRef.current.push(payload);
+
+    if (pendingMessageQueueRef.current.length > 50) {
+      pendingMessageQueueRef.current = pendingMessageQueueRef.current.slice(-50);
     }
   };
 

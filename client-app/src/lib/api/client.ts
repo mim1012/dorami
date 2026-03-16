@@ -1,6 +1,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const DEFAULT_TIMEOUT_MS = 30000;
+const LIVE_SESSION_EXPIRED_EVENT = 'dorami-live-session-expired';
 
 interface ApiResponse<T> {
   data: T;
@@ -230,6 +231,8 @@ async function request<T>(
       // see "세션이 만료되었습니다" instead of a generic app error.
       // Auth endpoints (/auth/, /users/me) are excluded to avoid loops —
       // useAuth and useProfileGuard handle those redirects themselves.
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isLivePath = currentPath.startsWith('/live');
       const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
       if (typeof window !== 'undefined' && !isAuthEndpoint) {
         // Synchronously clear persisted auth before the page reload so that
@@ -242,7 +245,11 @@ async function request<T>(
         } catch {
           // ignore — storage may be unavailable (e.g. private browsing restrictions)
         }
-        window.location.href = '/login?reason=session_expired';
+        if (!isLivePath) {
+          window.location.href = '/login?reason=session_expired';
+        } else {
+          window.dispatchEvent(new CustomEvent(LIVE_SESSION_EXPIRED_EVENT));
+        }
       }
       throw new ApiError(401, 'Session expired', 'SESSION_EXPIRED');
     }
