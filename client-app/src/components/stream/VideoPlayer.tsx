@@ -519,11 +519,17 @@ export default function VideoPlayer({
     video.addEventListener('stalled', onStalled);
     video.addEventListener('ratechange', onRateChange);
 
-    // Try HTTP-FLV first (low-latency), fall back to HLS
-    initializeFlvPlayer();
-    connectWebSocket();
+    // Defer player + WebSocket initialization by one frame so that
+    // a rapid unmount/remount cycle (e.g. React reconciliation or
+    // isMobile flip) skips the connection entirely instead of
+    // creating and immediately tearing down an FLV session.
+    const initTimer = setTimeout(() => {
+      initializeFlvPlayer();
+      connectWebSocket();
+    }, 0);
 
     return () => {
+      clearTimeout(initTimer);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
