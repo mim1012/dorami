@@ -40,6 +40,7 @@ export function useChatConnection(streamKey: string) {
 
     // WebSocket connection - connect to /chat namespace
     const chatUrl = `${SOCKET_URL}/chat`;
+    console.log('[useChatConnection] Connecting to:', chatUrl);
 
     const socket = io(chatUrl, {
       transports: ['websocket', 'polling'],
@@ -69,6 +70,7 @@ export function useChatConnection(streamKey: string) {
 
     // Connection events
     socket.on('connect', () => {
+      console.log('[Chat] WebSocket connected');
       setIsConnected(true);
 
       // Join chat room
@@ -77,10 +79,12 @@ export function useChatConnection(streamKey: string) {
     });
 
     socket.on('disconnect', (reason) => {
+      console.log('[Chat] WebSocket disconnected:', reason);
       setIsConnected(false);
     });
 
     socket.on('connect_error', async (error) => {
+      console.error('[Chat] Connection error:', error);
       setIsConnected(false);
 
       if (!socket.disconnected) {
@@ -103,12 +107,11 @@ export function useChatConnection(streamKey: string) {
     });
 
     socket.io.on('reconnect_attempt', (attemptNumber) => {
-      // Reconnect attempt (silently handle without logging)
+      console.log('[Chat] Reconnect attempt:', attemptNumber + 1);
     });
 
     socket.io.on('reconnect', () => {
-      // Note: socket.on('connect') is also fired on reconnect, so emitJoin is called there
-      // Avoid double-calling emitJoin here
+      emitJoin();
       flushPendingMessages();
     });
 
