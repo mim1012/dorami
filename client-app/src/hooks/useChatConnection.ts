@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
+import { SOCKET_URL } from '@/lib/config/socket-url';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -38,8 +39,7 @@ export function useChatConnection(streamKey: string) {
     const reconnectConfig = RECONNECT_CONFIG.chat;
 
     // WebSocket connection - connect to /chat namespace
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
-    const chatUrl = `${baseUrl}/chat`;
+    const chatUrl = `${SOCKET_URL}/chat`;
     console.log('[useChatConnection] Connecting to:', chatUrl);
 
     const socket = io(chatUrl, {

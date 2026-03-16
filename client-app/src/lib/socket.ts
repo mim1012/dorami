@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { RECONNECT_CONFIG } from './socket/reconnect-config';
+import { SOCKET_URL } from './config/socket-url';
 
-const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? '';
+const wsUrl = SOCKET_URL;
 const config = RECONNECT_CONFIG.default;
 
 export const socketInstance = wsUrl
