@@ -496,14 +496,25 @@ async function bootstrap() {
 
           const roomName = `live:${payload.liveId}`;
 
-          // Fetch user's instagramId for display in chat
+          // Fetch user's instagramId for display in chat (cached in Redis)
           let username = '익명';
           try {
-            const user = await prismaService.user.findUnique({
-              where: { id: authenticatedSocket.user.userId },
-              select: { instagramId: true },
-            });
-            username = user?.instagramId ?? '익명';
+            const cacheKey = `user:${authenticatedSocket.user.userId}:instagramId`;
+            const cachedUsername = await redisService.get(cacheKey);
+
+            if (cachedUsername) {
+              username = cachedUsername;
+            } else {
+              const user = await prismaService.user.findUnique({
+                where: { id: authenticatedSocket.user.userId },
+                select: { instagramId: true },
+              });
+              username = user?.instagramId ?? '익명';
+              // Cache for 24 hours
+              if (username !== '익명') {
+                await redisService.set(cacheKey, username, 'EX', 86400);
+              }
+            }
           } catch {
             // Fallback to anonymous
           }
