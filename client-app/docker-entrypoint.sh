@@ -15,6 +15,7 @@ find /app/client-app/.next -name "*.js" -type f | while read file; do
       -e "s|__NEXT_PUBLIC_SENTRY_DSN__|${NEXT_PUBLIC_SENTRY_DSN:-}|g" \
       -e "s|__NEXT_PUBLIC_APP_VERSION__|${NEXT_PUBLIC_APP_VERSION:-1.0.0}|g" \
       -e "s|__NEXT_PUBLIC_APP_ENV__|${NEXT_PUBLIC_APP_ENV:-production}|g" \
+      -e "s|__NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN__|${NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN:-}|g" \
       "$file"
   fi
 done
