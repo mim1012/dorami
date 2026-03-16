@@ -510,10 +510,6 @@ async function bootstrap() {
                 select: { instagramId: true },
               });
               username = user?.instagramId ?? '익명';
-              // Cache for 24 hours
-              if (username !== '익명') {
-                await redisService.set(cacheKey, username, 'EX', 86400);
-              }
             }
           } catch {
             // Fallback to anonymous
