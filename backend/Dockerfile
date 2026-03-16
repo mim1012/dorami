@@ -63,7 +63,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # 필수 시스템 패키지 설치 + 비-루트 유저 설정 (단일 RUN으로 레이어 최소화)
-RUN apk add --no-cache ffmpeg openssl && \
+RUN apk add --no-cache ffmpeg openssl wget && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nestjs && \
     mkdir -p /app/uploads && chown nestjs:nodejs /app/uploads
