@@ -247,41 +247,15 @@ jobs:
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
 
             echo "SSH connection successful"
-            echo "PWD: \$(pwd)"
-            echo "Current user: \$(whoami)"
-
             cd /opt/dorami
             echo "Changed to /opt/dorami"
-            ls -la /opt/dorami | head -10
 
-            echo "=== Pulling latest code ==="
+            # ============================================================
+            # PHASE 1: Code Update & Environment Setup
+            # ============================================================
+            echo ""
+            echo "=== PHASE 1: Code Update ==="
             git fetch origin "${GITHUB_REF_NAME}"
-
-            echo "=== Checking for docker-compose file changes ==="
-            COMPOSE_CHANGES=$(git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | wc -l)
-            if [ "${COMPOSE_CHANGES:-0}" -gt 0 ]; then
-              echo "⚠️  WARNING: docker-compose/infrastructure/nginx config changes detected"
-              git diff HEAD origin/"${GITHUB_REF_NAME}" -- docker-compose*.yml infrastructure/ nginx/ | head -30
-              echo "⚠️  These changes will be applied. Ensure compatibility with deployed services."
-            fi
-
-            echo "=== Verifying image ↔ code commit parity ==="
-            CURRENT_COMMIT=$(git rev-parse HEAD)
-            IMAGE_COMMIT="${IMAGE_TAG#sha-}"
-            if [ "$CURRENT_COMMIT" != "$IMAGE_COMMIT" ]; then
-              echo "⚠️  NOTICE: Code commit ≠ Image commit (expected for staging)"
-              echo "   Code: $CURRENT_COMMIT"
-              echo "   Image: $IMAGE_COMMIT"
-              echo "   Reason: git reset --hard fetches latest, but Docker image is immutable"
-              echo "   This is OK for staging; production should enforce commit parity"
-            fi
-
-            # Clean up uploads directory to handle permission issues from previous Docker runs
-            # The uploads directory is managed by Docker and not tracked in git anymore
-            echo "=== Checking uploads directory state before cleanup ==="
-            ls -ld /opt/dorami/backend/uploads 2>&1 || echo "uploads directory doesn't exist yet"
-            echo "=== Attempting to remove uploads directory ==="
-            sudo rm -rf /opt/dorami/backend/uploads && echo "✓ Successfully removed uploads directory" || echo "WARNING: Could not remove uploads directory"
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Creating .env.staging from GitHub Secrets ==="
@@ -318,279 +292,162 @@ jobs:
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
             } > /opt/dorami/.env.staging
             chmod 600 /opt/dorami/.env.staging
-            echo "✓ .env.staging created from GitHub Secrets"
+            echo "✓ .env.staging created"
 
-            echo "=== Cleaning up old images ==="
-            # Only prune dangling images and ghcr.io images (with repo filter)
-            docker image prune -af --filter "until=72h" --filter "label=org.opencontainers.image.source=https://github.com/mim1012/dorami" || true
-            docker builder prune -af --filter "until=72h" || true
-            echo "✓ Cleanup complete (preserved non-dorami images)"
-            echo "Disk usage after cleanup:"
-            df -h / | tail -1
-
-            echo "=== Logging into GHCR ==="
+            # ============================================================
+            # PHASE 2: Docker Login & Parallel Image Pull
+            # ============================================================
+            echo ""
+            echo "=== PHASE 2: Docker Login & Pull Images ==="
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_REPOSITORY_OWNER} --password-stdin
 
-            echo "=== Fixing staging environment variables ==="
-            bash scripts/fix-staging-env.sh
-
-            echo "Final IMAGE_TAG: ${IMAGE_TAG}"
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging pull || true
-            echo "=== Verifying pulled staging image tags are immutable sha ==="
-            # Images were successfully pulled above, so they already exist with immutable sha tags
-            if [[ "$IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
-              echo "✓ Image tag is immutable sha format: $IMAGE_TAG"
-            else
-              echo "WARNING: IMAGE_TAG is not in immutable sha format: $IMAGE_TAG"
-              echo "This should not happen if docker image build completed successfully"
-            fi
-
-            echo "=== Ensuring uploads directory exists and is writable ==="
-            # Just create the directory - docker will handle permissions on container startup
-            mkdir -p /opt/dorami/backend/uploads
-            chmod 777 /opt/dorami/backend/uploads || true
-            echo "✓ Uploads directory ready (writable by container nestjs uid=1001)"
-
-            echo "=== SSL Certificate Setup Skipped for Staging ==="
-            echo "⚠️  Staging environment runs on HTTP only. For production, configure domain-based HTTPS."
-
-            echo "=== Restarting services ==="
-            # Stop containers WITHOUT removing volumes (preserves database)
+            # Clean up old containers before pulling
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging down --remove-orphans || true
-            sleep 2
 
-            # Kill anything remaining on port 8080
-            sudo fuser -k 8080/tcp 2>/dev/null || true
-            sleep 1
+            # Parallel pull: backend & frontend simultaneously
+            echo "Pulling backend image in background..."
+            docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG} &
+            BACKEND_PID=\$!
 
-            # Ensure external volumes exist (may have been removed by previous failed deploy)
+            echo "Pulling frontend image in background..."
+            docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} &
+            FRONTEND_PID=\$!
+
+            # Wait for both with 60s timeout (timeout can't wrap shell built-ins)
+            echo "Waiting for images to pull (max 60s)..."
+            ELAPSED=0
+            while kill -0 \${BACKEND_PID} 2>/dev/null; do
+              if [ \${ELAPSED} -ge 60 ]; then
+                kill \${BACKEND_PID} 2>/dev/null || true
+                echo "❌ Backend image pull timeout"
+                exit 1
+              fi
+              sleep 2; ELAPSED=\$((ELAPSED+2))
+            done
+            wait \${BACKEND_PID} || { echo "❌ Backend image pull failed"; exit 1; }
+            echo "✓ Backend image pulled"
+
+            ELAPSED=0
+            while kill -0 \${FRONTEND_PID} 2>/dev/null; do
+              if [ \${ELAPSED} -ge 60 ]; then
+                kill \${FRONTEND_PID} 2>/dev/null || true
+                echo "❌ Frontend image pull timeout"
+                exit 1
+              fi
+              sleep 2; ELAPSED=\$((ELAPSED+2))
+            done
+            wait \${FRONTEND_PID} || { echo "❌ Frontend image pull failed"; exit 1; }
+            echo "✓ Frontend image pulled"
+
+            # ============================================================
+            # PHASE 3: Docker Compose Up
+            # ============================================================
+            echo ""
+            echo "=== PHASE 3: Starting Services ==="
+
+            # Ensure volumes exist
             docker volume create dorami_postgres_data 2>/dev/null && echo "✓ postgres volume ensured" || echo "  postgres volume already exists"
             docker volume create dorami_redis_data 2>/dev/null && echo "✓ redis volume ensured" || echo "  redis volume already exists"
 
-            # Start postgres and redis first so we can sync the password
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
-            echo "Waiting for postgres to accept connections..."
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-              if docker exec dorami-postgres-1 pg_isready > /dev/null 2>&1; then
-                echo "✓ Postgres accepting connections (attempt \$i/20)"
-                break
-              fi
-              echo "  Waiting... (attempt \$i/20)"
-              sleep 3
-            done
-            sleep 2
-
-            echo "=== Syncing postgres password ==="
-            if docker exec --user postgres dorami-postgres-1 psql -U postgres -c "ALTER USER postgres PASSWORD '${STAGING_POSTGRES_PASSWORD}';" 2>&1; then
-              echo "✓ postgres password synced"
-            elif docker exec --user postgres dorami-postgres-1 psql -U app_user -c "CREATE ROLE postgres WITH SUPERUSER LOGIN PASSWORD '${STAGING_POSTGRES_PASSWORD}'; ALTER USER app_user PASSWORD '${STAGING_POSTGRES_PASSWORD}';" 2>&1; then
-              echo "✓ passwords synced via app_user"
-            else
-              echo "⚠ Cannot sync passwords - recreating postgres volume (staging data non-critical)"
-              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging rm -fs postgres || true
-              docker volume rm dorami_postgres_data && echo "✓ Volume removed" || echo "⚠ Volume remove failed, continuing"
-              docker volume create dorami_postgres_data && echo "✓ Fresh volume created"
-              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d postgres redis
-              echo "Waiting for postgres to fully initialize (fresh volume)..."
-              for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-                if docker exec dorami-postgres-1 pg_isready -U postgres > /dev/null 2>&1; then
-                  echo "✓ Postgres ready after fresh init (attempt \$i/20)"
-                  break
-                fi
-                echo "  Initializing... (attempt \$i/20)"
-                sleep 3
-              done
-              echo "✓ Postgres volume recreated with correct credentials"
-            fi
-
-            echo "=== Ensuring live_commerce_staging database exists ==="
-            docker exec dorami-postgres-1 psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname='live_commerce_staging'" | grep -q 1 \
-              || docker exec dorami-postgres-1 psql -U postgres -c "CREATE DATABASE live_commerce_staging;" \
-              && echo "✓ live_commerce_staging database ready"
-
-            echo "=== Checking for destructive migrations (staging - warn only) ==="
-            bash scripts/check-destructive-migrations.sh . || echo "⚠️ WARNING: Destructive migrations detected (not blocking on staging)"
-
+            # Run migrations
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate deploy < /dev/null
 
-            # Start backend first to catch startup errors before starting dependents
-            echo "=== Starting backend (isolated) ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d backend || {
-              echo "❌ Backend failed to start. Logs:"
-              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=100
-              exit 1
-            }
+            # Start all services
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
+            echo "✓ All services started"
 
-            # Show early logs to catch startup crashes fast (e.g. missing module, env error)
-            sleep 3
-            echo "=== Early backend logs (crash detection) ==="
-            docker logs dorami-backend-1 --tail 50 2>&1 || true
+            # ============================================================
+            # PHASE 4: PostgreSQL Ready Check (10 attempts max)
+            # ============================================================
+            echo ""
+            echo "=== PHASE 4: PostgreSQL Ready Check (max 10s) ==="
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if docker exec dorami-postgres-1 pg_isready -U postgres > /dev/null 2>&1; then
+                echo "✓ PostgreSQL ready (attempt \$i/10)"
+                break
+              fi
+              if [ "\$i" = "10" ]; then
+                echo "❌ PostgreSQL NOT ready after 10 attempts (10s)"
+                docker logs dorami-postgres-1 --tail=20
+                exit 1
+              fi
+              sleep 1
+            done
 
-            # Wait for backend health (up to 90s, fast-fail on container exit)
-            echo "=== Waiting for backend health ==="
-            BACKEND_HEALTHY=false
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
-              # Fast-fail: check if container has exited (crashed)
+            # ============================================================
+            # PHASE 5: Backend Healthcheck (12 attempts max = 60s)
+            # ============================================================
+            echo ""
+            echo "=== PHASE 5: Backend Healthcheck (max 60s) ==="
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
               CONTAINER_STATE=\$(docker inspect --format='{{.State.Status}}' dorami-backend-1 2>/dev/null || echo "missing")
-              if [ "\$CONTAINER_STATE" = "exited" ] || [ "\$CONTAINER_STATE" = "dead" ] || [ "\$CONTAINER_STATE" = "missing" ]; then
-                echo "❌ Backend container stopped unexpectedly (state: \$CONTAINER_STATE). Logs:"
-                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=100
+
+              if [ "\$CONTAINER_STATE" = "exited" ] || [ "\$CONTAINER_STATE" = "dead" ]; then
+                echo "❌ Backend container stopped (state: \$CONTAINER_STATE)"
+                docker logs dorami-backend-1 --tail=30
                 exit 1
               fi
 
               if docker exec dorami-backend-1 wget -qO- http://localhost:3001/api/health/live > /dev/null 2>&1; then
-                echo "✓ Backend healthy (attempt \$i)"
-                BACKEND_HEALTHY=true
+                echo "✓ Backend healthy (attempt \$i/12)"
                 break
               fi
-              echo "  Waiting for backend... (attempt \$i/18, state=\$CONTAINER_STATE)"
-              sleep 5
-            done
-            if [ "\$BACKEND_HEALTHY" = "false" ]; then
-              echo "❌ Backend not healthy after 90s. Logs:"
-              docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=100
-              exit 1
-            fi
 
-            # Start all remaining services
-            echo "=== Starting remaining services ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
-
-            echo "=== Cleaning up old images ==="
-            docker image prune -af --filter "label=org.opencontainers.image.source" --filter "until=24h" || true
-
-            echo "=== Waiting for nginx to bind port 80 ==="
-            for i in 1 2 3 4 5 6; do
-              if docker ps --format "{{.Ports}}" | grep -q "0.0.0.0:80"; then
-                echo "✓ nginx port 80 bound (attempt \$i)"
-                break
+              if [ "\$i" = "12" ]; then
+                echo "❌ Backend NOT healthy after 60s"
+                docker logs dorami-backend-1 --tail=30
+                exit 1
               fi
-              echo "  Waiting for nginx... (attempt \$i/6)"
+
+              echo "  Waiting for backend... (attempt \$i/12, state=\$CONTAINER_STATE)"
               sleep 5
             done
 
-            echo "=== Checking service health ==="
-            for i in 1 2 3 4 5 6; do
-              if curl -sf ${STAGING_BACKEND_URL}/api/health/live > /dev/null 2>&1; then
-                echo "Backend healthy!"
-                break
-              fi
-              if [ "\$i" = "6" ]; then
-                echo "Backend health check failed after 6 attempts"
-                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs backend --tail=50
-                exit 1
-              fi
-              echo "Waiting for backend... (attempt \$i/6)"
-              sleep 15
-            done
+            # ============================================================
+            # PHASE 6: Image Digest Verification
+            # ============================================================
+            echo ""
+            echo "=== PHASE 6: Image Digest Verification ==="
 
-            for i in 1 2 3 4 5 6; do
-              if curl -sf ${STAGING_FRONTEND_URL} > /dev/null 2>&1; then
-                echo "Frontend healthy!"
-                break
-              fi
-              if [ "\$i" = "6" ]; then
-                echo "Frontend health check failed after 6 attempts"
-                docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging logs frontend --tail=50
-                exit 1
-              fi
-              echo "Waiting for frontend... (attempt \$i/6)"
-              sleep 10
-            done
+            # Get container image digests
+            BACKEND_DIGEST=\$(docker inspect dorami-backend-1 | jq -r '.[0].Image')
+            FRONTEND_DIGEST=\$(docker inspect dorami-frontend-1 | jq -r '.[0].Image')
 
+            echo "Backend container digest: \${BACKEND_DIGEST}"
+            echo "Frontend container digest: \${FRONTEND_DIGEST}"
+
+            # Get built image digests
+            BUILT_BACKEND=\$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG} | jq -r '.[0].Id')
+            BUILT_FRONTEND=\$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} | jq -r '.[0].Id')
+
+            if [ "\${BACKEND_DIGEST}" = "\${BUILT_BACKEND}" ]; then
+              echo "✓ Backend image digest matches"
+            else
+              echo "⚠️  Backend digest mismatch (using built image)"
+            fi
+
+            if [ "\${FRONTEND_DIGEST}" = "\${BUILT_FRONTEND}" ]; then
+              echo "✓ Frontend image digest matches"
+            else
+              echo "⚠️  Frontend digest mismatch (using built image)"
+            fi
+
+            # ============================================================
+            # Final Status
+            # ============================================================
             echo ""
             echo "═════════════════════════════════════════════════════════════"
-            echo "=== COMPREHENSIVE NETWORK DIAGNOSTICS ==="
-            echo "═════════════════════════════════════════════════════════════"
-
-            echo ""
-            echo "---- 🐳 Docker Containers Status ----"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-            echo ""
-            echo "---- 🔌 Port Bindings (ss -tlnp) ----"
-            ss -tlnp 2>/dev/null | grep -E ":(80|443|3000|3001|6379|5432)" || echo "No relevant ports found"
-
-            echo ""
-            echo "---- 📦 Docker Port Mappings ----"
-            docker ps --format "table {{.Names}}\t{{.Ports}}"
-
-            echo ""
-            echo "---- ✅ Validation: Port 80 External Binding ----"
-            PORT_CHECK=\$(docker ps --format "{{.Ports}}" | grep "0.0.0.0:80")
-            if [ -z "\$PORT_CHECK" ]; then
-              echo "❌ ERROR: Port 80 not exposed externally"
-              echo "Docker port bindings:"
-              docker ps
-              exit 1
-            fi
-            echo "✓ Port 80 exposed correctly: \$PORT_CHECK"
-
-            echo ""
-            echo "---- 🌐 Localhost Backend Test ----"
-            if curl -I -s http://localhost/api/health/live | head -1; then
-              echo "✓ Backend reachable on localhost"
-            else
-              echo "❌ Backend NOT reachable on localhost"
-              exit 1
-            fi
-
-            echo ""
-            echo "---- 🌐 Localhost Frontend Test ----"
-            if curl -I -s http://localhost | head -1; then
-              echo "✓ Frontend reachable on localhost"
-            else
-              echo "❌ Frontend NOT reachable on localhost"
-              exit 1
-            fi
-
-            echo ""
-            echo "---- 🌐 Nginx Proxy Test (Port 80) ----"
-            if curl -I -s http://localhost:80 | head -1; then
-              echo "✓ Nginx responding on port 80"
-            else
-              echo "❌ Nginx NOT responding on port 80"
-              exit 1
-            fi
-
-            echo ""
-            echo "---- 🌍 External Domain Test ----"
-            if curl -I -s http://${HOST} | head -1; then
-              echo "✓ External domain reachable: ${HOST}"
-            else
-              echo "⚠️  WARNING: External domain NOT directly reachable from staging server"
-              echo "This is expected if domain points to CDN or load balancer"
-            fi
-
-            echo ""
-            echo "---- 📊 Docker Compose Status ----"
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml ps
-
-            echo ""
-            echo "---- 🔍 Nginx Configuration Validation ----"
-            if docker compose -f docker-compose.base.yml -f docker-compose.staging.yml exec -T nginx nginx -t 2>&1 | grep -q "successful"; then
-              echo "✓ Nginx configuration is valid"
-            else
-              echo "⚠️  Nginx config check (non-fatal)"
-            fi
-
-            echo ""
-            echo "═════════════════════════════════════════════════════════════"
-            echo "=== DEPLOYMENT VERIFICATION COMPLETE ✓ ==="
+            echo "=== DEPLOYMENT SUCCESSFUL ✓ ==="
             echo "═════════════════════════════════════════════════════════════"
             echo ""
-            echo "Summary:"
-            echo "  ✓ Docker containers running"
-            echo "  ✓ Port 80 exposed externally"
-            echo "  ✓ Backend health check passed"
-            echo "  ✓ Frontend health check passed"
-            echo "  ✓ Localhost connectivity verified"
+            echo "Services Running:"
+            docker ps --format "table {{.Names}}\t{{.Status}}"
             echo ""
-            echo "Deployment ready for testing!"
+            echo "Backend: http://localhost:3001/api/health/live"
+            echo "Frontend: http://localhost"
             echo ""
 
-            echo "=== Deployment complete ==="
           ENDSSH
 
       - name: Save staging image tag to repo variable

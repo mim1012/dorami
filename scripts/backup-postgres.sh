@@ -81,10 +81,12 @@ check_dependencies() {
     return 1
   fi
 
-  # Check for aws cli
-  if ! command -v aws &> /dev/null; then
-    log_error "aws CLI is not installed"
-    return 1
+  # Check for aws cli (only required when S3 upload is enabled)
+  if [ "${SKIP_S3_UPLOAD:-false}" != "true" ]; then
+    if ! command -v aws &> /dev/null; then
+      log_error "aws CLI is not installed"
+      return 1
+    fi
   fi
 
   # Check for gzip
@@ -250,7 +252,9 @@ main() {
   fi
 
   # Upload to S3
-  if ! upload_to_s3; then
+  if [ "${SKIP_S3_UPLOAD:-false}" = "true" ]; then
+    log_warn "Skipping S3 upload (AWS credentials not configured)"
+  elif ! upload_to_s3; then
     log_error "S3 upload failed"
     exit 2
   fi

@@ -6,7 +6,7 @@ export type { ShippingAddress };
  * Unified profile completion check across the app
  * Returns true only if user has ALL required profile fields.
  * Prefers the boolean `profileComplete` flag from the server (JWT/API).
- * Fallback check uses: email + shippingAddress.fullName (instagramId and phone are optional).
+ * Fallback check uses: email + instagramId + shippingAddress.fullName.
  */
 export function isProfileComplete(user: User | null): boolean {
   if (!user) return false;
@@ -14,10 +14,12 @@ export function isProfileComplete(user: User | null): boolean {
     return user.profileComplete;
   }
 
-  // Fallback: check required fields only (instagramId and kakaoPhone are optional)
+  // Fallback: check required fields (instagramId and shippingAddress are required)
   const hasEmail = !!user.email;
-
   if (!hasEmail) return false;
+
+  const hasInstagramId = !!user.instagramId;
+  if (!hasInstagramId) return false;
 
   const shippingAddress = user.shippingAddress as ShippingAddress | undefined;
   const hasShippingAddress = !!shippingAddress?.fullName;
