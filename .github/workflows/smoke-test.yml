@@ -92,34 +92,15 @@ jobs:
         run: npm ci
 
       # ── Database setup ─────────────────────────────────────────────────────
+      - name: Remove .env to force environment variables
+        working-directory: backend
+        run: rm -f .env .env.local
+
       - name: Generate Prisma Client
         working-directory: backend
         run: npx prisma generate
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Override .env with CI credentials
-        working-directory: backend
-        run: |
-          cat > .env << 'ENVEOF'
-          NODE_ENV=development
-          PORT=3001
-          APP_ENV=development
-          CSRF_ENABLED=false
-          DATABASE_URL=${{ env.DATABASE_URL }}
-          REDIS_HOST=${{ env.REDIS_HOST }}
-          REDIS_PORT=${{ env.REDIS_PORT }}
-          REDIS_URL=${{ env.REDIS_URL }}
-          JWT_SECRET=${{ env.JWT_SECRET }}
-          KAKAO_CLIENT_ID=${{ env.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET=${{ env.KAKAO_CLIENT_SECRET }}
-          KAKAO_CALLBACK_URL=${{ env.KAKAO_CALLBACK_URL }}
-          PROFILE_ENCRYPTION_KEY=${{ env.PROFILE_ENCRYPTION_KEY }}
-          COOKIE_SECURE=false
-          ENABLE_DEV_AUTH=true
-          ADMIN_EMAILS=${{ env.ADMIN_EMAILS }}
-          CORS_ORIGINS=http://localhost:3000
-          ENVEOF
 
       - name: Run Prisma Migrations
         working-directory: backend
