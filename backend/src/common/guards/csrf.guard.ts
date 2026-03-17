@@ -113,7 +113,7 @@ export class CsrfGuard implements CanActivate {
       response.cookie('csrf-token', newToken, {
         httpOnly: false, // Must be readable by JavaScript
         secure: isHttps,
-        sameSite: 'strict',
+        sameSite: 'lax', // 'strict' breaks Samsung/in-app browsers after deployments
         maxAge: parseInt(process.env.CSRF_MAX_AGE_HOURS ?? '24', 10) * 60 * 60 * 1000,
         path: '/',
       });
