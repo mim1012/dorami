@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
@@ -20,9 +21,69 @@ import { StreamStatus } from '@live-commerce/shared-types';
 import { randomBytes } from 'crypto';
 
 @Injectable()
-export class StreamingService {
+export class StreamingService implements OnModuleInit {
   private readonly logger = new Logger(StreamingService.name);
   private readonly pendingStreamDoneTimers = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * On startup, clean up stale Redis stream metadata that wasn't properly
+   * cleared (e.g., backend restarted while a stream was live, SRS webhook missed).
+   */
+  async onModuleInit(): Promise<void> {
+    await this.cleanupStaleStreams();
+  }
+
+  /**
+   * Every 5 minutes, scan Redis for stream:*:meta keys whose streams are no
+   * longer LIVE in the database. This catches cases where the SRS on_unpublish
+   * webhook fails to reach the backend (e.g., backend restart, network blip).
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async cleanupStaleStreams(): Promise<void> {
+    try {
+      const client = this.redisService.getClient();
+      const metaKeys = await client.keys('stream:*:meta');
+
+      if (metaKeys.length === 0) {
+        return;
+      }
+
+      for (const metaKey of metaKeys) {
+        const raw = await client.get(metaKey);
+        if (!raw) {
+          continue;
+        }
+
+        const meta = JSON.parse(raw) as { status?: string; streamId?: string };
+        if (meta.status !== 'LIVE') {
+          continue;
+        }
+
+        // Extract streamKey from Redis key pattern: stream:{streamKey}:meta
+        const streamKey = metaKey.replace('stream:', '').replace(':meta', '');
+
+        // Check if this stream is actually LIVE in the database
+        const dbStream = await this.prisma.liveStream.findFirst({
+          where: { streamKey, status: StreamStatus.LIVE },
+          select: { id: true },
+        });
+
+        if (!dbStream) {
+          // Stale — DB says not LIVE but Redis says LIVE. Clean up.
+          await client.del(
+            `stream:${streamKey}:meta`,
+            `stream:${streamKey}:viewers`,
+            `stream:${streamKey}:viewer_ids`,
+          );
+          this.logger.warn(
+            `Cleaned up stale Redis stream cache for streamKey=${streamKey} (not LIVE in DB)`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to cleanup stale streams: ${(error as Error).message}`);
+    }
+  }
   private getStreamOwnershipWhere(streamId: string, userId: string, userRole?: string) {
     return userRole === 'ADMIN'
       ? { id: streamId }
