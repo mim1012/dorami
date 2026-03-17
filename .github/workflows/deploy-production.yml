@@ -851,6 +851,27 @@ jobs:
             fi
           ENDSSH
 
+      - name: Validate nginx config
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          echo "=== Nginx config validation ==="
+          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+            NGINX_CONTAINER=$(docker ps --filter name=nginx --format '{{.Names}}' | head -1)
+            if [ -z "$NGINX_CONTAINER" ]; then
+              echo "WARNING: nginx container not found — skipping validation"
+              exit 0
+            fi
+            if docker exec $NGINX_CONTAINER nginx -t 2>&1; then
+              echo "PASSED: nginx config valid"
+            else
+              echo "FAIL: nginx config invalid — check zone declarations"
+              docker logs $NGINX_CONTAINER --tail=10
+              exit 1
+            fi
+          ENDSSH
+
       - name: Upload Endpoint Smoke Test
         # Verify nginx is passing upload requests to backend (not blocking with 413).
         # Sends an unauthenticated request — expects 401/403 (auth error), NOT 413 (nginx body size limit).
