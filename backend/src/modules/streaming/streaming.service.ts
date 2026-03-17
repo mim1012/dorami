@@ -34,19 +34,18 @@ export class StreamingService implements OnModuleInit {
   }
 
   /**
-   * Every 5 minutes, scan Redis for stream:*:meta keys whose streams are no
-   * longer LIVE in the database. This catches cases where the SRS on_unpublish
-   * webhook fails to reach the backend (e.g., backend restart, network blip).
+   * Every 5 minutes, reconcile stream state across Redis, DB, and SRS.
+   *
+   * Handles two stale scenarios:
+   * 1. Redis says LIVE but DB does not → clean Redis keys
+   * 2. DB says LIVE but SRS has no active stream → set DB to OFFLINE + clean Redis
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async cleanupStaleStreams(): Promise<void> {
     try {
+      // --- Scenario 1: Stale Redis metadata ---
       const client = this.redisService.getClient();
       const metaKeys = await client.keys('stream:*:meta');
-
-      if (metaKeys.length === 0) {
-        return;
-      }
 
       for (const metaKey of metaKeys) {
         const raw = await client.get(metaKey);
@@ -59,24 +58,62 @@ export class StreamingService implements OnModuleInit {
           continue;
         }
 
-        // Extract streamKey from Redis key pattern: stream:{streamKey}:meta
         const streamKey = metaKey.replace('stream:', '').replace(':meta', '');
 
-        // Check if this stream is actually LIVE in the database
         const dbStream = await this.prisma.liveStream.findFirst({
           where: { streamKey, status: StreamStatus.LIVE },
           select: { id: true },
         });
 
         if (!dbStream) {
-          // Stale — DB says not LIVE but Redis says LIVE. Clean up.
           await client.del(
             `stream:${streamKey}:meta`,
             `stream:${streamKey}:viewers`,
             `stream:${streamKey}:viewer_ids`,
           );
           this.logger.warn(
-            `Cleaned up stale Redis stream cache for streamKey=${streamKey} (not LIVE in DB)`,
+            `Cleaned up stale Redis cache for streamKey=${streamKey} (not LIVE in DB)`,
+          );
+        }
+      }
+
+      // --- Scenario 2: DB says LIVE but SRS has no active stream ---
+      const dbLiveStreams = await this.prisma.liveStream.findMany({
+        where: { status: StreamStatus.LIVE },
+        select: { id: true, streamKey: true, startedAt: true },
+      });
+
+      if (dbLiveStreams.length === 0) {
+        return;
+      }
+
+      // Fetch active streams from SRS
+      const srsStreamKeys = await this.getSrsActiveStreamKeys();
+
+      for (const stream of dbLiveStreams) {
+        // Give streams 2 minutes grace period after startedAt before cleaning
+        const startedMs = stream.startedAt?.getTime() ?? Date.now();
+        if (Date.now() - startedMs < 2 * 60 * 1000) {
+          continue;
+        }
+
+        if (!srsStreamKeys.has(stream.streamKey)) {
+          // SRS has no active publisher for this stream → mark OFFLINE
+          await this.prisma.liveStream.update({
+            where: { id: stream.id },
+            data: { status: StreamStatus.OFFLINE, endedAt: new Date() },
+          });
+
+          await client.del(
+            `stream:${stream.streamKey}:meta`,
+            `stream:${stream.streamKey}:viewers`,
+            `stream:${stream.streamKey}:viewer_ids`,
+          );
+
+          this.eventEmitter.emit('stream:ended', { streamId: stream.id });
+
+          this.logger.warn(
+            `Cleaned up stale DB stream id=${stream.id} streamKey=${stream.streamKey} (not active in SRS)`,
           );
         }
       }
@@ -84,6 +121,38 @@ export class StreamingService implements OnModuleInit {
       this.logger.error(`Failed to cleanup stale streams: ${(error as Error).message}`);
     }
   }
+
+  /**
+   * Query SRS API for currently active (publishing) stream keys.
+   * Returns an empty set if SRS is unreachable.
+   */
+  private async getSrsActiveStreamKeys(): Promise<Set<string>> {
+    try {
+      const srsApiUrl = this.configService.get('SRS_API_URL') ?? 'http://localhost:1985';
+      const response = await fetch(`${srsApiUrl}/api/v1/streams`);
+      if (!response.ok) {
+        return new Set();
+      }
+
+      const data = (await response.json()) as {
+        streams?: { name?: string; publish?: { active?: boolean } }[];
+      };
+
+      const keys = new Set<string>();
+      for (const stream of data.streams ?? []) {
+        if (stream.name && stream.publish?.active !== false) {
+          // SRS stream name format: "live/{streamKey}" → extract streamKey
+          const name = stream.name.replace(/^live\//, '');
+          keys.add(name);
+        }
+      }
+      return keys;
+    } catch {
+      this.logger.warn('SRS API unreachable — skipping DB→SRS reconciliation');
+      return new Set();
+    }
+  }
+
   private getStreamOwnershipWhere(streamId: string, userId: string, userRole?: string) {
     return userRole === 'ADMIN'
       ? { id: streamId }
