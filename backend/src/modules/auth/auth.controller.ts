@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -167,11 +167,7 @@ export class AuthController {
 
   @Public()
   @SkipCsrf()
-  @Throttle({
-    short: { limit: 5, ttl: 10000 },
-    medium: { limit: 10, ttl: 60000 },
-    long: { limit: 20, ttl: 300000 },
-  })
+  @SkipThrottle()
   @Post('refresh')
   @ApiOperation({
     summary: 'Access 토큰 갱신',
