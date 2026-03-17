@@ -80,7 +80,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      variables: write
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
