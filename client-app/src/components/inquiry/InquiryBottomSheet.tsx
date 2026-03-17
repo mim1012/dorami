@@ -13,13 +13,17 @@ interface InquiryBottomSheetProps {
 export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps) {
   const [kakaoChannelUrl, setKakaoChannelUrl] = useState('mailto:422sss@live.com');
   const [instagramUrl, setInstagramUrl] = useState('https://ig.me/m/doremiusa');
+  const [instagramId, setInstagramId] = useState('doremiusa');
 
   useEffect(() => {
-    getRuntimeConfig().then(({ kakaoChannelId, instagramId }) => {
+    getRuntimeConfig().then((cfg) => {
       setKakaoChannelUrl(
-        kakaoChannelId ? `https://pf.kakao.com/${kakaoChannelId}` : 'mailto:422sss@live.com',
+        cfg.kakaoChannelId
+          ? `https://pf.kakao.com/${cfg.kakaoChannelId}`
+          : 'mailto:422sss@live.com',
       );
-      setInstagramUrl(`https://ig.me/m/${instagramId}`);
+      setInstagramUrl(`https://ig.me/m/${cfg.instagramId}`);
+      setInstagramId(cfg.instagramId);
     });
   }, []);
 
@@ -75,7 +79,7 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
             <div className="text-left">
               <p className="text-primary-text font-semibold text-[15px]">인스타그램 문의</p>
               <p className="text-secondary-text text-xs mt-0.5">
-                @{INSTAGRAM_ID} · DM으로 문의하세요
+                @{instagramId} · DM으로 문의하세요
               </p>
             </div>
           </button>

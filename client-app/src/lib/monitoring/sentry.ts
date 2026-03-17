@@ -37,9 +37,9 @@ export async function getSentryConfig(): Promise<SentryConfig | null> {
   let appVersion = '1.0.0';
   if (typeof window !== 'undefined') {
     try {
-      const { getRuntimeConfig } = await import('./runtime');
+      const { getRuntimeConfig } = await import('../config/runtime');
       const cfg = await getRuntimeConfig();
-      appEnv = cfg.appEnv;
+      appEnv = cfg.appEnv as typeof appEnv;
       appVersion = cfg.appVersion;
     } catch {
       // fall through to defaults
