@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
+import { getRuntimeConfig } from '@/lib/config/runtime';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { isProfileComplete } from '@/lib/utils/profile';
@@ -79,12 +80,9 @@ function LoginContent() {
   }, [hasExplicitReturnTo, isAuthenticated, isLoading, returnTo, router, searchParams, user]);
 
   useEffect(() => {
-    // 런타임에 체크 (docker-entrypoint.sh가 플레이스홀더를 치환한 후 실행됨)
-    const val = String(process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH || '');
-    // In local dev (NODE_ENV=development) always show dev login regardless of env var
-    if (process.env.NODE_ENV !== 'development') {
-      setIsDevAuthEnabled(val === 'true');
-    }
+    // In local dev always show dev login
+    if (process.env.NODE_ENV === 'development') return;
+    getRuntimeConfig().then(({ enableDevAuth }) => setIsDevAuthEnabled(enableDevAuth));
   }, []);
 
   const handleKakaoLogin = () => {

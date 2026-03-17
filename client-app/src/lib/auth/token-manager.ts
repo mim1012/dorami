@@ -11,7 +11,7 @@
  *   백엔드가 새 accessToken 쿠키를 Set-Cookie로 내려주도록 한다.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = '/api';
 
 // 동시 refresh 호출을 단일 요청으로 합산
 let refreshInFlight: Promise<boolean> | null = null;

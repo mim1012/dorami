@@ -21,9 +21,7 @@ export function LoginRequiredModal({ isOpen, onClose }: LoginRequiredModalProps)
       return;
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-    const baseUrl = apiUrl.replace('/api', '');
-    window.location.href = `${baseUrl}/api/auth/kakao`;
+    window.location.href = `/api/auth/kakao`;
   };
 
   return (

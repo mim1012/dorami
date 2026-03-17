@@ -8,16 +8,10 @@ on:
   push:
     branches: [develop]
   workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: 'Skip tests before deployment'
-        required: false
-        default: 'false'
-        type: boolean
 
 concurrency:
-  group: staging-deployment
-  cancel-in-progress: false
+  group: staging-deploy
+  cancel-in-progress: true
 
 env:
   DOCKER_REGISTRY: ghcr.io
@@ -52,7 +46,7 @@ jobs:
   test:
     name: Run Tests
     needs: [check]
-    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.skip_tests) && needs.check.outputs.source_changed == 'true' }}
+    if: needs.check.outputs.source_changed == 'true'
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -64,7 +58,7 @@ jobs:
   build:
     name: Build Images
     needs: [check, test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    if: needs.test.result == 'success'
     uses: ./.github/workflows/build-images.yml
     permissions:
       contents: read
@@ -76,7 +70,7 @@ jobs:
   deploy:
     name: Deploy to Staging
     needs: [check, build]
-    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -282,15 +276,18 @@ jobs:
               echo "PORT=\"3001\""
               echo "CORS_ORIGINS=\"https://staging.doremi-live.com,http://staging.doremi-live.com,http://localhost:3000\""
               echo "CSRF_ENABLED=\"false\""
-              echo "RTMP_SERVER_URL=\"rtmp://staging.doremi-live.com:1935/live\""
+              echo "RTMP_INTERNAL_URL=\"rtmp://srs:1935/live\""
+              echo "RTMP_EXTERNAL_URL=\"rtmp://staging.doremi-live.com:1935/live\""
               echo "HLS_SERVER_URL=\"http://staging.doremi-live.com/hls\""
               echo "MEDIA_SERVER_URL=\"http://localhost:8080\""
               echo "REDIS_HOST=\"redis\""
               echo "REDIS_PORT=\"6379\""
               echo "SRS_API_URL=\"http://srs:1985\""
+              echo "WS_URL=\"wss://staging.doremi-live.com\""
               echo "ENABLE_DEV_AUTH=\"true\""
+              echo "KAKAO_JS_KEY=\"${KAKAO_JS_KEY}\""
               echo "NEXT_PUBLIC_KAKAO_JS_KEY=\"${KAKAO_JS_KEY}\""
-              echo "NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN=\"https://staging.doremi-live.com\""
+              echo "KAKAO_EXTERNAL_ORIGIN=\"https://staging.doremi-live.com\""
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
               echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
@@ -489,4 +486,13 @@ jobs:
           [ -n "$TELEGRAM_BOT_TOKEN" ] && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${MSG}" -d "parse_mode=Markdown" -d "disable_web_page_preview=true"
 
-  # Smoke tests and soak gates removed for hotfix — deploy only
+  # ===========================================
+  # Smoke Tests (run only after deploy succeeds)
+  # ===========================================
+  smoke_test:
+    name: Smoke Test
+    needs: [deploy]
+    if: needs.deploy.result == 'success'
+    uses: ./.github/workflows/smoke-test.yml
+    permissions:
+      contents: read

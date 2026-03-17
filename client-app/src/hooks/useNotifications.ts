@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
+import { getRuntimeConfig } from '@/lib/config/runtime';
 
 interface UseNotificationsReturn {
   isSupported: boolean;
@@ -11,10 +12,6 @@ interface UseNotificationsReturn {
   subscribe: (liveStreamId?: string) => Promise<boolean>;
   unsubscribe: () => Promise<boolean>;
 }
-
-// VAPID Public Key - must match backend VAPID_PUBLIC_KEY
-// Generate with: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
 /**
  * Hook for managing push notifications
@@ -105,10 +102,11 @@ export function useNotifications(): UseNotificationsReturn {
         let subscription = await registration.pushManager.getSubscription();
 
         if (!subscription) {
+          const { vapidPublicKey } = await getRuntimeConfig();
           // Create new subscription
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
           });
 
           console.log('[useNotifications] Push subscription created:', subscription);

@@ -14,12 +14,11 @@
 name: Smoke Test
 
 on:
-  push:
-    branches: [main, develop]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: smoke-${{ github.ref }}
+  group: staging-deploy
   cancel-in-progress: true
 
 env:

@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { LegalModal } from '@/components/legal/LegalModal';
-
-const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
-const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
+import { getRuntimeConfig } from '@/lib/config/runtime';
 
 const DEFAULT_BIZ_NUMBER = '194-44-00522';
 const DEFAULT_ONLINE_SALES_NUMBER = '제 2021-대전유성-1024 호';
@@ -13,7 +11,16 @@ const DEFAULT_BIZ_ADDRESS = '경기도 용인시 수지구 상현로 5, 401-40�
 
 export function Footer() {
   const [legalType, setLegalType] = useState<'terms' | 'privacy' | null>(null);
+  const [instagramId, setInstagramId] = useState('doremiusa');
+  const [kakaoChannelId, setKakaoChannelId] = useState('_NJMzX');
   const [bizNumber, setBizNumber] = useState(DEFAULT_BIZ_NUMBER);
+
+  useEffect(() => {
+    getRuntimeConfig().then(({ instagramId: ig, kakaoChannelId: kc }) => {
+      setInstagramId(ig);
+      setKakaoChannelId(kc);
+    });
+  }, []);
   const [bizAddress, setBizAddress] = useState(DEFAULT_BIZ_ADDRESS);
   const [onlineSalesNumber, setOnlineSalesNumber] = useState(DEFAULT_ONLINE_SALES_NUMBER);
 
@@ -64,7 +71,7 @@ export function Footer() {
           <div className="flex gap-2">
             {/* Instagram */}
             <a
-              href={`https://www.instagram.com/${INSTAGRAM_ID}`}
+              href={`https://www.instagram.com/${instagramId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all"
@@ -90,12 +97,12 @@ export function Footer() {
                 <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" />
                 <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
               </svg>
-              <span className="text-[10px] font-semibold text-secondary-text">@{INSTAGRAM_ID}</span>
+              <span className="text-[10px] font-semibold text-secondary-text">@{instagramId}</span>
             </a>
 
             {/* KakaoTalk Channel */}
             <a
-              href={`https://pf.kakao.com/${KAKAO_CHANNEL_ID}`}
+              href={`https://pf.kakao.com/${kakaoChannelId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#FEE500]/30 bg-[#FEE500]/10 hover:bg-[#FEE500]/20 active:scale-95 transition-all"
@@ -144,7 +151,7 @@ export function Footer() {
               <div className="flex gap-2">
                 <span className="text-secondary-text/50 w-20 flex-shrink-0">문의</span>
                 <a
-                  href={`https://pf.kakao.com/${KAKAO_CHANNEL_ID}`}
+                  href={`https://pf.kakao.com/${kakaoChannelId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-hot-pink/80 font-medium hover:text-hot-pink transition-colors underline"

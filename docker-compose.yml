@@ -79,9 +79,10 @@ services:
       - '3000:3000'
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_WS_URL: https://www.doremi-live.com
-      NEXT_PUBLIC_ENABLE_DEV_AUTH: 'true'
-      NEXT_PUBLIC_KAKAO_CHANNEL_ID: '_NJMzX'
+      NEXT_PUBLIC_WS_URL: http://localhost:3001
+      WS_URL: http://localhost:3001
+      ENABLE_DEV_AUTH: 'true'
+      KAKAO_CHANNEL_ID: '_NJMzX'
       BACKEND_URL: http://backend:3001
       MEDIA_SERVER_URL: http://srs:8080
     depends_on:

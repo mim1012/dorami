@@ -247,6 +247,9 @@ jobs:
     needs: [preflight, db-drift]
     if: needs.preflight.outputs.should-continue == 'true' && (github.event.inputs.stage == 'all' || github.event.inputs.stage == 'load' || github.event.inputs.stage == '')
     runs-on: ubuntu-latest
+    concurrency:
+      group: staging-load
+      cancel-in-progress: true
     steps:
       - name: 'Install k6'
         run: |

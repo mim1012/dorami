@@ -67,7 +67,7 @@ services:
       - dorami-internal
 
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-backend:${IMAGE_TAG}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-backend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: backend-prod
     restart: always
     healthcheck:
@@ -97,13 +97,14 @@ services:
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL required}
       CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS required}
-      RTMP_SERVER_URL: ${RTMP_SERVER_URL:-rtmp://www.doremi-live.com:1935/live}
+      RTMP_INTERNAL_URL: rtmp://srs:1935/live
+      RTMP_EXTERNAL_URL: ${RTMP_EXTERNAL_URL:-rtmp://www.doremi-live.com:1935/live}
       HLS_SERVER_URL: http://srs:8080/hls
       CSRF_ENABLED: 'true'
       DISABLE_CSRF: 'false'
       COOKIE_SECURE: 'true'
       ENABLE_DEV_AUTH: 'false'
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-amykim422@gmail.com}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@dorami.shop}
       SENTRY_DSN: ${SENTRY_DSN:-}
       APP_VERSION: ${APP_VERSION:-1.0.0}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -133,7 +134,7 @@ services:
       - dorami-internal
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-frontend:${IMAGE_TAG}
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-mim1012}/dorami-frontend:${IMAGE_TAG:?IMAGE_TAG required}
     container_name: dorami-frontend-prod
     restart: always
     expose:
@@ -143,16 +144,15 @@ services:
       APP_ENV: production
       BACKEND_URL: ${BACKEND_URL:?BACKEND_URL required}
       MEDIA_SERVER_URL: ${MEDIA_SERVER_URL:?MEDIA_SERVER_URL required}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL required}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-https://www.doremi-live.com}
-      NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
-      NEXT_PUBLIC_ENABLE_DEV_AUTH: 'false'
-      NEXT_PUBLIC_PREVIEW_ENABLED: 'false'
+      WS_URL: ${WS_URL:?WS_URL required}
+      CDN_URL: ${CDN_URL:-}
+      ENABLE_DEV_AUTH: 'false'
       NEXT_PUBLIC_KAKAO_JS_KEY: ${NEXT_PUBLIC_KAKAO_JS_KEY:-}
-      NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN: ${NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN:-}
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      KAKAO_EXTERNAL_ORIGIN: ${KAKAO_EXTERNAL_ORIGIN:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_ENV: production
     mem_limit: 512m
     cpus: '1'
     logging:

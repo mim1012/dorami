@@ -7,7 +7,6 @@ const PROFILE_OPTIONAL_PATHS = ['/profile/register'];
 const KAKAO_OPEN_EXTERNAL_QUERY = 'openExternal';
 const KAKAO_OPEN_EXTERNAL_VALUE = '1';
 const KAKAO_EXTERNAL_ORIGIN = (
-  process.env.NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN ??
   process.env.KAKAO_EXTERNAL_ORIGIN ??
   process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ??
   ''

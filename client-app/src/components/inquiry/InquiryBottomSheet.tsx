@@ -1,18 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
-
-const KAKAO_CHANNEL_ID = process.env.NEXT_PUBLIC_KAKAO_CHANNEL_ID || '_NJMzX';
-const INSTAGRAM_ID = process.env.NEXT_PUBLIC_INSTAGRAM_ID || 'doremiusa';
-
-// 카카오톡 채널 URL
-const KAKAO_CHANNEL_URL = KAKAO_CHANNEL_ID
-  ? `https://pf.kakao.com/${KAKAO_CHANNEL_ID}`
-  : 'mailto:422sss@live.com';
-
-// 인스타그램 DM 딥링크 — 모바일에서 앱으로 바로 이동
-const INSTAGRAM_URL = `https://ig.me/m/${INSTAGRAM_ID}`;
+import { getRuntimeConfig } from '@/lib/config/runtime';
 
 interface InquiryBottomSheetProps {
   isOpen: boolean;
@@ -20,6 +11,18 @@ interface InquiryBottomSheetProps {
 }
 
 export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps) {
+  const [kakaoChannelUrl, setKakaoChannelUrl] = useState('mailto:422sss@live.com');
+  const [instagramUrl, setInstagramUrl] = useState('https://ig.me/m/doremiusa');
+
+  useEffect(() => {
+    getRuntimeConfig().then(({ kakaoChannelId, instagramId }) => {
+      setKakaoChannelUrl(
+        kakaoChannelId ? `https://pf.kakao.com/${kakaoChannelId}` : 'mailto:422sss@live.com',
+      );
+      setInstagramUrl(`https://ig.me/m/${instagramId}`);
+    });
+  }, []);
+
   useModalBehavior({ isOpen, onClose, lockScroll: false });
 
   if (!isOpen) return null;
@@ -46,7 +49,7 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
         {/* Options */}
         <div className="px-5 pb-6 space-y-3">
           <button
-            onClick={() => window.open(KAKAO_CHANNEL_URL, '_blank')}
+            onClick={() => window.open(kakaoChannelUrl, '_blank')}
             className="w-full flex items-center gap-4 p-4 rounded-2xl bg-border-color hover:bg-content-bg active:scale-[0.98] transition-all"
           >
             <div className="w-10 h-10 rounded-full bg-[#FEE500] flex items-center justify-center flex-shrink-0">
@@ -61,7 +64,7 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
           </button>
 
           <button
-            onClick={() => window.open(INSTAGRAM_URL, '_blank')}
+            onClick={() => window.open(instagramUrl, '_blank')}
             className="w-full flex items-center gap-4 p-4 rounded-2xl bg-border-color hover:bg-content-bg active:scale-[0.98] transition-all"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center flex-shrink-0">

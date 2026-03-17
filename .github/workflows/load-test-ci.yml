@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: '22 23 * * *'
 
+concurrency:
+  group: staging-load
+  cancel-in-progress: true
+
 jobs:
   load-test:
     runs-on: ubuntu-latest

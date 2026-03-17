@@ -22,7 +22,7 @@ export interface SentryConfig {
   replaysOnErrorSampleRate: number;
 }
 
-export function getSentryConfig(): SentryConfig | null {
+export async function getSentryConfig(): Promise<SentryConfig | null> {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
   if (!dsn) {
@@ -32,10 +32,24 @@ export function getSentryConfig(): SentryConfig | null {
 
   const isProd = process.env.NODE_ENV === 'production';
 
+  // Load appEnv/appVersion from runtime config (removes NEXT_PUBLIC_APP_ENV/VERSION bake-in)
+  let appEnv = process.env.NODE_ENV || 'development';
+  let appVersion = '1.0.0';
+  if (typeof window !== 'undefined') {
+    try {
+      const { getRuntimeConfig } = await import('./runtime');
+      const cfg = await getRuntimeConfig();
+      appEnv = cfg.appEnv;
+      appVersion = cfg.appVersion;
+    } catch {
+      // fall through to defaults
+    }
+  }
+
   return {
     dsn,
-    environment: process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV || 'development',
-    release: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    environment: appEnv,
+    release: appVersion,
     tracesSampleRate: isProd ? 0.1 : 1.0,
     replaysSessionSampleRate: isProd ? 0.1 : 0,
     replaysOnErrorSampleRate: isProd ? 1.0 : 0,
@@ -43,10 +57,10 @@ export function getSentryConfig(): SentryConfig | null {
 }
 
 /**
- * Initialize Sentry
+ * Initialize Sentry (lazy init: loads runtime config before Sentry.init)
  */
 export async function initSentry(): Promise<boolean> {
-  const config = getSentryConfig();
+  const config = await getSentryConfig();
 
   if (!config) {
     return false;

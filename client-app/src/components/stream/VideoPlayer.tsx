@@ -8,6 +8,7 @@ import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { getRuntimeConfig } from '@/lib/config/runtime';
 import LiveBadge from './LiveBadge';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
@@ -69,6 +70,7 @@ export default function VideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamEnded, setStreamEnded] = useState(false);
+  const [cdnUrl, setCdnUrl] = useState('');
   const isMobile = useIsMobile();
   const [playerMode, setPlayerMode] = useState<'flv' | 'hls' | null>(null);
   const setPlayerModeWithRef = useCallback((mode: 'flv' | 'hls' | null) => {
@@ -116,6 +118,10 @@ export default function VideoPlayer({
     streamEndedRef.current = streamEnded;
   }, [streamEnded]);
 
+  useEffect(() => {
+    getRuntimeConfig().then(({ cdnUrl: url }) => setCdnUrl(url));
+  }, []);
+
   // Stream URLs
   // FLV must be an absolute URL: mpegts.js runs fetch() inside a Web Worker when
   // enableWorker=true, and workers cannot resolve relative paths (no document base URL).
@@ -123,9 +129,7 @@ export default function VideoPlayer({
     typeof window !== 'undefined'
       ? `${window.location.origin}/live/live/${streamKey}.flv`
       : `/live/live/${streamKey}.flv`;
-  const hlsUrl = process.env.NEXT_PUBLIC_CDN_URL
-    ? `${process.env.NEXT_PUBLIC_CDN_URL}/hls/${streamKey}.m3u8`
-    : `/hls/${streamKey}.m3u8`;
+  const hlsUrl = cdnUrl ? `${cdnUrl}/hls/${streamKey}.m3u8` : `/hls/${streamKey}.m3u8`;
 
   useEffect(() => {
     if (isMobile && orientation === 'landscape' && !document.fullscreenElement) {

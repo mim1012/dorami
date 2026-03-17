@@ -275,9 +275,8 @@ function AdminOrdersContent() {
       if (orderStatusFilter.length > 0) params.orderStatus = orderStatusFilter.join(',');
 
       const queryStr = new URLSearchParams(params).toString();
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
       const csrfToken = document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '';
-      const response = await fetch(`${apiBase}/admin/orders/export?${queryStr}`, {
+      const response = await fetch(`/api/admin/orders/export?${queryStr}`, {
         credentials: 'include',
         headers: {
           'X-CSRF-Token': csrfToken,

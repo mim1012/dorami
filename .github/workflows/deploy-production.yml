@@ -41,8 +41,8 @@ on:
         type: boolean
 
 concurrency:
-  group: production-deployment
-  cancel-in-progress: false
+  group: production-deploy
+  cancel-in-progress: true
 
 env:
   DOCKER_REGISTRY: ghcr.io

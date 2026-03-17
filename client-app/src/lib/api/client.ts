@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = '/api';
 
 const DEFAULT_TIMEOUT_MS = 30000;
 const LIVE_SESSION_EXPIRED_EVENT = 'dorami-live-session-expired';

@@ -21,6 +21,7 @@ import type { Product } from '@/lib/types/product';
 import { ProductStatus } from '@live-commerce/shared-types';
 import { formatPrice } from '@/lib/utils/price';
 import { apiClient } from '@/lib/api/client';
+import { getRuntimeConfig } from '@/lib/config/runtime';
 import { Eye, Bell, MessageCircle, Share2, ShoppingCart, Package, X } from 'lucide-react';
 import { NoticeModal } from '@/components/notices/NoticeModal';
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
@@ -145,16 +146,17 @@ export default function LivePreviewPage() {
   const startedAtRef = useRef(new Date());
   const { showToast } = useToast();
 
-  // 런타임에 preview 접근 허가 여부 체크 (빌드 시 DCE 방지)
+  // 런타임에 preview 접근 허가 여부 체크
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
   useEffect(() => {
-    const isDev = process.env.NODE_ENV === 'development';
-    const previewEnabled = String(process.env.NEXT_PUBLIC_PREVIEW_ENABLED || '') === 'true';
-    if (isDev || previewEnabled) {
+    if (process.env.NODE_ENV === 'development') {
       setIsAllowed(true);
-    } else {
-      router.replace('/');
+      return;
     }
+    getRuntimeConfig().then(({ previewEnabled }) => {
+      if (previewEnabled) setIsAllowed(true);
+      else router.replace('/');
+    });
   }, [router]);
 
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_MESSAGES);

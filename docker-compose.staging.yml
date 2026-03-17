@@ -63,7 +63,8 @@ services:
       CSRF_ENABLED: "${CSRF_ENABLED:-false}"
       FRONTEND_URL: ${FRONTEND_URL:-http://staging.doremi-live.com}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
-      RTMP_SERVER_URL: rtmp://srs:1935/live
+      RTMP_INTERNAL_URL: rtmp://srs:1935/live
+      RTMP_EXTERNAL_URL: ${RTMP_EXTERNAL_URL:-rtmp://staging.doremi-live.com:1935/live}
       HLS_SERVER_URL: ${CDN_URL:-http://srs:8080/hls}
       SRS_API_URL: http://srs:1985
       SRS_WEBHOOK_SECRET: ${SRS_WEBHOOK_SECRET:-}
@@ -102,17 +103,15 @@ services:
     environment:
       BACKEND_URL: http://backend:3001
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_URL: /api
-      NEXT_PUBLIC_WS_URL: wss://staging.doremi-live.com
-      NEXT_PUBLIC_CDN_URL: ${CDN_URL:-}
+      WS_URL: ${WS_URL:-wss://staging.doremi-live.com}
+      CDN_URL: ${CDN_URL:-}
       NEXT_PUBLIC_KAKAO_JS_KEY: ${NEXT_PUBLIC_KAKAO_JS_KEY:-}
-      NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN: ${NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN:-}
-      NEXT_PUBLIC_ENABLE_DEV_AUTH: "true"
-      NEXT_PUBLIC_PREVIEW_ENABLED: "true"
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      KAKAO_EXTERNAL_ORIGIN: ${KAKAO_EXTERNAL_ORIGIN:-}
+      ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:?ENABLE_DEV_AUTH required}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
-      NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-1.0.0}
-      NEXT_PUBLIC_APP_ENV: staging
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_ENV: staging
     expose:
       - 3000
     logging:
