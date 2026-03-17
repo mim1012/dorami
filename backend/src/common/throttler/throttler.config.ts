@@ -11,10 +11,20 @@ import { ThrottlerModuleOptions } from '@nestjs/throttler';
  * Dev mode auto-scales limits 3x higher unless overridden by env vars.
  */
 const isDev = process.env.NODE_ENV !== 'production';
+const isDisabled = process.env.THROTTLE_DISABLED === 'true';
 
-const shortLimit = parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '5000'), 10);
-const mediumLimit = parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '10000'), 10);
-const longLimit = parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '50000'), 10);
+// When THROTTLE_DISABLED=true, set limits extremely high to effectively bypass
+const MAX_LIMIT = 999999;
+
+const shortLimit = isDisabled
+  ? MAX_LIMIT
+  : parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '5000'), 10);
+const mediumLimit = isDisabled
+  ? MAX_LIMIT
+  : parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '10000'), 10);
+const longLimit = isDisabled
+  ? MAX_LIMIT
+  : parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '50000'), 10);
 
 export const throttlerConfig: ThrottlerModuleOptions = [
   {

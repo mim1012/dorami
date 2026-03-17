@@ -406,6 +406,19 @@ jobs:
             done
 
             # ============================================================
+            # PHASE 5.5: Nginx Config Validation
+            # ============================================================
+            echo ""
+            echo "=== PHASE 5.5: Nginx Config Validation ==="
+            if docker exec dorami-nginx-1 nginx -t 2>&1; then
+              echo "✓ Nginx config valid"
+            else
+              echo "❌ Nginx config invalid — check zone declarations"
+              docker logs dorami-nginx-1 --tail=10
+              exit 1
+            fi
+
+            # ============================================================
             # PHASE 6: Image Digest Verification
             # ============================================================
             echo ""
