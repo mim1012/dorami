@@ -113,7 +113,7 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(
       { ...payload, type: 'access', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m' },
+      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '1h' },
     );
 
     const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';
@@ -145,31 +145,71 @@ export class AuthService {
     };
   }
 
+  // In-memory dedupe for concurrent refresh requests (same process)
+  private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
+
   async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
+    const payload = this.jwtService.verify<TokenPayload>(refreshToken);
+
+    if (payload.type && payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    const userId = payload.sub;
+
+    // In-memory dedupe: if refresh is already in-flight for this user, return same promise
+    const existing = this.refreshLocks.get(userId);
+    if (existing) {
+      return existing;
+    }
+
+    const promise = this._doRefreshToken(userId, refreshToken);
+    this.refreshLocks.set(userId, promise);
+
     try {
-      const payload = this.jwtService.verify<TokenPayload>(refreshToken);
+      return await promise;
+    } finally {
+      this.refreshLocks.delete(userId);
+    }
+  }
 
-      if (payload.type && payload.type !== 'refresh') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-
-      const storedToken = await this.redisService.get(`refresh_token:${payload.sub}`);
+  private async _doRefreshToken(userId: string, refreshToken: string): Promise<LoginResponseDto> {
+    try {
+      const storedToken = await this.redisService.get(`refresh_token:${userId}`);
 
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
+      // Redis lock: dedupe across multiple server instances
+      const lockKey = `refresh_lock:${userId}`;
+      const acquired = await this.redisService.getClient().set(lockKey, '1', 'EX', 5, 'NX');
+
+      if (!acquired) {
+        // Another instance is processing — wait and check cached result
+        await new Promise((r) => setTimeout(r, 200));
+        const cached = await this.redisService.get(`refresh_result:${userId}`);
+        if (cached) {
+          return JSON.parse(cached) as LoginResponseDto;
+        }
+      }
+
       const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
+        where: { id: userId },
       });
 
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
-      await this.redisService.del(`refresh_token:${payload.sub}`);
+      await this.redisService.del(`refresh_token:${userId}`);
 
-      return this.login(user);
+      const result = await this.login(user);
+
+      // Cache result briefly for concurrent requests across instances
+      await this.redisService.set(`refresh_result:${userId}`, JSON.stringify(result), 5);
+
+      return result;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;

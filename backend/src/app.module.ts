@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { configValidationSchema } from './common/config/config.validation';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { SessionIdMiddleware } from './common/middleware/session-id.middleware';
+import { UserThrottlerGuard } from './common/throttler/user-throttler.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerModule } from './common/logger/logger.module';
@@ -96,11 +98,15 @@ import { ProfileCompleteGuard } from './modules/auth/guards/profile-complete.gua
       provide: APP_GUARD,
       useClass: ProfileCompleteGuard,
     },
-    // Global Rate Limiting Guard
+    // Global Rate Limiting Guard (user/session-aware)
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: UserThrottlerGuard,
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(SessionIdMiddleware).exclude('health/(.*)', 'api/health/(.*)').forRoutes('*');
+  }
+}
