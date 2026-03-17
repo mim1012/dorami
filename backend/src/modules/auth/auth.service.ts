@@ -149,7 +149,15 @@ export class AuthService {
   private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
 
   async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
-    const payload = this.jwtService.verify<TokenPayload>(refreshToken);
+    let payload: TokenPayload;
+    try {
+      payload = this.jwtService.verify<TokenPayload>(refreshToken);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
     if (payload.type && payload.type !== 'refresh') {
       throw new UnauthorizedException('Invalid token type');
