@@ -2,8 +2,11 @@
 
 import Image from 'next/image';
 import { X } from 'lucide-react';
+import { Virtuoso } from 'react-virtuoso';
 import type { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils/price';
+
+const VIRTUOSO_THRESHOLD = 30;
 
 interface Props {
   isOpen: boolean;
@@ -63,82 +66,123 @@ export default function ProductListBottomSheet({
         </div>
 
         {/* Product list */}
-        <div className="overflow-y-auto flex-1 p-4 space-y-2.5">
-          {products.length === 0 ? (
-            <div className="flex items-center justify-center py-10">
-              <p className="text-white/40 text-sm">등록된 상품이 없습니다</p>
-            </div>
-          ) : (
-            products.map((product) => {
-              const isActive = product.id === activeProductId;
-              const isSoldOut = product.status === 'SOLD_OUT';
-
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => {
-                    if (!isSoldOut) onSelectProduct(product);
-                  }}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border cursor-pointer ${
-                    isActive
-                      ? 'bg-[#FF007A]/15 border-[#FF007A]/50'
-                      : isSoldOut
-                        ? 'bg-white/3 border-white/5 opacity-50'
-                        : 'bg-white/5 border-white/10 active:bg-white/10'
-                  }`}
-                >
-                  {product.imageUrl && (
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                        unoptimized={product.imageUrl.startsWith('/uploads/')}
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{product.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {product.discountRate && product.discountRate > 0 ? (
-                        <>
-                          <span className="text-white/35 text-xs line-through">
-                            {formatPrice(product.originalPrice ?? product.price)}
-                          </span>
-                          <span className="text-red-400 text-xs font-bold">
-                            {product.discountRate}%
-                          </span>
-                        </>
-                      ) : null}
-                      <span className="text-[#FF007A] font-black text-sm">
-                        {formatPrice(product.price)}
-                      </span>
-                    </div>
-                    {isSoldOut && <p className="text-white/30 text-xs mt-1">품절</p>}
+        {products.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <p className="text-white/40 text-sm">등록된 상품이 없습니다</p>
+          </div>
+        ) : products.length < VIRTUOSO_THRESHOLD ? (
+          <div className="overflow-y-auto flex-1 p-4 space-y-2.5">
+            {products.map((product) => (
+              <BottomSheetProductRow
+                key={product.id}
+                product={product}
+                isActive={product.id === activeProductId}
+                onSelectProduct={onSelectProduct}
+                onAddToCart={onAddToCart}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0">
+            <Virtuoso
+              style={{ height: '100%' }}
+              totalCount={products.length}
+              itemContent={(index) => {
+                const product = products[index];
+                return (
+                  <div
+                    style={{
+                      padding: '0 16px',
+                      paddingBottom: index < products.length - 1 ? 10 : 16,
+                      paddingTop: index === 0 ? 16 : 0,
+                    }}
+                  >
+                    <BottomSheetProductRow
+                      product={product}
+                      isActive={product.id === activeProductId}
+                      onSelectProduct={onSelectProduct}
+                      onAddToCart={onAddToCart}
+                    />
                   </div>
-                  <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isSoldOut) onAddToCart?.(product);
-                      }}
-                      disabled={isSoldOut}
-                      className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                      aria-label="장바구니 담기"
-                    >
-                      장바구니 담기
-                    </button>
-                    {isActive && (
-                      <span className="text-[#FF007A] text-[10px] font-medium">대표 상품</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              }}
+            />
+          </div>
+        )}
       </div>
     </>
+  );
+}
+
+// ── Bottom sheet product row (extracted for Virtuoso itemContent) ────────────
+interface BottomSheetProductRowProps {
+  product: Product;
+  isActive: boolean;
+  onSelectProduct: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+}
+
+function BottomSheetProductRow({
+  product,
+  isActive,
+  onSelectProduct,
+  onAddToCart,
+}: BottomSheetProductRowProps) {
+  const isSoldOut = product.status === 'SOLD_OUT';
+
+  return (
+    <div
+      onClick={() => {
+        if (!isSoldOut) onSelectProduct(product);
+      }}
+      className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border cursor-pointer ${
+        isActive
+          ? 'bg-[#FF007A]/15 border-[#FF007A]/50'
+          : isSoldOut
+            ? 'bg-white/3 border-white/5 opacity-50'
+            : 'bg-white/5 border-white/10 active:bg-white/10'
+      }`}
+    >
+      {product.imageUrl && (
+        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            className="object-cover"
+            unoptimized={product.imageUrl.startsWith('/uploads/')}
+          />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-sm font-semibold truncate">{product.name}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {product.discountRate && product.discountRate > 0 ? (
+            <>
+              <span className="text-white/35 text-xs line-through">
+                {formatPrice(product.originalPrice ?? product.price)}
+              </span>
+              <span className="text-red-400 text-xs font-bold">{product.discountRate}%</span>
+            </>
+          ) : null}
+          <span className="text-[#FF007A] font-black text-sm">{formatPrice(product.price)}</span>
+        </div>
+        {isSoldOut && <p className="text-white/30 text-xs mt-1">품절</p>}
+      </div>
+      <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isSoldOut) onAddToCart?.(product);
+          }}
+          disabled={isSoldOut}
+          className="px-3 py-1.5 bg-[#FF007A] text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          aria-label="장바구니 담기"
+        >
+          장바구니 담기
+        </button>
+        {isActive && <span className="text-[#FF007A] text-[10px] font-medium">대표 상품</span>}
+      </div>
+    </div>
   );
 }

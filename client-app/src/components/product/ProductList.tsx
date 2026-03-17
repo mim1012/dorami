@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
+import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '@/lib/api/client';
 import type { Product } from '@/lib/types';
 import { ProductStatus } from '@/lib/types';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 import { formatPrice } from '@/lib/utils/price';
+
+const VIRTUOSO_THRESHOLD = 30;
 
 interface ProductListProps {
   streamKey: string;
@@ -188,8 +191,10 @@ export default function ProductList({
   }
 
   // ── Vertical layout — compact rows ─────────────────────────────────────────
+  const useVirtualScroll = products.length >= VIRTUOSO_THRESHOLD;
+
   return (
-    <div className="p-3">
+    <div className={`p-3 ${useVirtualScroll ? 'h-full flex flex-col' : ''}`}>
       {products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
@@ -212,136 +217,164 @@ export default function ProductList({
             상품이 등록됩니다
           </p>
         </div>
-      ) : (
+      ) : products.length < VIRTUOSO_THRESHOLD ? (
         <div className="space-y-2">
-          {products.map((product, index) => {
-            const isNew = newlyAddedIds.has(product.id);
-            const isSoldOut = product.status === 'SOLD_OUT';
-            const isLowStock = !isSoldOut && product.stock > 0 && product.stock < 5;
-
+          {products.map((product, index) => (
+            <ProductRow
+              key={product.id}
+              product={product}
+              index={index}
+              isNew={newlyAddedIds.has(product.id)}
+              onProductClick={onProductClick}
+            />
+          ))}
+        </div>
+      ) : (
+        <Virtuoso
+          className="flex-1"
+          totalCount={products.length}
+          itemContent={(index) => {
+            const product = products[index];
             return (
-              <div
-                key={product.id}
-                onClick={() => !isSoldOut && onProductClick?.(product)}
-                className={`
-                  relative flex items-center gap-3 p-2.5 rounded-2xl transition-all duration-300 border
-                  ${
-                    isNew
-                      ? 'border-[#FF007A]/50 bg-[#FF007A]/8 shadow-[0_0_16px_rgba(255,0,122,0.12)]'
-                      : isSoldOut
-                        ? 'border-white/5 bg-white/3 opacity-55 cursor-not-allowed'
-                        : 'border-white/8 bg-white/4 hover:border-[#FF007A]/30 hover:bg-white/8 cursor-pointer'
-                  }
-                `}
-              >
-                {/* Index badge */}
-                <span className="absolute -top-1.5 -left-1 w-5 h-5 rounded-full bg-[#0A0A0A] border border-white/10 text-[9px] font-black text-white/35 flex items-center justify-center tabular-nums">
-                  {index + 1}
-                </span>
-
-                {/* Thumbnail */}
-                <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
-                  {product.imageUrl ? (
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      unoptimized={product.imageUrl.startsWith('/uploads/')}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-white/20 text-[9px]">No Image</span>
-                    </div>
-                  )}
-                  {isSoldOut && (
-                    <div className="absolute inset-0 bg-black/75 flex items-center justify-center">
-                      <span className="text-white font-black text-[10px]">품절</span>
-                    </div>
-                  )}
-                  {isLowStock && !isSoldOut && (
-                    <div className="absolute bottom-0 inset-x-0 bg-orange-500/80 text-white text-[8px] font-bold text-center py-0.5">
-                      {product.stock}개 남음
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="text-white/90 text-[11px] font-semibold truncate leading-tight">
-                      {product.name}
-                    </p>
-                    {isNew && (
-                      <span className="flex-shrink-0 text-[8px] font-black text-white bg-[#FF007A] px-1.5 py-0.5 rounded-full leading-none tracking-wide">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-
-                  {product.discountRate && product.discountRate > 0 ? (
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <span className="text-white/25 text-[10px] line-through">
-                        {formatPrice(product.originalPrice ?? product.price)}
-                      </span>
-                      <span className="text-red-400 text-[10px] font-bold">
-                        {product.discountRate}%↓
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <p className="text-[#FF007A] text-[13px] font-black leading-none">
-                    {formatPrice(product.price)}
-                  </p>
-
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {product.freeShippingMessage && (
-                      <span className="text-emerald-400/80 text-[9px] font-medium">
-                        {product.freeShippingMessage}
-                      </span>
-                    )}
-                    {!product.freeShippingMessage && !isSoldOut && (
-                      <span
-                        className={`text-[9px] font-medium ${
-                          isLowStock ? 'text-orange-400' : 'text-white/25'
-                        }`}
-                      >
-                        재고 {product.stock}개
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick buy button */}
-                {!isSoldOut && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onProductClick?.(product);
-                    }}
-                    className="flex-shrink-0 w-11 h-11 rounded-full bg-[#FF007A] flex items-center justify-center hover:bg-[#E00070] active:scale-90 transition-all"
-                    aria-label={`${product.name} 상세보기`}
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="2.5"
-                    >
-                      <path
-                        d="M5 12h14M12 5l7 7-7 7"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                )}
+              <div style={{ paddingBottom: index < products.length - 1 ? 8 : 0 }}>
+                <ProductRow
+                  product={product}
+                  index={index}
+                  isNew={newlyAddedIds.has(product.id)}
+                  onProductClick={onProductClick}
+                />
               </div>
             );
-          })}
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Product row component (extracted for Virtuoso itemContent) ──────────────
+interface ProductRowProps {
+  product: Product;
+  index: number;
+  isNew: boolean;
+  onProductClick?: (product: Product) => void;
+}
+
+function ProductRow({ product, index, isNew, onProductClick }: ProductRowProps) {
+  const isSoldOut = product.status === 'SOLD_OUT';
+  const isLowStock = !isSoldOut && product.stock > 0 && product.stock < 5;
+
+  return (
+    <div
+      onClick={() => !isSoldOut && onProductClick?.(product)}
+      className={`
+        relative flex items-center gap-3 p-2.5 rounded-2xl transition-all duration-300 border
+        ${
+          isNew
+            ? 'border-[#FF007A]/50 bg-[#FF007A]/8 shadow-[0_0_16px_rgba(255,0,122,0.12)]'
+            : isSoldOut
+              ? 'border-white/5 bg-white/3 opacity-55 cursor-not-allowed'
+              : 'border-white/8 bg-white/4 hover:border-[#FF007A]/30 hover:bg-white/8 cursor-pointer'
+        }
+      `}
+    >
+      {/* Index badge */}
+      <span className="absolute -top-1.5 -left-1 w-5 h-5 rounded-full bg-[#0A0A0A] border border-white/10 text-[9px] font-black text-white/35 flex items-center justify-center tabular-nums">
+        {index + 1}
+      </span>
+
+      {/* Thumbnail */}
+      <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-white/5">
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            className="object-cover"
+            unoptimized={product.imageUrl.startsWith('/uploads/')}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-white/20 text-[9px]">No Image</span>
+          </div>
+        )}
+        {isSoldOut && (
+          <div className="absolute inset-0 bg-black/75 flex items-center justify-center">
+            <span className="text-white font-black text-[10px]">품절</span>
+          </div>
+        )}
+        {isLowStock && !isSoldOut && (
+          <div className="absolute bottom-0 inset-x-0 bg-orange-500/80 text-white text-[8px] font-bold text-center py-0.5">
+            {product.stock}개 남음
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <p className="text-white/90 text-[11px] font-semibold truncate leading-tight">
+            {product.name}
+          </p>
+          {isNew && (
+            <span className="flex-shrink-0 text-[8px] font-black text-white bg-[#FF007A] px-1.5 py-0.5 rounded-full leading-none tracking-wide">
+              NEW
+            </span>
+          )}
         </div>
+
+        {product.discountRate && product.discountRate > 0 ? (
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-white/25 text-[10px] line-through">
+              {formatPrice(product.originalPrice ?? product.price)}
+            </span>
+            <span className="text-red-400 text-[10px] font-bold">{product.discountRate}%↓</span>
+          </div>
+        ) : null}
+
+        <p className="text-[#FF007A] text-[13px] font-black leading-none">
+          {formatPrice(product.price)}
+        </p>
+
+        <div className="flex items-center gap-1.5 mt-1">
+          {product.freeShippingMessage && (
+            <span className="text-emerald-400/80 text-[9px] font-medium">
+              {product.freeShippingMessage}
+            </span>
+          )}
+          {!product.freeShippingMessage && !isSoldOut && (
+            <span
+              className={`text-[9px] font-medium ${
+                isLowStock ? 'text-orange-400' : 'text-white/25'
+              }`}
+            >
+              재고 {product.stock}개
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Quick buy button */}
+      {!isSoldOut && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onProductClick?.(product);
+          }}
+          className="flex-shrink-0 w-11 h-11 rounded-full bg-[#FF007A] flex items-center justify-center hover:bg-[#E00070] active:scale-90 transition-all"
+          aria-label={`${product.name} 상세보기`}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2.5"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       )}
     </div>
   );

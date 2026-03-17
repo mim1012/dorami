@@ -78,6 +78,9 @@ jobs:
     needs: [check, build]
     if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      variables: write
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
@@ -219,6 +222,7 @@ jobs:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_POSTGRES_PASSWORD }}
           STAGING_REDIS_PASSWORD: ${{ secrets.STAGING_REDIS_PASSWORD }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
         run: |
           # Validate variables are available before SSH
           echo "Pre-SSH validation:"
@@ -290,6 +294,7 @@ jobs:
               echo "NEXT_PUBLIC_KAKAO_EXTERNAL_ORIGIN=\"https://staging.doremi-live.com\""
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
+              echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
             } > /opt/dorami/.env.staging
             chmod 600 /opt/dorami/.env.staging
             echo "✓ .env.staging created"

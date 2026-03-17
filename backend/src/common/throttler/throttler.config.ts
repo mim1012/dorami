@@ -12,9 +12,9 @@ import { ThrottlerModuleOptions } from '@nestjs/throttler';
  */
 const isDev = process.env.NODE_ENV !== 'production';
 
-const shortLimit = parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '10'), 10);
-const mediumLimit = parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '20'), 10);
-const longLimit = parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '100'), 10);
+const shortLimit = parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '5000'), 10);
+const mediumLimit = parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '10000'), 10);
+const longLimit = parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '50000'), 10);
 
 export const throttlerConfig: ThrottlerModuleOptions = [
   {
@@ -41,5 +41,5 @@ export const throttlerConfig: ThrottlerModuleOptions = [
  */
 export const authThrottlerConfig = {
   ttl: parseInt(process.env.AUTH_THROTTLE_WINDOW_MS ?? '60000', 10),
-  limit: parseInt(process.env.AUTH_THROTTLE_LIMIT ?? '5', 10),
+  limit: parseInt(process.env.AUTH_THROTTLE_LIMIT ?? '500', 10),
 };
