@@ -89,7 +89,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: this.isProduction ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: this.accessTokenMaxAge,
       path: '/',
     };
@@ -102,7 +102,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: this.isProduction ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: this.refreshTokenMaxAge,
       path: '/',
     };
@@ -231,13 +231,13 @@ export class AuthController {
     res.clearCookie('accessToken', {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: this.isProduction ? 'strict' : 'lax',
+      sameSite: 'lax',
       path: '/',
     });
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: this.isProduction,
-      sameSite: this.isProduction ? 'strict' : 'lax',
+      sameSite: 'lax',
       path: '/',
     });
 
