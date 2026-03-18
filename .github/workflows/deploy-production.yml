@@ -346,27 +346,26 @@ jobs:
             echo "=== Pre-deployment Backup Started ==="
 
             # If S3 credentials are not available, skip S3 upload but still create local backup
-            if [ -z "${S3_BUCKET}" ] || [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+            if [ -z "\${S3_BUCKET}" ] || [ -z "\${AWS_ACCESS_KEY_ID}" ] || [ -z "\${AWS_SECRET_ACCESS_KEY}" ]; then
               echo "WARNING: S3 credentials not fully configured — local backup only"
               # Create local backup manually as fallback
-              BACKUP_DIR="/opt/dorami/backups"
-              mkdir -p $BACKUP_DIR
-              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              mkdir -p /opt/dorami/backups
+              TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
 
               # Try all known container names directly (don't use docker ps due to SSH environment issues)
-              if docker exec dorami-postgres-1 pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-1)"
-              elif docker exec dorami-postgres-prod pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from dorami-postgres-prod)"
-              elif docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > ${BACKUP_DIR}/db_backup_${TIMESTAMP}.sql.gz; then
-                echo "Local backup created: db_backup_${TIMESTAMP}.sql.gz (from live-commerce-postgres)"
+              if docker exec dorami-postgres-1 pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > /opt/dorami/backups/db_backup_\${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_\${TIMESTAMP}.sql.gz (from dorami-postgres-1)"
+              elif docker exec dorami-postgres-prod pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > /opt/dorami/backups/db_backup_\${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_\${TIMESTAMP}.sql.gz (from dorami-postgres-prod)"
+              elif docker exec live-commerce-postgres pg_dump -U postgres live_commerce_production 2>/dev/null | gzip > /opt/dorami/backups/db_backup_\${TIMESTAMP}.sql.gz; then
+                echo "Local backup created: db_backup_\${TIMESTAMP}.sql.gz (from live-commerce-postgres)"
               else
                 echo "ERROR: Failed to dump database from all known containers"
                 exit 1
               fi
 
               # Keep only last 7 local backups
-              ls -t ${BACKUP_DIR}/db_backup_*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm
+              ls -t /opt/dorami/backups/db_backup_*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm
             else
               # Use the backup script (S3 + local)
               /tmp/backup-postgres.sh
