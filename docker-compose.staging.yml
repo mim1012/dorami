@@ -63,6 +63,7 @@ services:
       CSRF_ENABLED: "${CSRF_ENABLED:-false}"
       FRONTEND_URL: ${FRONTEND_URL:-http://staging.doremi-live.com}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
+      RTMP_SERVER_URL: ${RTMP_SERVER_URL:-rtmp://staging.doremi-live.com:1935/live}
       RTMP_INTERNAL_URL: rtmp://srs:1935/live
       RTMP_EXTERNAL_URL: ${RTMP_EXTERNAL_URL:-rtmp://staging.doremi-live.com:1935/live}
       HLS_SERVER_URL: ${CDN_URL:-http://srs:8080/hls}
