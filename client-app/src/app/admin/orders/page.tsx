@@ -18,6 +18,8 @@ import { SOCKET_URL } from '@/lib/config/socket-url';
 
 interface OrderItem {
   productName: string;
+  price: string;
+  quantity: number;
   color?: string | null;
   size?: string | null;
 }
@@ -315,10 +317,10 @@ function AdminOrdersContent() {
     });
   };
 
-  const collectProductNames = (items?: OrderItem[]) => {
+  const collectProductSummary = (items?: OrderItem[]) => {
     if (!items || items.length === 0) return '-';
     return items
-      .map((item) => item.productName)
+      .map((item) => `${item.productName} x${item.quantity}`)
       .filter(Boolean)
       .join(', ');
   };
@@ -341,9 +343,9 @@ function AdminOrdersContent() {
     },
     {
       key: 'productName',
-      label: '상품명',
+      label: '상품명 (수량)',
       sortable: false,
-      render: (order) => <span className="text-caption">{collectProductNames(order.items)}</span>,
+      render: (order) => <span className="text-caption">{collectProductSummary(order.items)}</span>,
     },
     {
       key: 'color',

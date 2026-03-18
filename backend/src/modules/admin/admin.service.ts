@@ -875,6 +875,8 @@ export class AdminService {
       { header: '주문상태', key: 'status', width: 12 },
       { header: '인스타그램ID', key: 'instagramId', width: 18 },
       { header: '상품명', key: 'productName', width: 30 },
+      { header: '단가', key: 'price', width: 12 },
+      { header: '수량', key: 'quantity', width: 8 },
       { header: '색상', key: 'color', width: 12 },
       { header: '사이즈', key: 'size', width: 10 },
       { header: '배송비', key: 'shippingFee', width: 10 },
@@ -908,6 +910,8 @@ export class AdminService {
             status: ORDER_STATUS_KO[order.status] ?? order.status,
             instagramId: order.instagramId?.replace(/^@/, ''),
             productName: item.productName,
+            price: Number(item.price),
+            quantity: item.quantity,
             color: item.color ?? '-',
             size: item.size ?? '-',
             shippingFee: itemIndex === 0 ? Number(order.shippingFee) : '',
@@ -939,6 +943,7 @@ export class AdminService {
     });
 
     const moneyFmt = '#,##0';
+    sheet.getColumn('price').numFmt = moneyFmt;
     sheet.getColumn('shippingFee').numFmt = moneyFmt;
     sheet.getColumn('total').numFmt = moneyFmt;
 
