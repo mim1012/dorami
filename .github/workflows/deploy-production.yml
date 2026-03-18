@@ -508,6 +508,7 @@ jobs:
 
           BACKEND_URL=http://backend:3001
           MEDIA_SERVER_URL=http://srs:8080
+          WS_URL=wss://www.doremi-live.com
 
           VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
           VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
