@@ -622,19 +622,15 @@ jobs:
             # For existing containers, detect their actual credentials (don't modify .env.production!)
             # CRITICAL: Do NOT modify .env.production — this triggers container recreation which breaks initialization
 
-            # Try to detect if dorami_prod user exists; if not, use legacy 'postgres' user
-            if docker exec "${EXISTING_POSTGRES}" psql -U postgres -d live_commerce_production -c "SELECT 1" >/dev/null 2>&1; then
-              # Modern credentials exist - use them
-              echo "INFO: Detected modern credentials (dorami_prod)"
+            # Detect which postgres user works — try dorami_prod first, fall back to postgres
+            if docker exec "${EXISTING_POSTGRES}" psql -U dorami_prod -d live_commerce_production -c "SELECT 1" >/dev/null 2>&1; then
+              echo "INFO: dorami_prod user works"
               POSTGRES_USER="dorami_prod"
-              POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             else
-              # Legacy credentials - use 'postgres' user from the existing container
-              # The postgres user uses the same password as in .env.production
-              echo "INFO: Detected legacy or unknown credentials - using postgres user from existing container"
+              echo "INFO: Using postgres user"
               POSTGRES_USER="postgres"
-              POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             fi
+            POSTGRES_PASSWORD=$(grep '^POSTGRES_PASSWORD=' "${INFRA_DIR}/.env.production" | cut -d= -f2)
             POSTGRES_CONTAINER="${EXISTING_POSTGRES}"
             POSTGRES_HOST="postgres"  # Container network alias
 
