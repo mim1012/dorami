@@ -721,7 +721,7 @@ jobs:
             fi
             if [ "${status}" = "unhealthy" ]; then
               echo "ERROR: Backend is unhealthy"
-              docker logs backend-prod --tail 50 2>/dev/null || true
+              docker logs backend-prod --tail 100 2>&1 || docker logs dorami-backend-1 --tail 100 2>&1 || true
               exit 1
             fi
             echo "Backend status: ${status} (${i}/24)"
@@ -729,7 +729,7 @@ jobs:
           done
           if ! ${backend_ok}; then
             echo "ERROR: Backend health check timed out"
-            docker logs backend-prod --tail 50 2>/dev/null || true
+            docker logs backend-prod --tail 100 2>&1 || docker logs dorami-backend-1 --tail 100 2>&1 || true
             exit 1
           fi
 
