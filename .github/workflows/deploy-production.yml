@@ -335,7 +335,7 @@ jobs:
           ssh $USER@$HOST bash -s << ENDSSH
             set -e
 
-            export POSTGRES_USER="dorami_prod"
+            export POSTGRES_USER="postgres"
             export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
             export POSTGRES_DB="live_commerce_production"
             export S3_BUCKET="${S3_BUCKET}"
@@ -470,10 +470,10 @@ jobs:
 
           APP_ENV=production
 
-          POSTGRES_USER=app_user
+          POSTGRES_USER=postgres
           POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
           POSTGRES_DB=live_commerce_production
-          DATABASE_URL=postgresql://app_user:${PROD_POSTGRES_PASSWORD}@postgres:5432/live_commerce_production?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30
+          DATABASE_URL=postgresql://postgres:${PROD_POSTGRES_PASSWORD}@postgres:5432/live_commerce_production?schema=public&sslmode=prefer&connection_limit=20&pool_timeout=30
 
           REDIS_HOST=redis
           REDIS_PORT=6379
