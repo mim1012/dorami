@@ -5,7 +5,6 @@ import { ThemeProvider } from '@/lib/theme/theme-context';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
-import { KakaoInAppBrowserGuard } from '@/components/common/KakaoInAppBrowserGuard';
 import { InAppBrowserGuard } from '@/components/common/InAppBrowserGuard';
 import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
 
@@ -54,7 +53,6 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
 
-        <KakaoInAppBrowserGuard />
         <InAppBrowserGuard />
         <QueryProvider>
           <ThemeProvider>

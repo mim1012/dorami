@@ -6,7 +6,7 @@ import { Virtuoso } from 'react-virtuoso';
 import type { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils/price';
 
-const VIRTUOSO_THRESHOLD = 30;
+const VIRTUOSO_THRESHOLD = 20;
 
 interface Props {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export default function ProductListBottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label="상품 목록"
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
+        className="fixed inset-x-0 bottom-0 z-50 bg-[#12121e] rounded-t-3xl animate-slide-up-sheet h-[75vh] max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-2">

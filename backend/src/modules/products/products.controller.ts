@@ -225,6 +225,18 @@ export class ProductsController {
     description: 'Filter by status',
     required: false,
   })
+  @ApiQuery({
+    name: 'take',
+    description: 'Number of products to return (default 50)',
+    required: false,
+    example: '50',
+  })
+  @ApiQuery({
+    name: 'skip',
+    description: 'Number of products to skip for pagination (default 0)',
+    required: false,
+    example: '0',
+  })
   @ApiResponse({
     status: 200,
     description: 'Products retrieved successfully',
@@ -233,10 +245,15 @@ export class ProductsController {
   async findAll(
     @Query('streamKey') streamKey?: string,
     @Query('status') status?: ProductStatus,
+    @Query('take') take?: string,
+    @Query('skip') skip?: string,
   ): Promise<ProductResponseDto[]> {
     // If streamKey is provided, filter by stream
     if (streamKey) {
-      return await this.productsService.findByStreamKey(streamKey, status);
+      return await this.productsService.findByStreamKey(streamKey, status, false, {
+        take: take !== undefined ? parseInt(take, 10) : undefined,
+        skip: skip !== undefined ? parseInt(skip, 10) : undefined,
+      });
     }
 
     // Otherwise return all products

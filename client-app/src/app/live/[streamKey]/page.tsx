@@ -10,7 +10,7 @@ import { SOCKET_URL } from '@/lib/config/socket-url';
 import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
 import ChatHeader from '@/components/chat/ChatHeader';
-import ChatMessageList from '@/components/chat/ChatMessageList';
+import ChatMessageList, { ChatMessageListHandle } from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
 
 import ProductList from '@/components/product/ProductList';
@@ -186,9 +186,11 @@ export default function LiveStreamPage() {
   } = useChatConnection(streamKey);
   const { messages: chatMessages } = useChatMessages(socket);
   const mobileInputRef = useRef<ChatInputHandle>(null);
+  const mobileChatListRef = useRef<ChatMessageListHandle>(null);
 
   // Desktop chat state
   const desktopInputRef = useRef<ChatInputHandle>(null);
+  const desktopChatListRef = useRef<ChatMessageListHandle>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Elapsed time timer for mobile top bar
@@ -286,12 +288,15 @@ export default function LiveStreamPage() {
   }, [socket, dispatch]);
 
   // ── Keyboard detection via visualViewport ──────────────────────────────────
+  // keyboardOffset: px the keyboard pushes content up from the viewport bottom.
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
-      const ratio = vv.height / window.innerHeight;
-      dispatch(ratio < 0.75 ? { type: 'OPEN_KEYBOARD' } : { type: 'CLOSE_KEYBOARD' });
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOffset(offset);
+      dispatch(offset > 100 ? { type: 'OPEN_KEYBOARD' } : { type: 'CLOSE_KEYBOARD' });
     };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
@@ -559,12 +564,14 @@ export default function LiveStreamPage() {
   const handleMobileSendMessage = (message: string) => {
     if (message.trim()) {
       chatSendMessage(message);
+      mobileChatListRef.current?.scrollToBottom();
     }
   };
 
   const handleDesktopSendMessage = (message: string) => {
     if (message.trim()) {
       chatSendMessage(message);
+      desktopChatListRef.current?.scrollToBottom();
     }
   };
 
@@ -762,7 +769,10 @@ export default function LiveStreamPage() {
 
       {/* ── MOBILE: fullscreen overlay layout ── */}
       {isMobile && (
-        <div className="relative w-full h-[100dvh] overflow-hidden bg-black">
+        <div
+          className="relative w-full h-[100dvh] overflow-hidden bg-black"
+          style={{ '--kb': `${keyboardOffset}px` } as React.CSSProperties}
+        >
           {/* 0. Video — fullscreen background */}
           <div className="absolute inset-0 z-0">
             <VideoPlayer
@@ -969,7 +979,10 @@ export default function LiveStreamPage() {
           )}
 
           {/* 3. Right FABs */}
-          <div className="absolute right-3 xs:right-4 bottom-[calc(112px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-3 xs:gap-4">
+          <div
+            className="absolute right-3 xs:right-4 z-30 flex flex-col gap-3 xs:gap-4"
+            style={{ bottom: 'calc(112px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
+          >
             <button
               onClick={handleShare}
               className="flex flex-col items-center gap-1"
@@ -999,13 +1012,24 @@ export default function LiveStreamPage() {
           </div>
 
           {/* 4. Chat messages — absolute overlay */}
-          <div className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] bottom-[166px] z-10 space-y-1.5">
-            <ChatMessageList messages={allMessages} compact maxMessages={4} />
+          <div
+            className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-10 space-y-1.5 overflow-hidden max-h-[40vh]"
+            style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
+          >
+            <ChatMessageList
+              ref={mobileChatListRef}
+              messages={allMessages}
+              compact
+              maxMessages={4}
+            />
           </div>
 
           {/* 5. Featured product card — glassmorphism */}
           {displayedProduct && snapshot !== 'ENDED' && snapshot !== 'NO_STREAM' && (
-            <div className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] bottom-[96px] z-20">
+            <div
+              className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-20"
+              style={{ bottom: 'calc(96px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
+            >
               <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 p-1.5 shadow-2xl">
                 <div className="flex items-center gap-2">
                   {/* Thumbnail */}
@@ -1060,8 +1084,11 @@ export default function LiveStreamPage() {
           {/* 6. Bottom bar: chat input + CTA */}
           {layout.bottomInput.visible && (
             <div
-              className="absolute bottom-0 left-0 right-0 z-10 px-3 xs:px-4 pt-2.5"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))' }}
+              className="absolute left-0 right-0 z-10 px-3 xs:px-4 pt-2.5"
+              style={{
+                bottom: 'var(--kb, 0px)',
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+              }}
             >
               <div className="flex items-center gap-2">
                 {/* Chat input pill */}
@@ -1109,7 +1136,7 @@ export default function LiveStreamPage() {
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Center: Video + overlays */}
             <div className="flex flex-1 relative items-center justify-center">
-              <div className="relative w-full h-full lg:max-w-[480px] lg:h-full bg-black overflow-hidden">
+              <div className="relative w-full h-full lg:max-w-[560px] xl:max-w-[640px] 2xl:max-w-[720px] lg:h-full bg-black overflow-hidden">
                 {/* Desktop top gradient scrim */}
                 <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none" />
                 {/* Desktop bottom gradient scrim */}
@@ -1211,9 +1238,10 @@ export default function LiveStreamPage() {
             </div>
 
             {/* Right: Chat Panel */}
-            <div className="flex w-[320px] flex-col bg-transparent border-l border-white/5">
+            <div className="flex w-[320px] min-h-0 flex-col bg-transparent border-l border-white/5">
               <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
               <ChatMessageList
+                ref={desktopChatListRef}
                 messages={allMessages}
                 compact={false}
                 isAdmin={isAdmin}
@@ -1284,34 +1312,36 @@ export default function LiveStreamPage() {
                   <h3 className="text-xl font-bold text-primary-text">지난 상품</h3>
                   <p className="text-sm text-secondary-text">이전에 소개한 상품들</p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {allProducts.slice(5).map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleProductClick(product)}
-                      className="group text-left hover:opacity-80 transition-opacity"
-                    >
-                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
-                        {product.imageUrl ? (
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            unoptimized={product.imageUrl.startsWith('/uploads/')}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <Package className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-primary-text truncate">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
-                    </button>
-                  ))}
+                <div className="max-h-[400px] overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {allProducts.slice(5).map((product) => (
+                      <button
+                        key={product.id}
+                        onClick={() => handleProductClick(product)}
+                        className="group text-left hover:opacity-80 transition-opacity"
+                      >
+                        <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
+                          {product.imageUrl ? (
+                            <Image
+                              src={product.imageUrl}
+                              alt={product.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                              unoptimized={product.imageUrl.startsWith('/uploads/')}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                              <Package className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-primary-text truncate">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

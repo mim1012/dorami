@@ -9,6 +9,7 @@ import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 import { getRuntimeConfig } from '@/lib/config/runtime';
+import { isInAppBrowser } from '@/lib/hooks/use-in-app-browser';
 import LiveBadge from './LiveBadge';
 import BufferingSpinner from './BufferingSpinner';
 import ErrorOverlay from './ErrorOverlay';
@@ -246,6 +247,13 @@ export default function VideoPlayer({
 
     metricsRef.current.playStartTime = performance.now();
     setError(null);
+
+    // In-app browsers (Instagram, Facebook, etc.) typically lack MSE support for FLV.
+    // Skip the FLV attempt entirely and go straight to HLS to reduce time-to-first-frame.
+    if (isInAppBrowser(navigator.userAgent)) {
+      initializeHlsPlayer();
+      return;
+    }
 
     try {
       const mpegts = await import('mpegts.js');
@@ -587,8 +595,9 @@ export default function VideoPlayer({
     if (socketRef.current) return;
 
     const streamingConfig = RECONNECT_CONFIG.streaming;
+    const inApp = isInAppBrowser(navigator.userAgent);
     const socket = io(`${SOCKET_URL}/streaming`, {
-      transports: ['websocket', 'polling'],
+      transports: inApp ? ['polling', 'websocket'] : ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,
       timeout: 20000,

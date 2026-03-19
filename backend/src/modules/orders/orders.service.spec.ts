@@ -379,6 +379,138 @@ describe('OrdersService - createOrderFromCart', () => {
       expect(parts[1]).toHaveLength(8); // YYYYMMDD
       expect(parts[2]).toHaveLength(5); // Sequential number padded
     });
+
+    it('should create 2 separate order items when cart has 2 different products', async () => {
+      // Arrange: two distinct products (different productId, different name, same price)
+      const twoProductCartItems = [
+        {
+          id: 'cart-A',
+          userId: 'user-123',
+          productId: 'product-A',
+          productName: '오데썽(핫핑)',
+          price: new Decimal(15),
+          quantity: 1,
+          shippingFee: new Decimal(0),
+          color: null,
+          size: null,
+          timerEnabled: false,
+          expiresAt: null,
+          status: 'ACTIVE',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          product: {
+            id: 'product-A',
+            name: '오데썽(핫핑)',
+            price: new Decimal(15),
+            shippingFee: new Decimal(0),
+          },
+        },
+        {
+          id: 'cart-B',
+          userId: 'user-123',
+          productId: 'product-B',
+          productName: '코코(옐로)',
+          price: new Decimal(15),
+          quantity: 1,
+          shippingFee: new Decimal(0),
+          color: null,
+          size: null,
+          timerEnabled: false,
+          expiresAt: null,
+          status: 'ACTIVE',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          product: {
+            id: 'product-B',
+            name: '코코(옐로)',
+            price: new Decimal(15),
+            shippingFee: new Decimal(0),
+          },
+        },
+      ];
+
+      const twoProductOrder = {
+        id: 'ORD-20260319-00001',
+        userId: 'user-123',
+        userEmail: 'test@example.com',
+        depositorName: 'Test Depositor',
+        instagramId: '@testuser',
+        shippingAddress: mockUser.shippingAddress,
+        status: 'PENDING_PAYMENT',
+        paymentMethod: 'BANK_TRANSFER',
+        paymentStatus: 'PENDING',
+        shippingStatus: 'PENDING',
+        subtotal: new Decimal(30),
+        shippingFee: new Decimal(10),
+        total: new Decimal(40),
+        pointsUsed: 0,
+        pointsEarned: 0,
+        paidAt: null,
+        shippedAt: null,
+        deliveredAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        orderItems: [
+          {
+            id: 'order-item-A',
+            orderId: 'ORD-20260319-00001',
+            productId: 'product-A',
+            productName: '오데썽(핫핑)',
+            price: new Decimal(15),
+            quantity: 1,
+            shippingFee: new Decimal(0),
+            color: null,
+            size: null,
+          },
+          {
+            id: 'order-item-B',
+            orderId: 'ORD-20260319-00001',
+            productId: 'product-B',
+            productName: '코코(옐로)',
+            price: new Decimal(15),
+            quantity: 1,
+            shippingFee: new Decimal(0),
+            color: null,
+            size: null,
+          },
+        ],
+      };
+
+      const mockTransaction = jest.fn(async (callback) => {
+        const tx = {
+          user: { findUnique: jest.fn().mockResolvedValue(mockUser) },
+          cart: {
+            findMany: jest.fn().mockResolvedValue(twoProductCartItems),
+            updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+          },
+          order: { create: jest.fn().mockResolvedValue(twoProductOrder) },
+        };
+        return callback(tx);
+      });
+      prismaService.$transaction = mockTransaction as any;
+
+      // Act
+      const result = await service.createOrderFromCart('user-123');
+
+      // Assert: 2 cart items → 2 order items with individual prices, not merged
+      expect(result.items).toHaveLength(2);
+
+      const itemA = result.items.find((i) => i.productId === 'product-A');
+      const itemB = result.items.find((i) => i.productId === 'product-B');
+
+      expect(itemA).toBeDefined();
+      expect(itemA!.productName).toBe('오데썽(핫핑)');
+      expect(itemA!.quantity).toBe(1);
+      expect(itemA!.price).toBe('15');
+
+      expect(itemB).toBeDefined();
+      expect(itemB!.productName).toBe('코코(옐로)');
+      expect(itemB!.quantity).toBe(1);
+      expect(itemB!.price).toBe('15');
+
+      // Total should reflect both items ($15 + $15 + $10 shipping = $40)
+      expect(result.total).toBe('40');
+    });
   });
 
   describe('Error Handling', () => {

@@ -151,6 +151,20 @@ export class OrdersService {
           );
         }
 
+        // Defensive: warn if cart items appear to have unexpected duplication
+        // e.g. same productId + same color + same size appearing more than once (should be merged at addToCart time)
+        const cartItemKeys = cartItems.map(
+          (item) => `${item.productId}:${item.color ?? ''}:${item.size ?? ''}`,
+        );
+        const uniqueCartItemKeys = new Set(cartItemKeys);
+        if (uniqueCartItemKeys.size !== cartItems.length) {
+          this.logger.warn(
+            `createOrderFromCart: duplicate cart item keys detected for userId=${userId}. ` +
+              `cartItems.length=${cartItems.length}, uniqueKeys=${uniqueCartItemKeys.size}. ` +
+              `Keys: ${cartItemKeys.join(', ')}`,
+          );
+        }
+
         // Prepare order items (Product connect으로 relation 설정, productId 직접 지정 불가)
         const orderItemsData = cartItems.map((item) => ({
           productName: item.productName,
@@ -192,6 +206,14 @@ export class OrdersService {
             orderItems: true,
           },
         });
+
+        // Defensive: ensure every cart item produced a corresponding order item
+        if (createdOrder.orderItems.length !== cartItems.length) {
+          this.logger.warn(
+            `createOrderFromCart: order item count mismatch for orderId=${createdOrder.id}. ` +
+              `cartItems.length=${cartItems.length}, orderItems.length=${createdOrder.orderItems.length}`,
+          );
+        }
 
         // Mark cart items as COMPLETED
         await tx.cart.updateMany({

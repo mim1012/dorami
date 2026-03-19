@@ -1,6 +1,53 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { User } from '../types/user';
+
+// WebView environments (Instagram, Facebook, LINE) may block localStorage.
+// This wrapper falls back gracefully so the app still functions without persistence.
+const safeLocalStorage: Storage = {
+  get length() {
+    try {
+      return localStorage.length;
+    } catch {
+      return 0;
+    }
+  },
+  key: (index: number) => {
+    try {
+      return localStorage.key(index);
+    } catch {
+      return null;
+    }
+  },
+  getItem: (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Silently ignore — storage unavailable in restricted WebView
+    }
+  },
+  removeItem: (key: string) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Silently ignore
+    }
+  },
+  clear: () => {
+    try {
+      localStorage.clear();
+    } catch {
+      // Silently ignore
+    }
+  },
+};
 
 interface AuthState {
   user: User | null;
@@ -37,6 +84,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      storage: createJSONStorage(() => safeLocalStorage),
       onRehydrateStorage: () => (state) => {
         // Reset loading state after rehydration to prevent infinite loading.
         // Must call setLoading (Zustand setState) instead of direct mutation,

@@ -10,7 +10,7 @@ import { ProductStatus } from '@/lib/types';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 import { formatPrice } from '@/lib/utils/price';
 
-const VIRTUOSO_THRESHOLD = 30;
+const VIRTUOSO_THRESHOLD = 20;
 
 interface ProductListProps {
   streamKey: string;

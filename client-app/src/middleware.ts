@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_PATHS = ['/admin'];
 const PUBLIC_EXACT_ROUTES = ['/'];
-const PUBLIC_PREFIX_ROUTES = ['/login', '/auth', '/profile/register'];
+const PUBLIC_PREFIX_ROUTES = ['/login', '/auth', '/profile/register', '/open-in-browser'];
 const PROFILE_OPTIONAL_PATHS = ['/profile/register'];
 const KAKAO_OPEN_EXTERNAL_QUERY = 'openExternal';
 const KAKAO_OPEN_EXTERNAL_VALUE = '1';
@@ -80,6 +80,26 @@ function isKakaoInAppBrowser(userAgent: string): boolean {
   return /kakaotalk/i.test(userAgent);
 }
 
+function isInstagramInAppBrowser(userAgent: string): boolean {
+  return /Instagram/i.test(userAgent);
+}
+
+function isFacebookInAppBrowser(userAgent: string): boolean {
+  return /FBAN|FBAV/i.test(userAgent);
+}
+
+function isOtherInAppBrowser(userAgent: string): boolean {
+  return /\bLine\/|\bTwitter/i.test(userAgent);
+}
+
+function isNonKakaoInAppBrowser(userAgent: string): boolean {
+  return (
+    isInstagramInAppBrowser(userAgent) ||
+    isFacebookInAppBrowser(userAgent) ||
+    isOtherInAppBrowser(userAgent)
+  );
+}
+
 function isIosUserAgent(userAgent: string): boolean {
   return /iphone|ipad|ipod/i.test(userAgent);
 }
@@ -125,6 +145,29 @@ function getPublicUrl(request: NextRequest): URL {
   return request.nextUrl;
 }
 
+function handleNonKakaoInAppRedirect(request: NextRequest): NextResponse | null {
+  const userAgent = request.headers.get('user-agent') ?? '';
+  if (!isNonKakaoInAppBrowser(userAgent)) {
+    return null;
+  }
+
+  const targetUrl = getPublicUrl(request);
+
+  if (isAndroidUserAgent(userAgent)) {
+    const fallbackUrl = buildUrlWithOpenExternalFlag(targetUrl);
+    return NextResponse.redirect(buildAndroidIntentUrl(targetUrl, fallbackUrl));
+  }
+
+  // iOS: redirect to an interstitial page instructing the user to open in Safari
+  if (isIosUserAgent(userAgent)) {
+    const openInBrowserUrl = new URL('/open-in-browser', targetUrl);
+    openInBrowserUrl.searchParams.set('url', targetUrl.toString());
+    return NextResponse.redirect(openInBrowserUrl);
+  }
+
+  return null;
+}
+
 function handleKakaoInAppRedirect(request: NextRequest): NextResponse | null {
   const userAgent = request.headers.get('user-agent') ?? '';
   if (!isKakaoInAppBrowser(userAgent)) {
@@ -151,6 +194,11 @@ function handleKakaoInAppRedirect(request: NextRequest): NextResponse | null {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const nonKakaoRedirect = handleNonKakaoInAppRedirect(request);
+  if (nonKakaoRedirect) {
+    return nonKakaoRedirect;
+  }
 
   const kakaoRedirect = handleKakaoInAppRedirect(request);
   if (kakaoRedirect) {

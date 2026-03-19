@@ -118,6 +118,7 @@ export class ProductsService {
     streamKey: string,
     status?: ProductStatus,
     includeExpired = false,
+    options?: { take?: number; skip?: number },
   ): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: {
@@ -126,6 +127,8 @@ export class ProductsService {
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      take: options?.take ?? 50,
+      skip: options?.skip ?? 0,
     });
 
     return products.map((product) => mapProductToDto(product));

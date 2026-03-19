@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { RECONNECT_CONFIG, ReconnectProfile } from './reconnect-config';
 import { SOCKET_URL } from '../config/socket-url';
 import { isAuthError, refreshAuthToken } from '../auth/token-manager';
+import { isInAppBrowser } from '../hooks/use-in-app-browser';
 
 type SocketNamespace = string;
 interface QueuedEmit {
@@ -42,10 +43,16 @@ export class SocketClient {
     }
 
     const config = this.getReconnectProfile(namespaceKey);
+    // In-app browsers (Instagram, Facebook, etc.) may block WebSocket upgrades.
+    // Start with polling for reliability; the server can still upgrade if supported.
+    const inApp = typeof navigator !== 'undefined' && isInAppBrowser(navigator.userAgent);
+    const transports: ['polling', 'websocket'] | ['websocket', 'polling'] = inApp
+      ? ['polling', 'websocket']
+      : ['websocket', 'polling'];
     const socket = io(this.buildUrl(namespaceKey), {
       ...(normalizedToken ? { auth: { token: normalizedToken } } : {}),
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports,
       reconnection: true,
       reconnectionAttempts: config.maxAttempts,
       reconnectionDelay: config.delays[0],

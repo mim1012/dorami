@@ -214,6 +214,67 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('findByStreamKey', () => {
+    const mockProduct = {
+      id: 'product-1',
+      streamKey: 'stream-abc',
+      name: 'Live Product',
+      price: { toString: () => '15000' },
+      quantity: 20,
+      status: 'AVAILABLE',
+      imageUrl: null,
+      colorOptions: [],
+      sizeOptions: [],
+      shippingFee: { toString: () => '3000' },
+      freeShippingMessage: null,
+      timerEnabled: false,
+      timerDuration: 10,
+      sortOrder: 0,
+      metadata: null,
+      expiresAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should use default take=50 and skip=0 when no options provided', async () => {
+      jest.spyOn(prisma.product, 'findMany').mockResolvedValue([mockProduct] as any);
+
+      await service.findByStreamKey('stream-abc');
+
+      expect(prisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 50,
+          skip: 0,
+        }),
+      );
+    });
+
+    it('should pass custom take and skip options to prisma', async () => {
+      jest.spyOn(prisma.product, 'findMany').mockResolvedValue([mockProduct] as any);
+
+      await service.findByStreamKey('stream-abc', undefined, false, { take: 10, skip: 20 });
+
+      expect(prisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 10,
+          skip: 20,
+        }),
+      );
+    });
+
+    it('should filter by streamKey in where clause', async () => {
+      jest.spyOn(prisma.product, 'findMany').mockResolvedValue([mockProduct] as any);
+
+      await service.findByStreamKey('stream-abc');
+
+      expect(prisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ streamKey: 'stream-abc' }),
+        }),
+      );
+    });
+  });
+
   describe('findById', () => {
     it('should return a product by id', async () => {
       const mockProduct = {
