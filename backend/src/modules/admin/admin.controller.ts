@@ -38,6 +38,7 @@ import {
   UpdateMarketingCampaignsDto,
   UpdatePaymentProvidersDto,
   UpdateNotificationTemplateDto,
+  BulkUpdateOrderStatusDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -201,6 +202,16 @@ export class AdminController {
       const message = err instanceof Error ? err.message : 'Excel export failed';
       res.status(500).json({ success: false, message });
     }
+  }
+
+  @Patch('orders/bulk-status')
+  @ApiOperation({
+    summary: '주문 일괄 상태 변경 (관리자)',
+    description: '여러 주문의 상태를 일괄 변경합니다.',
+  })
+  @ApiResponse({ status: 200, description: '일괄 상태 변경 성공' })
+  async bulkUpdateOrderStatus(@Body() dto: BulkUpdateOrderStatusDto) {
+    return this.adminService.bulkUpdateOrderStatus(dto.orderIds, dto.status);
   }
 
   @Get('orders/:id')

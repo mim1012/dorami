@@ -8,6 +8,7 @@ import {
   IsObject,
   IsEnum,
   IsArray,
+  ArrayMinSize,
   IsNumber,
   IsBoolean,
   IsNotEmpty,
@@ -657,6 +658,16 @@ export class UpdateOrderShippingStatusDto {
   @IsOptional()
   @IsString()
   trackingNumber?: string;
+}
+
+export class BulkUpdateOrderStatusDto {
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  orderIds!: string[];
+
+  @IsString()
+  status!: string;
 }
 
 export interface BulkShippingNotificationItem {

@@ -571,7 +571,13 @@ export class OrdersService {
   ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
-      include: { orderItems: true },
+      include: {
+        orderItems: {
+          include: {
+            Product: { select: { imageUrl: true } },
+          },
+        },
+      },
     });
 
     if (!order) {
@@ -633,7 +639,13 @@ export class OrdersService {
 
   async findByUserId(
     userId: string,
-    options?: { page?: number; limit?: number; status?: string },
+    options?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    },
   ): Promise<{
     items: OrderResponseDto[];
     total: number;
@@ -649,11 +661,25 @@ export class OrdersService {
     if (options?.status) {
       where.status = options.status as OrderStatus;
     }
+    if (options?.startDate) {
+      where.createdAt = { ...(where.createdAt as any), gte: new Date(options.startDate) };
+    }
+    if (options?.endDate) {
+      const end = new Date(options.endDate);
+      end.setHours(23, 59, 59, 999);
+      where.createdAt = { ...(where.createdAt as any), lte: end };
+    }
 
     const [orders, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,
-        include: { orderItems: true },
+        include: {
+          orderItems: {
+            include: {
+              Product: { select: { imageUrl: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -833,6 +859,7 @@ export class OrdersService {
         shippingFee: String(item.shippingFee),
         color: item.color || undefined,
         size: item.size || undefined,
+        imageUrl: (item as any).Product?.imageUrl ?? undefined,
       })),
     };
   }

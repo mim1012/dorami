@@ -626,8 +626,9 @@ export default function LivePreviewPage() {
         </div>
 
         {/* 4. Chat messages — absolute overlay */}
-        <div className="absolute left-4 bottom-[160px] z-10 w-[70%] space-y-1.5">
-          <ChatMessageList messages={allMessages} compact maxMessages={4} />
+        <div className="absolute left-4 bottom-[160px] z-10 w-[70%] max-h-[40vh]">
+          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+          <ChatMessageList messages={allMessages} compact />
         </div>
 
         {/* 5. Featured product card — glassmorphism */}

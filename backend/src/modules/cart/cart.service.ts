@@ -36,6 +36,7 @@ type PrismaTransactionClient = Omit<
 interface CartModel extends Cart {
   price: Decimal;
   shippingFee: Decimal;
+  product?: { imageUrl: string | null; status: string } | null;
 }
 
 @Injectable()
@@ -205,6 +206,9 @@ export class CartService {
       where: {
         userId,
         status: SharedCartStatus.ACTIVE,
+      },
+      include: {
+        product: { select: { imageUrl: true, status: true } },
       },
       orderBy: {
         createdAt: 'desc',
@@ -603,6 +607,9 @@ export class CartService {
       subtotal: String(subtotal),
       total: String(total),
       remainingSeconds,
+      product: cartItem.product
+        ? { imageUrl: cartItem.product.imageUrl, status: cartItem.product.status }
+        : undefined,
     };
   }
 }

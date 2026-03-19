@@ -1013,15 +1013,12 @@ export default function LiveStreamPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-10 space-y-1.5 overflow-hidden max-h-[40vh]"
+            className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-10 max-h-[40vh]"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
-            <ChatMessageList
-              ref={mobileChatListRef}
-              messages={allMessages}
-              compact
-              maxMessages={4}
-            />
+            {/* Top gradient fade */}
+            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            <ChatMessageList ref={mobileChatListRef} messages={allMessages} compact />
           </div>
 
           {/* 5. Featured product card — glassmorphism */}

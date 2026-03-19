@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/use-auth';
@@ -19,7 +19,7 @@ import { CartItemCard } from '@/components/cart/CartItemCard';
 import { CartSummaryCard } from '@/components/cart/CartSummaryCard';
 import { CartEmptyState } from '@/components/cart/CartEmptyState';
 import { formatPrice } from '@/lib/utils/format';
-import { ShoppingCart, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
 
@@ -41,6 +41,19 @@ function CartPageContent() {
 
   const updateCartItem = useUpdateCartItem();
   const removeCartItem = useRemoveCartItem();
+
+  // Selection state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Keep selection in sync when cart items change (remove ids no longer in cart)
+  useEffect(() => {
+    if (!cart) return;
+    const validIds = new Set(cart.items.map((i) => i.id));
+    setSelectedItemIds((prev) => {
+      const next = new Set([...prev].filter((id) => validIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [cart]);
 
   useEffect(() => {
     if (searchParams.get('expired') === '1') {
@@ -76,6 +89,11 @@ function CartPageContent() {
       variant: 'danger',
     });
     if (!confirmed) return;
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      next.delete(cartItemId);
+      return next;
+    });
     removeCartItem.mutate(cartItemId, {
       onError: () => {
         showToast('삭제에 실패했습니다.', 'error');
@@ -95,12 +113,69 @@ function CartPageContent() {
     if (expiredItems.length === 0) return;
     try {
       await Promise.all(expiredItems.map((item) => apiClient.delete(`/cart/${item.id}`)));
+      setSelectedItemIds((prev) => {
+        const expiredIds = new Set(expiredItems.map((i) => i.id));
+        const next = new Set([...prev].filter((id) => !expiredIds.has(id)));
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
       showToast('만료된 상품을 삭제했습니다.', 'success');
     } catch {
       showToast('삭제 중 오류가 발생했습니다.', 'error');
     }
   };
+
+  const handleRemoveSelectedItems = async () => {
+    if (selectedItemIds.size === 0) return;
+    const confirmed = await confirm({
+      title: '선택 상품 삭제',
+      message: `선택한 ${selectedItemIds.size}개 상품을 장바구니에서 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await Promise.all([...selectedItemIds].map((id) => apiClient.delete(`/cart/${id}`)));
+      setSelectedItemIds(new Set());
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+      showToast('선택한 상품을 삭제했습니다.', 'success');
+    } catch {
+      showToast('삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  // Derive active (non-expired) items for selection
+  const activeItems = cart?.items.filter((item) => item.status !== 'EXPIRED') ?? [];
+  const allActiveSelected =
+    activeItems.length > 0 && activeItems.every((item) => selectedItemIds.has(item.id));
+  const someSelected = selectedItemIds.size > 0;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItemIds(new Set(activeItems.map((item) => item.id)));
+    } else {
+      setSelectedItemIds(new Set());
+    }
+  };
+
+  const handleItemCheckedChange = (itemId: string, checked: boolean) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(itemId);
+      } else {
+        next.delete(itemId);
+      }
+      return next;
+    });
+  };
+
+  // Calculate totals based only on selected active items
+  const selectedItems =
+    cart?.items.filter((item) => selectedItemIds.has(item.id) && item.status !== 'EXPIRED') ?? [];
+  const selectedSubtotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const selectedShipping = selectedItems.reduce((sum, item) => sum + item.shippingFee, 0);
+  const selectedTotal = selectedSubtotal + selectedShipping;
 
   const hasExpiredItems = cart?.items.some(
     (item) =>
@@ -109,6 +184,11 @@ function CartPageContent() {
         item.status === 'ACTIVE' &&
         new Date(item.expiresAt).getTime() <= Date.now()),
   );
+
+  const selectedHasExpired = [...selectedItemIds].some((id) => {
+    const item = cart?.items.find((i) => i.id === id);
+    return item?.status === 'EXPIRED';
+  });
 
   if (isLoading || authLoading) {
     return (
@@ -170,6 +250,32 @@ function CartPageContent() {
                   </div>
                 )}
 
+                {/* Select All row */}
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allActiveSelected}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-5 h-5 rounded border-border-color accent-hot-pink cursor-pointer"
+                      aria-label="전체 선택"
+                    />
+                    <Body className="text-primary-text font-medium">
+                      전체 선택{' '}
+                      <Caption className="text-secondary-text">({activeItems.length}개)</Caption>
+                    </Body>
+                  </label>
+                  {someSelected && (
+                    <button
+                      onClick={handleRemoveSelectedItems}
+                      className="flex items-center gap-1 text-error text-sm font-medium hover:underline"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      선택 삭제
+                    </button>
+                  )}
+                </div>
+
                 {/* Cart Items */}
                 <div className="space-y-4 mb-6">
                   {cart.items.map((item) => (
@@ -179,19 +285,22 @@ function CartPageContent() {
                       onUpdateQuantity={handleUpdateQuantity}
                       onRemove={handleRemoveItem}
                       onTimerExpired={handleCartExpired}
+                      checked={selectedItemIds.has(item.id)}
+                      onCheckedChange={handleItemCheckedChange}
                     />
                   ))}
                 </div>
 
+                {/* Detailed Summary (for selected items) */}
                 <CartSummaryCard
-                  itemCount={cart.itemCount}
-                  subtotal={parseFloat(cart.subtotal)}
-                  totalShippingFee={parseFloat(cart.totalShippingFee)}
-                  grandTotal={parseFloat(cart.grandTotal)}
+                  itemCount={selectedItems.length}
+                  subtotal={selectedSubtotal}
+                  totalShippingFee={selectedShipping}
+                  grandTotal={selectedTotal}
                 />
 
-                {/* Action Buttons */}
-                <div className="space-y-4">
+                {/* Secondary action */}
+                <div className="mb-6">
                   {hasExpiredItems && (
                     <Button
                       variant="outline"
@@ -202,47 +311,58 @@ function CartPageContent() {
                       만료 상품 삭제
                     </Button>
                   )}
-                  <Button
-                    variant="primary"
-                    size="md"
-                    fullWidth
-                    onClick={async () => {
-                      const result = await refetch();
-                      const freshCart = result.data;
-                      const freshHasExpired = freshCart?.items.some(
-                        (item) =>
-                          item.status === 'EXPIRED' ||
-                          (item.expiresAt &&
-                            item.status === 'ACTIVE' &&
-                            new Date(item.expiresAt).getTime() <= Date.now()),
-                      );
-                      if (!freshHasExpired) {
-                        router.push('/checkout');
-                      } else {
-                        showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
-                        queryClient.invalidateQueries({ queryKey: cartKeys.all });
-                      }
-                    }}
-                    disabled={hasExpiredItems || isFetching}
-                  >
-                    {hasExpiredItems
-                      ? '만료된 상품이 있습니다'
-                      : `${formatPrice(parseFloat(cart.grandTotal))} 결제하기`}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    fullWidth
-                    onClick={() => router.push('/shop')}
-                  >
-                    쇼핑 계속하기
-                  </Button>
                 </div>
+
+                <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/shop')}>
+                  쇼핑 계속하기
+                </Button>
               </>
             )
           )}
         </div>
       </div>
+
+      {/* Sticky Bottom Price Summary Bar */}
+      {cart && cart.items.length > 0 && (
+        <div className="sticky bottom-[var(--bottom-tab-height,64px)] z-20 bg-content-bg border-t border-border-color shadow-lg">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <Caption className="text-secondary-text">{selectedItems.length}개 선택</Caption>
+              <Body className="text-hot-pink font-bold text-lg leading-tight">
+                {formatPrice(selectedTotal)}
+              </Body>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={async () => {
+                if (selectedItems.length === 0) {
+                  showToast('결제할 상품을 선택해주세요.', 'error');
+                  return;
+                }
+                const result = await refetch();
+                const freshCart = result.data;
+                const freshHasExpired = freshCart?.items.some(
+                  (item) =>
+                    item.status === 'EXPIRED' ||
+                    (item.expiresAt &&
+                      item.status === 'ACTIVE' &&
+                      new Date(item.expiresAt).getTime() <= Date.now()),
+                );
+                if (!freshHasExpired && !selectedHasExpired) {
+                  router.push('/checkout');
+                } else {
+                  showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
+                  queryClient.invalidateQueries({ queryKey: cartKeys.all });
+                }
+              }}
+              disabled={selectedItems.length === 0 || selectedHasExpired || isFetching}
+            >
+              {selectedHasExpired ? '만료된 상품 포함' : '결제하기'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <BottomTabBar />
     </>

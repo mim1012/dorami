@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useIsMobile } from '@/lib/hooks/use-mobile';
 import { apiClient } from '@/lib/api/client';
 import { Table, Column } from '@/components/common/Table';
 import { Pagination } from '@/components/common/Pagination';
@@ -15,6 +16,7 @@ import { useConfirm } from '@/components/common/ConfirmDialog';
 import { Download } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { OrderMobileCard } from './OrderMobileCard';
 
 interface OrderItem {
   productName: string;
@@ -72,6 +74,7 @@ function AdminOrdersContent() {
   const { user, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
+  const isMobile = useIsMobile();
 
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -80,6 +83,10 @@ function AdminOrdersContent() {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get('limit') || '20', 10));
@@ -156,7 +163,6 @@ function AdminOrdersContent() {
       setTotal(response.data.total);
       setTotalPages(response.data.totalPages);
     } catch (err: any) {
-      console.error('Failed to fetch orders:', err);
       setError(err.response?.data?.message || '주문 목록을 불러오는데 실패했습니다');
     } finally {
       setIsLoading(false);
@@ -263,6 +269,55 @@ function AdminOrdersContent() {
     }
   };
 
+  const handleBulkStatusChange = async (newStatus: string) => {
+    const label = ORDER_STATUS_LABELS[newStatus as keyof typeof ORDER_STATUS_LABELS] || newStatus;
+    const confirmed = await confirm({
+      title: '일괄 상태 변경',
+      message: `${selectedOrderIds.size}개 주문의 상태를 "${label}"(으)로 변경할까요?`,
+      confirmText: '변경',
+      variant: newStatus === 'CANCELLED' ? 'danger' : 'info',
+    });
+    if (!confirmed) return;
+
+    try {
+      await apiClient.patch('/admin/orders/bulk-status', {
+        orderIds: Array.from(selectedOrderIds),
+        status: newStatus,
+      });
+      showToast(`${selectedOrderIds.size}개 주문 상태가 변경되었습니다`, 'success');
+      setSelectedOrderIds(new Set());
+      setIsSelectionMode(false);
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.message || '일괄 변경에 실패했습니다', 'error');
+    }
+  };
+
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode((prev) => !prev);
+    setSelectedOrderIds(new Set());
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedOrderIds.size === orders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(orders.map((o) => o.id)));
+    }
+  };
+
+  const handleToggleSelect = (orderId: string) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
+
   const handleExportCsv = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -298,7 +353,6 @@ function AdminOrdersContent() {
       window.URL.revokeObjectURL(url);
       showToast('엑셀 파일이 다운로드되었습니다.', 'success');
     } catch (err: any) {
-      console.error('Failed to export orders:', err);
       showToast('엑셀 내보내기에 실패했습니다.', 'error');
     } finally {
       setIsExporting(false);
@@ -335,6 +389,22 @@ function AdminOrdersContent() {
   };
 
   const columns: Column<OrderListItem>[] = [
+    {
+      key: 'select',
+      label: '',
+      sortable: false,
+      render: (order) =>
+        isSelectionMode ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={selectedOrderIds.has(order.id)}
+              onChange={() => handleToggleSelect(order.id)}
+              className="w-4 h-4 accent-hot-pink"
+            />
+          </div>
+        ) : null,
+    },
     {
       key: 'id',
       label: '주문번호',
@@ -406,6 +476,7 @@ function AdminOrdersContent() {
   ];
 
   const hasActiveFilters = debouncedSearch || dateFrom || dateTo || orderStatusFilter.length > 0;
+  const allSelected = orders.length > 0 && selectedOrderIds.size === orders.length;
 
   if (authLoading || (user && user.role !== 'ADMIN')) {
     return (
@@ -422,33 +493,42 @@ function AdminOrdersContent() {
           <Display className="text-hot-pink mb-2">주문 관리</Display>
           <Body className="text-secondary-text">모든 고객 주문을 조회하고 관리합니다</Body>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleExportCsv}
-          disabled={isExporting}
-          className="w-full sm:w-auto flex items-center justify-center gap-2"
-        >
-          {isExporting ? (
-            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
-              />
-            </svg>
-          ) : (
-            <Download className="w-4 h-4" />
-          )}
-          {isExporting ? '내보내는 중...' : '엑셀 내보내기'}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={isSelectionMode ? 'primary' : 'outline'}
+            onClick={handleToggleSelectionMode}
+            className="flex-1 sm:flex-none"
+          >
+            {isSelectionMode ? '선택 취소' : '선택 모드'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2"
+          >
+            {isExporting ? (
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+                />
+              </svg>
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {isExporting ? '내보내는 중...' : '엑셀 내보내기'}
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -457,26 +537,29 @@ function AdminOrdersContent() {
         </div>
       )}
 
-      <div className="bg-content-bg rounded-button p-6 mb-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
+      {/* Filter section */}
+      <div className="bg-content-bg rounded-button p-4 sm:p-6 mb-6 space-y-4">
+        <div className="flex flex-col gap-2">
           <Input
             placeholder="주문번호, 이메일, 입금자명, 인스타그램 ID로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             fullWidth
           />
-          <Button
-            variant={isFilterOpen ? 'primary' : 'outline'}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className="whitespace-nowrap"
-          >
-            {isFilterOpen ? '필터 숨기기' : '필터 보기'}
-          </Button>
-          {hasActiveFilters && (
-            <Button variant="ghost" onClick={handleClearFilters} className="w-full sm:w-auto">
-              전체 초기화
+          <div className="flex gap-2">
+            <Button
+              variant={isFilterOpen ? 'primary' : 'outline'}
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex-1 sm:flex-none whitespace-nowrap"
+            >
+              {isFilterOpen ? '필터 숨기기' : '필터 보기'}
             </Button>
-          )}
+            {hasActiveFilters && (
+              <Button variant="ghost" onClick={handleClearFilters} className="flex-1 sm:flex-none">
+                전체 초기화
+              </Button>
+            )}
+          </div>
         </div>
 
         {isFilterOpen && (
@@ -500,7 +583,7 @@ function AdminOrdersContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2">
               <Input
                 label="주문일 시작"
                 type="date"
@@ -526,33 +609,103 @@ function AdminOrdersContent() {
         )}
       </div>
 
+      {/* Selection mode: select-all bar */}
+      {isSelectionMode && (
+        <div className="flex items-center gap-3 px-2">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={handleToggleSelectAll}
+            className="w-4 h-4 accent-hot-pink"
+          />
+          <Body className="text-secondary-text text-sm">
+            {allSelected ? '전체 해제' : `전체 선택 (${orders.length}개)`}
+          </Body>
+          {selectedOrderIds.size > 0 && (
+            <Body className="text-hot-pink text-sm font-medium">
+              {selectedOrderIds.size}개 선택됨
+            </Body>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Body className="text-secondary-text">주문 목록 불러오는 중...</Body>
         </div>
+      ) : isMobile ? (
+        /* Mobile card list */
+        <div className="space-y-3">
+          {orders.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Body className="text-secondary-text">필터 조건에 맞는 주문이 없습니다</Body>
+            </div>
+          ) : (
+            orders.map((order) => (
+              <OrderMobileCard
+                key={order.id}
+                order={order}
+                isUpdating={isUpdating === order.id}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedOrderIds.has(order.id)}
+                isExpanded={expandedOrderId === order.id}
+                onCardClick={() => router.push(`/admin/orders/${order.id}`)}
+                onToggleExpand={() =>
+                  setExpandedOrderId(expandedOrderId === order.id ? null : order.id)
+                }
+                onStatusChange={handleStatusChange}
+                onSelectionToggle={() => handleToggleSelect(order.id)}
+                formatDate={formatDate}
+                collectProductSummary={collectProductSummary}
+              />
+            ))
+          )}
+        </div>
       ) : (
-        <>
-          <Table
-            columns={columns}
-            data={orders}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSort={handleSort}
-            onRowClick={(order) => router.push(`/admin/orders/${order.id}`)}
-            emptyMessage="필터 조건에 맞는 주문이 없습니다"
-            getRowClassName={(order) =>
-              order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : ''
-            }
-          />
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={total}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
-        </>
+        /* Desktop table */
+        <Table
+          columns={columns}
+          data={orders}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          onRowClick={(order) => router.push(`/admin/orders/${order.id}`)}
+          emptyMessage="필터 조건에 맞는 주문이 없습니다"
+          getRowClassName={(order) =>
+            order.status === 'PENDING_PAYMENT' ? 'border-l-4 border-warning bg-warning/5' : ''
+          }
+        />
+      )}
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={total}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
+
+      {/* Bulk action sticky bar */}
+      {isSelectionMode && selectedOrderIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-content-bg border-t border-border-color p-4 flex items-center justify-between z-50 gap-4">
+          <span className="text-primary-text font-medium whitespace-nowrap">
+            {selectedOrderIds.size}개 선택
+          </span>
+          <div className="flex gap-2 flex-wrap justify-end">
+            {ORDER_STATUS_UPDATE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleBulkStatusChange(option.value)}
+                className={`px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium ${
+                  option.value === 'CANCELLED' ? 'bg-error' : 'bg-hot-pink'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

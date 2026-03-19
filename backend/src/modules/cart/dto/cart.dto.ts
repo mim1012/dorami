@@ -93,6 +93,12 @@ export class CartItemResponseDto {
 
   @ApiPropertyOptional({ description: 'Remaining time in seconds', example: 600 })
   remainingSeconds?: number;
+
+  @ApiPropertyOptional({ description: 'Product info' })
+  product?: {
+    imageUrl?: string | null;
+    status: string;
+  };
 }
 
 export class CartSummaryDto {

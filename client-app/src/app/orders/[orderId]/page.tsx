@@ -1,11 +1,22 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useOrder } from '@/lib/hooks/queries/use-orders';
 import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types/order';
-import { CheckCircle, Clock, Package, Truck, Home, ChevronLeft, Copy } from 'lucide-react';
+import Image from 'next/image';
+import {
+  CheckCircle,
+  Clock,
+  Package,
+  Truck,
+  Home,
+  ChevronLeft,
+  Copy,
+  ShoppingBag,
+} from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -71,8 +82,31 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const orderId = params.orderId as string;
   const { showToast } = useToast();
+  const [reordering, setReordering] = useState(false);
 
   const { data: order, isLoading: orderLoading, error: orderError } = useOrder(orderId);
+
+  const handleReorder = async () => {
+    if (!order) return;
+    setReordering(true);
+    try {
+      await Promise.all(
+        order.items.map((item) =>
+          apiClient.post('/cart', {
+            productId: item.productId,
+            quantity: item.quantity,
+            ...(item.color ? { color: item.color } : {}),
+            ...(item.size ? { size: item.size } : {}),
+          }),
+        ),
+      );
+      showToast('장바구니에 담았습니다', 'success');
+    } catch {
+      showToast('장바구니 담기에 실패했습니다', 'error');
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const { data: paymentConfig } = useQuery({
     queryKey: ['config', 'payment'],
@@ -229,7 +263,15 @@ export default function OrderDetailPage() {
                             />
                           </div>
                           {!isLast && (
-                            <div className="w-0.5 bg-border-color mx-auto mt-1 mb-1 h-6" />
+                            <div
+                              className={`w-0.5 mx-auto mt-1 mb-1 h-6 ${
+                                step.completed
+                                  ? 'bg-success'
+                                  : step.current
+                                    ? 'bg-hot-pink animate-pulse'
+                                    : 'bg-border-color'
+                              }`}
+                            />
                           )}
                         </div>
                         <div className="pt-2">
@@ -359,8 +401,21 @@ export default function OrderDetailPage() {
               {order.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex justify-between items-center py-3 border-b border-border-color last:border-0"
+                  className="flex items-center gap-3 py-3 border-b border-border-color last:border-0"
                 >
+                  <div className="w-14 h-14 rounded-lg bg-border-color/30 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.productName}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
+                    ) : (
+                      <Package className="w-6 h-6 text-secondary-text/40" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0 pr-2">
                     <Body className="text-primary-text font-medium truncate">
                       {item.productName}
@@ -404,6 +459,13 @@ export default function OrderDetailPage() {
             <Button variant="primary" onClick={() => router.push('/')}>
               쇼핑 계속하기
             </Button>
+            {(order.status === OrderStatus.DELIVERED ||
+              order.status === OrderStatus.PAYMENT_CONFIRMED) && (
+              <Button variant="outline" disabled={reordering} onClick={handleReorder}>
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                {reordering ? '담는 중...' : '다시 주문하기'}
+              </Button>
+            )}
           </div>
         </div>
       </div>

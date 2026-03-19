@@ -12,6 +12,7 @@ export interface OrderItem {
   shippingFee: number;
   color?: string;
   size?: string;
+  imageUrl?: string;
 }
 
 export interface BankTransferInfo {

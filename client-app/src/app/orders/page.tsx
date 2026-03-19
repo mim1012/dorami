@@ -7,8 +7,11 @@ import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { useOrdersInfinite, useAllOrdersForCounts } from '@/lib/hooks/queries/use-orders';
+import { useToast } from '@/components/common/Toast';
+import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types';
-import { Package, Clock, CheckCircle, XCircle, Truck } from 'lucide-react';
+import Image from 'next/image';
+import { Package, Clock, CheckCircle, XCircle, Truck, ShoppingBag } from 'lucide-react';
 
 const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
   { label: '전체', value: 'ALL' },
@@ -19,14 +22,46 @@ const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
   { label: '취소', value: OrderStatus.CANCELLED },
 ];
 
+type DateFilterValue = '3months' | '6months' | '1year' | 'all';
+
+const DATE_FILTER_CHIPS: { label: string; value: DateFilterValue }[] = [
+  { label: '최근 3개월', value: '3months' },
+  { label: '6개월', value: '6months' },
+  { label: '1년', value: '1year' },
+  { label: '전체', value: 'all' },
+];
+
+function getStartDateForFilter(filter: DateFilterValue): string | undefined {
+  if (filter === 'all') return undefined;
+  const now = new Date();
+  if (filter === '3months') now.setMonth(now.getMonth() - 3);
+  else if (filter === '6months') now.setMonth(now.getMonth() - 6);
+  else if (filter === '1year') now.setFullYear(now.getFullYear() - 1);
+  return now.toISOString().slice(0, 10);
+}
+
+const EMPTY_STATE_MESSAGES: Record<OrderStatus | 'ALL', string> = {
+  ALL: '아직 주문 내역이 없어요',
+  [OrderStatus.PENDING_PAYMENT]: '입금 대기 중인 주문이 없어요',
+  [OrderStatus.PAYMENT_CONFIRMED]: '결제 완료된 주문이 없어요',
+  [OrderStatus.SHIPPED]: '배송 중인 주문이 없어요',
+  [OrderStatus.DELIVERED]: '배송 완료된 주문이 없어요',
+  [OrderStatus.CANCELLED]: '취소된 주문이 없어요',
+};
+
 export default function OrdersPage() {
   const router = useRouter();
   const { isLoading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>('3months');
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  const startDate = getStartDateForFilter(dateFilter);
+
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useOrdersInfinite(selectedStatus === 'ALL' ? undefined : selectedStatus);
+    useOrdersInfinite(selectedStatus === 'ALL' ? undefined : selectedStatus, startDate, undefined);
 
   const { data: allOrdersData } = useAllOrdersForCounts();
 
@@ -87,6 +122,30 @@ export default function OrdersPage() {
     });
   };
 
+  const handleReorder = async (
+    orderId: string,
+    items: Array<{ productId: string; quantity: number; color?: string; size?: string }>,
+  ) => {
+    setReorderingId(orderId);
+    try {
+      await Promise.all(
+        items.map((item) =>
+          apiClient.post('/cart', {
+            productId: item.productId,
+            quantity: item.quantity,
+            ...(item.color ? { color: item.color } : {}),
+            ...(item.size ? { size: item.size } : {}),
+          }),
+        ),
+      );
+      showToast('장바구니에 담았습니다', 'success');
+    } catch {
+      showToast('장바구니 담기에 실패했습니다', 'error');
+    } finally {
+      setReorderingId(null);
+    }
+  };
+
   const getOrderRowStatusInfo = (orderStatus: string, paymentStatus: string) => {
     if (orderStatus === 'CANCELLED') {
       return { text: '주문 취소', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
@@ -142,6 +201,9 @@ export default function OrdersPage() {
         return null;
     }
   };
+
+  const canReorder = (orderStatus: string) =>
+    orderStatus !== 'CANCELLED' && orderStatus !== 'PENDING_PAYMENT';
 
   if (authLoading || (isLoading && allOrders.length === 0)) {
     return (
@@ -200,6 +262,23 @@ export default function OrdersPage() {
           <div className="mb-4">
             <Display className="text-hot-pink mb-1">주문 내역</Display>
             <Body className="text-secondary-text">{total > 0 ? `총 ${total}개의 주문` : ''}</Body>
+          </div>
+
+          {/* Date Period Filter Chips */}
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-none">
+            {DATE_FILTER_CHIPS.map((chip) => (
+              <button
+                key={chip.value}
+                onClick={() => setDateFilter(chip.value)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  dateFilter === chip.value
+                    ? 'bg-hot-pink text-white'
+                    : 'bg-content-bg text-secondary-text border border-border-color hover:border-hot-pink/30'
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
 
           {/* Status Filter Tabs */}
@@ -284,19 +363,23 @@ export default function OrdersPage() {
             <div className="text-center py-16">
               <Package className="w-12 h-12 text-secondary-text mx-auto mb-4 opacity-30" />
               <Heading2 className="text-primary-text mb-2">
-                {selectedStatus === 'ALL' ? '주문 내역이 없습니다' : '해당 상태의 주문이 없습니다'}
+                {EMPTY_STATE_MESSAGES[selectedStatus]}
               </Heading2>
-              <Body className="text-secondary-text mb-8">
-                {selectedStatus === 'ALL'
-                  ? '라이브 방송에서 상품을 주문해보세요'
-                  : '다른 상태를 선택해보세요'}
-              </Body>
               {selectedStatus === 'ALL' ? (
-                <Button variant="primary" size="lg" onClick={() => router.push('/live')}>
-                  라이브 방송 보러 가기
-                </Button>
+                <>
+                  <Body className="text-secondary-text mb-8">
+                    라이브 방송에서 쇼핑을 시작해보세요
+                  </Body>
+                  <Button variant="primary" size="lg" onClick={() => router.push('/shop')}>
+                    쇼핑하러 가기
+                  </Button>
+                </>
               ) : (
-                <Button variant="outline" onClick={() => handleStatusChange('ALL')}>
+                <Button
+                  variant="outline"
+                  className="mt-6"
+                  onClick={() => handleStatusChange('ALL')}
+                >
                   전체 주문 보기
                 </Button>
               )}
@@ -311,6 +394,7 @@ export default function OrdersPage() {
                 const shippingStatus = getShippingStatusInfo(order.shippingStatus);
                 const StatusIcon = paymentStatus.icon;
                 const isCancelled = order.status === 'CANCELLED';
+                const showReorder = canReorder(order.status);
 
                 return (
                   <div
@@ -347,7 +431,21 @@ export default function OrdersPage() {
                           key={item.id}
                           className={index > 0 ? 'mt-3 pt-3 border-t border-border-color' : ''}
                         >
-                          <div className="flex justify-between items-start">
+                          <div className="flex items-start gap-3">
+                            {/* Product image */}
+                            <div className="w-14 h-14 rounded-lg bg-border-color/30 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                              {item.imageUrl ? (
+                                <Image
+                                  src={item.imageUrl}
+                                  alt={item.productName}
+                                  fill
+                                  className="object-cover"
+                                  sizes="56px"
+                                />
+                              ) : (
+                                <Package className="w-6 h-6 text-secondary-text/40" />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0 pr-2">
                               <Body className="text-primary-text font-semibold mb-0.5 truncate">
                                 {item.productName}
@@ -390,22 +488,48 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Actions — only for PENDING_PAYMENT */}
-                    {order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'PENDING' && (
-                      <div className="p-4 border-t border-border-color bg-content-bg/50">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          fullWidth
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/orders/${order.id}`);
-                          }}
-                        >
-                          입금 정보 확인 →
-                        </Button>
+                    {/* Actions */}
+                    {(order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'PENDING') ||
+                    showReorder ? (
+                      <div
+                        className="p-4 border-t border-border-color bg-content-bg/50 flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.status === 'PENDING_PAYMENT' &&
+                          order.paymentStatus === 'PENDING' && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              fullWidth
+                              onClick={() => router.push(`/orders/${order.id}`)}
+                            >
+                              입금 정보 확인 →
+                            </Button>
+                          )}
+                        {showReorder && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            fullWidth
+                            disabled={reorderingId === order.id}
+                            onClick={() =>
+                              handleReorder(
+                                order.id,
+                                order.items.map((i) => ({
+                                  productId: i.productId,
+                                  quantity: i.quantity,
+                                  color: i.color,
+                                  size: i.size,
+                                })),
+                              )
+                            }
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
+                            {reorderingId === order.id ? '담는 중...' : '다시 주문하기'}
+                          </Button>
+                        )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}

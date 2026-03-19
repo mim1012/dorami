@@ -11,7 +11,8 @@ export const orderKeys = {
   lists: () => [...orderKeys.all, 'list'] as const,
   list: (filters: { status?: OrderStatus; page?: number }) =>
     [...orderKeys.lists(), filters] as const,
-  listInfinite: (status?: OrderStatus) => [...orderKeys.lists(), 'infinite', { status }] as const,
+  listInfinite: (status?: OrderStatus, startDate?: string, endDate?: string) =>
+    [...orderKeys.lists(), 'infinite', { status, startDate, endDate }] as const,
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
 };
@@ -38,13 +39,15 @@ export function useOrders(status?: OrderStatus, page = 1, limit = 20) {
 }
 
 // Infinite scroll version
-export function useOrdersInfinite(status?: OrderStatus) {
+export function useOrdersInfinite(status?: OrderStatus, startDate?: string, endDate?: string) {
   return useInfiniteQuery<OrdersPage, Error>({
-    queryKey: orderKeys.listInfinite(status),
+    queryKey: orderKeys.listInfinite(status, startDate, endDate),
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const params: Record<string, any> = { page: pageParam, limit: 10 };
       if (status) params.status = status;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
       const response = await apiClient.get<OrdersPage>('/orders', { params });
       return response.data;
     },

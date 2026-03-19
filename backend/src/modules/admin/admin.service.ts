@@ -1881,6 +1881,20 @@ export class AdminService {
   }
 
   /**
+   * Bulk update order status for multiple orders
+   */
+  async bulkUpdateOrderStatus(orderIds: string[], status: string) {
+    const results = await Promise.allSettled(
+      orderIds.map((orderId) => this.updateOrderStatus(orderId, status)),
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    return { succeeded, failed, total: orderIds.length };
+  }
+
+  /**
    * Send bulk shipping notifications from CSV data
    */
   async sendBulkShippingNotifications(items: { orderId: string; trackingNumber: string }[]) {

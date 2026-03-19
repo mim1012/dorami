@@ -65,17 +65,23 @@ export class OrdersController {
     description: '페이지당 항목 수 (기본: 20, 최대: 50)',
   })
   @ApiQuery({ name: 'status', required: false, description: '주문 상태 필터' })
+  @ApiQuery({ name: 'startDate', required: false, description: '시작일 (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', required: false, description: '종료일 (YYYY-MM-DD)' })
   @ApiResponse({ status: 200, description: '주문 목록' })
   async getMyOrders(
     @CurrentUser('userId') userId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     return this.ordersService.findByUserId(userId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
       status,
+      startDate,
+      endDate,
     });
   }
 
