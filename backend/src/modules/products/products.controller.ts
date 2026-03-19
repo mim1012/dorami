@@ -250,9 +250,12 @@ export class ProductsController {
   ): Promise<ProductResponseDto[]> {
     // If streamKey is provided, filter by stream
     if (streamKey) {
+      const parsedTake =
+        take !== undefined ? Math.min(Math.max(parseInt(take, 10) || 50, 1), 100) : undefined;
+      const parsedSkip = skip !== undefined ? Math.max(parseInt(skip, 10) || 0, 0) : undefined;
       return await this.productsService.findByStreamKey(streamKey, status, false, {
-        take: take !== undefined ? parseInt(take, 10) : undefined,
-        skip: skip !== undefined ? parseInt(skip, 10) : undefined,
+        take: parsedTake,
+        skip: parsedSkip,
       });
     }
 

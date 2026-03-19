@@ -23,9 +23,25 @@ function CopyButton({ url }: { url: string }) {
   );
 }
 
+const ALLOWED_HOSTS = ['doremi-live.com', 'www.doremi-live.com', 'localhost'];
+
+function getSafeUrl(rawUrl: string): string {
+  if (!rawUrl) return typeof window !== 'undefined' ? window.location.origin : '';
+  try {
+    const parsed = new URL(rawUrl);
+    const isAllowed = ALLOWED_HOSTS.some(
+      (h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`),
+    );
+    if (isAllowed) return rawUrl;
+  } catch {
+    // invalid URL — fall through
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '';
+}
+
 function OpenInBrowserContent() {
   const searchParams = useSearchParams();
-  const url = searchParams.get('url') ?? '';
+  const safeUrl = getSafeUrl(searchParams.get('url') ?? '');
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center px-6 text-white">
@@ -38,9 +54,9 @@ function OpenInBrowserContent() {
           아래 URL을 복사해 Safari 또는 Chrome에서 열어주세요.
         </p>
         <div className="w-full bg-gray-900 rounded-xl p-3 text-xs text-gray-300 break-all text-left select-all">
-          {url || window.location.origin}
+          {safeUrl}
         </div>
-        <CopyButton url={url || window.location.origin} />
+        <CopyButton url={safeUrl} />
         <p className="text-xs text-gray-500">Safari에서 주소창에 붙여넣기 후 이동하시면 됩니다.</p>
       </div>
     </main>
