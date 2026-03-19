@@ -24,9 +24,13 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PointTransactionType, Order, OrderItem, Prisma } from '@prisma/client';
 import { CartStatus } from '@live-commerce/shared-types';
 
-// Type for Order with items
+// Type for Order with items (optionally including Product relation)
+interface OrderItemWithProduct extends OrderItem {
+  Product?: { imageUrl: string | null } | null;
+}
+
 interface OrderWithItems extends Order {
-  orderItems: OrderItem[];
+  orderItems: OrderItemWithProduct[];
 }
 
 // Type for order totals calculation
@@ -611,7 +615,13 @@ export class OrdersService {
   ): Promise<OrderResponseDto & { bankTransferInfo?: BankTransferInfo }> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { orderItems: true },
+      include: {
+        orderItems: {
+          include: {
+            Product: { select: { imageUrl: true } },
+          },
+        },
+      },
     });
 
     if (!order) {
@@ -859,7 +869,7 @@ export class OrdersService {
         shippingFee: String(item.shippingFee),
         color: item.color || undefined,
         size: item.size || undefined,
-        imageUrl: (item as any).Product?.imageUrl ?? undefined,
+        imageUrl: item.Product?.imageUrl ?? undefined,
       })),
     };
   }
