@@ -11,6 +11,10 @@ import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
 export const metadata: Metadata = {
   title: 'Live Commerce',
   description: 'Live commerce platform with real-time shopping',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon-192x192.png',
+  },
 };
 
 export default function RootLayout({
