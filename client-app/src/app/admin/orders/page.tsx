@@ -406,36 +406,42 @@ function AdminOrdersContent() {
         ) : null,
     },
     {
-      key: 'id',
-      label: '주문번호',
-      sortable: true,
-      render: (order) => <span className="font-mono text-caption">{order.id}</span>,
-    },
-    {
-      key: 'productName',
-      label: '상품명 (수량)',
-      sortable: false,
-      render: (order) => <span className="text-caption">{collectProductSummary(order.items)}</span>,
-    },
-    {
-      key: 'color',
-      label: '색상',
+      key: 'instagramId',
+      label: '고객',
       sortable: false,
       render: (order) => (
-        <span className="text-caption">{collectUnique(order.items, 'color')}</span>
+        <div>
+          <span className="font-medium">
+            {order.instagramId ? `@${order.instagramId}` : order.depositorName || '-'}
+          </span>
+          {order.instagramId && order.depositorName && (
+            <div className="text-xs text-secondary-text">{order.depositorName}</div>
+          )}
+        </div>
       ),
     },
     {
-      key: 'size',
-      label: '사이즈',
+      key: 'productName',
+      label: '상품 (색상/사이즈)',
       sortable: false,
-      render: (order) => <span className="text-caption">{collectUnique(order.items, 'size')}</span>,
-    },
-    {
-      key: 'instagramId',
-      label: '인스타 ID',
-      sortable: false,
-      render: (order) => <span>{order.instagramId ? `@${order.instagramId}` : '-'}</span>,
+      render: (order) => (
+        <div className="space-y-1">
+          {(order.items ?? []).map((item, idx) => {
+            const option = [item.color, item.size].filter(Boolean).join('/');
+            return (
+              <div key={idx} className="flex items-center gap-2 text-caption">
+                <span className="text-primary-text">{item.productName}</span>
+                {option && (
+                  <span className="text-secondary-text text-xs bg-border-color/30 px-1.5 py-0.5 rounded">
+                    {option}
+                  </span>
+                )}
+                <span className="text-secondary-text">x{item.quantity}</span>
+              </div>
+            );
+          })}
+        </div>
+      ),
     },
     {
       key: 'createdAt',
