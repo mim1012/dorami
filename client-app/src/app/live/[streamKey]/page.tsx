@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { io } from 'socket.io-client';
 import { apiClient } from '@/lib/api/client';
+import { getUserMessage } from '@/lib/errors/error-messages';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 import { useLiveLayoutMachine, computeLayout } from '@/hooks/useLiveLayoutMachine';
 import VideoPlayer from '@/components/stream/VideoPlayer';
@@ -122,21 +123,20 @@ export default function LiveStreamPage() {
   const hasShownSessionExpiredToast = useRef(false);
   const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
 
-  // ── Auth guard: redirect unauthenticated users to login ───────────────────
-  useEffect(() => {
-    if (!isAuthenticated && !isAuthLoading && !pathname.startsWith('/login')) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, isAuthLoading, pathname, router]);
+  // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
+  // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
 
   useEffect(() => {
     const onSessionExpired = () => {
       if (!hasShownSessionExpiredToast.current) {
         hasShownSessionExpiredToast.current = true;
-        showToast(
-          '세션 갱신이 반복 실패했습니다. 화면이 다시 이어지지 않으면 새로고침 또는 재로그인이 필요할 수 있습니다.',
-          'info',
-        );
+        showToast('로그인이 만료되었어요. 다시 로그인하면 방송을 이어서 볼 수 있어요.', 'error', {
+          label: '로그인',
+          onClick: () => {
+            const returnTo = window.location.pathname;
+            window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+          },
+        });
       }
     };
 
@@ -306,7 +306,7 @@ export default function LiveStreamPage() {
   const fetchAllProducts = useCallback(async () => {
     try {
       const response = await apiClient.get<Product[]>('/products', {
-        params: { streamKey, status: 'AVAILABLE' },
+        params: { streamKey, status: 'AVAILABLE', take: '200' },
       });
       setAllProducts(response.data ?? []);
     } catch {
@@ -718,10 +718,8 @@ export default function LiveStreamPage() {
           label: '로그인',
           onClick: () => router.push('/login?reason=session_expired'),
         });
-      } else if (error.statusCode === 400) {
-        showToast(`${error.message || '장바구니 담기 실패'}`, 'error');
       } else {
-        showToast(`장바구니 담기 실패: ${error.message || '알 수 없는 오류'}`, 'error');
+        showToast(getUserMessage(error), 'error');
       }
     }
   };
@@ -1013,7 +1011,7 @@ export default function LiveStreamPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-10 max-h-[40vh]"
+            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[40vh]"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
             {/* Top gradient fade */}
@@ -1024,7 +1022,7 @@ export default function LiveStreamPage() {
           {/* 5. Featured product card — glassmorphism */}
           {displayedProduct && snapshot !== 'ENDED' && snapshot !== 'NO_STREAM' && (
             <div
-              className="absolute left-3 xs:left-4 right-[84px] xs:right-[92px] sm:right-[100px] z-20"
+              className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-20"
               style={{ bottom: 'calc(96px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
             >
               <div className="bg-white/10 backdrop-blur-xl rounded-lg border border-white/20 p-1.5 shadow-2xl">

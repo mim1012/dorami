@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
+import { getUserMessage } from '@/lib/errors/error-messages';
 import {
   useCart,
   useUpdateCartItem,
@@ -75,7 +76,7 @@ function CartPageContent() {
       { itemId: cartItemId, quantity: newQuantity },
       {
         onError: (err: any) => {
-          showToast(`수량 변경에 실패했습니다: ${err.message}`, 'error');
+          showToast(getUserMessage(err), 'error');
         },
       },
     );

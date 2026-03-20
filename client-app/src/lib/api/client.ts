@@ -255,6 +255,27 @@ async function request<T>(
     }
   }
 
+  // 429 Rate Limit: 자동 재시도 (최대 3회, exponential backoff)
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('Retry-After');
+    const baseDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const delay = Math.min(baseDelay * attempt, 10000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      response = await executeFetch(url, options, timeoutMs, callerSignal);
+      if (response.status !== 429) break;
+    }
+
+    if (response.status === 429) {
+      throw new ApiError(
+        429,
+        '요청이 너무 많아요. 잠시 후 다시 시도해주세요.',
+        'TOO_MANY_REQUESTS',
+      );
+    }
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({
       statusCode: response.status,
@@ -266,8 +287,10 @@ async function request<T>(
     if (typeof window !== 'undefined' && errorCode === 'PROFILE_INCOMPLETE') {
       const currentPath = window.location.pathname || '';
       if (!currentPath.startsWith('/profile/register')) {
-        const returnTo = currentPath !== '/' ? `?returnTo=${encodeURIComponent(currentPath)}` : '';
-        window.location.href = `/profile/register${returnTo}`;
+        const params = new URLSearchParams();
+        if (currentPath !== '/') params.set('returnTo', currentPath);
+        params.set('reason', 'purchase');
+        window.location.href = `/profile/register?${params.toString()}`;
       }
     }
 

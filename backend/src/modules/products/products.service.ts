@@ -713,18 +713,14 @@ export class ProductsService {
   }
 
   /**
-   * Delete all expired products (called by scheduler)
+   * Count expired products (for scheduler logging only).
+   * Expired products are NOT deleted — Store queries already filter them out
+   * via { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }.
    */
-  @LogErrors('delete expired products')
-  async deleteExpiredProducts(): Promise<number> {
-    const expired = await this.prisma.product.findMany({
+  async countExpiredProducts(): Promise<number> {
+    return this.prisma.product.count({
       where: { expiresAt: { not: null, lte: new Date() } },
-      select: { id: true },
     });
-    for (const { id } of expired) {
-      await this.delete(id);
-    }
-    return expired.length;
   }
 
   /**

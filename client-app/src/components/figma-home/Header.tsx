@@ -49,11 +49,11 @@ export function Header() {
       <div className="max-w-screen-2xl mx-auto px-4 py-3 md:py-4">
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[#FF4D8D] to-[#B084CC] flex items-center justify-center">
-              <span className="text-white font-bold text-sm md:text-base">D</span>
+          <Link href="/" className="flex items-center gap-1.5 xs:gap-2">
+            <div className="w-7 h-7 xs:w-8 xs:h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[#FF4D8D] to-[#B084CC] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-xs xs:text-sm md:text-base">D</span>
             </div>
-            <h1 className="font-bold text-lg md:text-xl bg-gradient-to-r from-[#FF4D8D] to-[#B084CC] bg-clip-text text-transparent">
+            <h1 className="font-bold text-base xs:text-lg md:text-xl bg-gradient-to-r from-[#FF4D8D] to-[#B084CC] bg-clip-text text-transparent whitespace-nowrap">
               도레미
             </h1>
           </Link>

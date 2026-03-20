@@ -335,7 +335,6 @@ export default function OrdersPage() {
                         {order.items[0]?.productName}
                         {order.items.length > 1 && ` 외 ${order.items.length - 1}개`}
                       </Body>
-                      <Body className="text-secondary-text text-xs font-mono">{order.id}</Body>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                       <Body className="text-hot-pink font-bold text-sm">
@@ -421,7 +420,6 @@ export default function OrdersPage() {
                           <Body className="text-xs font-semibold">{paymentStatus.text}</Body>
                         </div>
                       </div>
-                      <Body className="text-secondary-text text-xs font-mono">{order.id}</Body>
                     </div>
 
                     {/* Order Items */}

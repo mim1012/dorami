@@ -142,6 +142,7 @@ function ProfileRegisterContent() {
   const [phoneRegion, setPhoneRegion] = useState<PhoneRegion>('US');
   const errorRef = useRef<HTMLDivElement>(null);
   const isEditMode = !!(user && isProfileComplete(user));
+  const isPurchaseRedirect = searchParams.get('reason') === 'purchase';
   const headingText = isEditMode ? '프로필 정보 수정' : '프로필 등록';
   const subheadingText = isEditMode
     ? '이미 완료된 프로필 정보를 업데이트했습니다'
@@ -498,6 +499,14 @@ function ProfileRegisterContent() {
           <Display className="text-hot-pink mb-2">{headingText}</Display>
           <Body className="text-secondary-text">{subheadingText}</Body>
         </div>
+
+        {isPurchaseRedirect && !isEditMode && (
+          <div className="bg-hot-pink/10 border border-hot-pink/20 rounded-lg p-4 mb-6 text-center">
+            <Body className="text-hot-pink font-medium">
+              구매를 위해 배송 정보를 입력해주세요. 1분이면 완성!
+            </Body>
+          </div>
+        )}
 
         {submitError && (
           <div ref={errorRef} className="bg-error/10 border border-error rounded-lg p-4 mb-6">

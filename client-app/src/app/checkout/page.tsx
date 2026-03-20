@@ -9,6 +9,7 @@ import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
+import { getUserMessage } from '@/lib/errors/error-messages';
 import CartTimer from '@/components/cart/CartTimer';
 import { AlertCircle, CheckCircle, Clock, Coins, DollarSign, MapPin } from 'lucide-react';
 
@@ -160,9 +161,7 @@ export default function CheckoutPage() {
       router.push(`/orders/${response.data.id}`);
     } catch (err: any) {
       console.error('Order creation failed:', err);
-      setError(
-        err.response?.data?.message || '주문 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
-      );
+      setError(getUserMessage(err));
     } finally {
       setIsSubmitting(false);
     }

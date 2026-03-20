@@ -10,9 +10,9 @@ export class ProductSchedulerService {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleProductExpiry() {
-    const count = await this.productsService.deleteExpiredProducts();
+    const count = await this.productsService.countExpiredProducts();
     if (count > 0) {
-      this.logger.log(`만료 상품 ${count}개 자동 삭제`);
+      this.logger.log(`만료 상품 ${count}개 감지 (Store에서 자동 필터링됨, 삭제하지 않음)`);
     }
   }
 }
