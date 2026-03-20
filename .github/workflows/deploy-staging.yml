@@ -46,7 +46,7 @@ jobs:
   test:
     name: Run Tests
     needs: [check]
-    if: needs.check.outputs.source_changed == 'true'
+    if: needs.check.outputs.source_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -58,7 +58,7 @@ jobs:
   build:
     name: Build Images
     needs: [check, test]
-    if: needs.test.result == 'success'
+    if: needs.test.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.test.result != 'failure')
     uses: ./.github/workflows/build-images.yml
     permissions:
       contents: read
@@ -70,7 +70,7 @@ jobs:
   deploy:
     name: Deploy to Staging
     needs: [check, build]
-    if: needs.build.result == 'success'
+    if: needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.build.result != 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: read
