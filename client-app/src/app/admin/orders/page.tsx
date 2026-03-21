@@ -424,24 +424,39 @@ function AdminOrdersContent() {
       key: 'productName',
       label: '상품 (색상/사이즈)',
       sortable: false,
-      render: (order) => (
-        <div className="space-y-1">
-          {(order.items ?? []).map((item, idx) => {
-            const option = [item.color, item.size].filter(Boolean).join('/');
-            return (
-              <div key={idx} className="flex items-center gap-2 text-caption">
-                <span className="text-primary-text">{item.productName}</span>
-                {option && (
-                  <span className="text-secondary-text text-xs bg-border-color/30 px-1.5 py-0.5 rounded">
-                    {option}
-                  </span>
-                )}
-                <span className="text-secondary-text">x{item.quantity}</span>
+      render: (order) => {
+        const items = order.items ?? [];
+        const totalQty = items.reduce((sum, i) => sum + i.quantity, 0);
+        const totalAmount = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
+        return (
+          <div className="space-y-1">
+            {items.map((item, idx) => {
+              const option = [item.color, item.size].filter(Boolean).join('/');
+              return (
+                <div key={idx} className="flex items-center gap-2 text-caption">
+                  <span className="text-primary-text">{item.productName}</span>
+                  {option && (
+                    <span className="text-secondary-text text-xs bg-border-color/30 px-1.5 py-0.5 rounded">
+                      {option}
+                    </span>
+                  )}
+                  <span className="text-secondary-text">x{item.quantity}</span>
+                </div>
+              );
+            })}
+            {items.length > 0 && (
+              <div className="pt-1 border-t border-border-color/30 flex items-center gap-2 text-xs">
+                <span className="text-secondary-text">{totalQty}개</span>
+                <span className="text-hot-pink font-semibold">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                    totalAmount,
+                  )}
+                </span>
               </div>
-            );
-          })}
-        </div>
-      ),
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'createdAt',
