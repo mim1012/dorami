@@ -412,7 +412,11 @@ function AdminOrdersContent() {
       render: (order) => (
         <div>
           <span className="font-medium">
-            {order.instagramId ? `@${order.instagramId}` : order.depositorName || '-'}
+            {order.instagramId
+              ? order.instagramId.startsWith('@')
+                ? order.instagramId
+                : `@${order.instagramId}`
+              : order.depositorName || '-'}
           </span>
           {order.instagramId && order.depositorName && (
             <div className="text-xs text-secondary-text">{order.depositorName}</div>

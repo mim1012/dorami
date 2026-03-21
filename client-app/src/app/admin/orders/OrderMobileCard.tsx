@@ -131,7 +131,11 @@ export function OrderMobileCard({
             </button>
           )}
           <span className="text-sm font-medium text-primary-text truncate">
-            {order.instagramId ? `@${order.instagramId}` : order.depositorName || '고객'}
+            {order.instagramId
+              ? order.instagramId.startsWith('@')
+                ? order.instagramId
+                : `@${order.instagramId}`
+              : order.depositorName || '고객'}
           </span>
           <span className="text-xs text-secondary-text whitespace-nowrap flex-shrink-0">
             {formatDate(order.createdAt)}
