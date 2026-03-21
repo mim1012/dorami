@@ -89,10 +89,10 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
                       key={message.id}
                       className={`animate-fade-in ${compact ? 'mb-1.5 px-1' : 'mb-2 px-2'}`}
                     >
-                      <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-[#FF007A]/10 border border-[#FF007A]/15">
-                        <ShoppingCart className="w-3 h-3 text-[#FF007A]/60 flex-shrink-0" />
+                      <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full">
+                        <ShoppingCart className="w-3 h-3 text-orange-400 flex-shrink-0" />
                         <span
-                          className={`text-[#FF007A]/70 font-semibold ${
+                          className={`text-orange-400 font-semibold ${
                             compact ? 'text-[12px]' : 'text-[13px]'
                           }`}
                         >
