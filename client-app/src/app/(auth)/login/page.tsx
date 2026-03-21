@@ -151,7 +151,7 @@ function LoginContent() {
               alt="Doremi"
               width={64}
               height={64}
-              className="object-contain w-full h-full"
+              className="object-cover w-full h-full"
             />
           </div>
           <Display className="text-hot-pink mb-2">Doremi</Display>
