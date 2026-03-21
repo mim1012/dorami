@@ -113,6 +113,7 @@ services:
       NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-}
       APP_VERSION: ${APP_VERSION:-1.0.0}
       APP_ENV: staging
+      PREVIEW_ENABLED: ${PREVIEW_ENABLED:-false}
     expose:
       - 3000
     logging:
