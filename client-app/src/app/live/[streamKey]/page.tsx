@@ -827,7 +827,7 @@ export default function LiveStreamPage() {
                       alt="도레미 Live"
                       width={40}
                       height={40}
-                      className="object-contain w-full h-full"
+                      className="object-cover w-full h-full"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
