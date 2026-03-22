@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   InsufficientStockException,
   ProductNotFoundException,
+  ProductSoldOutException,
 } from '../../common/exceptions/business.exception';
 import { Prisma } from '@prisma/client';
 
@@ -28,6 +29,10 @@ export class InventoryService {
 
           if (!product) {
             throw new ProductNotFoundException(productId);
+          }
+
+          if (product.status === 'SOLD_OUT') {
+            throw new ProductSoldOutException(productId);
           }
 
           if (product.quantity < quantity) {
@@ -99,6 +104,10 @@ export class InventoryService {
 
       if (!product) {
         throw new ProductNotFoundException(item.productId);
+      }
+
+      if (product.status === 'SOLD_OUT') {
+        throw new ProductSoldOutException(item.productId);
       }
 
       if (product.quantity < item.quantity) {

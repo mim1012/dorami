@@ -22,6 +22,17 @@ export class BusinessException extends HttpException {
 }
 
 // Predefined Business Exceptions
+export class ProductSoldOutException extends BusinessException {
+  constructor(productId: string) {
+    super(
+      'PRODUCT_SOLD_OUT',
+      { productId },
+      `Product ${productId} is sold out`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
 export class InsufficientStockException extends BusinessException {
   constructor(productId: string, available: number, requested: number) {
     super(
