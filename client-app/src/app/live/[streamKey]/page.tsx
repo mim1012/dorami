@@ -993,6 +993,24 @@ export default function LiveStreamPage() {
             </button>
 
             <button
+              onClick={() => setIsCartSheetOpen(true)}
+              className="flex flex-col items-center gap-1"
+              aria-label="장바구니"
+            >
+              <div className="relative w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+                <ShoppingCart className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
+                {(cartData?.itemCount ?? 0) > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF007A] rounded-full text-[9px] text-white font-black flex items-center justify-center">
+                    {(cartData?.itemCount ?? 0) > 9 ? '9+' : cartData?.itemCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
+                장바구니
+              </span>
+            </button>
+
+            <button
               onClick={() => setIsProductSheetOpen(true)}
               className="flex flex-col items-center gap-1"
               aria-label="지난 상품 목록"
@@ -1011,7 +1029,7 @@ export default function LiveStreamPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[40vh]"
+            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[30vh] overflow-hidden flex flex-col"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
             {/* Top gradient fade */}
@@ -1128,7 +1146,7 @@ export default function LiveStreamPage() {
       {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
       {!isMobile && (
         <div className="flex flex-1 flex-col min-h-0">
-          <div className="flex flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-[3] min-h-0 overflow-hidden">
             {/* Center: Video + overlays */}
             <div className="flex flex-1 relative items-center justify-center">
               <div className="relative w-full h-full lg:max-w-[560px] xl:max-w-[640px] 2xl:max-w-[720px] lg:h-full bg-black overflow-hidden">
@@ -1259,88 +1277,7 @@ export default function LiveStreamPage() {
             </div>
           </div>
 
-          {/* Bottom: Featured & Past Products Sections */}
-          <div className="w-full flex flex-col gap-8 bg-content-bg/50 border-t border-border-color p-6">
-            {/* Featured Products Section */}
-            {allProducts.length > 0 && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold text-primary-text">인기 상품</h3>
-                  <p className="text-sm text-secondary-text">지금 라이브에서 인기 있는 상품</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {allProducts.slice(0, 5).map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleProductClick(product)}
-                      className="group text-left hover:opacity-80 transition-opacity"
-                    >
-                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
-                        {product.imageUrl ? (
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            unoptimized={product.imageUrl.startsWith('/uploads/')}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <Package className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-primary-text truncate">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Past Products Section */}
-            {allProducts.length > 5 && (
-              <div className="space-y-4 border-t border-border-color pt-6">
-                <div>
-                  <h3 className="text-xl font-bold text-primary-text">지난 상품</h3>
-                  <p className="text-sm text-secondary-text">이전에 소개한 상품들</p>
-                </div>
-                <div className="max-h-[400px] overflow-y-auto">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {allProducts.slice(5).map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => handleProductClick(product)}
-                        className="group text-left hover:opacity-80 transition-opacity"
-                      >
-                        <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
-                          {product.imageUrl ? (
-                            <Image
-                              src={product.imageUrl}
-                              alt={product.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              unoptimized={product.imageUrl.startsWith('/uploads/')}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                              <Package className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-primary-text truncate">
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Bottom products sections removed — left sidebar ProductList is sufficient on desktop */}
         </div>
       )}
 

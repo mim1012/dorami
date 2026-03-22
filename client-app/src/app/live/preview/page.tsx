@@ -101,6 +101,12 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 129000,
     discountRate: 31,
     imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&q=80',
+      'https://images.unsplash.com/photo-1548126032-079a0fb0099d?w=500&q=80',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=500&q=80',
+      'https://images.unsplash.com/photo-1560243563-062bfc001d68?w=500&q=80',
+    ],
     stock: 15,
     colorOptions: ['블랙', '베이지', '네이비'],
     sizeOptions: ['S', 'M', 'L', 'XL'],
@@ -121,6 +127,11 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 89000,
     discountRate: 30,
     imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&q=80',
+      'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=500&q=80',
+    ],
     stock: 25,
     colorOptions: ['아이보리', '그레이', '카멜'],
     sizeOptions: ['FREE'],
@@ -141,6 +152,12 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 159000,
     discountRate: 19,
     imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+      'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+    ],
     stock: 8,
     colorOptions: ['블랙', '탄', '버건디'],
     sizeOptions: [],
@@ -159,6 +176,11 @@ const MOCK_PRODUCTS: Product[] = [
     name: '하이웨스트 와이드 데님',
     price: 54900,
     imageUrl: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&q=80',
+      'https://images.unsplash.com/photo-1604176354204-9268737828e4?w=500&q=80',
+      'https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=500&q=80',
+    ],
     stock: 30,
     colorOptions: ['라이트블루', '딥블루', '블랙'],
     sizeOptions: ['S', 'M', 'L'],
@@ -178,6 +200,11 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 55000,
     discountRate: 29,
     imageUrl: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=500&q=80',
+      'https://images.unsplash.com/photo-1601924921557-45e8e0643808?w=500&q=80',
+      'https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=500&q=80',
+    ],
     stock: 50,
     colorOptions: ['베이지체크', '그레이체크', '네이비체크'],
     sizeOptions: [],
@@ -196,6 +223,11 @@ const MOCK_PRODUCTS: Product[] = [
     name: '프리미엄 실크 블라우스',
     price: 78000,
     imageUrl: 'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=500&q=80',
+      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=500&q=80',
+    ],
     stock: 12,
     colorOptions: ['화이트', '핑크', '스카이블루'],
     sizeOptions: ['S', 'M', 'L'],
@@ -215,6 +247,12 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 42000,
     discountRate: 33,
     imageUrl: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&q=80',
+      'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500&q=80',
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&q=80',
+      'https://images.unsplash.com/photo-1561828995-aa79a2db86dd?w=500&q=80',
+    ],
     stock: 40,
     colorOptions: ['골드', '실버', '로즈골드'],
     sizeOptions: [],
@@ -233,6 +271,11 @@ const MOCK_PRODUCTS: Product[] = [
     name: '코지 플리스 집업 자켓',
     price: 69000,
     imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&q=80',
+      'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&q=80',
+      'https://images.unsplash.com/photo-1544441893-675973e31985?w=500&q=80',
+    ],
     stock: 0,
     colorOptions: ['크림', '차콜', '카키'],
     sizeOptions: ['M', 'L', 'XL'],
@@ -252,6 +295,11 @@ const MOCK_PRODUCTS: Product[] = [
     originalPrice: 54000,
     discountRate: 35,
     imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&q=80',
+      'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500&q=80',
+      'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=500&q=80',
+    ],
     stock: 100,
     colorOptions: ['화이트+블랙+그레이', '네이비+베이지+카키'],
     sizeOptions: ['S', 'M', 'L', 'XL'],
@@ -270,6 +318,12 @@ const MOCK_PRODUCTS: Product[] = [
     name: '스트릿 캔버스 스니커즈',
     price: 89000,
     imageUrl: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=500&q=80',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+      'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=500&q=80',
+      'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&q=80',
+    ],
     stock: 18,
     colorOptions: ['화이트', '블랙', '레드'],
     sizeOptions: ['230', '240', '250', '260', '270'],
@@ -286,15 +340,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-11',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '아크네 스튜디오 페이스 후디',
-    price: 89,
+    price: 89000,
     stock: 20,
     colorOptions: ['블랙', '화이트', '그레이'],
     sizeOptions: ['s', 'm', 'l'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&q=80',
+      'https://images.unsplash.com/photo-1578768079052-aa76e52ff62e?w=500&q=80',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -304,8 +362,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-12',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '로에베 퍼즐 백 미니',
-    price: 145,
-    originalPrice: 160,
+    price: 145000,
+    originalPrice: 160000,
     discountRate: 9,
     stock: 5,
     colorOptions: ['탄', '블랙', '레드'],
@@ -313,8 +371,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+      'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -324,15 +386,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-13',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '프라다 나일론 미니 파우치',
-    price: 120,
+    price: 120000,
     stock: 10,
     colorOptions: ['블랙', '네이비', '카키'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+      'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+      'https://images.unsplash.com/photo-1594938298603-c8148c4b4ad5?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -342,8 +408,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-14',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '미우미우 크롭 가죽 재킷',
-    price: 150,
-    originalPrice: 180,
+    price: 150000,
+    originalPrice: 180000,
     discountRate: 17,
     stock: 8,
     colorOptions: ['블랙', '베이지'],
@@ -351,8 +417,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&q=80',
+      'https://images.unsplash.com/photo-1548126032-079a0fb0099d?w=500&q=80',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -362,15 +432,20 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-15',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '가니 플로럴 미디 드레스',
-    price: 95,
+    price: 95000,
     stock: 15,
     colorOptions: ['핑크', '화이트', '블루'],
     sizeOptions: ['s', 'm', 'l', 'xl'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&q=80',
+      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=500&q=80',
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500&q=80',
+      'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -380,8 +455,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-16',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '톰브라운 스트라이프 니트 스웨터',
-    price: 130,
-    originalPrice: 150,
+    price: 130000,
+    originalPrice: 150000,
     discountRate: 13,
     stock: 12,
     colorOptions: ['그레이', '네이비', '레드'],
@@ -389,8 +464,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+      'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=500&q=80',
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -400,15 +479,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-17',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '발렌시아가 트랙 스니커즈',
-    price: 140,
+    price: 140000,
     stock: 0,
     colorOptions: ['화이트', '블랙'],
     sizeOptions: ['240', '250', '260', '270'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+      'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=500&q=80',
+      'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.SOLD_OUT,
     createdAt: new Date().toISOString(),
@@ -418,15 +501,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-18',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '셀린느 트리오페 클러치',
-    price: 115,
+    price: 115000,
     stock: 7,
     colorOptions: ['탄', '블랙', '화이트'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -436,8 +523,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-19',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '보테가 베네타 인트레치아토 카드지갑',
-    price: 75,
-    originalPrice: 90,
+    price: 75000,
+    originalPrice: 90000,
     discountRate: 17,
     stock: 20,
     colorOptions: ['그린', '블랙', '베이지'],
@@ -445,8 +532,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+      'https://images.unsplash.com/photo-1606503153255-59d8b8b82176?w=500&q=80',
+      'https://images.unsplash.com/photo-1612902456551-b33f6cfe7ea3?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -456,15 +547,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-20',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '디올 오블리크 새들백',
-    price: 148,
+    price: 148000,
     stock: 4,
     colorOptions: ['브라운', '블랙'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -474,8 +569,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-21',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '아크네 스튜디오 스카프 로고 울',
-    price: 55,
-    originalPrice: 70,
+    price: 55000,
+    originalPrice: 70000,
     discountRate: 21,
     stock: 25,
     colorOptions: ['핑크', '블루', '옐로우', '블랙'],
@@ -483,8 +578,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1601924921557-45e8e0643808?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1601924921557-45e8e0643808?w=500&q=80',
+      'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=500&q=80',
+      'https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -494,15 +593,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-22',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '가니 카우걸 부츠',
-    price: 100,
+    price: 100000,
     stock: 9,
     colorOptions: ['브라운', '블랙'],
     sizeOptions: ['230', '240', '250', '260'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&q=80',
+      'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=500&q=80',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -512,8 +615,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-23',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '프라다 리나일론 숄더백',
-    price: 135,
-    originalPrice: 155,
+    price: 135000,
+    originalPrice: 155000,
     discountRate: 13,
     stock: 6,
     colorOptions: ['블랙', '그레이', '카키'],
@@ -521,8 +624,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -532,15 +639,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-24',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '로에베 아나그램 크롭 티셔츠',
-    price: 60,
+    price: 60000,
     stock: 18,
     colorOptions: ['화이트', '블랙', '베이지'],
     sizeOptions: ['s', 'm', 'l', 'xl'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=500&q=80',
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&q=80',
+      'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -550,8 +661,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-25',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '미우미우 트위드 미니스커트',
-    price: 110,
-    originalPrice: 130,
+    price: 110000,
+    originalPrice: 130000,
     discountRate: 15,
     stock: 0,
     colorOptions: ['핑크', '화이트'],
@@ -559,8 +670,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&q=80',
+      'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500&q=80',
+      'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.SOLD_OUT,
     createdAt: new Date().toISOString(),
@@ -570,15 +685,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-26',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '톰브라운 옥스퍼드 셔츠',
-    price: 85,
+    price: 85000,
     stock: 14,
     colorOptions: ['화이트', '블루', '핑크'],
     sizeOptions: ['s', 'm', 'l'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&q=80',
+      'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=500&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -588,8 +707,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-27',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '발렌시아가 캡 로고 모자',
-    price: 45,
-    originalPrice: 55,
+    price: 45000,
+    originalPrice: 55000,
     discountRate: 18,
     stock: 30,
     colorOptions: ['블랙', '화이트', '네이비', '레드'],
@@ -597,8 +716,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&q=80',
+      'https://images.unsplash.com/photo-1556306535-0f09a537f0a3?w=500&q=80',
+      'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -608,15 +731,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-28',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '셀린느 트리옹프 선글라스',
-    price: 78,
+    price: 78000,
     stock: 11,
     colorOptions: ['블랙', '토트이셸', '골드'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&q=80',
+      'https://images.unsplash.com/photo-1473496169904-658ba7574b0d?w=500&q=80',
+      'https://images.unsplash.com/photo-1508296695146-257a814070b4?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -626,8 +753,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-29',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '보테가 베네타 체인 파우치',
-    price: 98,
-    originalPrice: 115,
+    price: 98000,
+    originalPrice: 115000,
     discountRate: 15,
     stock: 5,
     colorOptions: ['블랙', '그린', '네이비'],
@@ -635,8 +762,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1612902456551-b33f6cfe7ea3?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1612902456551-b33f6cfe7ea3?w=500&q=80',
+      'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -646,15 +777,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-30',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '디올 뷰티 립 글로우 오일',
-    price: 38,
+    price: 38000,
     stock: 28,
     colorOptions: ['001 핑크', '007 라즈베리', '000 유니버설'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&q=80',
+      'https://images.unsplash.com/photo-1599305090598-fe179d501227?w=500&q=80',
+      'https://images.unsplash.com/photo-1583241800698-e8ab01830a63?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -664,8 +799,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-31',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '아크네 스튜디오 레더 벨트',
-    price: 42,
-    originalPrice: 52,
+    price: 42000,
+    originalPrice: 52000,
     discountRate: 19,
     stock: 22,
     colorOptions: ['블랙', '브라운', '화이트'],
@@ -673,8 +808,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=500&q=80',
+      'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=500&q=80',
+      'https://images.unsplash.com/photo-1606503153255-59d8b8b82176?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -684,15 +823,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-32',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '가니 플리티드 미디 스커트',
-    price: 72,
+    price: 72000,
     stock: 16,
     colorOptions: ['베이지', '블랙', '그린', '핑크'],
     sizeOptions: ['44', '55', '66'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&q=80',
+      'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=500&q=80',
+      'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -702,8 +845,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-33',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '로에베 바스켓 백 스몰',
-    price: 125,
-    originalPrice: 140,
+    price: 125000,
+    originalPrice: 140000,
     discountRate: 11,
     stock: 3,
     colorOptions: ['내추럴', '블랙'],
@@ -711,8 +854,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4b4ad5?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1594938298603-c8148c4b4ad5?w=500&q=80',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -722,15 +869,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-34',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '프라다 모헤어 브이넥 니트',
-    price: 90,
+    price: 90000,
     stock: 13,
     colorOptions: ['핑크', '블루', '옐로우', '그린'],
     sizeOptions: ['s', 'm', 'l'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500&q=80',
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+      'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -740,8 +891,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-35',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '미우미우 크리스탈 헤어밴드',
-    price: 35,
-    originalPrice: 45,
+    price: 35000,
+    originalPrice: 45000,
     discountRate: 22,
     stock: 0,
     colorOptions: ['실버', '골드', '블랙'],
@@ -749,8 +900,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500&q=80',
+      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&q=80',
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.SOLD_OUT,
     createdAt: new Date().toISOString(),
@@ -760,15 +915,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-36',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '톰브라운 4바 트랙 팬츠',
-    price: 105,
+    price: 105000,
     stock: 10,
     colorOptions: ['그레이', '네이비', '블랙'],
     sizeOptions: ['s', 'm', 'l', 'xl'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&q=80',
+      'https://images.unsplash.com/photo-1604176354204-9268737828e4?w=500&q=80',
+      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -778,8 +937,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-37',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '발렌시아가 뱀파이어 백',
-    price: 138,
-    originalPrice: 155,
+    price: 138000,
+    originalPrice: 155000,
     discountRate: 11,
     stock: 4,
     colorOptions: ['블랙', '레드'],
@@ -787,8 +946,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?w=500&q=80',
+      'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=500&q=80',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -798,15 +961,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-38',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '셀린느 카바스 토트백',
-    price: 118,
+    price: 118000,
     stock: 7,
     colorOptions: ['화이트', '블랙', '카멜'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&q=80',
+      'https://images.unsplash.com/photo-1594938298603-c8148c4b4ad5?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -816,8 +983,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-39',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '보테가 베네타 더 포켓 파우치',
-    price: 88,
-    originalPrice: 100,
+    price: 88000,
+    originalPrice: 100000,
     discountRate: 12,
     stock: 9,
     colorOptions: ['화이트', '블랙', '클레이'],
@@ -825,8 +992,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1606503153255-59d8b8b82176?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1606503153255-59d8b8b82176?w=500&q=80',
+      'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80',
+      'https://images.unsplash.com/photo-1612902456551-b33f6cfe7ea3?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -836,15 +1007,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-40',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '디올 클로버 니트 탑',
-    price: 65,
+    price: 65000,
     stock: 17,
     colorOptions: ['핑크', '화이트', '블루'],
     sizeOptions: ['s', 'm', 'l'],
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=500&q=80',
+      'https://images.unsplash.com/photo-1564257631407-4deb1f99d992?w=500&q=80',
+      'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -854,8 +1029,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-41',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '아크네 스튜디오 오버사이즈 코트',
-    price: 148,
-    originalPrice: 170,
+    price: 148000,
+    originalPrice: 170000,
     discountRate: 13,
     stock: 6,
     colorOptions: ['카멜', '블랙', '그레이'],
@@ -863,8 +1038,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=500&q=80',
+      'https://images.unsplash.com/photo-1548126032-079a0fb0099d?w=500&q=80',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -874,15 +1053,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-42',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '가니 레더 앵클 부츠',
-    price: 112,
+    price: 112000,
     stock: 8,
     colorOptions: ['블랙', '브라운'],
     sizeOptions: ['230', '240', '250', '260'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=500&q=80',
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&q=80',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -892,8 +1075,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-43',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '로에베 엘레펀트 백참',
-    price: 15,
-    originalPrice: 20,
+    price: 15000,
+    originalPrice: 20000,
     discountRate: 25,
     stock: 30,
     colorOptions: ['화이트', '블랙', '베이지'],
@@ -901,8 +1084,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1561828995-aa79a2db86dd?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1561828995-aa79a2db86dd?w=500&q=80',
+      'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500&q=80',
+      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -912,15 +1099,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-44',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '프라다 테크노 패브릭 점퍼',
-    price: 142,
+    price: 142000,
     stock: 5,
     colorOptions: ['블랙', '그린', '네이비'],
     sizeOptions: ['s', 'm', 'l', 'xl'],
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1544441893-675973e31985?w=500&q=80',
+      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&q=80',
+      'https://images.unsplash.com/photo-1560243563-062bfc001d68?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -930,8 +1121,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-45',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '미우미우 컬러블록 니트 카디건',
-    price: 96,
-    originalPrice: 115,
+    price: 96000,
+    originalPrice: 115000,
     discountRate: 17,
     stock: 11,
     colorOptions: ['핑크+화이트', '블루+베이지', '그린+옐로우'],
@@ -939,8 +1130,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=500&q=80',
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&q=80',
+      'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -950,15 +1145,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-46',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '톰브라운 아이콘 스트라이프 양말',
-    price: 18,
+    price: 18000,
     stock: 30,
     colorOptions: ['그레이', '네이비', '레드'],
     sizeOptions: ['free'],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=500&q=80',
+      'https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=500&q=80',
+      'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -968,8 +1167,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-47',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '발렌시아가 후디 오버사이즈',
-    price: 122,
-    originalPrice: 140,
+    price: 122000,
+    originalPrice: 140000,
     discountRate: 13,
     stock: 0,
     colorOptions: ['블랙', '화이트', '그레이'],
@@ -977,8 +1176,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1578768079052-aa76e52ff62e?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1578768079052-aa76e52ff62e?w=500&q=80',
+      'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&q=80',
+      'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.SOLD_OUT,
     createdAt: new Date().toISOString(),
@@ -988,15 +1191,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-48',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '셀린느 버킷햇 캔버스',
-    price: 52,
+    price: 52000,
     stock: 19,
     colorOptions: ['베이지', '블랙', '카키'],
     sizeOptions: ['free'],
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1576871337632-b9aef4c17ab9?w=500&q=80',
+      'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&q=80',
+      'https://images.unsplash.com/photo-1556306535-0f09a537f0a3?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -1006,8 +1213,8 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-49',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '보테가 베네타 카세트 백',
-    price: 143,
-    originalPrice: 160,
+    price: 143000,
+    originalPrice: 160000,
     discountRate: 11,
     stock: 3,
     colorOptions: ['블랙', '브라운', '피스타치오'],
@@ -1015,8 +1222,12 @@ const MOCK_PRODUCTS: Product[] = [
     shippingFee: 0,
     timerEnabled: true,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80',
+      'https://images.unsplash.com/photo-1612902456551-b33f6cfe7ea3?w=500&q=80',
+      'https://images.unsplash.com/photo-1606503153255-59d8b8b82176?w=500&q=80',
+    ],
     isNew: false,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -1026,15 +1237,19 @@ const MOCK_PRODUCTS: Product[] = [
     id: 'mock-product-50',
     streamKey: 'PREVIEW_STREAM_KEY',
     name: '디올 뉴 룩 백 미디엄',
-    price: 149,
+    price: 149000,
     stock: 6,
     colorOptions: ['블랙', '화이트', '카멜'],
     sizeOptions: [],
     shippingFee: 0,
     timerEnabled: false,
     timerDuration: 10,
-    imageUrl: undefined,
-    images: [],
+    imageUrl: 'https://images.unsplash.com/photo-1560243563-062bfc001d68?w=500&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1560243563-062bfc001d68?w=500&q=80',
+      'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=500&q=80',
+      'https://images.unsplash.com/photo-1591348278863-a8fb3887e2aa?w=500&q=80',
+    ],
     isNew: true,
     status: ProductStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -1670,6 +1885,19 @@ export default function LivePreviewPage() {
             </button>
 
             <button
+              onClick={() => setIsCartSheetOpen(true)}
+              className="flex flex-col items-center gap-1"
+              aria-label="장바구니"
+            >
+              <div className="relative w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+                <ShoppingCart className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
+              </div>
+              <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
+                장바구니
+              </span>
+            </button>
+
+            <button
               onClick={() => setIsProductSheetOpen(true)}
               className="flex flex-col items-center gap-1"
               aria-label="지난 상품 목록"
@@ -1688,7 +1916,7 @@ export default function LivePreviewPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[40vh]"
+            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[30vh] overflow-hidden flex flex-col"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
             {/* Top gradient fade */}
@@ -1802,7 +2030,7 @@ export default function LivePreviewPage() {
       {/* ── Desktop: flex-col wrapper (video+chat row + featured bar) ── */}
       {!isMobile && (
         <div className="flex flex-1 flex-col min-h-0">
-          <div className="flex flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-[3] min-h-0 overflow-hidden">
             {/* Center: Video + overlays */}
             <div className="flex flex-1 relative items-center justify-center">
               <div className="relative w-full h-full lg:max-w-[560px] xl:max-w-[640px] 2xl:max-w-[720px] lg:h-full bg-black overflow-hidden">
@@ -1948,88 +2176,7 @@ export default function LivePreviewPage() {
             </div>
           </div>
 
-          {/* Bottom: Featured & Past Products Sections (matches live page) */}
-          <div className="w-full flex flex-col gap-8 bg-content-bg/50 border-t border-border-color p-6">
-            {/* Featured Products Section */}
-            {products.length > 0 && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold text-primary-text">인기 상품</h3>
-                  <p className="text-sm text-secondary-text">지금 라이브에서 인기 있는 상품</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {products.slice(0, 5).map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleProductClick(product)}
-                      className="group text-left hover:opacity-80 transition-opacity"
-                    >
-                      <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
-                        {product.imageUrl ? (
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                            unoptimized={product.imageUrl.startsWith('/uploads/')}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <Package className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-primary-text truncate">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Past Products Section */}
-            {products.length > 5 && (
-              <div className="space-y-4 border-t border-border-color pt-6">
-                <div>
-                  <h3 className="text-xl font-bold text-primary-text">지난 상품</h3>
-                  <p className="text-sm text-secondary-text">이전에 소개한 상품들</p>
-                </div>
-                <div className="max-h-[400px] overflow-y-auto">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {products.slice(5).map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => handleProductClick(product)}
-                        className="group text-left hover:opacity-80 transition-opacity"
-                      >
-                        <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-200 mb-2">
-                          {product.imageUrl ? (
-                            <Image
-                              src={product.imageUrl}
-                              alt={product.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-300"
-                              unoptimized={product.imageUrl.startsWith('/uploads/')}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                              <Package className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-primary-text truncate">
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-secondary-text">{formatPrice(product.price)}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Bottom products sections removed — left sidebar ProductList is sufficient on desktop */}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import ChatMessage from './ChatMessage';
 import { ChatMessage as ChatMessageType, SYSTEM_USERNAME } from './types';
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
@@ -16,116 +16,118 @@ export interface ChatMessageListHandle {
   scrollToBottom: (behavior?: ScrollBehavior) => void;
 }
 
+const THRESHOLD = 50;
+
 const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
   function ChatMessageList(
     { messages, compact = false, maxMessages, isAdmin = false, onDeleteMessage },
     ref,
   ) {
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [showScrollButton, setShowScrollButton] = useState(false);
+    const [isAutoScroll, setIsAutoScroll] = useState(true);
 
-    // Limit messages if maxMessages is specified
     const displayMessages = maxMessages ? messages.slice(-maxMessages) : messages;
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-      messagesEndRef.current?.scrollIntoView({ behavior });
+      const el = containerRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
     };
 
     useImperativeHandle(ref, () => ({ scrollToBottom }));
 
     const handleScroll = () => {
-      if (containerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-        setShowScrollButton(!isNearBottom && messages.length > 0);
-      }
+      const el = containerRef.current;
+      if (!el) return;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < THRESHOLD;
+      setIsAutoScroll(isNearBottom);
     };
 
-    useEffect(() => {
-      // Auto-scroll when new message arrives if near bottom
-      if (containerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-        const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+    const handleGoBottom = () => {
+      setIsAutoScroll(true);
+      scrollToBottom('smooth');
+    };
 
-        if (isNearBottom) {
-          scrollToBottom('smooth');
-        }
+    // Auto-scroll only when isAutoScroll is true
+    useLayoutEffect(() => {
+      if (isAutoScroll) {
+        scrollToBottom('auto');
       }
     }, [messages]);
 
     // Initial scroll to bottom
-    useEffect(() => {
+    useLayoutEffect(() => {
       scrollToBottom('auto');
     }, []);
 
     return (
       <div className="relative flex-1 overflow-hidden">
-        {/* Messages Container */}
         <div
           ref={containerRef}
           onScroll={handleScroll}
-          className={`h-full overflow-y-auto flex flex-col scrollbar-thin scrollbar-thumb-hot-pink scrollbar-track-transparent ${
-            compact ? 'px-2 py-1' : 'px-4 py-2'
+          className={`overflow-y-auto ${
+            compact
+              ? 'max-h-[30vh] px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              : 'h-full px-4 py-2 scrollbar-thin scrollbar-thumb-hot-pink scrollbar-track-transparent'
           }`}
         >
-          {displayMessages.length === 0 ? (
-            !compact && (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-secondary-text text-caption text-center px-4">
-                  채팅이 비어 있습니다.
-                  <br />첫 메시지를 남겨보세요!
-                </p>
-              </div>
-            )
-          ) : (
-            <>
-              <div className="flex-grow" />
-              {displayMessages.map((message) => {
-                // System message rendering (e.g., cart/purchase notifications)
-                if (message.username === SYSTEM_USERNAME) {
-                  return (
-                    <div
-                      key={message.id}
-                      className={`animate-fade-in ${compact ? 'mb-1.5 px-1' : 'mb-2 px-2'}`}
-                    >
-                      <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full">
-                        <ShoppingCart className="w-3 h-3 text-orange-400 flex-shrink-0" />
-                        <span
-                          className={`text-orange-400 font-semibold ${
-                            compact ? 'text-[12px]' : 'text-[13px]'
-                          }`}
-                        >
-                          {message.message}
-                        </span>
+          <div className="min-h-full flex flex-col justify-end">
+            {displayMessages.length === 0 ? (
+              !compact && (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-secondary-text text-caption text-center px-4">
+                    채팅이 비어 있습니다.
+                    <br />첫 메시지를 남겨보세요!
+                  </p>
+                </div>
+              )
+            ) : (
+              <>
+                {displayMessages.map((message) => {
+                  if (message.username === SYSTEM_USERNAME) {
+                    return (
+                      <div
+                        key={message.id}
+                        className={`animate-fade-in ${compact ? 'mb-1.5 px-1' : 'mb-2 px-2'}`}
+                      >
+                        <div className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full">
+                          <ShoppingCart className="w-3 h-3 text-orange-400 flex-shrink-0" />
+                          <span
+                            className={`text-orange-400 font-semibold ${
+                              compact ? 'text-[12px]' : 'text-[13px]'
+                            }`}
+                          >
+                            {message.message}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  }
 
-                return (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    compact={compact}
-                    isAdmin={isAdmin}
-                    onDelete={onDeleteMessage}
-                  />
-                );
-              })}
-            </>
-          )}
-          <div ref={messagesEndRef} />
+                  return (
+                    <ChatMessage
+                      key={message.id}
+                      message={message}
+                      compact={compact}
+                      isAdmin={isAdmin}
+                      onDelete={onDeleteMessage}
+                    />
+                  );
+                })}
+              </>
+            )}
+            <div />
+          </div>
         </div>
 
-        {/* Scroll to Bottom Button */}
-        {showScrollButton && (
+        {!isAutoScroll && (
           <button
-            onClick={() => scrollToBottom('smooth')}
-            className="absolute bottom-4 right-4 p-2 bg-hot-pink rounded-full shadow-lg hover:bg-hot-pink-dark transition-colors z-10"
-            aria-label="Scroll to bottom"
+            onClick={handleGoBottom}
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full shadow-lg flex items-center gap-1.5 z-10 border border-white/10 hover:bg-black/80 transition-all"
+            aria-label="최신 채팅으로 이동"
           >
-            <ChevronDownIcon className="w-5 h-5 text-white" />
+            <ChevronDownIcon className="w-3.5 h-3.5 text-white" />
+            <span className="text-white text-xs font-medium">최신 채팅</span>
           </button>
         )}
       </div>

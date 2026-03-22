@@ -33,10 +33,11 @@ export function ImageGallery({
   const hasMultiple = imageList.length > 1;
   const shouldShowThumbnails = showThumbnails !== undefined ? showThumbnails : hasMultiple;
 
-  // Reset index when images change
+  // Reset index only when the actual image URLs change (not just array reference)
+  const imagesKey = imageList.join(',');
   useEffect(() => {
     setCurrentIndex(0);
-  }, [images]);
+  }, [imagesKey]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? imageList.length - 1 : prev - 1));

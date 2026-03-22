@@ -27,7 +27,8 @@ export function Footer() {
   useEffect(() => {
     fetch('/api/config/business')
       .then((r) => r.json())
-      .then((data) => {
+      .then((res) => {
+        const data = res?.data ?? res;
         if (data?.businessRegistrationNumber) setBizNumber(data.businessRegistrationNumber);
         if (data?.businessAddress) setBizAddress(data.businessAddress);
         if (data?.onlineSalesRegistrationNumber)
