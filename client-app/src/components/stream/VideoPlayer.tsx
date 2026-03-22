@@ -659,6 +659,17 @@ export default function VideoPlayer({
       },
     );
 
+    // Initial viewer count on join success
+    socket.on(
+      'stream:viewer:join:success',
+      (data: { data?: { streamKey: string; viewerCount: number } }) => {
+        if (data.data && data.data.streamKey === streamKey) {
+          setViewerCount(data.data.viewerCount);
+          onViewerCountChange?.(data.data.viewerCount);
+        }
+      },
+    );
+
     socket.on('stream:ended', (data: { streamKey: string }) => {
       if (data.streamKey === streamKey) {
         setStreamEnded(true);
