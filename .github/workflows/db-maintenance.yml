@@ -10,19 +10,14 @@ jobs:
   reset-profile:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-          fi
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          ssh-host: ${{ secrets.PRODUCTION_HOST }}
       - name: Reset user profile
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}

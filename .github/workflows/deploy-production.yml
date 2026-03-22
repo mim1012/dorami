@@ -112,21 +112,14 @@ jobs:
     if: inputs.rollback != 'true'
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-          fi
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          ssh-host: ${{ secrets.PRODUCTION_HOST }}
 
       - name: Check for active live streams
         env:
@@ -281,10 +274,10 @@ jobs:
   # ===========================================
   backup:
     name: Pre-deployment Backup
-    needs: [validate, build, live-check]
-    # Explicit always() prevents transitive skip propagation: when test is skipped,
-    # GitHub's success() evaluates the full upstream graph and returns false.
-    if: always() && (needs.build.result == 'success' || inputs.rollback == 'true') && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped')
+    needs: [validate, live-check]
+    # Runs in parallel with build (no build dependency).
+    # Deploy job still requires both build + backup success before proceeding.
+    if: always() && (needs['live-check'].result == 'success' || needs['live-check'].result == 'skipped' || inputs.rollback == 'true')
     runs-on: ubuntu-latest
 
     steps:
@@ -292,20 +285,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-          fi
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          ssh-host: ${{ secrets.PRODUCTION_HOST }}
 
       - name: Test SSH Connection
         env:
@@ -391,20 +374,10 @@ jobs:
           ref: ${{ needs.validate.outputs.version }}
 
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-          fi
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          ssh-host: ${{ secrets.PRODUCTION_HOST }}
 
       - name: Check Server State (Docker volumes & containers)
         env:
@@ -968,20 +941,10 @@ jobs:
 
     steps:
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-          HOST: ${{ secrets.PRODUCTION_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          if printf '%s' "$SSH_KEY" | grep -q "BEGIN"; then
-            printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          else
-            printf '%s' "$SSH_KEY" | base64 -d > ~/.ssh/id_rsa
-          fi
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null || { echo "ERROR: SSH key invalid"; exit 1; }
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          ssh-host: ${{ secrets.PRODUCTION_HOST }}
 
       - name: Health Check - Backend API
         # Backend uses expose: not ports:, so curl localhost:3001 won't work from host.

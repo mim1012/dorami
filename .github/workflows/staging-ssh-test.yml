@@ -11,15 +11,14 @@ jobs:
       HOST: ${{ secrets.STAGING_HOST }}
       USER: ${{ secrets.STAGING_USER }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-          echo "SSH key setup complete"
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.STAGING_SSH_KEY }}
+          ssh-host: ${{ secrets.STAGING_HOST }}
 
       - name: Test SSH Connection
         run: |

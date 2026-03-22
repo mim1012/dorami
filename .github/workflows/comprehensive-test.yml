@@ -41,8 +41,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: dorami_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
         ports: ['5432:5432']
         options: >-
           --health-cmd="pg_isready -U postgres"
@@ -70,15 +70,15 @@ jobs:
       - run: npm run prisma:generate
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
       - name: Run unit tests
         id: unit
         continue-on-error: true
         run: cd backend && npx jest --ci --forceExit --json --outputFile=../reports/unit-results.json 2>&1 | tee ../reports/unit-output.txt
         env:
-          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-jwt-secret-for-ci
+          JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
           PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
       - name: Count results
         id: count
@@ -145,8 +145,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: dorami_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
         ports: ['5432:5432']
         options: >-
           --health-cmd="pg_isready -U postgres"
@@ -179,9 +179,9 @@ jobs:
           npm run start:dev &
           sleep 15
         env:
-          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-jwt-secret-for-ci
+          JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
           PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
           CSRF_ENABLED: 'false'
           PORT: '3001'
@@ -222,8 +222,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: dorami_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
         ports: ['5432:5432']
         options: >-
           --health-cmd="pg_isready -U postgres"
@@ -254,9 +254,9 @@ jobs:
           npm run start:dev &
           sleep 15
         env:
-          DATABASE_URL: postgresql://postgres:testpass@localhost:5432/dorami_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-jwt-secret-for-ci
+          JWT_SECRET: test-jwt-secret-for-ci-testing-purposes-only
           PROFILE_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
           CSRF_ENABLED: 'false'
       - name: Run load test

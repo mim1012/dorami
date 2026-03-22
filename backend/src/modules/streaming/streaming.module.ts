@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { StreamingService } from './streaming.service';
 import { StreamingController } from './streaming.controller';
+import { LiveMetricsService } from './live-metrics.service';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { StreamingController } from './streaming.controller';
     }),
   ],
   controllers: [StreamingController],
-  providers: [StreamingService],
+  providers: [StreamingService, LiveMetricsService],
   exports: [StreamingService],
 })
 export class StreamingModule {}

@@ -48,6 +48,8 @@ jobs:
     needs: [check]
     if: needs.check.outputs.source_changed == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci.yml
+    with:
+      skip-docker-build: true
     permissions:
       contents: read
       packages: write
@@ -91,53 +93,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH
-        env:
-          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
-          SSH_HOST: ${{ secrets.STAGING_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          KEY_OK=false
-
-          # Try PEM format first
-          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
-            echo "✓ SSH key loaded (raw PEM)"
-            KEY_OK=true
-          fi
-
-          # If PEM failed, try Base64 format
-          if [ "$KEY_OK" = "false" ]; then
-            # Remove all whitespace including newlines before base64 decode
-            printf '%s' "$SSH_KEY" | tr -d ' \r\n' > /tmp/ssh_key_b64
-            KEY_B64_LEN=$(wc -c < /tmp/ssh_key_b64)
-            echo "Base64 key length after whitespace removal: $KEY_B64_LEN"
-
-            if base64 -d < /tmp/ssh_key_b64 > ~/.ssh/id_rsa 2>/tmp/b64_error.txt; then
-              chmod 600 ~/.ssh/id_rsa
-              KEY_PEM_LEN=$(wc -c < ~/.ssh/id_rsa)
-              echo "Decoded PEM key length: $KEY_PEM_LEN"
-
-              if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
-                echo "✓ SSH key loaded (base64)"
-                KEY_OK=true
-              else
-                echo "✗ Decoded key failed ssh-keygen validation"
-                head -1 ~/.ssh/id_rsa
-              fi
-            else
-              echo "✗ Base64 decode failed:"
-              cat /tmp/b64_error.txt
-            fi
-            rm -f /tmp/ssh_key_b64 /tmp/b64_error.txt
-          fi
-
-          if [ "$KEY_OK" = "false" ]; then
-            echo "ERROR: SSH key invalid. len=${#SSH_KEY} has_begin=$(printf '%s' "$SSH_KEY" | grep -c BEGIN || echo 0)"
-            exit 1
-          fi
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+        uses: ./.github/actions/setup-ssh
+        with:
+          ssh-key: ${{ secrets.STAGING_SSH_KEY }}
+          ssh-host: ${{ secrets.STAGING_HOST }}
 
       - name: Validate image tag format
         id: image_tag
@@ -474,7 +433,7 @@ jobs:
           ENDSSH
 
       - name: Save staging image tag to repo variable
-        if: success() && needs.check.outputs.source_changed == 'true'
+        if: success() && needs.build.outputs.image_tag != ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

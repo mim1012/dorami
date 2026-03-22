@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       POSTGRES_DB: ${POSTGRES_DB:-live_commerce_staging}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-live_commerce_staging}"]
@@ -21,9 +21,9 @@ services:
   # Redis cache override
   redis:
     restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD required}
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD required}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       REDIS_PUBSUB_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       REDIS_ADAPTER_ENABLED: "true"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID required}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET required}
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:?KAKAO_CALLBACK_URL required}
@@ -62,7 +62,7 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@dorami.shop}
       CSRF_ENABLED: "${CSRF_ENABLED:-false}"
       FRONTEND_URL: ${FRONTEND_URL:-http://staging.doremi-live.com}
-      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:?PROFILE_ENCRYPTION_KEY required}
       RTMP_SERVER_URL: ${RTMP_SERVER_URL:-rtmp://staging.doremi-live.com:1935/live}
       RTMP_INTERNAL_URL: rtmp://srs:1935/live
       RTMP_EXTERNAL_URL: ${RTMP_EXTERNAL_URL:-rtmp://staging.doremi-live.com:1935/live}
