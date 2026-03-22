@@ -20,12 +20,13 @@ export function Button({
     'inline-flex items-center justify-center rounded-button font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hot-pink focus-visible:ring-offset-2 focus-visible:ring-offset-primary-black disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-hot-pink text-white enabled:hover:bg-hot-pink/90 enabled:active:scale-95',
+    primary:
+      'bg-hot-pink text-white not-disabled:hover:bg-hot-pink/90 not-disabled:active:scale-95',
     secondary:
-      'bg-content-bg text-primary-text enabled:hover:bg-content-bg/80 enabled:active:scale-95 border border-border-color',
+      'bg-content-bg text-primary-text not-disabled:hover:bg-content-bg/80 not-disabled:active:scale-95 border border-border-color',
     outline:
-      'border-2 border-hot-pink text-hot-pink enabled:hover:bg-hot-pink enabled:hover:text-white enabled:active:scale-95',
-    ghost: 'text-hot-pink enabled:hover:bg-hot-pink/10 enabled:active:scale-95',
+      'border-2 border-hot-pink text-hot-pink not-disabled:hover:bg-hot-pink not-disabled:hover:text-white not-disabled:active:scale-95',
+    ghost: 'text-hot-pink not-disabled:hover:bg-hot-pink/10 not-disabled:active:scale-95',
   };
 
   const sizeStyles = {
