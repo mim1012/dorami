@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { InsufficientStockException } from '../../common/exceptions/business.exception';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -138,9 +139,7 @@ export class CartService {
         const currentAvailableStock = freshProduct.quantity - currentReserved;
 
         if (currentAvailableStock < quantity) {
-          throw new BadRequestException(
-            `Insufficient stock. Available: ${currentAvailableStock}, Requested: ${quantity}`,
-          );
+          throw new InsufficientStockException(productId, currentAvailableStock, quantity);
         }
 
         const expiresAt = freshProduct.timerEnabled
@@ -254,8 +253,10 @@ export class CartService {
         const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
 
         if (availableStock < updateDto.quantity) {
-          throw new BadRequestException(
-            `Insufficient stock. Available: ${availableStock}, Requested: ${updateDto.quantity}`,
+          throw new InsufficientStockException(
+            cartItem.productId,
+            availableStock,
+            updateDto.quantity,
           );
         }
 

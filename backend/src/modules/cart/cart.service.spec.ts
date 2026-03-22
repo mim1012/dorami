@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { InsufficientStockException } from '../../common/exceptions/business.exception';
 import { CartService } from './cart.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EncryptionService } from '../../common/services/encryption.service';
@@ -184,15 +185,13 @@ describe('CartService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw BadRequestException when insufficient stock', async () => {
+    it('should throw InsufficientStockException when insufficient stock', async () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest
         .spyOn(prismaService.cart, 'aggregate')
         .mockResolvedValue({ _sum: { quantity: 8 } } as any);
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
 
-      // Mock $transaction to throw when checking insufficient stock
-      // (8 reserved + 5 requested = 13 > 10 available)
       (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
         const tx = {
           product: {
@@ -202,13 +201,12 @@ describe('CartService', () => {
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 8 } }),
           },
         };
-        // This will trigger the insufficient stock check in the service
         return callback(tx);
       });
 
       await expect(
         service.addToCart('user-1', { productId: 'product-1', quantity: 5 }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(InsufficientStockException);
     });
 
     it('should update existing cart item quantity when same product/color/size', async () => {
@@ -356,7 +354,7 @@ describe('CartService', () => {
       );
     });
 
-    it('should throw BadRequestException when insufficient stock for update', async () => {
+    it('should throw InsufficientStockException when insufficient stock for update', async () => {
       jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
 
@@ -366,7 +364,6 @@ describe('CartService', () => {
             findUniqueOrThrow: jest.fn().mockResolvedValue(mockProduct),
           },
           cart: {
-            // reserved=5, current item qty=1, so availableStock = 10-5+1=6, requesting 10 => throw
             aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 5 } }),
             update: jest.fn(),
           },
@@ -375,7 +372,7 @@ describe('CartService', () => {
       });
 
       await expect(service.updateCartItem('user-1', 'cart-1', { quantity: 10 })).rejects.toThrow(
-        BadRequestException,
+        InsufficientStockException,
       );
     });
   });

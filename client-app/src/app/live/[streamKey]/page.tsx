@@ -707,7 +707,7 @@ export default function LiveStreamPage() {
 
       showToast('장바구니에 담았어요!', 'success', {
         label: '장바구니 보기',
-        onClick: () => router.push('/cart'),
+        onClick: () => setIsCartSheetOpen(true),
       });
     } catch (error: any) {
       console.error('Failed to add to cart:', error);
