@@ -1,0 +1,48 @@
+name: Setup SSH
+description: Configure SSH key (PEM or Base64) and add host to known_hosts
+
+inputs:
+  ssh-key:
+    description: SSH private key (PEM format or Base64-encoded)
+    required: true
+  ssh-host:
+    description: Target host for known_hosts
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configure SSH key and known_hosts
+      shell: bash
+      env:
+        SSH_KEY: ${{ inputs.ssh-key }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+      run: |
+        mkdir -p ~/.ssh
+        KEY_OK=false
+
+        # Try PEM format first
+        printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+          echo "✓ SSH key loaded (raw PEM)"
+          KEY_OK=true
+        fi
+
+        # If PEM failed, try Base64 format
+        if [ "$KEY_OK" = "false" ]; then
+          printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_rsa 2>/dev/null
+          chmod 600 ~/.ssh/id_rsa
+          if ssh-keygen -y -f ~/.ssh/id_rsa > /dev/null 2>&1; then
+            echo "✓ SSH key loaded (base64)"
+            KEY_OK=true
+          fi
+        fi
+
+        if [ "$KEY_OK" = "false" ]; then
+          echo "ERROR: SSH key invalid (tried PEM and Base64)"
+          exit 1
+        fi
+
+        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
