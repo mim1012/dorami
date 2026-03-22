@@ -1,32 +1,52 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCart, cartKeys } from '@/lib/hooks/queries/use-cart';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
-import { usePointBalance } from '@/lib/hooks/queries/use-points';
+import { useCheckoutFlow } from '@/lib/hooks/use-checkout-flow';
 import { Display, Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
-import { apiClient } from '@/lib/api/client';
-import { getUserMessage } from '@/lib/errors/error-messages';
+import { formatPrice } from '@/lib/utils/price';
 import CartTimer from '@/components/cart/CartTimer';
 import { AlertCircle, CheckCircle, Clock, Coins, DollarSign, MapPin } from 'lucide-react';
-
-interface PointsConfig {
-  pointsEnabled: boolean;
-  pointEarningRate: number;
-  pointMinRedemption: number;
-  pointMaxRedemptionPct: number;
-}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: cartData } = useCart();
-  const queryClient = useQueryClient();
   const items = cartData?.items ?? [];
   const { user, isLoading: authLoading } = useAuth();
+
+  const {
+    pointsConfig,
+    paymentSettings,
+    pointBalance,
+    usePoints,
+    pointsToUse,
+    maxUsablePoints,
+    canUsePoints,
+    effectivePointsUsed,
+    finalTotal,
+    orderTotal,
+    orderSubtotal,
+    shippingFee,
+    termsAgreed,
+    privacyAgreed,
+    isSubmitting,
+    error,
+    isSuccess,
+    orderId,
+    setUsePoints,
+    setPointsToUse,
+    handleUseAllPoints,
+    handlePointsInputChange,
+    setTermsAgreed,
+    setPrivacyAgreed,
+    submitOrder,
+  } = useCheckoutFlow({ cartData });
+
+  const { zelleEmail, zelleRecipientName, venmoEmail, venmoRecipientName } = paymentSettings;
 
   const earliestExpiry = items
     .map((item) => item.expiresAt)
@@ -36,104 +56,18 @@ export default function CheckoutPage() {
   const handleCartExpired = useCallback(() => {
     router.push('/cart?expired=1');
   }, [router]);
-  const { data: balance } = usePointBalance();
-
-  const idempotencyKeyRef = useRef<string>('');
 
   useEffect(() => {
-    idempotencyKeyRef.current = crypto.randomUUID();
-  }, []);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
-  const [usePoints, setUsePoints] = useState(false);
-  const [pointsToUse, setPointsToUse] = useState(0);
-  const [orderCompleted, setOrderCompleted] = useState(false);
-  const [termsAgreed, setTermsAgreed] = useState(false);
-  const [privacyAgreed, setPrivacyAgreed] = useState(false);
-  const [zelleEmail, setZelleEmail] = useState('');
-  const [zelleRecipientName, setZelleRecipientName] = useState('');
-  const [venmoEmail, setVenmoEmail] = useState('');
-  const [venmoRecipientName, setVenmoRecipientName] = useState('');
-
-  useEffect(() => {
-    // cartData 로딩 중엔 리다이렉트 방지, 로드 후 빈 경우만 /cart로 이동
-    if (cartData && items.length === 0 && !orderCompleted) {
+    if (cartData && items.length === 0 && !isSuccess) {
       router.push('/cart?expired=1');
     }
-  }, [cartData, items, router, orderCompleted]);
+  }, [cartData, items, router, isSuccess]);
 
-  // Load points config
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const response = await apiClient.get<PointsConfig>('/points/config');
-        setPointsConfig(response.data);
-      } catch {
-        // Points config unavailable, silently ignore
-      }
-    };
-    loadConfig();
-  }, []);
-
-  // Load payment settings
-  useEffect(() => {
-    const loadPaymentSettings = async () => {
-      try {
-        const response = await apiClient.get<{
-          zelleEmail: string;
-          zelleRecipientName: string;
-          venmoEmail: string;
-          venmoRecipientName: string;
-        }>('/config/payment');
-        setZelleEmail(response.data.zelleEmail || '');
-        setZelleRecipientName(response.data.zelleRecipientName || '');
-        setVenmoEmail(response.data.venmoEmail || '');
-        setVenmoRecipientName(response.data.venmoRecipientName || '');
-      } catch {
-        // silently ignore
-      }
-    };
-    loadPaymentSettings();
-  }, []);
-
-  // Convert string totals from backend to numbers (backend returns Decimal as string)
-  const orderSubtotal = cartData?.subtotal ? parseFloat(cartData.subtotal) : 0;
-  const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
-  const orderTotal = orderSubtotal + shippingFee;
-
-  const maxPointsAllowed = pointsConfig
-    ? Math.floor(orderTotal * (pointsConfig.pointMaxRedemptionPct / 100))
-    : 0;
-
-  const maxUsablePoints = Math.min(balance?.currentBalance || 0, maxPointsAllowed);
-
-  const canUsePoints =
-    pointsConfig?.pointsEnabled &&
-    balance &&
-    balance.currentBalance >= (pointsConfig?.pointMinRedemption || 0) &&
-    maxUsablePoints > 0;
-
-  const effectivePointsUsed = usePoints ? pointsToUse : 0;
-  const finalTotal = orderTotal - effectivePointsUsed;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const handleUseAllPoints = () => {
-    setPointsToUse(maxUsablePoints);
-  };
-
-  const handlePointsInputChange = (value: string) => {
-    const num = parseInt(value) || 0;
-    setPointsToUse(Math.min(Math.max(0, num), maxUsablePoints));
-  };
+    if (isSuccess && orderId) {
+      router.push(`/orders/${orderId}`);
+    }
+  }, [isSuccess, orderId, router]);
 
   const handleSubmitOrder = async () => {
     if (!user) {
@@ -141,30 +75,7 @@ export default function CheckoutPage() {
       router.push(`/login?reason=session_expired&returnTo=${encodeURIComponent(safePath)}`);
       return;
     }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const body: { pointsToUse?: number } = {};
-      if (usePoints && pointsToUse > 0) {
-        body.pointsToUse = pointsToUse;
-      }
-
-      const response = await apiClient.post<{ id: string }>('/orders/from-cart', body, {
-        headers: { 'Idempotency-Key': idempotencyKeyRef.current },
-      });
-
-      setOrderCompleted(true);
-      idempotencyKeyRef.current = crypto.randomUUID();
-      queryClient.invalidateQueries({ queryKey: cartKeys.all });
-      router.push(`/orders/${response.data.id}`);
-    } catch (err: any) {
-      console.error('Order creation failed:', err);
-      setError(getUserMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
+    await submitOrder();
   };
 
   if (!cartData) {
@@ -269,7 +180,7 @@ export default function CheckoutPage() {
               <Body className="text-secondary-text">
                 보유 포인트:{' '}
                 <span className="text-hot-pink font-bold">
-                  {new Intl.NumberFormat('ko-KR').format(balance!.currentBalance)} P
+                  {new Intl.NumberFormat('ko-KR').format(pointBalance)} P
                 </span>
               </Body>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -278,7 +189,6 @@ export default function CheckoutPage() {
                   checked={usePoints}
                   onChange={(e) => {
                     setUsePoints(e.target.checked);
-                    if (!e.target.checked) setPointsToUse(0);
                   }}
                   className="w-5 h-5 rounded border-2 border-hot-pink bg-transparent checked:bg-hot-pink focus:ring-hot-pink"
                 />

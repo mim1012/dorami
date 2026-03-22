@@ -285,7 +285,9 @@ export default function AdminOrderDetailPage() {
             </div>
             <div>
               <Body className="text-secondary-text text-caption">인스타그램</Body>
-              <Body className="text-hot-pink">@{order.customer.instagramId || '-'}</Body>
+              <Body className="text-hot-pink">
+                @{(order.customer.instagramId || '-').replace(/^@/, '')}
+              </Body>
             </div>
             <div>
               <Body className="text-secondary-text text-caption">입금자명</Body>

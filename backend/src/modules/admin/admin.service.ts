@@ -275,7 +275,7 @@ export class AdminService {
     }
 
     const lines = [
-      normalized.fullName || normalized.address1,
+      normalized.address1,
       normalized.address2,
       [normalized.city, normalized.state, normalized.zip].filter(Boolean).join(' ').trim(),
     ]
@@ -874,6 +874,8 @@ export class AdminService {
       { header: '방송제목', key: 'broadcastTitle', width: 30 },
       { header: '주문상태', key: 'status', width: 12 },
       { header: '인스타그램ID', key: 'instagramId', width: 18 },
+      { header: '수신인이름', key: 'recipientName', width: 14 },
+      { header: '입금자명', key: 'depositorName', width: 14 },
       { header: '상품명', key: 'productName', width: 30 },
       { header: '단가', key: 'price', width: 12 },
       { header: '수량', key: 'quantity', width: 8 },
@@ -899,6 +901,8 @@ export class AdminService {
 
     orders.forEach((order) => {
       const shippingAddressStr = this.formatShippingAddressSummary(order.shippingAddress);
+      const normalized = this.normalizeShippingAddress(order.shippingAddress);
+      const recipientName = normalized?.fullName ?? '';
       const phone = (order as any).user?.kakaoPhone ?? '-';
 
       if (order.orderItems && order.orderItems.length > 0) {
@@ -909,6 +913,8 @@ export class AdminService {
             broadcastTitle: broadcastTitle ?? '',
             status: ORDER_STATUS_KO[order.status] ?? order.status,
             instagramId: order.instagramId?.replace(/^@/, ''),
+            recipientName,
+            depositorName: order.depositorName ?? '',
             productName: item.productName,
             price: Number(item.price),
             quantity: item.quantity,
@@ -928,6 +934,8 @@ export class AdminService {
           broadcastTitle: '',
           status: ORDER_STATUS_KO[order.status] ?? order.status,
           instagramId: order.instagramId?.replace(/^@/, ''),
+          recipientName,
+          depositorName: order.depositorName ?? '',
           productName: '-',
           color: '-',
           size: '-',

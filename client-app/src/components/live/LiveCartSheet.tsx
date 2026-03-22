@@ -1,179 +1,154 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { X, ShoppingCart } from 'lucide-react';
-import { useCart, type CartItem } from '@/lib/hooks/queries/use-cart';
+import { X } from 'lucide-react';
+import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useModalBehavior } from '@/lib/hooks/use-modal-behavior';
-import { formatPrice } from '@/lib/utils/price';
+import { useCheckoutFlow } from '@/lib/hooks/use-checkout-flow';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { apiClient } from '@/lib/api/client';
+import type { ShippingAddress } from '@live-commerce/shared-types';
+import LiveCartPanel from '@/components/live/checkout/LiveCartPanel';
+import LiveCheckoutPanel from '@/components/live/checkout/LiveCheckoutPanel';
+import LiveOrderSuccessPanel from '@/components/live/checkout/LiveOrderSuccessPanel';
+
+type CheckoutStep = 'cart' | 'checkout' | 'success';
 
 interface LiveCartSheetProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function CartItemRow({ item }: { item: CartItem }) {
-  const optionParts = [item.color, item.size].filter(Boolean);
-  const optionLabel = optionParts.length > 0 ? `${optionParts.join(' · ')} · ` : '';
-
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/5 last:border-0">
-      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-white/5 relative">
-        {item.product?.imageUrl ? (
-          <Image
-            src={item.product.imageUrl}
-            alt={item.productName}
-            fill
-            className="object-cover"
-            sizes="56px"
-            unoptimized={item.product.imageUrl.startsWith('/uploads/')}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5 text-white/20" />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-semibold truncate">{item.productName}</p>
-        <p className="text-white/40 text-xs">
-          {optionLabel}
-          {item.quantity}개
-        </p>
-      </div>
-      <p className="text-white font-bold text-sm flex-shrink-0">{formatPrice(item.subtotal)}</p>
-    </div>
-  );
-}
-
 export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
   const router = useRouter();
   const { data: cartData } = useCart();
-  useModalBehavior({ isOpen, onClose });
+  const { user, isAuthenticated, refreshProfile } = useAuth();
 
-  const items = cartData?.items?.filter((item) => item.status === 'ACTIVE') ?? [];
-  const grandTotal = cartData?.grandTotal ? parseFloat(cartData.grandTotal) : 0;
+  const [step, setStep] = useState<CheckoutStep>('cart');
+  const [toast, setToast] = useState<string | null>(null);
+  const [successOrderId, setSuccessOrderId] = useState('');
+  const [successTotal, setSuccessTotal] = useState('');
 
-  const timerItems = items.filter((item) => item.timerEnabled && item.expiresAt);
-  const earliestExpiresAt =
-    timerItems.length > 0 ? timerItems.map((item) => item.expiresAt!).sort()[0] : null;
+  const checkoutFlow = useCheckoutFlow({ cartData });
 
-  // Compute total timer duration (seconds) from the item whose expiresAt is earliest.
-  // Falls back to remainingSeconds if available, otherwise uses 600s (10 min) as a safe default.
-  const timerDurationSeconds = (() => {
-    if (timerItems.length === 0) return 600;
-    const earliest = timerItems.find((item) => item.expiresAt === earliestExpiresAt);
-    if (earliest?.remainingSeconds != null && earliest.remainingSeconds > 0) {
-      // remainingSeconds is time left; we need total duration.
-      // Best proxy: use the item with the largest remainingSeconds among timer items
-      // (they were all refreshed together on add/update).
-      const maxRemaining = Math.max(...timerItems.map((i) => i.remainingSeconds ?? 0));
-      return maxRemaining > 0 ? maxRemaining : 600;
-    }
-    return 600;
-  })();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    },
+    [],
+  );
 
-  const [localRemaining, setLocalRemaining] = useState(0);
-  useEffect(() => {
-    if (!earliestExpiresAt) {
-      setLocalRemaining(0);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setStep('cart');
+    onClose();
+  }, [onClose]);
+
+  useModalBehavior({ isOpen, onClose: handleClose });
+
+  const handleProceedToCheckout = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      showToast('로그인이 필요합니다');
       return;
     }
-    const tick = () => {
-      const diff = new Date(earliestExpiresAt).getTime() - Date.now();
-      setLocalRemaining(Math.max(0, Math.floor(diff / 1000)));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [earliestExpiresAt]);
+    // Fetch full profile (includes decrypted shippingAddress, unlike /users/me)
+    try {
+      const res = await apiClient.get<{ shippingAddress?: unknown }>('/users/profile/me');
+      const addr = res.data?.shippingAddress as ShippingAddress | null | undefined;
+      if (!addr || !('fullName' in addr) || !addr.fullName) {
+        showToast('배송지를 먼저 등록해주세요');
+        return;
+      }
+    } catch {
+      showToast('사용자 정보를 확인할 수 없습니다');
+      return;
+    }
+    setStep('checkout');
+  }, [isAuthenticated, user, showToast]);
 
-  const progressPercent =
-    localRemaining > 0 ? Math.min(100, (localRemaining / timerDurationSeconds) * 100) : 0;
+  const handleCheckoutSuccess = useCallback((orderId: string, total: string) => {
+    setSuccessOrderId(orderId);
+    setSuccessTotal(total);
+    setStep('success');
+  }, []);
+
+  const handleViewOrder = useCallback(
+    (orderId: string) => {
+      handleClose();
+      router.push(`/orders/${orderId}`);
+    },
+    [handleClose, router],
+  );
+
+  const cartItemCount = cartData?.items?.filter((i) => i.status === 'ACTIVE').length ?? 0;
+
+  // Step-specific max height
+  const maxH = step === 'cart' ? 'max-h-[75dvh]' : 'max-h-[85dvh]';
+
+  // Panel animation class by step
+  const panelAnimation =
+    step === 'checkout'
+      ? 'animate-slide-left'
+      : step === 'success'
+        ? 'animate-scale-fade-in'
+        : 'animate-slide-right';
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60]">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#111] rounded-t-3xl animate-slide-up max-h-[75dvh] flex flex-col pb-[env(safe-area-inset-bottom)]">
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-white font-bold text-base flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4" />내 장바구니
-            </h2>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white active:scale-90 transition-all"
-              aria-label="닫기"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Timer progress bar — only shown when timer-enabled items exist */}
-          {timerItems.length > 0 && (
-            <>
-              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-hot-pink transition-all duration-1000"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-white/40 mt-1">
-                {formatTime(localRemaining)} 내 결제 필요
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Item list */}
-        <div className="flex-1 overflow-y-auto px-5">
-          {items.length > 0 ? (
-            items.map((item) => <CartItemRow key={item.id} item={item} />)
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-white/40">
-              <ShoppingCart className="w-10 h-10 mb-3 opacity-30" />
-              <p className="text-sm">아직 담은 상품이 없어요 👜</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-white/10">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-white/60">합계</span>
-            <span className="text-white font-semibold">{formatPrice(grandTotal)}</span>
-          </div>
-          <div className="flex justify-between text-xs text-white/40 mb-4">
-            <span>배송비</span>
-            <span>
-              {parseFloat(cartData?.totalShippingFee ?? '0') === 0
-                ? '무료'
-                : formatPrice(parseFloat(cartData?.totalShippingFee ?? '0'))}
-            </span>
-          </div>
+      <div
+        className={`absolute bottom-0 left-0 right-0 bg-[#111] rounded-t-3xl animate-slide-up ${maxH} flex flex-col pb-[env(safe-area-inset-bottom)] transition-[max-height] duration-300`}
+      >
+        {/* Close button — always visible */}
+        <div className="absolute top-4 right-4 z-10">
           <button
-            onClick={() => {
-              onClose();
-              router.push('/checkout');
-            }}
-            disabled={items.length === 0}
-            className="w-full py-3.5 bg-hot-pink text-white font-bold rounded-2xl active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={handleClose}
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white active:scale-90 transition-all"
+            aria-label="닫기"
           >
-            {items.length > 0 ? `${formatPrice(grandTotal)} 결제하기 →` : '장바구니가 비어있어요'}
+            <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Toast */}
+        {toast && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 bg-white/10 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-full border border-white/20 animate-slide-up-toast whitespace-nowrap">
+            {toast}
+          </div>
+        )}
+
+        {/* Panel body — keyed by step so each mounts fresh with its animation */}
+        <div key={step} className={`flex-1 min-h-0 ${panelAnimation}`}>
+          {step === 'cart' && <LiveCartPanel onProceedToCheckout={handleProceedToCheckout} />}
+          {step === 'checkout' && (
+            <LiveCheckoutPanel
+              checkoutFlow={checkoutFlow}
+              user={user}
+              cartItemCount={cartItemCount}
+              onBack={() => setStep('cart')}
+              onSuccess={handleCheckoutSuccess}
+            />
+          )}
+          {step === 'success' && (
+            <LiveOrderSuccessPanel
+              orderId={successOrderId}
+              totalAmount={successTotal}
+              onViewOrder={handleViewOrder}
+              onClose={handleClose}
+            />
+          )}
         </div>
       </div>
     </div>

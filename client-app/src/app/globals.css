@@ -499,3 +499,63 @@ body {
 .animate-fade-in-backdrop {
   animation: fade-in-backdrop 0.2s ease-out forwards;
 }
+
+/* ── Checkout step: slide left (forward navigation) ── */
+@keyframes slide-left {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-left {
+  animation: slide-left 0.25s ease-out forwards;
+}
+
+/* ── Checkout step: slide right (back navigation) ── */
+@keyframes slide-right {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-right {
+  animation: slide-right 0.25s ease-out forwards;
+}
+
+/* ── Checkout success: scale up + fade in ── */
+@keyframes scale-fade-in {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-scale-fade-in {
+  animation: scale-fade-in 0.3s ease-out forwards;
+}
+
+/* ── Checkmark SVG draw animation ── */
+@keyframes check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.animate-check-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: check-draw 0.3s ease-out 0.1s forwards;
+}

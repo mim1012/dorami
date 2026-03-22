@@ -98,7 +98,9 @@ export function Footer() {
                 <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" />
                 <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
               </svg>
-              <span className="text-[10px] font-semibold text-secondary-text">@{instagramId}</span>
+              <span className="text-[10px] font-semibold text-secondary-text">
+                @{instagramId?.replace(/^@/, '')}
+              </span>
             </a>
 
             {/* KakaoTalk Channel */}

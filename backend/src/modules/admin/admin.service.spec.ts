@@ -995,6 +995,101 @@ describe('AdminService', () => {
       expect(buffer).toBeInstanceOf(Buffer);
     });
 
+    it('엑셀에 수신인이름, 입금자명 컬럼이 있어야 한다', async () => {
+      const order = makeOrder({
+        depositorName: '홍길동입금',
+        shippingAddress: {
+          fullName: '김수신',
+          address1: '123 Main St',
+          address2: 'Apt 4B',
+          city: 'Los Angeles',
+          state: 'CA',
+          zip: '90001',
+        },
+        orderItems: [
+          {
+            id: 'item-1',
+            productName: '테스트상품',
+            price: 10000,
+            quantity: 1,
+            color: '빨강',
+            size: 'L',
+            shippingFee: 3000,
+            Product: null,
+          },
+        ],
+      });
+
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([order] as any);
+      jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
+
+      const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      const ExcelJS = require('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const sheet = workbook.getWorksheet('주문 목록');
+
+      // Check header row has 수신인이름 and 입금자명
+      const headers: string[] = [];
+      sheet.getRow(1).eachCell((cell: any) => headers.push(String(cell.value)));
+      expect(headers).toContain('수신인이름');
+      expect(headers).toContain('입금자명');
+
+      // Check data row values
+      const dataRow = sheet.getRow(2);
+      const recipientColIdx = headers.indexOf('수신인이름') + 1;
+      const depositorColIdx = headers.indexOf('입금자명') + 1;
+      expect(dataRow.getCell(recipientColIdx).value).toBe('김수신');
+      expect(dataRow.getCell(depositorColIdx).value).toBe('홍길동입금');
+    });
+
+    it('배송지 컬럼에 이름이 포함되지 않고 주소만 표시되어야 한다', async () => {
+      const order = makeOrder({
+        shippingAddress: {
+          fullName: '김수신',
+          address1: '123 Main St',
+          address2: 'Apt 4B',
+          city: 'Los Angeles',
+          state: 'CA',
+          zip: '90001',
+        },
+        orderItems: [
+          {
+            id: 'item-1',
+            productName: '테스트',
+            price: 5000,
+            quantity: 1,
+            color: null,
+            size: null,
+            shippingFee: 0,
+            Product: null,
+          },
+        ],
+      });
+
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([order] as any);
+      jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
+
+      const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      const ExcelJS = require('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const sheet = workbook.getWorksheet('주문 목록');
+
+      const headers: string[] = [];
+      sheet.getRow(1).eachCell((cell: any) => headers.push(String(cell.value)));
+      const addrColIdx = headers.indexOf('배송지') + 1;
+      const addrValue = String(sheet.getRow(2).getCell(addrColIdx).value);
+
+      // 배송지에 수신인 이름이 포함되면 안 됨
+      expect(addrValue).not.toContain('김수신');
+      // 주소는 포함되어야 함
+      expect(addrValue).toContain('123 Main St');
+      expect(addrValue).toContain('Los Angeles');
+      // undefined가 포함되면 안 됨
+      expect(addrValue).not.toContain('undefined');
+    });
+
     it('orderItems가 있을 때 각 row에 order.userEmail이 사용되어야 한다', async () => {
       const orderWithItems = makeOrder({
         userEmail: 'order-time@example.com',

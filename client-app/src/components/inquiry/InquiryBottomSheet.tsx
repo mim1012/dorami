@@ -79,7 +79,7 @@ export function InquiryBottomSheet({ isOpen, onClose }: InquiryBottomSheetProps)
             <div className="text-left">
               <p className="text-primary-text font-semibold text-[15px]">인스타그램 문의</p>
               <p className="text-secondary-text text-xs mt-0.5">
-                @{instagramId} · DM으로 문의하세요
+                @{instagramId?.replace(/^@/, '')} · DM으로 문의하세요
               </p>
             </div>
           </button>
