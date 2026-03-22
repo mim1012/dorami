@@ -350,6 +350,11 @@ jobs:
             docker volume create dorami_postgres_data 2>/dev/null && echo "✓ postgres volume ensured" || echo "  postgres volume already exists"
             docker volume create dorami_redis_data 2>/dev/null && echo "✓ redis volume ensured" || echo "  redis volume already exists"
 
+            # Stop existing containers to release ports (443, 80)
+            echo "=== Stopping existing containers ==="
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging down --remove-orphans 2>/dev/null || true
+            echo "✓ Existing containers stopped"
+
             # Run migrations
             echo "=== Running database migrations ==="
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma migrate deploy < /dev/null
