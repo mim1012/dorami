@@ -765,6 +765,10 @@ jobs:
 
           # 12. Start nginx service (Now includes nginx service with SSL)
           echo "=== Starting nginx ==="
+          # Kill any process holding port 443/80 to prevent bind conflicts
+          sudo fuser -k 443/tcp 2>/dev/null || true
+          sudo fuser -k 80/tcp 2>/dev/null || true
+          sleep 2
           eval "$COMPOSE_CMD" up -d --no-deps nginx 2>&1 | tail -5 \
             && echo "nginx started" \
             || echo "WARNING: nginx failed (non-fatal: SSL certs may need setup)"
@@ -942,7 +946,7 @@ jobs:
           echo "All SRS & live stream smoke tests PASSED"
 
       - name: Create Sentry Release
-        if: success() && inputs.rollback != 'true'
+        if: success() && inputs.rollback != 'true' && secrets.SENTRY_ORG != ''
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
