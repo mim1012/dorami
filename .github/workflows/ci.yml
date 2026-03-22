@@ -60,7 +60,6 @@ jobs:
   backend-ci:
     name: Backend CI
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,9 +91,15 @@ jobs:
           --health-retries 3
 
     steps:
+      - name: Skip (no backend changes)
+        if: needs.changes.outputs.backend != 'true'
+        run: echo "No backend changes detected — skipping"
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.backend == 'true'
 
       - name: Setup Node.js with Cache
+        if: needs.changes.outputs.backend == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -102,24 +107,29 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: Install dependencies
+        if: needs.changes.outputs.backend == 'true'
         run: npm ci
 
       - name: Generate Prisma Client
+        if: needs.changes.outputs.backend == 'true'
         run: npx prisma generate
 
       - name: Run Prisma Migrations
+        if: needs.changes.outputs.backend == 'true'
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db?schema=public
 
       # 린트와 타입 체크를 병렬로 실행
       - name: Lint & Type Check
+        if: needs.changes.outputs.backend == 'true'
         run: |
           npm run lint &
           npx tsc --noEmit &
           wait
 
       - name: Unit Tests
+        if: needs.changes.outputs.backend == 'true'
         run: npm test
         env:
           NODE_ENV: test
@@ -130,7 +140,7 @@ jobs:
           PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
       - name: E2E Tests
-        if: github.ref == 'refs/heads/main'
+        if: needs.changes.outputs.backend == 'true' && github.ref == 'refs/heads/main'
         continue-on-error: true
         run: npm run test:e2e
         env:
@@ -142,6 +152,7 @@ jobs:
           PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
       - name: Build
+        if: needs.changes.outputs.backend == 'true'
         run: npm run build
 
   # ===========================================
@@ -150,17 +161,22 @@ jobs:
   frontend-ci:
     name: Frontend CI
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client-app
 
     steps:
+      - name: Skip (no frontend changes)
+        if: needs.changes.outputs.frontend != 'true'
+        run: echo "No frontend changes detected — skipping"
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.frontend == 'true'
 
       # 캐시 설정 추가
       - name: Setup Node.js with Cache
+        if: needs.changes.outputs.frontend == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -168,17 +184,20 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: Install dependencies
+        if: needs.changes.outputs.frontend == 'true'
         working-directory: .
         run: npm ci
 
       # 린트와 타입 체크를 병렬로 실행
       - name: Lint & Type Check
+        if: needs.changes.outputs.frontend == 'true'
         run: |
           npm run lint &
           npx tsc --noEmit &
           wait
 
       - name: Build
+        if: needs.changes.outputs.frontend == 'true'
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001/api
