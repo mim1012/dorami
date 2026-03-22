@@ -353,7 +353,11 @@ jobs:
             # Stop existing containers to release ports (443, 80)
             echo "=== Stopping existing containers ==="
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging down --remove-orphans 2>/dev/null || true
-            echo "✓ Existing containers stopped"
+            # Kill any process holding port 443/80 (e.g. stale nginx from previous deploy)
+            sudo fuser -k 443/tcp 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sleep 2
+            echo "✓ Existing containers stopped and ports released"
 
             # Run migrations
             echo "=== Running database migrations ==="
