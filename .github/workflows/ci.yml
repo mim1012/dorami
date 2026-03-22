@@ -93,6 +93,7 @@ jobs:
     steps:
       - name: Skip (no backend changes)
         if: needs.changes.outputs.backend != 'true'
+        working-directory: .
         run: echo "No backend changes detected — skipping"
 
       - uses: actions/checkout@v4
@@ -169,6 +170,7 @@ jobs:
     steps:
       - name: Skip (no frontend changes)
         if: needs.changes.outputs.frontend != 'true'
+        working-directory: .
         run: echo "No frontend changes detected — skipping"
 
       - uses: actions/checkout@v4
