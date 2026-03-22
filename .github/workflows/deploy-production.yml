@@ -946,7 +946,8 @@ jobs:
           echo "All SRS & live stream smoke tests PASSED"
 
       - name: Create Sentry Release
-        if: success() && inputs.rollback != 'true' && secrets.SENTRY_ORG != ''
+        if: success() && inputs.rollback != 'true'
+        continue-on-error: true
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
