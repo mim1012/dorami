@@ -433,7 +433,7 @@ jobs:
           ENDSSH
 
       - name: Save staging image tag to repo variable
-        if: success() && needs.check.outputs.source_changed == 'true'
+        if: success() && needs.build.outputs.image_tag != ''
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
