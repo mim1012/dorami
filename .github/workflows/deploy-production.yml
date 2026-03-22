@@ -431,6 +431,8 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Write .env.production locally (GitHub Actions runner is ephemeral & isolated).
@@ -487,6 +489,8 @@ jobs:
           VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
           VAPID_SUBJECT=${VAPID_SUBJECT}
           SRS_WEBHOOK_SECRET=${SRS_WEBHOOK_SECRET}
+          TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+          TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
           SENTRY_DSN=${PROD_SENTRY_DSN}

@@ -175,6 +175,8 @@ jobs:
           STAGING_REDIS_PASSWORD: ${{ secrets.STAGING_REDIS_PASSWORD }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           # Validate variables are available before SSH
           echo "Pre-SSH validation:"
@@ -250,6 +252,8 @@ jobs:
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
               echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
+              echo "TELEGRAM_BOT_TOKEN=\"${TELEGRAM_BOT_TOKEN}\""
+              echo "TELEGRAM_CHAT_ID=\"${TELEGRAM_CHAT_ID}\""
             } > /opt/dorami/.env.staging
             chmod 600 /opt/dorami/.env.staging
             echo "✓ .env.staging created"
