@@ -24,9 +24,12 @@ export function getDisplayPrice(product: {
 }
 
 export function formatPrice(price: number): string {
+  const num = typeof price === 'string' ? parseFloat(price) : price;
+  const hasDecimals = num % 1 !== 0;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price);
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: hasDecimals ? 2 : 0,
+  }).format(num);
 }
