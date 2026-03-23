@@ -19,6 +19,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { SkipCsrf } from '../../common/guards/csrf.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { UnauthorizedException } from '../../common/exceptions/business.exception';
 import { TokenPayload, DevLoginDto } from './dto/auth.dto';
 import { Request, Response, CookieOptions } from 'express';
 import { User } from '@prisma/client';
@@ -197,12 +198,27 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
+      this.logger.log(`[Refresh] Success: userId=${loginResponse.user.id}`);
+
       return res.json({
         success: true,
         data: { message: 'Token refreshed successfully' },
         timestamp: new Date().toISOString(),
       });
-    } catch {
+    } catch (error) {
+      const reason =
+        error instanceof UnauthorizedException
+          ? error.message
+          : (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED' ||
+              (error as Error)?.message?.includes('Redis')
+            ? 'REDIS_ERROR'
+            : (error as NodeJS.ErrnoException)?.code === 'P2025' ||
+                (error as Error)?.message?.toLowerCase().includes('prisma')
+              ? 'DB_ERROR'
+              : 'UNKNOWN';
+      this.logger.warn(
+        `[Refresh] Failed: ${reason} | ${(error as Error)?.message || 'no message'}`,
+      );
       // Never leak internal error details from token refresh — always return generic 401
       return res.status(401).json({
         success: false,

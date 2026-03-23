@@ -12,22 +12,22 @@
  */
 export const RECONNECT_CONFIG = {
   default: {
-    maxAttempts: 10,
-    delays: [500, 1000, 1500, 2000, 3000],
+    maxAttempts: 5,
+    delays: [1000, 2000, 4000, 7000, 10000],
     circuitBreakerThreshold: 5,
     circuitBreakerCooldownMs: 60_000,
     jitterFactor: 0.4, // ±40% 지터
   },
   streaming: {
-    maxAttempts: 10,
-    delays: [500, 1000, 2000, 3000, 4000],
+    maxAttempts: 5,
+    delays: [1000, 2000, 4000, 7000, 10000],
     circuitBreakerThreshold: 5,
     circuitBreakerCooldownMs: 60_000,
     jitterFactor: 0.4,
   },
   chat: {
-    maxAttempts: 10,
-    delays: [500, 1000, 1500, 2000, 2500],
+    maxAttempts: 5,
+    delays: [1000, 2000, 4000, 7000, 10000],
     circuitBreakerThreshold: 5,
     circuitBreakerCooldownMs: 30_000, // chat은 더 짧은 쿨다운
     jitterFactor: 0.4,

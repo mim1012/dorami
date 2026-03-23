@@ -185,7 +185,15 @@ export class AuthService {
     try {
       const storedToken = await this.redisService.get(`refresh_token:${userId}`);
 
-      if (!storedToken || storedToken !== refreshToken) {
+      if (!storedToken) {
+        this.logger.warn(`[Refresh] No stored token in Redis for userId=${userId}`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      if (storedToken !== refreshToken) {
+        this.logger.warn(
+          `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
+        );
         throw new UnauthorizedException('Invalid refresh token');
       }
 
@@ -195,6 +203,9 @@ export class AuthService {
 
       if (!acquired) {
         // Another instance is processing — wait and check cached result
+        this.logger.log(
+          `[Refresh] Lock contention for userId=${userId} — waiting for cached result`,
+        );
         await new Promise((r) => setTimeout(r, 200));
         const cached = await this.redisService.get(`refresh_result:${userId}`);
         if (cached) {
@@ -207,6 +218,7 @@ export class AuthService {
       });
 
       if (!user) {
+        this.logger.warn(`[Refresh] User not found in DB: userId=${userId}`);
         throw new UnauthorizedException('User not found');
       }
 
@@ -222,6 +234,10 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
+      this.logger.error(
+        `[Refresh] Unexpected error for userId=${userId}: ${(error as Error)?.message || 'no message'}`,
+        (error as Error)?.stack,
+      );
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }

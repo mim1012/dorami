@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { useAuthStore } from '@/lib/store/auth';
 import { createQueryKeys } from './create-query-keys';
 
 export interface CartItem {
@@ -43,6 +44,7 @@ export const cartKeys = {
 
 // Fetch cart summary
 export function useCart(options: { enabled?: boolean } = {}) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { enabled = true } = options;
   return useQuery({
     queryKey: cartKeys.summary(),
@@ -50,7 +52,7 @@ export function useCart(options: { enabled?: boolean } = {}) {
       const response = await apiClient.get<CartSummary>('/cart');
       return response.data;
     },
-    enabled,
+    enabled: isAuthenticated && enabled,
     refetchInterval: (query) => {
       // Refetch more frequently if there are timer-enabled items
       const data = query.state.data;

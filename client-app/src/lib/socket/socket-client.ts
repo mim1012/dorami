@@ -16,6 +16,7 @@ interface SocketState {
   token: string | null;
   refCount: number;
   reconnectAttempts: number;
+  authRefreshAttempted: boolean;
   queue: QueuedEmit[];
 }
 
@@ -68,6 +69,7 @@ export class SocketClient {
       token: normalizedToken,
       refCount: 1,
       reconnectAttempts: 0,
+      authRefreshAttempted: false,
       queue: [],
     };
 
@@ -92,6 +94,7 @@ export class SocketClient {
 
     socket.on('connect', () => {
       state.reconnectAttempts = 0;
+      state.authRefreshAttempted = false;
       if (process.env.NODE_ENV !== 'production') {
         console.log(`✅ WebSocket connected: ${namespace} (${socket.id})`);
       }
@@ -107,8 +110,20 @@ export class SocketClient {
     socket.on('connect_error', async (error) => {
       console.error(`❌ WebSocket connect_error (${namespace}):`, error);
 
-      // Handle auth errors: try refreshing token and reconnecting
+      // Handle auth errors: try refreshing token once, then stop to avoid infinite loop
       if (isAuthError(error)) {
+        if (state.authRefreshAttempted) {
+          // Already tried a refresh — stop reconnecting to prevent infinite loop
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `🚫 Auth error on ${namespace} after token refresh — stopping reconnection`,
+            );
+          }
+          socket.disconnect();
+          return;
+        }
+
+        state.authRefreshAttempted = true;
         if (process.env.NODE_ENV !== 'production') {
           console.log(`🔄 Auth error detected for ${namespace}, attempting token refresh...`);
         }
@@ -121,6 +136,13 @@ export class SocketClient {
           socket.connect();
           return;
         }
+
+        // Refresh failed — stop reconnecting
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`🚫 Token refresh failed for ${namespace} — stopping reconnection`);
+        }
+        socket.disconnect();
+        return;
       }
 
       state.reconnectAttempts += 1;

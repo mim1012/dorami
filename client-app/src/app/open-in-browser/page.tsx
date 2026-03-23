@@ -25,14 +25,32 @@ function CopyButton({ url }: { url: string }) {
 
 const ALLOWED_HOSTS = ['doremi-live.com', 'www.doremi-live.com', 'localhost'];
 
-function getSafeUrl(rawUrl: string): string {
-  if (!rawUrl) return typeof window !== 'undefined' ? window.location.origin : '';
+/** Unwrap recursively encoded /open-in-browser?url=... chains to the innermost URL. */
+function unwrapRecursiveUrl(rawUrl: string, depth = 0): string {
+  if (depth > 5) return '';
   try {
     const parsed = new URL(rawUrl);
+    if (parsed.pathname === '/open-in-browser') {
+      const inner = parsed.searchParams.get('url');
+      if (inner) return unwrapRecursiveUrl(decodeURIComponent(inner), depth + 1);
+      return '';
+    }
+  } catch {
+    // not a valid URL — fall through
+  }
+  return rawUrl;
+}
+
+function getSafeUrl(rawUrl: string): string {
+  if (!rawUrl) return typeof window !== 'undefined' ? window.location.origin : '';
+  const unwrapped = unwrapRecursiveUrl(rawUrl);
+  const urlToCheck = unwrapped || rawUrl;
+  try {
+    const parsed = new URL(urlToCheck);
     const isAllowed = ALLOWED_HOSTS.some(
       (h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`),
     );
-    if (isAllowed) return rawUrl;
+    if (isAllowed) return urlToCheck;
   } catch {
     // invalid URL — fall through
   }

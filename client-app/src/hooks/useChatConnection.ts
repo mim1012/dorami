@@ -15,6 +15,7 @@ export function useChatConnection(streamKey: string) {
   const [userCount, setUserCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
+  const authRefreshAttemptedRef = useRef(false);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -81,6 +82,7 @@ export function useChatConnection(streamKey: string) {
     // Connection events
     socket.on('connect', () => {
       setIsConnected(true);
+      authRefreshAttemptedRef.current = false;
 
       // Join chat room
       emitJoin();
@@ -99,6 +101,12 @@ export function useChatConnection(streamKey: string) {
       }
 
       if (isAuthError(error as Error)) {
+        if (authRefreshAttemptedRef.current) {
+          // Already tried a refresh — stop reconnecting to prevent infinite loop
+          socket.disconnect();
+          return;
+        }
+        authRefreshAttemptedRef.current = true;
         await handleAuthReconnect();
       }
     });
