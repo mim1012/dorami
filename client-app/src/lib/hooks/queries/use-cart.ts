@@ -78,7 +78,7 @@ export function useUpdateCartItem() {
       queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
         if (!old) return old;
         const items = old.items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
-        const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
         const shippingFee = parseFloat(old.totalShippingFee);
         return {
           ...old,
@@ -118,7 +118,7 @@ export function useRemoveCartItem() {
       queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
         if (!old) return old;
         const items = old.items.filter((item) => item.id !== itemId);
-        const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
         const shippingFee = parseFloat(old.totalShippingFee);
         return {
           ...old,

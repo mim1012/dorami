@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         response.cookies.set('accessToken', accessMatch[1], {
           httpOnly: true,
           secure: isHttps,
-          sameSite: isHttps ? 'strict' : 'lax',
+          sameSite: 'lax',
           maxAge: 15 * 60,
           path: '/',
         });
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         response.cookies.set('refreshToken', refreshMatch[1], {
           httpOnly: true,
           secure: isHttps,
-          sameSite: isHttps ? 'strict' : 'lax',
+          sameSite: 'lax',
           maxAge: 7 * 24 * 60 * 60,
           path: '/',
         });

@@ -136,8 +136,8 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id));
   const selectedItems = items.filter((i) => selectedIds.has(i.id));
-  const selectedTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const selectedShipping = selectedItems.reduce((sum, i) => sum + i.shippingFee, 0);
+  const selectedTotal = selectedItems.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
+  const selectedShipping = selectedItems.reduce((sum, i) => sum + Number(i.shippingFee), 0);
   const grandTotal = selectedTotal + selectedShipping;
 
   const handleSelectAll = useCallback(
