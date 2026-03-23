@@ -212,7 +212,9 @@ jobs:
   docker-build:
     name: Docker Build (${{ matrix.service }})
     needs: [changes]
-    if: needs.changes.outputs.infra == 'true'
+    # Always run the job (never skip) to prevent GitHub from marking the
+    # reusable workflow as failed when this job is "skipped".
+    # Step-level conditions handle the actual skip logic.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -228,17 +230,17 @@ jobs:
       packages: write
 
     steps:
-      - name: Skip (build-images will run)
-        if: inputs.skip-docker-build == true
-        run: echo "Skipped — build-images workflow handles Docker builds"
+      - name: Skip (no infra changes or build-images will run)
+        if: needs.changes.outputs.infra != 'true' || inputs.skip-docker-build
+        run: echo "Skipped — no infra changes or build-images workflow handles Docker builds"
 
       - uses: actions/checkout@v4
-        if: inputs.skip-docker-build != true
+        if: needs.changes.outputs.infra == 'true' && !inputs.skip-docker-build
       - uses: docker/setup-buildx-action@v3
-        if: inputs.skip-docker-build != true
+        if: needs.changes.outputs.infra == 'true' && !inputs.skip-docker-build
 
       - name: Login to GHCR
-        if: inputs.skip-docker-build != true
+        if: needs.changes.outputs.infra == 'true' && !inputs.skip-docker-build
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -246,7 +248,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build ${{ matrix.service }} Image
-        if: inputs.skip-docker-build != true
+        if: needs.changes.outputs.infra == 'true' && !inputs.skip-docker-build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -303,6 +305,10 @@ jobs:
                 "${{ needs.docker-build.result }}" == "failure" ]]; then
             echo "::error::One or more CI jobs failed"
             exit 1
+          fi
+
+          if [[ "${{ needs.docker-build.result }}" == "skipped" ]]; then
+            echo "Docker Build skipped (no infra changes or skip-docker-build=true) — OK"
           fi
 
           echo "All CI checks passed"
