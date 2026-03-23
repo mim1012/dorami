@@ -580,8 +580,10 @@ export class CartService {
       cartItem.shippingFee !== null && cartItem.shippingFee !== undefined
         ? Number(cartItem.shippingFee)
         : 0;
-    const subtotal = price * cartItem.quantity;
-    const total = subtotal + shippingFee;
+    const priceCents = Math.round(price * 100);
+    const subtotalCents = priceCents * cartItem.quantity;
+    const shippingFeeCents = Math.round(shippingFee * 100);
+    const totalCents = subtotalCents + shippingFeeCents;
 
     let remainingSeconds: number | undefined;
     if (cartItem.expiresAt) {
@@ -605,8 +607,8 @@ export class CartService {
       status: cartItem.status as CartStatus,
       createdAt: cartItem.createdAt.toISOString(),
       updatedAt: cartItem.updatedAt.toISOString(),
-      subtotal: String(subtotal),
-      total: String(total),
+      subtotal: (subtotalCents / 100).toFixed(2),
+      total: (totalCents / 100).toFixed(2),
       remainingSeconds,
       product: cartItem.product
         ? { imageUrl: cartItem.product.imageUrl, status: cartItem.product.status }

@@ -431,7 +431,11 @@ function AdminOrdersContent() {
       render: (order) => {
         const items = order.items ?? [];
         const totalQty = items.reduce((sum, i) => sum + i.quantity, 0);
-        const totalAmount = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
+        const totalAmountCents = items.reduce(
+          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+          0,
+        );
+        const totalAmount = totalAmountCents / 100;
         return (
           <div className="space-y-1">
             {items.map((item, idx) => {

@@ -174,12 +174,17 @@ function CartPageContent() {
   // Calculate totals based only on selected active items
   const selectedItems =
     cart?.items.filter((item) => selectedItemIds.has(item.id) && item.status !== 'EXPIRED') ?? [];
-  const selectedSubtotal = selectedItems.reduce(
-    (sum, item) => sum + Number(item.price) * item.quantity,
+  const selectedSubtotalCents = selectedItems.reduce(
+    (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
     0,
   );
-  const selectedShipping = selectedItems.reduce((sum, item) => sum + Number(item.shippingFee), 0);
-  const selectedTotal = selectedSubtotal + selectedShipping;
+  const selectedShippingCents = selectedItems.reduce(
+    (sum, item) => sum + Math.round(Number(item.shippingFee) * 100),
+    0,
+  );
+  const selectedSubtotal = selectedSubtotalCents / 100;
+  const selectedShipping = selectedShippingCents / 100;
+  const selectedTotal = (selectedSubtotalCents + selectedShippingCents) / 100;
 
   const hasExpiredItems = cart?.items.some(
     (item) =>

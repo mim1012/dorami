@@ -80,14 +80,17 @@ export function useUpdateCartItem() {
       queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
         if (!old) return old;
         const items = old.items.map((item) => (item.id === itemId ? { ...item, quantity } : item));
-        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
-        const shippingFee = parseFloat(old.totalShippingFee);
+        const subtotalCents = items.reduce(
+          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+          0,
+        );
+        const shippingFeeCents = Math.round(parseFloat(old.totalShippingFee) * 100);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-          subtotal: String(subtotal),
-          grandTotal: String(subtotal + shippingFee),
+          subtotal: (subtotalCents / 100).toFixed(2),
+          grandTotal: ((subtotalCents + shippingFeeCents) / 100).toFixed(2),
         };
       });
 
@@ -120,14 +123,17 @@ export function useRemoveCartItem() {
       queryClient.setQueryData<CartSummary>(cartKeys.summary(), (old) => {
         if (!old) return old;
         const items = old.items.filter((item) => item.id !== itemId);
-        const subtotal = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
-        const shippingFee = parseFloat(old.totalShippingFee);
+        const subtotalCents = items.reduce(
+          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+          0,
+        );
+        const shippingFeeCents = Math.round(parseFloat(old.totalShippingFee) * 100);
         return {
           ...old,
           items,
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
-          subtotal: String(subtotal),
-          grandTotal: String(subtotal + shippingFee),
+          subtotal: (subtotalCents / 100).toFixed(2),
+          grandTotal: ((subtotalCents + shippingFeeCents) / 100).toFixed(2),
         };
       });
 

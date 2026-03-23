@@ -91,7 +91,11 @@ export function OrderMobileCard({
   const statusLabel = ORDER_STATUS_LABELS[order.status] ?? order.status;
   const items = order.items ?? [];
   const totalQty = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalAmount = items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
+  const totalAmountCents = items.reduce(
+    (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+    0,
+  );
+  const totalAmount = totalAmountCents / 100;
   const grouped = groupByProduct(items);
 
   return (
@@ -164,7 +168,7 @@ export function OrderMobileCard({
                         <span className="text-primary-text">x{item.quantity}</span>
                       </span>
                       <span className="text-primary-text font-medium">
-                        {formatPrice(Number(item.price) * item.quantity)}
+                        {formatPrice((Math.round(Number(item.price) * 100) * item.quantity) / 100)}
                       </span>
                     </div>
                   );

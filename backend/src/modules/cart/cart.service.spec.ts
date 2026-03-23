@@ -413,6 +413,110 @@ describe('CartService', () => {
     });
   });
 
+  describe('mapToResponseDto decimal precision (via getCart)', () => {
+    /**
+     * These tests verify the cent-based arithmetic fix in mapToResponseDto.
+     * Before the fix, direct float multiplication caused IEEE-754 rounding errors
+     * (e.g. 12.70 * 3 = 38.10000000000001). The fix converts to integer cents
+     * first (Math.round(price * 100) * quantity) then divides back.
+     *
+     * All cases test through getCart() since mapToResponseDto is private.
+     * The systemConfig mock in beforeEach returns defaultShippingFee=10, so
+     * each item has shippingFee=0 stored (shipping is per-order, not per-item).
+     */
+
+    function makeCartItem(id: string, price: number, quantity: number, shippingFee: number = 0) {
+      return {
+        id,
+        userId: 'user-1',
+        productId: 'product-1',
+        productName: 'Test Product',
+        price: new Decimal(price),
+        quantity,
+        color: null,
+        size: null,
+        shippingFee: new Decimal(shippingFee),
+        timerEnabled: false,
+        expiresAt: null,
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        product: null,
+      };
+    }
+
+    it('returns subtotal "38.10" for price=12.70, quantity=3 (classic float trap)', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 12.7, 3)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].subtotal).toBe('38.10');
+    });
+
+    it('returns total "38.10" when shippingFee is zero for price=12.70, quantity=3', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 12.7, 3, 0)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].total).toBe('38.10');
+    });
+
+    it('returns total "0.30" for price=0.10, shippingFee=0.20 (classic 0.1+0.2 float trap)', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 0.1, 1, 0.2)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].total).toBe('0.30');
+    });
+
+    it('returns subtotal "20.00" for integer price=10, quantity=2', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 10, 2)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].subtotal).toBe('20.00');
+    });
+
+    it('returns subtotal "19.99" and total "25.49" for price=19.99, quantity=1, shippingFee=5.50', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 19.99, 1, 5.5)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].subtotal).toBe('19.99');
+      expect(result.items[0].total).toBe('25.49');
+    });
+
+    it('returns subtotal "0.00" for price=0, quantity=5', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 0, 5)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].subtotal).toBe('0.00');
+    });
+
+    it('returns subtotal "999.00" for price=9.99, quantity=100 (large quantity)', async () => {
+      jest
+        .spyOn(prismaService.cart, 'findMany')
+        .mockResolvedValue([makeCartItem('c1', 9.99, 100)] as any);
+
+      const result = await service.getCart('user-1');
+
+      expect(result.items[0].subtotal).toBe('999.00');
+    });
+  });
+
   describe('expireTimedOutCarts', () => {
     it('should expire timed-out carts and emit events', async () => {
       const expiredCarts = [

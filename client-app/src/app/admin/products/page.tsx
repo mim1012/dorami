@@ -958,12 +958,14 @@ export default function AdminProductsPage() {
           <Input
             placeholder="최소 가격"
             type="number"
+            step="0.01"
             value={priceMin}
             onChange={(e) => setPriceMin(e.target.value)}
           />
           <Input
             placeholder="최대 가격"
             type="number"
+            step="0.01"
             value={priceMax}
             onChange={(e) => setPriceMax(e.target.value)}
           />
