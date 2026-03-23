@@ -1106,9 +1106,10 @@ export default function AdminProductsPage() {
               label="가격 (정가)"
               name="originalPrice"
               type="number"
+              step="0.01"
               value={formData.originalPrice}
               onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-              placeholder="29000"
+              placeholder="29.00"
               required
               fullWidth
               error={formErrors.originalPrice}
@@ -1150,9 +1151,10 @@ export default function AdminProductsPage() {
                     label="할인 가격"
                     name="discountPrice"
                     type="number"
+                    step="0.01"
                     value={formData.discountPrice}
                     onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
-                    placeholder="24000"
+                    placeholder="24.00"
                     required
                     fullWidth
                     error={formErrors.discountPrice}
