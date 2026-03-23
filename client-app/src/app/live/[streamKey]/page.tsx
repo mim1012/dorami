@@ -1251,7 +1251,7 @@ export default function LiveStreamPage() {
             </div>
 
             {/* Right: Chat Panel */}
-            <div className="flex w-[320px] min-h-0 flex-col bg-transparent border-l border-white/5">
+            <div className="flex w-[280px] min-h-0 flex-col bg-transparent border-l border-white/5">
               <ChatHeader userCount={userCount} isConnected={isConnected} compact={false} />
               <ChatMessageList
                 ref={desktopChatListRef}

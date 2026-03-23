@@ -2157,7 +2157,7 @@ export default function LivePreviewPage() {
             </div>
 
             {/* Right: Chat Panel (matches live page structure) */}
-            <div className="flex w-[320px] min-h-0 flex-col bg-transparent border-l border-white/5">
+            <div className="flex w-[280px] min-h-0 flex-col bg-transparent border-l border-white/5">
               <ChatHeader userCount={viewerCount} isConnected={true} compact={false} />
               <ChatMessageList messages={allMessages} compact={false} />
               <LiveQuickActionBar

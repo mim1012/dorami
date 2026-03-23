@@ -123,7 +123,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
         {!isAutoScroll && (
           <button
             onClick={handleGoBottom}
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full shadow-lg flex items-center gap-1.5 z-10 border border-white/10 hover:bg-black/80 transition-all"
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full flex items-center gap-1.5 z-10 border border-white/10 hover:bg-black/80 transition-all"
             aria-label="최신 채팅으로 이동"
           >
             <ChevronDownIcon className="w-3.5 h-3.5 text-white" />

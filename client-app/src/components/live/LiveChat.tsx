@@ -44,12 +44,14 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-error'}`} />
-            <Body className="text-primary-text font-semibold text-sm">
-              실시간 채팅
-            </Body>
+            <Body className="text-primary-text font-semibold text-sm">실시간 채팅</Body>
           </div>
           <Body className="text-secondary-text text-xs">
-            {isConnecting ? '연결 중...' : isConnected ? `${messages.length}개 메시지` : '연결 끊김'}
+            {isConnecting
+              ? '연결 중...'
+              : isConnected
+                ? `${messages.length}개 메시지`
+                : '연결 끊김'}
           </Body>
         </div>
       </div>
@@ -64,9 +66,7 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
 
         {messages.length === 0 && !isConnecting && (
           <div className="flex items-center justify-center h-full">
-            <Body className="text-secondary-text text-sm text-center">
-              채팅에 참여해보세요! 💬
-            </Body>
+            <Body className="text-secondary-text text-sm text-center">채팅에 참여해보세요! 💬</Body>
           </div>
         )}
 
@@ -86,9 +86,7 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
                 })}
               </Body>
             </div>
-            <Body className="text-primary-text text-sm leading-relaxed">
-              {msg.message}
-            </Body>
+            <Body className="text-primary-text text-sm leading-relaxed">{msg.message}</Body>
           </div>
         ))}
 
@@ -114,14 +112,12 @@ export function LiveChat({ liveId, streamKey }: LiveChatProps) {
           <button
             type="submit"
             disabled={!isConnected || !inputValue.trim()}
-            className="flex-shrink-0 w-10 h-10 bg-hot-pink hover:bg-hot-pink/90 disabled:bg-border-color disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-all shadow-[0_0_15px_rgba(255,0,122,0.4)] disabled:shadow-none"
+            className="flex-shrink-0 w-10 h-10 bg-hot-pink hover:bg-hot-pink/90 disabled:bg-border-color disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-all disabled:shadow-none"
           >
             <Send className="w-4 h-4 text-white" />
           </button>
         </div>
-        <Body className="text-secondary-text text-[10px] mt-2 px-2">
-          {inputValue.length}/200
-        </Body>
+        <Body className="text-secondary-text text-[10px] mt-2 px-2">{inputValue.length}/200</Body>
       </form>
     </div>
   );
