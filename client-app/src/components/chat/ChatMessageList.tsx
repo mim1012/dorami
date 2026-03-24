@@ -67,7 +67,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
           onScroll={handleScroll}
           className={`overflow-y-auto ${
             compact
-              ? 'max-h-[30vh] px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              ? 'max-h-[20vh] px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
               : 'h-full px-4 py-2 scrollbar-thin scrollbar-thumb-hot-pink scrollbar-track-transparent'
           }`}
         >

@@ -1029,7 +1029,7 @@ export default function LiveStreamPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[30vh] overflow-hidden flex flex-col"
+            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[20vh] overflow-hidden flex flex-col"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
             {/* Top gradient fade — removed for cleaner look */}
