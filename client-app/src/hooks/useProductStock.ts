@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { create } from 'zustand';
+import { useQueryClient } from '@tanstack/react-query';
 import { ReconnectionCircuitBreaker } from '@/lib/socket/circuit-breaker';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { refreshAuthToken, isAuthError, forceLogout } from '@/lib/auth/token-manager';
@@ -77,6 +78,7 @@ export const useStockStore = create<StockState>((set) => ({
  */
 export function useProductStock(streamKey?: string) {
   const socketRef = useRef<Socket | null>(null);
+  const queryClient = useQueryClient();
   const { updateStock, markSoldOut, setInitialStocks } = useStockStore();
 
   // Circuit Breaker 인스턴스: config 값 참조
@@ -124,6 +126,7 @@ export function useProductStock(streamKey?: string) {
         updateStock(product.id, product.stock);
         if (product.status === 'SOLD_OUT') {
           markSoldOut(product.id);
+          queryClient.invalidateQueries({ queryKey: ['cart'] });
         }
       },
     );
@@ -131,6 +134,7 @@ export function useProductStock(streamKey?: string) {
     // ── Stream-scoped sold out event ──
     socket.on('live:product:soldout', (payload: { type: string; data: { productId: string } }) => {
       markSoldOut(payload.data.productId);
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
     });
 
     // ── Low stock warning ──
