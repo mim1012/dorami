@@ -7,69 +7,22 @@
  * - accessToken / refreshToken 모두 httpOnly 쿠키로 관리됨
  * - JS에서 토큰 값을 직접 읽을 수 없으므로 만료 여부는
  *   "인증 에러 발생 여부"로 간접 감지한다.
- * - refreshAuthToken()은 POST /api/auth/refresh를 호출해
- *   백엔드가 새 accessToken 쿠키를 Set-Cookie로 내려주도록 한다.
+ * - refreshAuthToken()은 client.ts의 refreshAccessToken()에 위임한다.
+ *   이를 통해 HTTP 401 재시도와 WebSocket 재연결이 동시에 refresh를 요청해도
+ *   실제 POST /api/auth/refresh는 단 하나만 in-flight 상태가 된다.
  */
 
-const API_BASE_URL = '/api';
-
-// 동시 refresh 호출을 단일 요청으로 합산
-let refreshInFlight: Promise<boolean> | null = null;
+import { refreshAccessToken } from '../api/client';
 
 /**
  * accessToken 쿠키를 갱신한다.
  *
  * 성공 시 true, 실패(refresh token 만료 또는 네트워크 오류) 시 false를 반환한다.
- * 여러 WebSocket이 동시에 호출해도 실제 HTTP 요청은 하나만 발생한다.
+ * 중복 제거는 client.ts의 refreshPromise가 담당하므로 여기서 별도 관리하지 않는다.
  */
 export async function refreshAuthToken(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-
-  if (!refreshInFlight) {
-    refreshInFlight = _doRefresh().finally(() => {
-      refreshInFlight = null;
-    });
-  }
-
-  return refreshInFlight;
-}
-
-async function _doRefresh(): Promise<boolean> {
-  try {
-    // CSRF 토큰 획득 (double-submit cookie 패턴)
-    const csrfToken = _getCsrfToken();
-    const headers: Record<string, string> = {};
-    if (csrfToken) {
-      headers['X-CSRF-Token'] = csrfToken;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include', // 쿠키(refreshToken) 자동 첨부
-      headers,
-    });
-
-    if (!response.ok) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[TokenManager] Token refresh failed:', response.status);
-      }
-      return false;
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[TokenManager] Token refreshed successfully');
-    }
-    return true;
-  } catch (error) {
-    console.error('[TokenManager] Token refresh error:', error);
-    return false;
-  }
-}
-
-function _getCsrfToken(): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/csrf-token=([^;]+)/);
-  return match ? match[1] : null;
+  return refreshAccessToken();
 }
 
 /**

@@ -21,7 +21,7 @@ services:
   # Redis cache override
   redis:
     restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD required} --maxmemory 256mb --maxmemory-policy volatile-lru
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD required}", "ping"]
       interval: 10s

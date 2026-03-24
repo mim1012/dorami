@@ -182,23 +182,11 @@ export class AuthService {
   }
 
   private async _doRefreshToken(userId: string, refreshToken: string): Promise<LoginResponseDto> {
+    const lockKey = `refresh_lock:${userId}`;
+    let lockAcquired = false;
     try {
-      const storedToken = await this.redisService.get(`refresh_token:${userId}`);
-
-      if (!storedToken) {
-        this.logger.warn(`[Refresh] No stored token in Redis for userId=${userId}`);
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      if (storedToken !== refreshToken) {
-        this.logger.warn(
-          `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
-        );
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      // Redis lock: dedupe across multiple server instances
-      const lockKey = `refresh_lock:${userId}`;
+      // Acquire Redis lock FIRST — prevents race condition where two instances
+      // both read the same stored token before either deletes it
       const acquired = await this.redisService.getClient().set(lockKey, '1', 'EX', 5, 'NX');
 
       if (!acquired) {
@@ -211,6 +199,24 @@ export class AuthService {
         if (cached) {
           return JSON.parse(cached) as LoginResponseDto;
         }
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      lockAcquired = true;
+
+      // Now safely read and compare token inside the lock
+      const storedToken = await this.redisService.get(`refresh_token:${userId}`);
+
+      if (!storedToken) {
+        this.logger.warn(`[Refresh] No stored token in Redis for userId=${userId}`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      if (storedToken !== refreshToken) {
+        this.logger.warn(
+          `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
+        );
+        throw new UnauthorizedException('Invalid refresh token');
       }
 
       const user = await this.prisma.user.findUnique({
@@ -239,6 +245,10 @@ export class AuthService {
         (error as Error)?.stack,
       );
       throw new UnauthorizedException('Invalid or expired refresh token');
+    } finally {
+      if (lockAcquired) {
+        await this.redisService.getClient().del(lockKey);
+      }
     }
   }
 

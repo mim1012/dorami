@@ -45,12 +45,18 @@ export async function POST(request: NextRequest) {
       const accessMatch = raw.match(/^accessToken=([^;]+)/);
       const refreshMatch = raw.match(/^refreshToken=([^;]+)/);
 
+      // Parse max-age from the backend Set-Cookie header so cookie lifetime
+      // stays in sync with the JWT expiry configured on the backend.
+      // Fallbacks: accessToken 1h, refreshToken 7d.
+      const maxAgeMatch = raw.match(/[Mm]ax-[Aa]ge=(\d+)/);
+      const parsedMaxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : undefined;
+
       if (accessMatch) {
         response.cookies.set('accessToken', accessMatch[1], {
           httpOnly: true,
           secure: isHttps,
           sameSite: 'lax',
-          maxAge: 15 * 60,
+          maxAge: parsedMaxAge ?? 3600,
           path: '/',
         });
       } else if (refreshMatch) {
@@ -58,7 +64,7 @@ export async function POST(request: NextRequest) {
           httpOnly: true,
           secure: isHttps,
           sameSite: 'lax',
-          maxAge: 7 * 24 * 60 * 60,
+          maxAge: parsedMaxAge ?? 7 * 24 * 60 * 60,
           path: '/',
         });
       }

@@ -85,7 +85,7 @@ async function ensureCsrfToken(): Promise<void> {
   }
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+export async function refreshAccessToken(): Promise<boolean> {
   try {
     await ensureCsrfToken();
     const response = await executeFetch(`${API_BASE_URL}/auth/refresh`, {

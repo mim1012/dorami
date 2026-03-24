@@ -47,7 +47,7 @@ services:
       redis-server
       --requirepass ${REDIS_PASSWORD}
       --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy volatile-lru
       --appendonly yes
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}

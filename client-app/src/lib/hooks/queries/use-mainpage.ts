@@ -33,8 +33,8 @@ export function useMainPageData() {
   return useQuery<MainPageData>({
     queryKey: mainpageKeys.data(),
     queryFn: getMainPageData,
-    staleTime: 10_000,
-    refetchInterval: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30_000),
   });
