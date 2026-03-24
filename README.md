@@ -1,275 +1,196 @@
-# Live Commerce Platform
+# 도레미 마켓 (Doremi Market)
 
-실시간 라이브 커머스 플랫폼 - 모노레포 프로젝트
+원셀러 라이브 커머스 플랫폼 — 실시간 방송으로 상품을 판매하는 한국어 이커머스 MVP.
 
-## 프로젝트 개요
-
-실시간 스트리밍, 채팅, 상품 판매가 통합된 라이브 커머스 플랫폼입니다. 시청자는 라이브 방송을 시청하면서 실시간으로 상품을 구매하고, 판매자와 소통할 수 있습니다.
+**Production:** https://www.doremi-live.com
+**Current Version:** v1.3.1
 
 ## 기술 스택
 
-### Frontend (Client App)
+| 영역          | 기술                                                               |
+| ------------- | ------------------------------------------------------------------ |
+| **Frontend**  | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4.0    |
+| **Backend**   | NestJS 11, Prisma 6, PostgreSQL 16, Redis 7                        |
+| **Real-time** | Socket.IO 4.8 (채팅 + 재고 + 시청자 수), Redis Adapter             |
+| **Streaming** | SRS v6 (RTMP ingest → HTTP-FLV + HLS), Nginx reverse proxy         |
+| **State**     | Zustand (클라이언트), TanStack Query v5 (서버), Socket.IO (실시간) |
+| **Auth**      | Kakao OAuth → JWT (Access 1h + Refresh 7d, HttpOnly cookies)       |
+| **Infra**     | Docker Compose, GitHub Actions CI/CD, GHCR                         |
+| **Shared**    | `@live-commerce/shared-types` (enums, helpers, interfaces)         |
 
-- **Framework**: Next.js 16.1+ with Turbopack
-- **React**: 19.0.0
-- **Language**: TypeScript 5.7+ (strict mode)
-- **Styling**: Tailwind CSS 4.0
-- **State Management**: Zustand 5.0
-- **Server State**: TanStack Query v5
-- **Real-time**: Socket.IO Client 4.8
-- **Admin Tools**: React Datepicker, ExcelJS (for `/admin` routes)
-
-### Backend API
-
-- **Framework**: NestJS 11.1.12+
-- **Language**: TypeScript 5.7+ (strict mode)
-- **Database ORM**: Prisma 6.19.0+
-- **Authentication**: Passport JWT, Kakao OAuth
-- **Real-time**: Socket.IO 4.8, Redis Adapter
-- **Logging**: Winston, nest-winston
-
-### Infrastructure
-
-- **Database**: PostgreSQL 16
-- **Cache**: Redis 7
-- **Container**: Docker & Docker Compose
-
-## 프로젝트 구조
+## 모노레포 구조
 
 ```
-live-commerce-platform/
-├── packages/
-│   └── shared-types/         # 공유 타입 정의
-├── client-app/               # Next.js 클라이언트 앱 (port 3000)
-│   ├── src/app/              # 일반 사용자 페이지 (라이브 쇼핑, 구매)
-│   └── src/app/admin/        # 관리자 대시보드 (/admin 라우트)
-├── backend/                  # NestJS API 서버 (port 3001)
-├── docs/                     # 프로젝트 문서
-├── docker-compose.yml        # Docker 서비스 구성
-└── package.json              # 모노레포 워크스페이스 설정
+dorami/
+├── backend/                    # NestJS API (port 3001)
+│   ├── src/modules/            # auth, products, cart, orders, streaming, chat, ...
+│   ├── prisma/schema.prisma    # DB 스키마
+│   └── Dockerfile
+├── client-app/                 # Next.js (port 3000)
+│   ├── src/app/                # App Router pages
+│   ├── src/app/admin/          # 관리자 대시보드
+│   ├── src/app/live/           # 라이브 시청 페이지
+│   ├── src/components/         # UI 컴포넌트
+│   ├── src/lib/                # API client, hooks, store
+│   ├── src/hooks/              # WebSocket hooks
+│   ├── src/middleware.ts       # 인증 + 인앱 브라우저 처리
+│   └── Dockerfile
+├── packages/shared-types/      # 공유 타입 + 유틸리티
+├── infrastructure/
+│   ├── docker/nginx/           # Nginx 설정
+│   └── docker/srs/             # SRS 미디어 서버 설정
+├── docker-compose.base.yml     # 공통 서비스 (postgres, redis, srs)
+├── docker-compose.staging.yml  # Staging 오버레이
+├── docker-compose.prod.yml     # Production 오버레이
+└── .github/workflows/          # CI/CD 파이프라인
 ```
 
-## 시작하기
-
-### 필수 요구사항
-
-- Node.js 20+
-- npm 10+
-- Docker & Docker Compose
-
-### 설치 및 실행
+## 빠른 시작
 
 ```bash
-# 1. 저장소 클론
-git clone <repository-url>
-cd dorami
+# 1. 설치
+npm install              # 모든 워크스페이스 의존성 + shared-types 빌드
 
-# 2. 의존성 설치 (모든 워크스페이스)
-npm install
+# 2. 인프라
+npm run docker:up        # PostgreSQL 16, Redis 7, SRS v6
 
-# 3. 환경 변수 설정
-cp client-app/.env.example client-app/.env.local
-cp backend/.env.example backend/.env
+# 3. DB
+npm run prisma:migrate   # 마이그레이션 적용
+npm run prisma:generate  # Prisma Client 생성
 
-# 4. Docker 서비스 시작 (PostgreSQL, Redis)
-npm run docker:up
-
-# 5. Prisma 마이그레이션 및 생성
-npm run prisma:generate
-npm run prisma:migrate
-
-# 6. 모든 앱 개발 서버 실행
-npm run dev:all
+# 4. 개발 서버
+npm run dev:all          # Backend(3001) + Frontend(3000) 동시 실행
 ```
 
-### 개별 앱 실행
+## 주요 기능
+
+### 사용자
+
+- 라이브 방송 시청 (HTTP-FLV 저지연 / HLS 폴백)
+- 실시간 채팅 (Socket.IO `/chat` 네임스페이스)
+- 실시간 재고 + 품절 알림 (WebSocket)
+- 장바구니 (10분 타이머 옵션, 품절 상품 표시)
+- 카카오 OAuth 로그인
+- 주문 + 결제 확인
+- Web Push 알림
+
+### 관리자
+
+- 라이브 방송 관리 (OBS → RTMP → SRS)
+- 상품 CRUD (소수점 가격, 색상/사이즈 옵션, 이미지 갤러리)
+- 주문 관리 (상태 변경, 배송 추적, 엑셀 다운로드)
+- 실시간 대시보드 (시청자 수, 매출, 주문)
+- 채팅 관리 (메시지 삭제)
+- 포인트 / 정산 시스템
+
+## 아키텍처
+
+### 스트리밍
+
+```
+OBS → RTMP(1935) → SRS v6 → HTTP-FLV/HLS(8080) → Nginx → Client
+```
+
+### WebSocket 네임스페이스
+
+| 네임스페이스 | 용도                                           |
+| ------------ | ---------------------------------------------- |
+| `/`          | 스트림 room join/leave, 구매 알림 브로드캐스트 |
+| `/chat`      | 채팅 (Redis 히스토리, rate limit 20msg/10s)    |
+| `/streaming` | 시청자 수 (Redis 카운터)                       |
+
+### 인증 흐름
+
+```
+카카오 로그인 → JWT 발급 → HttpOnly cookie (sameSite: lax)
+→ Access token 만료 → auto-refresh (coalesced, deduplicated)
+→ Refresh 실패 → forceLogout → /login
+```
+
+## 배포
+
+### CI/CD 파이프라인
+
+| Workflow                | 트리거            | 역할                                                 |
+| ----------------------- | ----------------- | ---------------------------------------------------- |
+| `ci.yml`                | PR, push          | lint + type-check + test + Docker build + Trivy scan |
+| `build-images.yml`      | push main         | Docker 이미지 빌드 → GHCR push                       |
+| `deploy-staging.yml`    | push develop      | 자동 staging 배포                                    |
+| `deploy-production.yml` | workflow_dispatch | 수동 prod 배포 (version tag 필수)                    |
+
+### Production 배포
 
 ```bash
-# 클라이언트 앱만 실행 (http://localhost:3000)
-# 일반 사용자: http://localhost:3000
-# 관리자 대시보드: http://localhost:3000/admin
-npm run dev:client
+# 1. main에 머지
+git checkout main && git merge develop
 
-# 백엔드 API만 실행 (http://localhost:3001)
-npm run dev:backend
+# 2. 태그 생성 (main HEAD에)
+git tag v1.3.1 && git push origin v1.3.1
+
+# 3. GitHub Actions에서 수동 트리거
+gh workflow run deploy-production.yml --ref main -f version="v1.3.1"
 ```
 
-## NPM Scripts
+### 환경별 Compose
 
-### 개발
+```bash
+# Staging
+docker compose -f docker-compose.base.yml -f docker-compose.staging.yml up -d
 
-- `npm run dev:all` - 모든 앱 동시 실행 (concurrently)
-- `npm run dev:client` - 클라이언트 앱 실행 (일반 사용자 + 관리자 대시보드)
-- `npm run dev:backend` - 백엔드 API 실행
+# Production
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+```
 
-### 빌드
+## 개발 명령어
 
-- `npm run build:all` - 모든 워크스페이스 빌드
-- `npm run build:client` - 클라이언트 앱 빌드
-- `npm run build:backend` - 백엔드 API 빌드
-- `npm run build:shared` - 공유 타입 빌드
+| 명령어                   | 설명                           |
+| ------------------------ | ------------------------------ |
+| `npm run dev:all`        | Backend + Frontend 동시 실행   |
+| `npm run build:all`      | 전체 빌드                      |
+| `npm run test:backend`   | Jest 유닛 테스트               |
+| `npm run lint:all`       | ESLint 전체                    |
+| `npm run type-check:all` | TypeScript 타입 체크           |
+| `npm run prisma:studio`  | Prisma Studio (localhost:5555) |
+| `npm run docker:up`      | PostgreSQL + Redis + SRS 시작  |
+| `npm run docker:down`    | 인프라 중지                    |
 
-### 타입 체크
+### E2E 테스트 (Playwright)
 
-- `npm run type-check:all` - 모든 워크스페이스 타입 체크
-- `npm run type-check:client` - 클라이언트 타입 체크
-- `npm run type-check:backend` - 백엔드 타입 체크
-- `npm run type-check:shared` - 공유 타입 체크
-
-### 테스트
-
-- `npm run test:all` - 모든 테스트 실행
-- `npm run test:backend` - 백엔드 유닛 테스트
-- `npm run test:e2e` - E2E 테스트
-
-### Lint
-
-- `npm run lint:all` - 모든 워크스페이스 린트
-- `npm run lint:client` - 클라이언트 린트
-- `npm run lint:backend` - 백엔드 린트
-
-### Docker
-
-- `npm run docker:up` - Docker 서비스 시작 (백그라운드)
-- `npm run docker:down` - Docker 서비스 중지
-- `npm run docker:logs` - Docker 로그 확인
-
-### Prisma
-
-- `npm run prisma:generate` - Prisma Client 생성
-- `npm run prisma:migrate` - 마이그레이션 실행
-- `npm run prisma:studio` - Prisma Studio 실행
-
-### 기타
-
-- `npm run clean` - node_modules 및 빌드 아티팩트 삭제
+```bash
+cd client-app
+npx playwright test --project=user    # 사용자 플로우
+npx playwright test --project=admin   # 관리자 플로우
+npx playwright test --ui              # 인터랙티브 모드
+```
 
 ## 포트 구성
 
-- **Client App**: 3000 (일반 사용자 + 관리자 대시보드 `/admin`)
-- **Backend API**: 3001
-- **PostgreSQL**: 5432
-- **Redis**: 6379
-- **Prisma Studio**: 5555
+| 포트 | 서비스                    |
+| ---- | ------------------------- |
+| 3000 | Next.js (사용자 + 관리자) |
+| 3001 | NestJS API + WebSocket    |
+| 5432 | PostgreSQL                |
+| 6379 | Redis                     |
+| 1935 | SRS RTMP (OBS 인제스트)   |
+| 8080 | SRS HTTP-FLV/HLS          |
+| 5555 | Prisma Studio             |
 
 ## 디자인 시스템
 
-### 컬러 팔레트 (Hot Pink Theme)
+**테마:** Dark mode + Hot Pink accent (`#FF007A`)
 
-- **Hot Pink**: `#FF007A` - Primary accent
-- **Primary Black**: `#121212` - Background
-- **Content BG**: `#1E1E1E` - Cards, panels
-- **Primary Text**: `#FFFFFF` - Main text
-- **Secondary Text**: `#A0A0A0` - Secondary text
-- **Success**: `#34C759` - Success states
-- **Error**: `#FF3B30` - Error states
+| 토큰           | 값                   |
+| -------------- | -------------------- |
+| Primary Accent | `#FF007A` (Hot Pink) |
+| Background     | `#121212`            |
+| Content BG     | `#1E1E1E`            |
+| Text Primary   | `#FFFFFF`            |
+| Text Secondary | `#A0A0A0`            |
+| Success        | `#34C759`            |
+| Error          | `#FF3B30`            |
+| Warning        | `#FF9500`            |
 
-### 타이포그래피
-
-- **Font**: Pretendard (via CDN)
-- **Display**: 28px / Bold
-- **H1**: 22px / Bold
-- **H2**: 18px / SemiBold
-- **Body**: 16px / Regular
-- **Caption**: 14px / Medium
-
-## 개발 가이드라인
-
-### 코딩 스타일
-
-- TypeScript strict mode 사용
-- Feature-based 컴포넌트 구조
-- 테스트 파일은 소스 파일과 함께 위치
-- 유틸리티는 `/lib` 폴더에 작성 (NOT `/utils`)
-- 컴포넌트: PascalCase
-- 함수/변수: camelCase
-- 상수: UPPER_SNAKE_CASE
-
-### Prisma 네이밍 규칙
-
-- **Models**: PascalCase (User, Product)
-- **Fields**: camelCase (userId, productName)
-- **DB Tables**: snake_case plural (users, products)
-- **DB Columns**: snake_case (user_id, product_name)
-- `@@map()` 및 `@map()` 사용하여 매핑
-
-### Git 커밋 규칙
-
-```
-feat(scope): 새로운 기능 추가
-fix(scope): 버그 수정
-docs(scope): 문서 수정
-style(scope): 코드 포맷팅
-refactor(scope): 코드 리팩토링
-test(scope): 테스트 추가/수정
-chore(scope): 빌드/설정 변경
-```
-
-## 테스트 가이드
-
-### Unit Tests (Backend)
-
-```bash
-npm run test:backend                          # 전체 유닛 테스트
-cd backend && npx jest --watch                # Watch 모드
-cd backend && npx jest --coverage             # 커버리지 리포트
-cd backend && npx jest path/to/file.spec.ts   # 단일 파일
-```
-
-### E2E Tests (Playwright)
-
-```bash
-cd client-app && npx playwright test                  # 전체 E2E
-cd client-app && npx playwright test --project=user   # 사용자 테스트만
-cd client-app && npx playwright test --project=admin  # 관리자 테스트만
-cd client-app && npx playwright test --ui             # 인터랙티브 모드
-cd client-app && npx playwright test load-test.spec.ts  # 부하 테스트 (5명 동시)
-```
-
-### Load & Network Tests
-
-```bash
-node scripts/network-simulation-test.js               # 네트워크 시뮬레이션 (3G/고지연/패킷손실)
-node scripts/load-test.js                              # WebSocket 부하 테스트 (100 동시접속)
-```
-
-### Monitoring Scripts
-
-```bash
-bash scripts/health-check.sh --once                    # Health check (1회)
-bash scripts/health-check.sh                           # 30초 간격 지속 모니터링
-bash scripts/monitor-resources.sh --once               # Docker 리소스 모니터링
-bash scripts/check-db-connections.sh --once            # DB 연결 수 확인
-bash scripts/aggregate-logs.sh --since 1h              # ERROR/CRITICAL 로그 수집
-```
-
-### Deployment Scripts
-
-```bash
-bash scripts/preflight-check.sh                        # 배포 가능 여부 확인
-IMAGE_TAG=sha-xxx bash scripts/deploy-prod.sh          # 프로덕션 배포
-bash scripts/rollback.sh                               # 롤백 (54dd099)
-bash scripts/rollback.sh --tag sha-xxx                 # 특정 버전 롤백
-```
-
-### Test Report
-
-```bash
-node scripts/generate-comprehensive-report.js          # 종합 리포트 생성
-```
-
-결과 해석 방법은 [TEST_RESULTS_GUIDE.md](./TEST_RESULTS_GUIDE.md)를 참고하세요.
-배포 체크리스트는 [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)를 참고하세요.
-
-## 문서
-
-상세한 프로젝트 문서는 `/docs` 폴더를 참고하세요:
-
-- PRD (Product Requirements Document)
-- 아키텍처 문서
-- API 설계 문서
-- UX 디자인 가이드
-- 개발 가이드
+**폰트:** Pretendard (CDN)
 
 ## 라이선스
 
