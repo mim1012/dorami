@@ -54,6 +54,7 @@ export function Header() {
             <div className="w-7 h-7 xs:w-8 xs:h-8 md:w-10 md:h-10 rounded-full overflow-hidden flex-shrink-0">
               <Image
                 src="/logo.png"
+                unoptimized
                 alt="도레미 마켓"
                 width={40}
                 height={40}

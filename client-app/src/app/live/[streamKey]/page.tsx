@@ -824,6 +824,7 @@ export default function LiveStreamPage() {
                   <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
                     <Image
                       src="/logo.png"
+                      unoptimized
                       alt="도레미 Live"
                       width={40}
                       height={40}
@@ -1029,7 +1030,7 @@ export default function LiveStreamPage() {
 
           {/* 4. Chat messages — absolute overlay */}
           <div
-            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[20vh] overflow-hidden flex flex-col"
+            className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[15vh] overflow-hidden flex flex-col"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
             {/* Top gradient fade — removed for cleaner look */}

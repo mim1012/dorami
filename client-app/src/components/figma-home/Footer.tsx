@@ -49,6 +49,7 @@ export function Footer() {
             <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
               <Image
                 src="/logo.png"
+                unoptimized
                 alt="Doremi"
                 width={36}
                 height={36}
