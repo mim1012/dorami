@@ -85,11 +85,45 @@ npm run dev:all          # Backend(3001) + Frontend(3000) 동시 실행
 
 ## 아키텍처
 
-### 스트리밍
+### 라이브 스트리밍 (구현 완료)
+
+**미디어 서버:** SRS (Simple Realtime Server) v6 — 자체 호스팅, Docker 컨테이너.
+WebRTC/LiveKit/Amazon IVS 등 외부 서비스 미사용.
 
 ```
-OBS → RTMP(1935) → SRS v6 → HTTP-FLV/HLS(8080) → Nginx → Client
+판매자 OBS → RTMP(1935) → SRS v6 → HTTP-FLV / HLS(8080) → Nginx reverse proxy → Client
 ```
+
+| 프로토콜 | 경로                         | 용도                     | 지연    |
+| -------- | ---------------------------- | ------------------------ | ------- |
+| RTMP     | `:1935/live/{streamKey}`     | OBS 인제스트 (업로드)    | -       |
+| HTTP-FLV | `/live/live/{streamKey}.flv` | 저지연 재생 (mpegts.js)  | ~1-3초  |
+| HLS      | `/hls/{streamKey}.m3u8`      | Safari/iOS 폴백 (hls.js) | ~5-10초 |
+
+**VideoPlayer 컴포넌트** (`client-app/src/components/stream/VideoPlayer.tsx`):
+
+1. HTTP-FLV 먼저 시도 (mpegts.js) — 저지연 우선
+2. 실패 시 HLS 자동 폴백 (hls.js)
+3. `onStreamStateChange` 이벤트: `PLAY_OK` | `STALL` | `MEDIA_ERROR` | `STREAM_ENDED`
+4. Dev 모드: KPI 오버레이 (first-frame ms, rebuffer count, stall duration)
+
+**SRS Webhook → Backend:**
+
+- `on_publish`: 방송 시작 → DB `LiveStream.status = LIVE`
+- `on_unpublish`: 방송 종료 → 45초 grace period → `status = OFFLINE`
+- 5분 cron: Redis + DB + SRS 3중 정합성 체크 (stale stream 자동 정리)
+
+**Nginx 프록시 경로** (staging/production):
+
+```nginx
+location /live/live/   → srs:8080/live/live/   # HTTP-FLV
+location /hls/         → srs:8080/live/        # HLS
+```
+
+**설정 파일:**
+
+- SRS: `infrastructure/docker/srs/srs.conf`
+- Nginx: `nginx/staging-ssl.conf`, `infrastructure/docker/nginx/production.conf`
 
 ### WebSocket 네임스페이스
 
