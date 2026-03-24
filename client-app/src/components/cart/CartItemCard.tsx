@@ -46,11 +46,11 @@ export function CartItemCard({
   return (
     <div
       className={`bg-content-bg rounded-xl p-4 border relative ${
-        isExpired ? 'border-error' : isSoldOut ? 'border-warning' : 'border-border-color'
+        isExpired || isSoldOut ? 'border-error' : 'border-border-color'
       }`}
     >
-      {/* Expired / Sold-out overlay */}
-      {isDisabled && (
+      {/* Expired overlay only — sold-out has no overlay */}
+      {isExpired && (
         <div className="absolute inset-0 bg-black/40 rounded-xl pointer-events-none z-10" />
       )}
 
@@ -120,9 +120,7 @@ export function CartItemCard({
           {/* Sold-out label */}
           {isSoldOut && !isExpired && (
             <div className="mb-2">
-              <span className="inline-block bg-warning/20 text-warning text-xs font-bold px-2 py-0.5 rounded">
-                품절된 상품입니다
-              </span>
+              <span className="inline-block text-error text-xs font-bold">품절된 상품입니다</span>
             </div>
           )}
 

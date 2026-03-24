@@ -74,7 +74,7 @@ function CartItemRow({
         <div className="flex items-center gap-1">
           <p className="text-white text-xs font-semibold truncate">{item.productName}</p>
           {isSoldOut && (
-            <span className="inline-block bg-warning/20 text-warning text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0">
+            <span className="inline-block text-red-500 text-[10px] font-bold flex-shrink-0">
               품절
             </span>
           )}
