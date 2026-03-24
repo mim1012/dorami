@@ -78,6 +78,7 @@ describe('AuthService', () => {
             del: jest.fn(),
             getClient: jest.fn().mockReturnValue({
               set: jest.fn().mockResolvedValue('OK'),
+              del: jest.fn().mockResolvedValue(1),
             }),
           },
         },
