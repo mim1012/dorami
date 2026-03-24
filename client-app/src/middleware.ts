@@ -287,6 +287,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|_next/data|favicon\\.ico|manifest\\.json|robots\\.txt).*)',
+    '/((?!api|_next/static|_next/image|_next/data|favicon\\.ico|icon-.*\\.png|logo\\.png|badge-.*\\.png|manifest\\.json|robots\\.txt|sw\\.js|images/).*)',
   ],
 };
