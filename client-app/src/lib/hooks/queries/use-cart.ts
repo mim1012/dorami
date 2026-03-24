@@ -9,16 +9,16 @@ export interface CartItem {
   id: string;
   productId: string;
   productName: string;
-  price: number;
+  price: string; // Backend returns Decimal as string (Lesson #9)
   quantity: number;
   color?: string;
   size?: string;
-  shippingFee: number;
+  shippingFee: string; // Backend returns Decimal as string
   timerEnabled: boolean;
   expiresAt?: string;
   status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED';
-  subtotal: number;
-  total: number;
+  subtotal: string; // Backend returns Decimal as string
+  total: string; // Backend returns Decimal as string
   remainingSeconds?: number;
   product?: {
     imageUrl?: string;

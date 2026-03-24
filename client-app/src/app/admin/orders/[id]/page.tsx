@@ -74,7 +74,7 @@ const ORDER_STATUS_UPDATE_OPTIONS = [
 export default function AdminOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const orderId = params.id as string;
+  const orderId = typeof params.id === 'string' ? params.id : undefined;
   const { showToast } = useToast();
   const confirm = useConfirm();
 
@@ -168,6 +168,13 @@ export default function AdminOrderDetailPage() {
       </span>
     );
   };
+
+  if (!orderId)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
+      </div>
+    );
 
   if (isLoading) {
     return (

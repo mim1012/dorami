@@ -251,7 +251,7 @@ export function formatStreamSchedule(isoString: string): {
 /**
  * Format price in USD currency format
  */
-export function formatPrice(price: number): string {
+export function formatPrice(price: number | string): string {
   const num = typeof price === 'string' ? parseFloat(price) : price;
   const hasDecimals = num % 1 !== 0;
   return new Intl.NumberFormat('en-US', {

@@ -580,9 +580,9 @@ function ProfileRegisterContent() {
 
           {/* Phone number */}
           <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">
-            <Heading2 className="text-hot-pink mb-4">Phone Number</Heading2>
+            <Heading2 className="text-hot-pink mb-4">전화번호</Heading2>
             <Select
-              label="Region"
+              label="지역"
               name="phoneRegion"
               value={phoneRegion}
               onChange={(e) => handlePhoneRegionChange(e.target.value as PhoneRegion)}
@@ -593,7 +593,7 @@ function ProfileRegisterContent() {
               fullWidth
             />
             <Input
-              label="Phone Number"
+              label="전화번호"
               name="kakaoPhone"
               value={formData.kakaoPhone}
               onChange={handleChange}
@@ -601,9 +601,7 @@ function ProfileRegisterContent() {
               placeholder={phoneRegion === 'US' ? '+1 213-555-1234' : '010-1234-5678'}
               fullWidth
             />
-            <p className="text-xs text-secondary-text/60">
-              Examples: +1 213-555-1234 or 010-1234-5678
-            </p>
+            <p className="text-xs text-secondary-text/60">예: +1 213-555-1234 또는 010-1234-5678</p>
           </div>
           {/* 미국 배송지 정보 */}
           <div className="bg-content-bg rounded-xl p-4 sm:p-6 space-y-4">

@@ -458,7 +458,7 @@ export default function OrdersPage() {
                               </Body>
                             </div>
                             <Body className="text-primary-text font-bold flex-shrink-0">
-                              {formatPrice(item.price * item.quantity)}
+                              {formatPrice(Number(item.price) * item.quantity)}
                             </Body>
                           </div>
                         </div>

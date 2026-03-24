@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Body } from './Typography';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -17,7 +17,8 @@ export function Input({
   id,
   ...props
 }: InputProps) {
-  const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-')}`;
+  const generatedId = useId();
+  const inputId = id || generatedId;
   const hasError = !!error;
 
   const baseStyles =

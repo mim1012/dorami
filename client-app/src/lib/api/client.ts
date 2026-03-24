@@ -304,7 +304,7 @@ async function request<T>(
 
   const text = await response.text();
   if (!text) {
-    return { data: undefined as any };
+    return { data: undefined as T };
   }
 
   const result = JSON.parse(text);

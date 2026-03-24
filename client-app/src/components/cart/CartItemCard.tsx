@@ -12,13 +12,13 @@ interface CartItemCardProps {
     productName: string;
     color?: string;
     size?: string;
-    price: number;
-    shippingFee: number;
+    price: string; // Backend returns Decimal as string
+    shippingFee: string; // Backend returns Decimal as string
     quantity: number;
     timerEnabled: boolean;
     expiresAt?: string;
     status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED';
-    total: number;
+    total: string; // Backend returns Decimal as string
     product?: {
       imageUrl?: string;
       status: 'AVAILABLE' | 'SOLD_OUT';

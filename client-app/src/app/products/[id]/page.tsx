@@ -17,7 +17,7 @@ import { BottomTabBar } from '@/components/layout/BottomTabBar';
 export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = typeof params.id === 'string' ? params.id : undefined;
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -72,9 +72,11 @@ export default function ProductDetailPage() {
   };
 
   useEffect(() => {
+    if (!id) return;
     async function fetchProduct() {
       try {
         setLoading(true);
+        if (!id) return;
         const data = await getProductById(id);
         setProduct(data);
         setNotFoundError(null);
@@ -159,6 +161,13 @@ export default function ProductDetailPage() {
       }
     })();
   }, [preselectedIntent, product, handleAddToCart, router]);
+
+  if (!id)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
+      </div>
+    );
 
   if (loading) {
     return (

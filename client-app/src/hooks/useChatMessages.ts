@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { ChatMessage } from '@/components/chat/types';
 
-export function useChatMessages(socket: Socket | null) {
+export function useChatMessages(socketRef: RefObject<Socket | null>) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const historySizeLimit = 100;
   const seenMessageKeysRef = useRef<Set<string>>(new Set());
@@ -53,7 +53,21 @@ export function useChatMessages(socket: Socket | null) {
     return sliced;
   };
 
+  // Track socket identity to re-subscribe when socket instance changes
+  const [socketId, setSocketId] = useState<string | null>(null);
+
   useEffect(() => {
+    const checkSocket = () => {
+      const currentId = socketRef.current?.id ?? null;
+      setSocketId((prev) => (prev !== currentId ? currentId : prev));
+    };
+    checkSocket();
+    const interval = setInterval(checkSocket, 200);
+    return () => clearInterval(interval);
+  }, [socketRef]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
     if (!socket) return;
     seenMessageKeysRef.current.clear();
     setMessages([]);
@@ -123,7 +137,8 @@ export function useChatMessages(socket: Socket | null) {
       socket.off('chat:message');
       socket.off('chat:message-deleted');
     };
-  }, [socket]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socketId]);
 
   return { messages };
 }

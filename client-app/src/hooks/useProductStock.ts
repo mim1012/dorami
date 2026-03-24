@@ -152,7 +152,8 @@ export function useProductStock(streamKey?: string) {
     );
 
     socket.on('connect', () => {
-      console.log('[useProductStock] Connected to WebSocket');
+      if (process.env.NODE_ENV !== 'production')
+        console.log('[useProductStock] Connected to WebSocket');
 
       // 연결 성공 → 실패 카운터 및 인증 에러 플래그 초기화
       circuitBreakerRef.current.recordSuccess();

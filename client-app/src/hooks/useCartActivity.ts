@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { generateId } from '@/lib/utils/uuid';
 import { cartKeys } from '@/lib/hooks/queries/use-cart';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
 export interface CartActivityEvent {
   id: string;
@@ -35,13 +36,14 @@ export function useCartActivity(streamKey: string) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    const { maxAttempts, delays } = RECONNECT_CONFIG.default;
     const socket = io(SOCKET_URL + '/', {
       transports: ['websocket'],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 3000,
+      reconnectionAttempts: maxAttempts,
+      reconnectionDelay: delays[0],
+      reconnectionDelayMax: delays[delays.length - 1],
     });
 
     socket.on('connect', () => {

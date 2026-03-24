@@ -234,8 +234,19 @@ function CartPageContent() {
   if (isLoading || authLoading) {
     return (
       <>
-        <div className="min-h-screen bg-primary-black flex items-center justify-center">
-          <Body className="text-primary-text">장바구니를 불러오는 중...</Body>
+        <div className="min-h-screen bg-primary-black">
+          <div className="flex flex-col gap-4 p-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse bg-card-bg rounded-xl p-4 flex gap-3">
+                <div className="w-20 h-20 bg-border-color rounded-lg flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-border-color rounded w-3/4" />
+                  <div className="h-3 bg-border-color rounded w-1/2" />
+                  <div className="h-4 bg-border-color rounded w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <BottomTabBar />
       </>

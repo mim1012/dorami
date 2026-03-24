@@ -168,7 +168,7 @@ Key enum values to be aware of:
 - `OrderStatus`: `PENDING_PAYMENT` | `PAYMENT_CONFIRMED` | `SHIPPED` | `DELIVERED` | `CANCELLED`
 - `PaymentStatus`: `PENDING` | `CONFIRMED` | `FAILED` | `REFUNDED`
 - `ShippingStatus`: `PENDING` | `SHIPPED` | `DELIVERED`
-- `CartStatus`: `ACTIVE` | `EXPIRED` | `CONVERTED`
+- `CartStatus`: `ACTIVE` | `EXPIRED` | `COMPLETED`
 - `ReservationStatus`: `WAITING` | `PROMOTED` | `CANCELLED`
 
 Exported helper functions (avoid reimplementing):

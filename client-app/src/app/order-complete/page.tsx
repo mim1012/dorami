@@ -267,7 +267,7 @@ function OrderCompleteContent() {
                   </Body>
                 </div>
                 <Body className="text-primary-text font-bold">
-                  {formatPrice(item.price * item.quantity)}
+                  {formatPrice(Number(item.price) * item.quantity)}
                 </Body>
               </div>
             ))}

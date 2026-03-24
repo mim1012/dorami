@@ -35,7 +35,7 @@ export default function GlobalError({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: '#0a0a0a',
             padding: '24px',
           }}
         >
@@ -47,7 +47,7 @@ export default function GlobalError({
                 height: '80px',
                 margin: '0 auto 24px',
                 borderRadius: '16px',
-                backgroundColor: '#FEF2F2',
+                backgroundColor: 'rgba(220, 38, 38, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -73,7 +73,7 @@ export default function GlobalError({
               style={{
                 fontSize: '24px',
                 fontWeight: 700,
-                color: '#111827',
+                color: '#F5F5F5',
                 marginBottom: '8px',
               }}
             >
@@ -82,7 +82,7 @@ export default function GlobalError({
             <p
               style={{
                 fontSize: '14px',
-                color: '#6B7280',
+                color: '#9CA3AF',
                 marginBottom: '32px',
                 lineHeight: 1.6,
               }}
@@ -111,7 +111,7 @@ export default function GlobalError({
                 }}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#111827',
+                  backgroundColor: '#FF1493',
                   color: '#FFFFFF',
                   border: 'none',
                   borderRadius: '8px',
@@ -126,8 +126,8 @@ export default function GlobalError({
                 href="/"
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#F3F4F6',
-                  color: '#374151',
+                  backgroundColor: '#1F1F1F',
+                  color: '#F5F5F5',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: 600,

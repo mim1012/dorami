@@ -22,6 +22,8 @@ const ERROR_MESSAGES: Record<string, string | ((details?: any) => string)> = {
   SESSION_EXPIRED: '로그인이 만료되었어요. 다시 로그인해주세요.',
   PROFILE_INCOMPLETE: '구매를 위해 프로필 정보가 필요해요.',
   TOO_MANY_REQUESTS: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.',
+  PRODUCT_SOLD_OUT: '이 상품은 품절되었어요.',
+  INSUFFICIENT_POINTS: '포인트가 부족해요. 보유 포인트를 확인해주세요.',
 };
 
 /** HTTP status → fallback 한국어 메시지 */

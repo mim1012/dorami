@@ -176,7 +176,7 @@ export function useChatConnection(streamKey: string) {
   };
 
   return {
-    socket: socketRef.current,
+    socketRef,
     isConnected,
     userCount,
     sendMessage,

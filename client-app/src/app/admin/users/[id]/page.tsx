@@ -86,7 +86,7 @@ type ShippingAddressField = keyof ShippingAddressForm;
 export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const userId = params.id as string;
+  const userId = typeof params.id === 'string' ? params.id : undefined;
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
@@ -120,7 +120,7 @@ export default function AdminUserDetailPage() {
             limit: 5,
             sortBy: 'createdAt',
             sortOrder: 'desc',
-            userId: userId,
+            userId: userId ?? '',
           },
         }),
       ]);
@@ -420,6 +420,13 @@ export default function AdminUserDetailPage() {
     };
     return colors[status as keyof typeof colors] || colors.INACTIVE;
   };
+
+  if (!userId)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
+      </div>
+    );
 
   if (isLoading) {
     return (

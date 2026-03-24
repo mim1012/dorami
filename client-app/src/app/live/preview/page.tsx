@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { cartKeys } from '@/lib/hooks/queries/use-cart';
-import type { CartSummary } from '@/lib/hooks/queries/use-cart';
+import type { CartItem, CartSummary } from '@/lib/hooks/queries/use-cart';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageList from '@/components/chat/ChatMessageList';
 import ChatInput, { ChatInputHandle } from '@/components/chat/ChatInput';
@@ -1534,34 +1534,34 @@ export default function LivePreviewPage() {
             ? {
                 ...item,
                 quantity: item.quantity + 1,
-                subtotal: item.price * (item.quantity + 1),
-                total: item.price * (item.quantity + 1),
+                subtotal: String(Number(item.price) * (item.quantity + 1)),
+                total: String(Number(item.price) * (item.quantity + 1)),
               }
             : item,
         );
       } else {
-        const newItem = {
+        const newItem: CartItem = {
           id: `mock-${Date.now()}`,
           productId,
           productName: product.name,
-          price: product.price,
+          price: String(product.price),
           quantity: 1,
           color: selectedColor,
           size: selectedSize,
-          shippingFee: product.shippingFee ?? 0,
+          shippingFee: String(product.shippingFee ?? 0),
           timerEnabled: product.timerEnabled,
           expiresAt: product.timerEnabled
             ? new Date(Date.now() + product.timerDuration * 60 * 1000).toISOString()
             : undefined,
           status: 'ACTIVE' as const,
-          subtotal: product.price,
-          total: product.price,
+          subtotal: String(product.price),
+          total: String(product.price),
           remainingSeconds: product.timerEnabled ? product.timerDuration * 60 : undefined,
           product: { imageUrl: product.imageUrl, status: 'AVAILABLE' as const },
         };
         updatedItems = [...currentItems, newItem];
       }
-      const grandTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const grandTotal = updatedItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
       return {
         items: updatedItems,
         itemCount: updatedItems.reduce((sum, item) => sum + item.quantity, 0),

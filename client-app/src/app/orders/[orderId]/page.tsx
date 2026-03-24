@@ -80,11 +80,11 @@ function OrderDetailSkeleton() {
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const orderId = params.orderId as string;
+  const orderId = typeof params.orderId === 'string' ? params.orderId : undefined;
   const { showToast } = useToast();
   const [reordering, setReordering] = useState(false);
 
-  const { data: order, isLoading: orderLoading, error: orderError } = useOrder(orderId);
+  const { data: order, isLoading: orderLoading, error: orderError } = useOrder(orderId ?? '');
 
   const handleReorder = async () => {
     if (!order) return;
@@ -161,6 +161,13 @@ export default function OrderDetailPage() {
       return { ...step, completed: false, current: false };
     });
   };
+
+  if (!orderId)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
+      </div>
+    );
 
   if (orderLoading) {
     return (
@@ -430,7 +437,7 @@ export default function OrderDetailPage() {
                     </Body>
                   </div>
                   <Body className="text-primary-text font-semibold flex-shrink-0">
-                    {formatPrice(item.price * item.quantity)}
+                    {formatPrice(Number(item.price) * item.quantity)}
                   </Body>
                 </div>
               ))}

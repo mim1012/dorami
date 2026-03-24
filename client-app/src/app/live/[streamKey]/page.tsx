@@ -74,10 +74,10 @@ export default function LiveStreamPage() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const streamKey = params.streamKey as string;
+  const streamKey = typeof params.streamKey === 'string' ? params.streamKey : undefined;
 
   // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
-  useTokenAutoRefresh(streamKey, { suspendForBroadcast: true });
+  useTokenAutoRefresh(streamKey ?? '', { suspendForBroadcast: true });
 
   const isMobile = useIsMobile(1024);
   const [isMobileReady, setIsMobileReady] = useState(false);
@@ -159,7 +159,7 @@ export default function LiveStreamPage() {
       const reconnectDurationMs = Math.round(performance.now() - retryStartRef.current);
       retryStartRef.current = null;
       sendStreamMetrics({
-        streamKey,
+        streamKey: streamKey ?? '',
         timestamp: new Date().toISOString(),
         metrics: {
           firstFrameMs: 0,
@@ -178,20 +178,20 @@ export default function LiveStreamPage() {
 
   // Shared chat connection — used by both mobile and desktop chat UI
   const {
-    socket,
+    socketRef: chatSocketRef,
     isConnected,
     userCount,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey);
-  const { messages: chatMessages } = useChatMessages(socket);
+  } = useChatConnection(streamKey ?? '');
+  const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
 
   // Desktop chat state
   const desktopInputRef = useRef<ChatInputHandle>(null);
   const desktopChatListRef = useRef<ChatMessageListHandle>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
 
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -237,22 +237,6 @@ export default function LiveStreamPage() {
     }
   }, [showViewerPulse]);
 
-  // Check if current user is admin (for desktop chat message deletion)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const authStorage = localStorage.getItem('auth-storage');
-      if (authStorage) {
-        try {
-          const parsed = JSON.parse(authStorage);
-          const role = parsed?.state?.user?.role;
-          setIsAdmin(role === 'ADMIN');
-        } catch {
-          // ignore parse errors
-        }
-      }
-    }
-  }, []);
-
   // Elapsed time calculation from streamStatus.startedAt
   useEffect(() => {
     if (!streamStatus?.startedAt) return;
@@ -271,6 +255,7 @@ export default function LiveStreamPage() {
 
   // ── Socket → FSM dispatch ──────────────────────────────────────────────────
   useEffect(() => {
+    const socket = chatSocketRef.current;
     if (!socket) return;
     const handleConnect = () => dispatch({ type: 'CONNECT_OK' });
     const handleDisconnect = () => dispatch({ type: 'CONNECT_FAIL' });
@@ -285,7 +270,7 @@ export default function LiveStreamPage() {
       socket.off('disconnect', handleDisconnect);
       socket.io.off('reconnect_attempt', handleReconnectAttempt);
     };
-  }, [socket, dispatch]);
+  }, [isConnected, dispatch]);
 
   // ── Keyboard detection via visualViewport ──────────────────────────────────
   // keyboardOffset: px the keyboard pushes content up from the viewport bottom.
@@ -306,7 +291,7 @@ export default function LiveStreamPage() {
   const fetchAllProducts = useCallback(async () => {
     try {
       const response = await apiClient.get<Product[]>('/products', {
-        params: { streamKey, status: 'AVAILABLE', take: '200' },
+        params: { streamKey: streamKey ?? '', status: 'AVAILABLE', take: '200' },
       });
       setAllProducts(response.data ?? []);
     } catch {
@@ -334,7 +319,7 @@ export default function LiveStreamPage() {
     const safeFetchAllProducts = async () => {
       try {
         const products = await apiClient.get<Product[]>('/products', {
-          params: { streamKey, status: 'AVAILABLE' },
+          params: { streamKey: streamKey ?? '', status: 'AVAILABLE' },
         });
         if (!isCancelled) {
           setAllProducts(products.data ?? []);
@@ -595,6 +580,13 @@ export default function LiveStreamPage() {
   // Profile completion guard: prevent rendering while redirecting
   // isMobileReady ensures useIsMobile has read window.innerWidth before
   // VideoPlayer renders — prevents Desktop→Mobile remount race condition.
+  if (!streamKey)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hot-pink" />
+      </div>
+    );
+
   if (isLoading || !isMobileReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">

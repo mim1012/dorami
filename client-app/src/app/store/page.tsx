@@ -13,6 +13,7 @@ import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { ChevronLeft, ChevronRight, ShoppingBag, X } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { Product, ProductStatus } from '@/lib/types';
+import { getUserMessage } from '@/lib/errors/error-messages';
 
 interface StoreResponse {
   data: Product[];
@@ -56,7 +57,7 @@ function StoreContent() {
       setMeta(response.data.meta);
     } catch (err: any) {
       console.error('Failed to fetch store products:', err);
-      setError(err.response?.data?.message || 'Failed to load store products');
+      setError(getUserMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -131,8 +132,7 @@ function StoreContent() {
       setSelectedProduct(null);
     } catch (err: any) {
       console.error('Failed to add to cart:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to add product to cart';
-      showToast(errorMessage, 'error');
+      showToast(getUserMessage(err), 'error');
     }
   };
 

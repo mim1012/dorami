@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, Suspense } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
@@ -11,7 +11,7 @@ import { formatPrice } from '@/lib/utils/price';
 import CartTimer from '@/components/cart/CartTimer';
 import { AlertCircle, CheckCircle, Clock, Coins, DollarSign, MapPin } from 'lucide-react';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: cartData } = useCart();
@@ -360,5 +360,19 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-black flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-hot-pink border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
   );
 }

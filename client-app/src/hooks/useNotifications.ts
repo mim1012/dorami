@@ -39,7 +39,8 @@ export function useNotifications(): UseNotificationsReturn {
   const registerServiceWorker = useCallback(async (): Promise<ServiceWorkerRegistration | null> => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('[useNotifications] Service Worker registered:', registration);
+      if (process.env.NODE_ENV !== 'production')
+        console.log('[useNotifications] Service Worker registered:', registration);
       return registration;
     } catch (error) {
       console.error('[useNotifications] Service Worker registration failed:', error);
@@ -61,10 +62,12 @@ export function useNotifications(): UseNotificationsReturn {
       setPermission(result);
 
       if (result === 'granted') {
-        console.log('[useNotifications] Notification permission granted');
+        if (process.env.NODE_ENV !== 'production')
+          console.log('[useNotifications] Notification permission granted');
         return true;
       } else {
-        console.log('[useNotifications] Notification permission denied');
+        if (process.env.NODE_ENV !== 'production')
+          console.log('[useNotifications] Notification permission denied');
         return false;
       }
     } catch (error) {
@@ -109,7 +112,8 @@ export function useNotifications(): UseNotificationsReturn {
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
           });
 
-          console.log('[useNotifications] Push subscription created:', subscription);
+          if (process.env.NODE_ENV !== 'production')
+            console.log('[useNotifications] Push subscription created:', subscription);
         }
 
         // Send subscription to backend
@@ -123,7 +127,8 @@ export function useNotifications(): UseNotificationsReturn {
         });
 
         setIsSubscribed(true);
-        console.log('[useNotifications] Subscribed to notifications');
+        if (process.env.NODE_ENV !== 'production')
+          console.log('[useNotifications] Subscribed to notifications');
         return true;
       } catch (error) {
         console.error('[useNotifications] Failed to subscribe:', error);
@@ -142,7 +147,8 @@ export function useNotifications(): UseNotificationsReturn {
       const subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
-        console.log('[useNotifications] No active subscription found');
+        if (process.env.NODE_ENV !== 'production')
+          console.log('[useNotifications] No active subscription found');
         return true;
       }
 
@@ -157,7 +163,8 @@ export function useNotifications(): UseNotificationsReturn {
       });
 
       setIsSubscribed(false);
-      console.log('[useNotifications] Unsubscribed from notifications');
+      if (process.env.NODE_ENV !== 'production')
+        console.log('[useNotifications] Unsubscribed from notifications');
       return true;
     } catch (error) {
       console.error('[useNotifications] Failed to unsubscribe:', error);
