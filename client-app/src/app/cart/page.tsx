@@ -126,6 +126,23 @@ function CartPageContent() {
     }
   };
 
+  const handleRemoveSoldOutItems = async () => {
+    const soldOutItems = cart?.items.filter((item) => item.product?.status === 'SOLD_OUT') ?? [];
+    if (soldOutItems.length === 0) return;
+    try {
+      await Promise.all(soldOutItems.map((item) => apiClient.delete(`/cart/${item.id}`)));
+      setSelectedItemIds((prev) => {
+        const soldOutIds = new Set(soldOutItems.map((i) => i.id));
+        const next = new Set([...prev].filter((id) => !soldOutIds.has(id)));
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: cartKeys.all });
+      showToast('품절된 상품을 삭제했습니다.', 'success');
+    } catch {
+      showToast('삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
   const handleRemoveSelectedItems = async () => {
     if (selectedItemIds.size === 0) return;
     const confirmed = await confirm({
@@ -145,8 +162,11 @@ function CartPageContent() {
     }
   };
 
-  // Derive active (non-expired) items for selection
-  const activeItems = cart?.items.filter((item) => item.status !== 'EXPIRED') ?? [];
+  // Derive active (non-expired, non-sold-out) items for selection
+  const activeItems =
+    cart?.items.filter(
+      (item) => item.status !== 'EXPIRED' && item.product?.status !== 'SOLD_OUT',
+    ) ?? [];
   const allActiveSelected =
     activeItems.length > 0 && activeItems.every((item) => selectedItemIds.has(item.id));
   const someSelected = selectedItemIds.size > 0;
@@ -173,7 +193,12 @@ function CartPageContent() {
 
   // Calculate totals based only on selected active items
   const selectedItems =
-    cart?.items.filter((item) => selectedItemIds.has(item.id) && item.status !== 'EXPIRED') ?? [];
+    cart?.items.filter(
+      (item) =>
+        selectedItemIds.has(item.id) &&
+        item.status !== 'EXPIRED' &&
+        item.product?.status !== 'SOLD_OUT',
+    ) ?? [];
   const selectedSubtotalCents = selectedItems.reduce(
     (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
     0,
@@ -194,9 +219,16 @@ function CartPageContent() {
         new Date(item.expiresAt).getTime() <= Date.now()),
   );
 
+  const hasSoldOutItems = cart?.items.some((item) => item.product?.status === 'SOLD_OUT');
+
   const selectedHasExpired = [...selectedItemIds].some((id) => {
     const item = cart?.items.find((i) => i.id === id);
     return item?.status === 'EXPIRED';
+  });
+
+  const selectedHasSoldOut = [...selectedItemIds].some((id) => {
+    const item = cart?.items.find((i) => i.id === id);
+    return item?.product?.status === 'SOLD_OUT';
   });
 
   if (isLoading || authLoading) {
@@ -308,8 +340,18 @@ function CartPageContent() {
                   grandTotal={selectedTotal}
                 />
 
-                {/* Secondary action */}
-                <div className="mb-6">
+                {/* Secondary actions */}
+                <div className="mb-6 space-y-2">
+                  {hasSoldOutItems && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      fullWidth
+                      onClick={handleRemoveSoldOutItems}
+                    >
+                      품절 상품 삭제
+                    </Button>
+                  )}
                   {hasExpiredItems && (
                     <Button
                       variant="outline"
@@ -358,16 +400,33 @@ function CartPageContent() {
                       item.status === 'ACTIVE' &&
                       new Date(item.expiresAt).getTime() <= Date.now()),
                 );
-                if (!freshHasExpired && !selectedHasExpired) {
+                const freshHasSoldOut = freshCart?.items.some(
+                  (item) => selectedItemIds.has(item.id) && item.product?.status === 'SOLD_OUT',
+                );
+                if (
+                  !freshHasExpired &&
+                  !selectedHasExpired &&
+                  !freshHasSoldOut &&
+                  !selectedHasSoldOut
+                ) {
                   router.push('/checkout');
+                } else if (freshHasSoldOut || selectedHasSoldOut) {
+                  showToast('품절된 상품이 포함되어 있습니다. 삭제 후 결제해주세요.', 'error');
+                  queryClient.invalidateQueries({ queryKey: cartKeys.all });
                 } else {
                   showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
                   queryClient.invalidateQueries({ queryKey: cartKeys.all });
                 }
               }}
-              disabled={selectedItems.length === 0 || selectedHasExpired || isFetching}
+              disabled={
+                selectedItems.length === 0 || selectedHasExpired || selectedHasSoldOut || isFetching
+              }
             >
-              {selectedHasExpired ? '만료된 상품 포함' : '결제하기'}
+              {selectedHasSoldOut
+                ? '품절 상품 포함'
+                : selectedHasExpired
+                  ? '만료된 상품 포함'
+                  : '결제하기'}
             </Button>
           </div>
         </div>

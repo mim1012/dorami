@@ -40,15 +40,17 @@ export function CartItemCard({
   onCheckedChange,
 }: CartItemCardProps) {
   const isExpired = item.status === 'EXPIRED';
+  const isSoldOut = item.product?.status === 'SOLD_OUT';
+  const isDisabled = isExpired || isSoldOut;
 
   return (
     <div
       className={`bg-content-bg rounded-xl p-4 border relative ${
-        isExpired ? 'border-error' : 'border-border-color'
+        isExpired ? 'border-error' : isSoldOut ? 'border-warning' : 'border-border-color'
       }`}
     >
-      {/* Expired overlay */}
-      {isExpired && (
+      {/* Expired / Sold-out overlay */}
+      {isDisabled && (
         <div className="absolute inset-0 bg-black/40 rounded-xl pointer-events-none z-10" />
       )}
 
@@ -58,7 +60,7 @@ export function CartItemCard({
           <input
             type="checkbox"
             checked={checked}
-            disabled={isExpired}
+            disabled={isDisabled}
             onChange={(e) => onCheckedChange?.(item.id, e.target.checked)}
             className="w-5 h-5 rounded border-border-color accent-hot-pink cursor-pointer disabled:cursor-not-allowed"
             aria-label={`${item.productName} 선택`}
@@ -73,7 +75,7 @@ export function CartItemCard({
                 src={item.product.imageUrl}
                 alt={item.productName}
                 fill
-                className={`object-cover ${isExpired ? 'grayscale' : ''}`}
+                className={`object-cover ${isDisabled ? 'grayscale' : ''}`}
                 sizes="56px"
               />
             </div>
@@ -89,7 +91,7 @@ export function CartItemCard({
           <div className="flex items-start justify-between mb-1 gap-2">
             <div className="min-w-0">
               <Heading2
-                className={`mb-0.5 truncate ${isExpired ? 'text-secondary-text' : 'text-primary-text'}`}
+                className={`mb-0.5 truncate ${isDisabled ? 'text-secondary-text' : 'text-primary-text'}`}
               >
                 {item.productName}
               </Heading2>
@@ -115,15 +117,24 @@ export function CartItemCard({
             </div>
           )}
 
+          {/* Sold-out label */}
+          {isSoldOut && !isExpired && (
+            <div className="mb-2">
+              <span className="inline-block bg-warning/20 text-warning text-xs font-bold px-2 py-0.5 rounded">
+                품절된 상품입니다
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <Body
-              className={`font-bold text-lg ${isExpired ? 'text-secondary-text' : 'text-hot-pink'}`}
+              className={`font-bold text-lg ${isDisabled ? 'text-secondary-text' : 'text-hot-pink'}`}
             >
               {formatPrice(item.price)}
             </Body>
 
             <div className="flex items-center gap-1">
-              {item.status === 'ACTIVE' ? (
+              {item.status === 'ACTIVE' && !isSoldOut ? (
                 <>
                   {/* Quantity controls */}
                   <div className="flex items-center border border-border-color rounded-lg overflow-hidden">
@@ -173,7 +184,7 @@ export function CartItemCard({
             <div className="flex justify-between">
               <Caption className="text-secondary-text">소계</Caption>
               <Body
-                className={`font-bold ${isExpired ? 'text-secondary-text' : 'text-primary-text'}`}
+                className={`font-bold ${isDisabled ? 'text-secondary-text' : 'text-primary-text'}`}
               >
                 {formatPrice(item.total)}
               </Body>
