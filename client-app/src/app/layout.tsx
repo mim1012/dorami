@@ -9,10 +9,13 @@ import { InAppBrowserGuard } from '@/components/common/InAppBrowserGuard';
 import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
 
 export const metadata: Metadata = {
-  title: 'Live Commerce',
-  description: 'Live commerce platform with real-time shopping',
+  title: '도레미 마켓 | Doremi Market',
+  description: '라이브 쇼핑의 새로운 경험 — 도레미 마켓',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192x192.png', type: 'image/png', sizes: '192x192' },
+    ],
     apple: '/icon-192x192.png',
   },
 };

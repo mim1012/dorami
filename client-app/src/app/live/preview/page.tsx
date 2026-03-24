@@ -1919,8 +1919,7 @@ export default function LivePreviewPage() {
             className="absolute left-3 xs:left-4 right-[72px] xs:right-[84px] sm:right-[100px] z-10 max-h-[30vh] overflow-hidden flex flex-col"
             style={{ bottom: 'calc(166px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))' }}
           >
-            {/* Top gradient fade */}
-            <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+            {/* Top gradient fade — removed for cleaner look */}
             <ChatMessageList messages={allMessages} compact />
           </div>
 
