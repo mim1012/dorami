@@ -38,9 +38,13 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
           UPLOAD_TO_S3: ${{ inputs.upload_to_s3 != 'false' && 'true' || 'true' }}
+          SECRET_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          SECRET_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
-          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+          ssh $USER@$HOST bash -s -- "$SECRET_POSTGRES_PASSWORD" "$SECRET_DATABASE_URL" << 'ENDSSH'
             set -e
+            _ARG_POSTGRES_PASSWORD="$1"
+            _ARG_DATABASE_URL="$2"
 
             # Source environment variables
             export POSTGRES_USER="dorami_prod"
@@ -49,6 +53,14 @@ jobs:
             # Try to read from .env.production if available
             if [ -f /opt/dorami/.env.production ]; then
               source /opt/dorami/.env.production || true
+            fi
+
+            # Override with secrets passed as arguments (takes precedence over .env.production)
+            if [ -n "${_ARG_POSTGRES_PASSWORD}" ]; then
+              export POSTGRES_PASSWORD="${_ARG_POSTGRES_PASSWORD}"
+            fi
+            if [ -n "${_ARG_DATABASE_URL}" ]; then
+              export DATABASE_URL="${_ARG_DATABASE_URL}"
             fi
 
             # Export required vars for backup script
