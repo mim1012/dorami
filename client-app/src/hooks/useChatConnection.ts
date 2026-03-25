@@ -99,9 +99,16 @@ export function useChatConnection(streamKey: string) {
       flushPendingMessages();
     });
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       setIsConnected(false);
       setConnectionStatus('disconnected');
+
+      // "io server disconnect" means the server forcefully closed the connection
+      // (e.g., auth failure). Attempt token refresh and reconnect once.
+      if (reason === 'io server disconnect' && !authRefreshAttemptedRef.current) {
+        authRefreshAttemptedRef.current = true;
+        await handleAuthReconnect();
+      }
     });
 
     socket.on('connect_error', async (error) => {
