@@ -44,7 +44,7 @@ BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILENAME}"
 BACKUP_CHECKSUM="${BACKUP_PATH}.sha256"
 
 # Docker container names to try
-CONTAINER_NAMES=("doremi-postgres-prod" "live-commerce-postgres")
+CONTAINER_NAMES=("dorami-postgres-1" "dorami-postgres-prod" "live-commerce-postgres")
 
 # S3 paths
 S3_YEAR=$(date +%Y)
