@@ -95,7 +95,7 @@ jobs:
               CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml restart frontend"
               ;;
             db-migrate)
-              CMD="docker compose -f docker-compose.base.yml -f docker-compose.staging.yml exec -T postgres psql -U dorami -d live_commerce -c 'ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;'"
+              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c 'SELECT id, name, quantity, status FROM products ORDER BY status, name;'"
               ;;
             disk-usage)
               CMD="df -h / && docker system df"
