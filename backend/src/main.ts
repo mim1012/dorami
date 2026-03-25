@@ -622,10 +622,11 @@ async function bootstrap() {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`❌ Chat connection failed: ${errorMessage}`);
-      if (process.env.NODE_ENV !== 'production') {
-        logger.error(error instanceof Error ? error.stack : String(error));
-      }
+      const cookieHeader = socket.handshake.headers.cookie ?? '(no cookies)';
+      const hasAccessToken = cookieHeader.includes('accessToken');
+      logger.error(
+        `❌ Chat connection failed: ${errorMessage} | hasAccessToken=${hasAccessToken} | origin=${socket.handshake.headers.origin ?? 'N/A'}`,
+      );
       socket.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
