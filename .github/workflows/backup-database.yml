@@ -46,6 +46,9 @@ jobs:
             _ARG_POSTGRES_PASSWORD="$1"
             _ARG_DATABASE_URL="$2"
 
+            # Sync scripts from git (ensures latest backup script)
+            cd /opt/dorami && git pull --ff-only origin main 2>/dev/null || true
+
             # Source environment variables
             export POSTGRES_USER="dorami_prod"
             export POSTGRES_DB="dorami_production"
