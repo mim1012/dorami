@@ -1097,7 +1097,11 @@ export default function LiveStreamPage() {
             >
               <div className="flex items-center gap-2">
                 {/* Chat input pill */}
-                <div className="flex-1 bg-black/30 backdrop-blur-md rounded-full px-3.5 xs:px-4 py-2.5 xs:py-3 border border-white/10">
+                <div
+                  className={`flex-1 rounded-full px-3.5 xs:px-4 py-2.5 xs:py-3 border backdrop-blur-md ${
+                    !isConnected ? 'bg-black/20 border-white/5' : 'bg-black/30 border-white/10'
+                  }`}
+                >
                   <input
                     type="text"
                     value={mobileMessage}
@@ -1108,9 +1112,9 @@ export default function LiveStreamPage() {
                         setMobileMessage('');
                       }
                     }}
-                    placeholder="메시지를 입력하세요..."
+                    placeholder={!isConnected ? '채팅 연결 중...' : '메시지를 입력하세요...'}
                     disabled={layout.bottomInput.disabled || !isConnected}
-                    className="w-full bg-transparent text-white text-[13px] xs:text-sm placeholder:text-white/50 focus:outline-none disabled:opacity-50"
+                    className="w-full bg-transparent text-white text-[13px] xs:text-sm placeholder:text-white/50 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
                 {/* Purchase CTA */}
