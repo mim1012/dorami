@@ -125,6 +125,15 @@ validate_environment() {
 find_postgres_container() {
   log_info "Finding PostgreSQL container..."
 
+  # Use POSTGRES_CONTAINER env var if set (from workflow dynamic detection)
+  if [ -n "${POSTGRES_CONTAINER:-}" ]; then
+    if docker ps --format '{{.Names}}' | grep -q "^${POSTGRES_CONTAINER}$"; then
+      echo "${POSTGRES_CONTAINER}"
+      return 0
+    fi
+    log_info "POSTGRES_CONTAINER=${POSTGRES_CONTAINER} not running, falling back to name list"
+  fi
+
   for container_name in "${CONTAINER_NAMES[@]}"; do
     if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
       echo "${container_name}"
@@ -132,7 +141,7 @@ find_postgres_container() {
     fi
   done
 
-  log_error "No PostgreSQL container found (tried: ${CONTAINER_NAMES[*]})"
+  log_error "No PostgreSQL container found (tried: ${POSTGRES_CONTAINER:-} ${CONTAINER_NAMES[*]})"
   return 1
 }
 

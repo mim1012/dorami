@@ -78,7 +78,20 @@ jobs:
               export SKIP_S3_UPLOAD="true"
             fi
 
-            # Run backup script (assume it's in PATH or use full path)
+            # Find PostgreSQL container dynamically
+            PG_CONTAINER=$(docker ps --filter "ancestor=postgres:16-alpine" --format '{{.Names}}' | head -1)
+            if [ -z "${PG_CONTAINER}" ]; then
+              PG_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i postgres | head -1)
+            fi
+            if [ -z "${PG_CONTAINER}" ]; then
+              echo "[ERROR] No PostgreSQL container found"
+              docker ps --format '{{.Names}}'
+              exit 1
+            fi
+            echo "[INFO] Found PostgreSQL container: ${PG_CONTAINER}"
+            export POSTGRES_CONTAINER="${PG_CONTAINER}"
+
+            # Run backup script
             bash /opt/dorami/scripts/backup-postgres.sh || {
               EXIT_CODE=$?
               echo "Backup script failed with exit code: ${EXIT_CODE}"
