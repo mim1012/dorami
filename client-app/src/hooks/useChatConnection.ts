@@ -90,12 +90,16 @@ export function useChatConnection(streamKey: string) {
 
     // Connection events
     socket.on('connect', () => {
+      // Don't set connected yet — wait for server auth confirmation
+      // Join chat room (server will authenticate in connection handler)
+      emitJoin();
+    });
+
+    // Server sends this after successful authentication
+    socket.on('connection:success', () => {
       setIsConnected(true);
       setConnectionStatus('connected');
       authRefreshAttemptedRef.current = false;
-
-      // Join chat room
-      emitJoin();
       flushPendingMessages();
     });
 
