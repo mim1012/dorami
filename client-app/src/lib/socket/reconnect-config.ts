@@ -26,9 +26,9 @@ export const RECONNECT_CONFIG = {
     jitterFactor: 0.4,
   },
   chat: {
-    maxAttempts: 5,
-    delays: [1000, 2000, 4000, 7000, 10000],
-    circuitBreakerThreshold: 5,
+    maxAttempts: 10,
+    delays: [1000, 2000, 4000, 7000, 10000, 15000, 20000, 25000, 30000, 30000],
+    circuitBreakerThreshold: 10,
     circuitBreakerCooldownMs: 30_000, // chat은 더 짧은 쿨다운
     jitterFactor: 0.4,
   },

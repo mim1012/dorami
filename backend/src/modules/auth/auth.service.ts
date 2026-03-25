@@ -113,7 +113,7 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(
       { ...payload, type: 'access', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '1h' },
+      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m' },
     );
 
     const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';

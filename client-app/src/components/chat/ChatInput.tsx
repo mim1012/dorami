@@ -1,9 +1,11 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import type { ChatConnectionStatus } from '@/hooks/useChatConnection';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
+  connectionStatus?: ChatConnectionStatus;
   compact?: boolean;
 }
 
@@ -12,7 +14,14 @@ export interface ChatInputHandle {
 }
 
 const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
-  const { onSendMessage, disabled = false, compact = false } = props;
+  const { onSendMessage, disabled = false, connectionStatus, compact = false } = props;
+
+  const placeholder =
+    connectionStatus === 'reconnecting' || connectionStatus === 'connecting'
+      ? '재연결 중...'
+      : connectionStatus === 'failed'
+        ? '연결 실패 - 새로고침하세요'
+        : '메시지 입력...';
 
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +69,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>((props, ref) => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="메시지 입력..."
+            placeholder={placeholder}
             maxLength={maxLength}
             disabled={disabled}
             className={`w-full bg-border-color text-primary-text border border-border-color focus:border-hot-pink focus:outline-none transition-colors ${

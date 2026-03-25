@@ -52,7 +52,7 @@ describe('AuthService', () => {
             get: jest.fn((key: string, defaultValue?: string) => {
               const config: Record<string, string> = {
                 ADMIN_EMAILS: '',
-                JWT_ACCESS_EXPIRES_IN: '1h',
+                JWT_ACCESS_EXPIRES_IN: '15m',
                 JWT_REFRESH_EXPIRES_IN: '30d',
                 AUTH_BLACKLIST_TTL_SECONDS: '900',
               };

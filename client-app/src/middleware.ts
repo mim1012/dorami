@@ -228,17 +228,9 @@ export function middleware(request: NextRequest) {
   }
 
   if (payload.exp && payload.exp * 1000 < Date.now()) {
-    // Token is expired. For live/shop paths, let the client-side token-refresh logic handle it
-    // so active viewers are not disrupted mid-session. All other protected pages redirect to login.
-    const isLiveOrShopPath =
-      pathname.startsWith('/live') ||
-      pathname.startsWith('/shop') ||
-      pathname.startsWith('/cart') ||
-      pathname.startsWith('/checkout');
-    if (isLiveOrShopPath) {
-      return NextResponse.next();
-    }
-    return redirectToLogin(request, pathname);
+    // Token is expired. Let the client-side token-refresh logic handle it
+    // (client.ts intercepts 401 responses and attempts POST /api/auth/refresh).
+    return NextResponse.next();
   }
 
   // /my-page 접근 시 admin은 /admin으로 리다이렉트

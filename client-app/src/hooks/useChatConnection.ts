@@ -10,8 +10,16 @@ interface QueuedMessage {
   message: string;
 }
 
+export type ChatConnectionStatus =
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'reconnecting'
+  | 'failed';
+
 export function useChatConnection(streamKey: string) {
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
@@ -65,6 +73,7 @@ export function useChatConnection(streamKey: string) {
     });
 
     socketRef.current = socket;
+    setConnectionStatus('connecting');
 
     const emitJoin = () => {
       socket.emit('chat:join-room', { liveId: streamKey });
@@ -82,6 +91,7 @@ export function useChatConnection(streamKey: string) {
     // Connection events
     socket.on('connect', () => {
       setIsConnected(true);
+      setConnectionStatus('connected');
       authRefreshAttemptedRef.current = false;
 
       // Join chat room
@@ -91,6 +101,7 @@ export function useChatConnection(streamKey: string) {
 
     socket.on('disconnect', (reason) => {
       setIsConnected(false);
+      setConnectionStatus('disconnected');
     });
 
     socket.on('connect_error', async (error) => {
@@ -121,8 +132,12 @@ export function useChatConnection(streamKey: string) {
       setUserCount((prev) => Math.max(0, prev - 1));
     });
 
-    socket.io.on('reconnect_attempt', (attemptNumber) => {
-      // Reconnect attempt (silently handle without logging)
+    socket.io.on('reconnect_attempt', () => {
+      setConnectionStatus('reconnecting');
+    });
+
+    socket.io.on('reconnect_failed', () => {
+      setConnectionStatus('failed');
     });
 
     socket.io.on('reconnect', () => {
@@ -178,6 +193,7 @@ export function useChatConnection(streamKey: string) {
   return {
     socketRef,
     isConnected,
+    connectionStatus,
     userCount,
     sendMessage,
     deleteMessage,
