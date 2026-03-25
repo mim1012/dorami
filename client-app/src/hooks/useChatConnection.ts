@@ -103,6 +103,11 @@ export function useChatConnection(streamKey: string) {
       flushPendingMessages();
     });
 
+    // Server sends auth error details before disconnecting
+    socket.on('error', (err: { errorCode?: string; message?: string }) => {
+      console.error('[Chat WebSocket] server error:', err.errorCode, err.message);
+    });
+
     socket.on('disconnect', async (reason) => {
       setIsConnected(false);
       setConnectionStatus('disconnected');

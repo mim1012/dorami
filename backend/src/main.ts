@@ -631,6 +631,8 @@ async function bootstrap() {
         type: 'error',
         errorCode: 'AUTH_FAILED',
         message: 'Authentication failed',
+        detail: errorMessage,
+        hasAccessToken,
         timestamp: new Date().toISOString(),
       });
       socket.disconnect();
