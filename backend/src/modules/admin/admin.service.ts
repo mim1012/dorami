@@ -2204,4 +2204,95 @@ export class AdminService {
     }
     return result;
   }
+
+  async removeOrderItem(
+    orderId: string,
+    itemId: string,
+  ): Promise<{
+    orderId: string;
+    removedItemId: string;
+    restoredStock: number;
+    updatedSubtotal: string;
+    updatedShippingFee: string;
+    updatedTotal: string;
+    remainingItemCount: number;
+  }> {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+      include: { orderItems: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('주문을 찾을 수 없습니다');
+    }
+
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new BadRequestException('입금 대기 상태의 주문만 상품을 삭제할 수 있습니다');
+    }
+
+    const { orderItems } = order;
+
+    const targetItem = orderItems.find((item) => item.id === itemId);
+    if (!targetItem) {
+      throw new NotFoundException('주문 상품을 찾을 수 없습니다');
+    }
+
+    if (orderItems.length <= 1) {
+      throw new BadRequestException('마지막 상품은 삭제할 수 없습니다. 주문 취소를 이용해주세요.');
+    }
+
+    const remainingItems = orderItems.filter((item) => item.id !== itemId);
+
+    // Cent-based integer arithmetic to avoid floating-point errors
+    const updatedSubtotal =
+      remainingItems.reduce(
+        (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
+        0,
+      ) / 100;
+
+    const updatedShippingFee =
+      remainingItems.reduce((sum, item) => sum + Math.round(Number(item.shippingFee) * 100), 0) /
+      100;
+
+    const updatedTotal = updatedSubtotal + updatedShippingFee;
+
+    let restoredStock = 0;
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.orderItem.delete({ where: { id: itemId } });
+
+        if (targetItem.productId) {
+          await tx.product.update({
+            where: { id: targetItem.productId },
+            data: {
+              quantity: { increment: targetItem.quantity },
+              status: 'AVAILABLE',
+            },
+          });
+          restoredStock = targetItem.quantity;
+        }
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            subtotal: updatedSubtotal,
+            shippingFee: updatedShippingFee,
+            total: updatedTotal,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    return {
+      orderId,
+      removedItemId: itemId,
+      restoredStock,
+      updatedSubtotal: updatedSubtotal.toFixed(2),
+      updatedShippingFee: updatedShippingFee.toFixed(2),
+      updatedTotal: updatedTotal.toFixed(2),
+      remainingItemCount: remainingItems.length,
+    };
+  }
 }

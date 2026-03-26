@@ -607,3 +607,13 @@ export class BulkDeleteOrdersDto {
   @ArrayMinSize(1)
   orderIds!: string[];
 }
+
+export class RemoveOrderItemResponseDto {
+  orderId!: string;
+  removedItemId!: string;
+  restoredStock!: number;
+  updatedSubtotal!: string;
+  updatedShippingFee!: string;
+  updatedTotal!: string;
+  remainingItemCount!: number;
+}
