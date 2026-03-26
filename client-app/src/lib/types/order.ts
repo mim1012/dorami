@@ -1,7 +1,7 @@
-import { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
+import { OrderStatus, PaymentStatus } from '@live-commerce/shared-types';
 
 // Re-export for convenience
-export { OrderStatus, PaymentStatus, ShippingStatus } from '@live-commerce/shared-types';
+export { OrderStatus, PaymentStatus } from '@live-commerce/shared-types';
 
 export interface OrderItem {
   id: string;
@@ -34,7 +34,6 @@ export interface Order {
   shippingFee: number;
   total: number;
   paymentStatus: PaymentStatus;
-  shippingStatus: ShippingStatus;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -52,7 +51,6 @@ export interface CreateOrderFromCartResponse {
   shippingFee: number;
   total: number;
   paymentStatus: PaymentStatus;
-  shippingStatus: ShippingStatus;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];

@@ -1721,14 +1721,14 @@ export default function LivePreviewPage() {
             >
               {/* Left: profile + name + LIVE + viewers */}
               <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-1">
-                <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0">
+                <div className="w-9 h-9 xs:w-10 xs:h-10 rounded-full overflow-hidden border-2 border-white/30 flex-shrink-0 bg-white">
                   <Image
                     src="/logo.png"
                     unoptimized
                     alt="도레미 Live"
                     width={40}
                     height={40}
-                    className="object-cover w-full h-full"
+                    className="object-contain w-full h-full"
                   />
                 </div>
                 <div className="flex-1 min-w-0">

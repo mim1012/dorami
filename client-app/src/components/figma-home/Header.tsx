@@ -51,14 +51,15 @@ export function Header() {
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5 xs:gap-2">
-            <div className="w-7 h-7 xs:w-8 xs:h-8 md:w-10 md:h-10 rounded-full overflow-hidden flex-shrink-0">
+            <div className="w-8 h-8 xs:w-9 xs:h-9 md:w-10 md:h-10 rounded-full overflow-hidden flex-shrink-0 bg-white">
               <Image
                 src="/logo.png"
                 unoptimized
                 alt="도레미 마켓"
                 width={40}
                 height={40}
-                className="object-cover w-full h-full"
+                className="object-contain w-full h-full"
+                priority
               />
             </div>
             <h1 className="font-bold text-base xs:text-lg md:text-xl bg-gradient-to-r from-[#FF4D8D] to-[#B084CC] bg-clip-text text-transparent whitespace-nowrap">

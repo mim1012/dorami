@@ -18,7 +18,6 @@ export {
   ReservationStatus,
   OrderStatus,
   PaymentStatus,
-  ShippingStatus,
   PaymentMethod,
   type ApiResponse,
   type ApiError,

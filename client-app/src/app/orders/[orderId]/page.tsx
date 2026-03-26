@@ -7,16 +7,7 @@ import { useOrder } from '@/lib/hooks/queries/use-orders';
 import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types/order';
 import Image from 'next/image';
-import {
-  CheckCircle,
-  Clock,
-  Package,
-  Truck,
-  Home,
-  ChevronLeft,
-  Copy,
-  ShoppingBag,
-} from 'lucide-react';
+import { CheckCircle, Clock, Package, ChevronLeft, Copy, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
@@ -44,7 +35,7 @@ function OrderDetailSkeleton() {
         <div className="bg-content-bg rounded-2xl border border-border-color p-5 mb-4">
           <div className="h-5 bg-border-color/50 rounded w-24 mb-6" />
           <div className="space-y-6">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-border-color/50 flex-shrink-0" />
                 <div className="pt-2">
@@ -135,16 +126,9 @@ export default function OrderDetailPage() {
       { label: '주문 완료', icon: CheckCircle, status: 'ORDER_CREATED' },
       { label: '입금 대기', icon: Clock, status: 'PENDING_PAYMENT' },
       { label: '결제 확인', icon: CheckCircle, status: 'PAYMENT_CONFIRMED' },
-      { label: '배송중', icon: Truck, status: 'SHIPPED' },
-      { label: '배송 완료', icon: Home, status: 'DELIVERED' },
     ];
 
-    const statusOrder: OrderStatus[] = [
-      OrderStatus.PENDING_PAYMENT,
-      OrderStatus.PAYMENT_CONFIRMED,
-      OrderStatus.SHIPPED,
-      OrderStatus.DELIVERED,
-    ];
+    const statusOrder: OrderStatus[] = [OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_CONFIRMED];
 
     const currentIndex = statusOrder.indexOf(order.status);
 
@@ -154,10 +138,6 @@ export default function OrderDetailPage() {
         return { ...step, completed: currentIndex >= 0, current: currentIndex === 0 };
       if (index === 2)
         return { ...step, completed: currentIndex >= 1, current: currentIndex === 1 };
-      if (index === 3)
-        return { ...step, completed: currentIndex >= 2, current: currentIndex === 2 };
-      if (index === 4)
-        return { ...step, completed: currentIndex >= 3, current: currentIndex === 3 };
       return { ...step, completed: false, current: false };
     });
   };
@@ -466,8 +446,7 @@ export default function OrderDetailPage() {
             <Button variant="primary" onClick={() => router.push('/')}>
               쇼핑 계속하기
             </Button>
-            {(order.status === OrderStatus.DELIVERED ||
-              order.status === OrderStatus.PAYMENT_CONFIRMED) && (
+            {order.status === OrderStatus.PAYMENT_CONFIRMED && (
               <Button variant="outline" disabled={reordering} onClick={handleReorder}>
                 <ShoppingBag className="w-4 h-4 mr-2" />
                 {reordering ? '담는 중...' : '다시 주문하기'}

@@ -377,8 +377,6 @@ export default function AdminUserDetailPage() {
     const labels: Record<string, string> = {
       PENDING_PAYMENT: '입금 대기',
       PAYMENT_CONFIRMED: '결제 완료',
-      SHIPPED: '배송중',
-      DELIVERED: '배송 완료',
       CANCELLED: '취소',
     };
     return labels[status] || status;
@@ -397,8 +395,6 @@ export default function AdminUserDetailPage() {
   const getShippingStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       PENDING: '준비중',
-      SHIPPED: '배송중',
-      DELIVERED: '배송 완료',
     };
     return labels[status] || status;
   };

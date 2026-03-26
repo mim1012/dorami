@@ -11,14 +11,12 @@ import { useToast } from '@/components/common/Toast';
 import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types';
 import Image from 'next/image';
-import { Package, Clock, CheckCircle, XCircle, Truck, ShoppingBag } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from 'lucide-react';
 
 const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
   { label: '전체', value: 'ALL' },
   { label: '입금 대기', value: OrderStatus.PENDING_PAYMENT },
   { label: '결제 완료', value: OrderStatus.PAYMENT_CONFIRMED },
-  { label: '배송중', value: OrderStatus.SHIPPED },
-  { label: '배송 완료', value: OrderStatus.DELIVERED },
   { label: '취소', value: OrderStatus.CANCELLED },
 ];
 
@@ -40,12 +38,10 @@ function getStartDateForFilter(filter: DateFilterValue): string | undefined {
   return now.toISOString().slice(0, 10);
 }
 
-const EMPTY_STATE_MESSAGES: Record<OrderStatus | 'ALL', string> = {
+const EMPTY_STATE_MESSAGES: Partial<Record<OrderStatus | 'ALL', string>> = {
   ALL: '아직 주문 내역이 없어요',
   [OrderStatus.PENDING_PAYMENT]: '입금 대기 중인 주문이 없어요',
   [OrderStatus.PAYMENT_CONFIRMED]: '결제 완료된 주문이 없어요',
-  [OrderStatus.SHIPPED]: '배송 중인 주문이 없어요',
-  [OrderStatus.DELIVERED]: '배송 완료된 주문이 없어요',
   [OrderStatus.CANCELLED]: '취소된 주문이 없어요',
 };
 
@@ -150,17 +146,6 @@ export default function OrdersPage() {
     if (orderStatus === 'CANCELLED') {
       return { text: '주문 취소', color: 'text-error', icon: XCircle, bgColor: 'bg-error/20' };
     }
-    if (orderStatus === 'SHIPPED') {
-      return { text: '배송 중', color: 'text-info', icon: Truck, bgColor: 'bg-blue-100/10' };
-    }
-    if (orderStatus === 'DELIVERED') {
-      return {
-        text: '배송 완료',
-        color: 'text-success',
-        icon: CheckCircle,
-        bgColor: 'bg-success/10',
-      };
-    }
     if (orderStatus === 'PAYMENT_CONFIRMED') {
       return {
         text: '결제 완료',
@@ -188,17 +173,6 @@ export default function OrdersPage() {
           icon: Package,
           bgColor: 'bg-border-color',
         };
-    }
-  };
-
-  const getShippingStatusInfo = (status: string) => {
-    switch (status) {
-      case 'SHIPPED':
-        return { text: '배송 중', color: 'text-info' };
-      case 'DELIVERED':
-        return { text: '배송 완료', color: 'text-success' };
-      default:
-        return null;
     }
   };
 
@@ -390,7 +364,6 @@ export default function OrdersPage() {
             <div className="space-y-4">
               {displayOrders.map((order) => {
                 const paymentStatus = getOrderRowStatusInfo(order.status, order.paymentStatus);
-                const shippingStatus = getShippingStatusInfo(order.shippingStatus);
                 const StatusIcon = paymentStatus.icon;
                 const isCancelled = order.status === 'CANCELLED';
                 const showReorder = canReorder(order.status);
@@ -473,14 +446,6 @@ export default function OrdersPage() {
                       <div className="mt-4 pt-4 border-t border-border-color flex justify-between items-center">
                         <div>
                           <Body className="text-secondary-text text-sm mb-1">총 결제 금액</Body>
-                          {shippingStatus && (
-                            <div className="flex items-center gap-1.5">
-                              <Truck className={`w-3.5 h-3.5 ${shippingStatus.color}`} />
-                              <Body className={`text-xs ${shippingStatus.color}`}>
-                                {shippingStatus.text}
-                              </Body>
-                            </div>
-                          )}
                         </div>
                         <Display className="text-hot-pink">{formatPrice(order.total)}</Display>
                       </div>

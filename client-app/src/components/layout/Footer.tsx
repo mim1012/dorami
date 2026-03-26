@@ -55,7 +55,7 @@ export function Footer() {
         <div className="px-4 space-y-5">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-white">
               <Image
                 src="/logo.png"
                 unoptimized

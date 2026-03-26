@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const orderStatusSchema = z.object({
-  status: z.enum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'], {
+  status: z.enum(['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'], {
     errorMap: () => ({ message: '유효한 주문 상태를 선택해주세요' }),
   }),
   notes: z.string().max(500, '메모는 500자 이하로 입력해주세요').optional(),

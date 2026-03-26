@@ -45,9 +45,6 @@ interface SystemSettings {
   venmoEmail: string;
   venmoRecipientName: string;
   alimtalkEnabled: boolean;
-  solapiApiKey: string;
-  solapiApiSecret: string;
-  kakaoChannelId: string;
   businessRegistrationNumber: string;
   businessAddress: string;
   onlineSalesRegistrationNumber: string;
@@ -233,9 +230,6 @@ export default function AdminSettingsPage() {
     venmoEmail: '',
     venmoRecipientName: '',
     alimtalkEnabled: false,
-    solapiApiKey: '',
-    solapiApiSecret: '',
-    kakaoChannelId: '',
     businessRegistrationNumber: '',
     businessAddress: '',
     onlineSalesRegistrationNumber: '',
@@ -608,35 +602,10 @@ export default function AdminSettingsPage() {
             </p>
 
             {settings.alimtalkEnabled && (
-              <div className="space-y-4">
-                <Input
-                  label="솔라피 API Key"
-                  type="text"
-                  value={settings.solapiApiKey}
-                  onChange={(e) => setSettings({ ...settings, solapiApiKey: e.target.value })}
-                  fullWidth
-                />
-                <Input
-                  label="솔라피 API Secret"
-                  type="password"
-                  value={settings.solapiApiSecret}
-                  onChange={(e) => setSettings({ ...settings, solapiApiSecret: e.target.value })}
-                  placeholder={
-                    settings.solapiApiSecret === '••••••••' ? '저장된 시크릿 (변경 시 입력)' : ''
-                  }
-                  fullWidth
-                />
-                <Input
-                  label="카카오 채널 ID (pfId)"
-                  type="text"
-                  value={settings.kakaoChannelId}
-                  onChange={(e) => setSettings({ ...settings, kakaoChannelId: e.target.value })}
-                  fullWidth
-                />
-                <p className="text-xs text-gray-400">
-                  솔라피(solapi.com)에서 발급받은 API Key와 Secret을 입력하세요.
-                </p>
-              </div>
+              <p className="text-xs text-gray-400">
+                비즈고(Bizgo) API를 통해 카카오 알림톡이 발송됩니다. API 인증 정보는 서버 환경변수로
+                관리됩니다.
+              </p>
             )}
           </div>
 

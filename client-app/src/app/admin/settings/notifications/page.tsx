@@ -28,7 +28,6 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   ORDER_CONFIRMATION: '주문 확인',
   PAYMENT_REMINDER: '입금 안내',
   PAYMENT_CONFIRMED: '입금 확인',
-  SHIPPED: '배송 시작',
   RESERVATION_PROMOTED: '예약 전환',
   LIVE_START: '방송 시작',
 };
@@ -41,8 +40,6 @@ function getAvailableVariables(type: string): string[] {
       return [...commonVars, '{amount}', '{depositorName}'];
     case 'PAYMENT_CONFIRMED':
       return [...commonVars, '{amount}'];
-    case 'SHIPPED':
-      return [...commonVars, '{trackingNumber}'];
     case 'RESERVATION_PROMOTED':
       return [...commonVars, '{productName}'];
     case 'LIVE_START':

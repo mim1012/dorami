@@ -16,7 +16,7 @@ interface OrderTableProps {
   onViewOrder?: (orderId: string) => void;
 }
 
-const statusConfig: Record<OrderStatus, { label: string; className: string }> = {
+const statusConfig: Partial<Record<OrderStatus, { label: string; className: string }>> = {
   [OrderStatus.PENDING_PAYMENT]: {
     label: '결제 대기',
     className: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
@@ -24,14 +24,6 @@ const statusConfig: Record<OrderStatus, { label: string; className: string }> = 
   [OrderStatus.PAYMENT_CONFIRMED]: {
     label: '결제 확인',
     className: 'bg-blue-50 text-blue-700 border border-blue-200',
-  },
-  [OrderStatus.SHIPPED]: {
-    label: '배송 중',
-    className: 'bg-purple-50 text-purple-700 border border-purple-200',
-  },
-  [OrderStatus.DELIVERED]: {
-    label: '배송 완료',
-    className: 'bg-green-50 text-green-700 border border-green-200',
   },
   [OrderStatus.CANCELLED]: {
     label: '취소',

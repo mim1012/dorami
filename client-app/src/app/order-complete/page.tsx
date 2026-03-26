@@ -19,7 +19,6 @@ interface OrderDetail {
   shippingFee: number;
   total: number;
   paymentStatus: string;
-  shippingStatus: string;
   createdAt: string;
   updatedAt: string;
   items: {

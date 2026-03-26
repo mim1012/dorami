@@ -64,7 +64,7 @@ export default function AlertsPage() {
             title: getOrderTitle(order.status),
             message: `주문번호 ${order.orderNumber || order.id?.slice(0, 8)} · ${formatPrice(order.total || 0)}`,
             time: formatTime(order.updatedAt || order.createdAt),
-            read: order.status === 'DELIVERED',
+            read: order.status === 'PAYMENT_CONFIRMED',
             icon: getOrderIcon(order.status),
             link: `/orders/${order.id}`,
           }))
@@ -342,12 +342,6 @@ function getOrderTitle(status: string): string {
       return '입금 대기 중';
     case 'DEPOSIT_CONFIRMED':
       return '입금 확인 완료';
-    case 'PREPARING':
-      return '상품 준비 중';
-    case 'SHIPPING':
-      return '배송 중';
-    case 'DELIVERED':
-      return '배송 완료';
     case 'CANCELLED':
       return '주문 취소됨';
     default:
@@ -361,12 +355,7 @@ function getOrderIcon(status: string): Notification['icon'] {
     case 'DEPOSIT_WAITING':
       return 'clock';
     case 'DEPOSIT_CONFIRMED':
-    case 'PREPARING':
       return 'cart';
-    case 'SHIPPING':
-      return 'truck';
-    case 'DELIVERED':
-      return 'check';
     case 'CANCELLED':
       return 'alert';
     default:

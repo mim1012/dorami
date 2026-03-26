@@ -145,14 +145,15 @@ function LoginContent() {
     <div className="min-h-screen bg-primary-black flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl overflow-hidden bg-white">
             <Image
               src="/logo.png"
               alt="Doremi"
               width={64}
               height={64}
-              className="object-cover w-full h-full"
+              className="object-contain w-full h-full"
               unoptimized
+              priority
             />
           </div>
           <Display className="text-hot-pink mb-2">Doremi</Display>
