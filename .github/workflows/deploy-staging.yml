@@ -76,6 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
