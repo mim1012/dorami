@@ -76,6 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
@@ -438,13 +439,13 @@ jobs:
 
       - name: Save staging image tag to repo variable
         if: success() && needs.build.outputs.image_tag != ''
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
-          gh variable set STAGING_LATEST_IMAGE_TAG --body "${IMAGE_TAG}" --repo ${{ github.repository }}
-          echo "✅ STAGING_LATEST_IMAGE_TAG=${IMAGE_TAG} saved to repo variables"
+          gh variable set STAGING_LATEST_IMAGE_TAG --body "${IMAGE_TAG}" --repo ${{ github.repository }} \
+            && echo "✅ STAGING_LATEST_IMAGE_TAG=${IMAGE_TAG} saved" \
+            || echo "⚠️ Failed to save variable (non-critical, deploy succeeded)"
 
       - name: Telegram - Success
         if: success()

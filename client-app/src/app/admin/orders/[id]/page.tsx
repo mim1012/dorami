@@ -80,6 +80,7 @@ export default function AdminOrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
 
   const fetchOrderDetail = async () => {
     setIsLoading(true);
@@ -122,6 +123,29 @@ export default function AdminOrderDetailPage() {
       showToast(err.response?.data?.message || '상태 변경에 실패했습니다', 'error');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleRemoveItem = async (item: OrderItem) => {
+    if (!order) return;
+
+    const confirmed = await confirm({
+      title: '상품 삭제',
+      message: `"${item.productName}"을(를) 주문에서 삭제하시겠습니까?\n재고가 복원됩니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setRemovingItemId(item.id);
+    try {
+      await apiClient.delete(`/admin/orders/${order.id}/items/${item.id}`);
+      showToast(`"${item.productName}" 상품이 삭제되었습니다`, 'success');
+      await fetchOrderDetail();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '상품 삭제에 실패했습니다', 'error');
+    } finally {
+      setRemovingItemId(null);
     }
   };
 
@@ -373,6 +397,15 @@ export default function AdminOrderDetailPage() {
                 <Body className="font-medium">{formatCurrency(item.price)}</Body>
                 <Body className="text-secondary-text text-caption">x{item.quantity}</Body>
               </div>
+              {order.status === 'PENDING_PAYMENT' && order.items.length > 1 && (
+                <button
+                  onClick={() => handleRemoveItem(item)}
+                  disabled={removingItemId === item.id || isUpdating}
+                  className="ml-2 px-3 py-2 min-h-[44px] rounded-lg border border-gray-300 text-gray-400 hover:text-error hover:border-error hover:bg-error/10 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {removingItemId === item.id ? '삭제 중...' : '삭제'}
+                </button>
+              )}
             </div>
           ))}
         </div>

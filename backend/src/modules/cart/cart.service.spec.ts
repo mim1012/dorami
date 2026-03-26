@@ -51,6 +51,7 @@ describe('CartService', () => {
             product: {
               findUnique: jest.fn(),
               findMany: jest.fn().mockResolvedValue([]),
+              update: jest.fn(),
             },
             cart: {
               aggregate: jest.fn(),
@@ -174,6 +175,7 @@ describe('CartService', () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue({
         ...mockProduct,
         status: 'SOLD_OUT',
+        quantity: 0,
       } as any);
       jest
         .spyOn(prismaService.cart, 'aggregate')

@@ -242,7 +242,7 @@ SRS fires webhook callbacks to the backend to update `LiveStream.status` in the 
 
 **Production compose** (`docker-compose.prod.yml`):
 
-- Resource limits: PostgreSQL `mem_limit: 2g, cpus: 2`; Redis `maxmemory 512mb` with `allkeys-lru`
+- Resource limits: PostgreSQL `mem_limit: 2g, cpus: 2`; Redis `maxmemory 512mb` with `volatile-lru`
 - Logging: `max-size: 50m, max-file: 5` per container
 - All env vars validated with `:?` (fail-fast on missing)
 - Images: GHCR with immutable SHA tags (`ghcr.io/{owner}/dorami-backend:sha-<hash>`)
@@ -313,7 +313,7 @@ GitHub Actions workflows (`.github/workflows/`):
 
 2. **Set environment variables** — create `.env.local` in backend root, or use defaults:
    - Backend needs: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`
-   - Frontend needs: `NEXT_PUBLIC_WS_URL`, `BACKEND_URL` (both default to localhost)
+   - Frontend needs: `WS_URL`, `BACKEND_URL` (both default to localhost)
    - Kakao OAuth requires `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET` (use dev credentials or disable OAuth for E2E)
 
 3. **Start development:**
@@ -402,7 +402,7 @@ DEBUG=socket.io:* npm run dev:backend   # Enable debug logs
 
 **WebSocket connection fails**
 
-- Verify `NEXT_PUBLIC_WS_URL` matches backend URL
+- Verify `WS_URL` matches backend URL
 - Check Socket.IO namespaces authenticated in `backend/src/main.ts`
 
 **Husky hooks fail**

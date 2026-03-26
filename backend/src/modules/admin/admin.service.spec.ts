@@ -33,6 +33,7 @@ describe('AdminService', () => {
             $transaction: jest.fn(),
             order: {
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               update: jest.fn(),
               findMany: jest.fn().mockResolvedValue([]),
               count: jest.fn(),
@@ -59,6 +60,10 @@ describe('AdminService', () => {
             },
             orderItem: {
               groupBy: jest.fn(),
+              delete: jest.fn(),
+            },
+            product: {
+              update: jest.fn(),
             },
             liveStream: {
               count: jest.fn(),
@@ -1116,6 +1121,143 @@ describe('AdminService', () => {
       const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
       expect(buffer).toBeInstanceOf(Buffer);
       expect(buffer.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('removeOrderItem', () => {
+    const makeOrderWithItems = (overrides: Record<string, any> = {}) => ({
+      id: 'ORD-20260326-00001',
+      status: 'PENDING_PAYMENT',
+      deletedAt: null,
+      orderItems: [
+        {
+          id: 'item-1',
+          productId: 'prod-1',
+          productName: '상품A',
+          price: '25.00',
+          quantity: 2,
+          shippingFee: '5.00',
+        },
+        {
+          id: 'item-2',
+          productId: 'prod-2',
+          productName: '상품B',
+          price: '10.00',
+          quantity: 1,
+          shippingFee: '3.00',
+        },
+      ],
+      ...overrides,
+    });
+
+    it('정상적으로 아이템을 삭제하고 금액을 재계산해야 한다', async () => {
+      const order = makeOrderWithItems();
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      const txMock = {
+        orderItem: { delete: jest.fn() },
+        product: { update: jest.fn() },
+        order: { update: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(txMock));
+
+      const result = await service.removeOrderItem('ORD-20260326-00001', 'item-1');
+
+      expect(result.removedItemId).toBe('item-1');
+      expect(result.restoredStock).toBe(2);
+      expect(result.remainingItemCount).toBe(1);
+      // item-2 only: subtotal = 10.00 * 1 = 10.00, shippingFee = 3.00, total = 13.00
+      expect(result.updatedSubtotal).toBe('10.00');
+      expect(result.updatedShippingFee).toBe('3.00');
+      expect(result.updatedTotal).toBe('13.00');
+
+      expect(txMock.orderItem.delete).toHaveBeenCalledWith({ where: { id: 'item-1' } });
+      expect(txMock.product.update).toHaveBeenCalledWith({
+        where: { id: 'prod-1' },
+        data: { quantity: { increment: 2 }, status: 'AVAILABLE' },
+      });
+    });
+
+    it('주문이 없으면 NotFoundException을 던져야 한다', async () => {
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.removeOrderItem('ORD-NONE', 'item-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('PENDING_PAYMENT가 아닌 주문은 BadRequestException을 던져야 한다', async () => {
+      const order = makeOrderWithItems({ status: 'PAYMENT_CONFIRMED' });
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      await expect(service.removeOrderItem('ORD-20260326-00001', 'item-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('존재하지 않는 아이템이면 NotFoundException을 던져야 한다', async () => {
+      const order = makeOrderWithItems();
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      await expect(
+        service.removeOrderItem('ORD-20260326-00001', 'item-nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('마지막 아이템이면 BadRequestException을 던져야 한다', async () => {
+      const order = makeOrderWithItems({
+        orderItems: [
+          {
+            id: 'item-1',
+            productId: 'prod-1',
+            productName: '상품A',
+            price: '25.00',
+            quantity: 1,
+            shippingFee: '5.00',
+          },
+        ],
+      });
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      await expect(service.removeOrderItem('ORD-20260326-00001', 'item-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('productId가 null이면 재고 복원을 스킵해야 한다', async () => {
+      const order = makeOrderWithItems({
+        orderItems: [
+          {
+            id: 'item-1',
+            productId: null,
+            productName: '삭제된상품',
+            price: '15.00',
+            quantity: 1,
+            shippingFee: '0.00',
+          },
+          {
+            id: 'item-2',
+            productId: 'prod-2',
+            productName: '상품B',
+            price: '10.00',
+            quantity: 1,
+            shippingFee: '3.00',
+          },
+        ],
+      });
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      const txMock = {
+        orderItem: { delete: jest.fn() },
+        product: { update: jest.fn() },
+        order: { update: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(txMock));
+
+      const result = await service.removeOrderItem('ORD-20260326-00001', 'item-1');
+
+      expect(result.restoredStock).toBe(0);
+      expect(txMock.product.update).not.toHaveBeenCalled();
     });
   });
 });

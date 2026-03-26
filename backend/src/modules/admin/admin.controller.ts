@@ -200,6 +200,18 @@ export class AdminController {
     return this.adminService.bulkUpdateOrderStatus(dto.orderIds, dto.status);
   }
 
+  @Delete('orders/:orderId/items/:itemId')
+  @ApiOperation({
+    summary: '주문 개별 상품 삭제 (관리자)',
+    description: '입금 대기 주문에서 개별 상품을 삭제하고 재고를 복원합니다.',
+  })
+  @ApiParam({ name: 'orderId', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiParam({ name: 'itemId', description: '주문 상품 ID (UUID)' })
+  @ApiResponse({ status: 200, description: '상품 삭제 및 금액 재계산 완료' })
+  async removeOrderItem(@Param('orderId') orderId: string, @Param('itemId') itemId: string) {
+    return this.adminService.removeOrderItem(orderId, itemId);
+  }
+
   @Delete('orders/:id')
   @ApiOperation({
     summary: '주문 삭제 (관리자)',

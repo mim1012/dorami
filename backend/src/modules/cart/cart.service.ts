@@ -76,6 +76,15 @@ export class CartService {
       throw new NotFoundException(`Product ${productId} not found`);
     }
 
+    // Auto-fix stale SOLD_OUT status when stock exists (data inconsistency guard)
+    if (product.status === ProductStatus.SOLD_OUT && product.quantity > 0) {
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { status: ProductStatus.AVAILABLE },
+      });
+      product.status = ProductStatus.AVAILABLE;
+    }
+
     if (product.status !== ProductStatus.AVAILABLE) {
       throw new BadRequestException('Product is not available for purchase');
     }
@@ -90,6 +99,13 @@ export class CartService {
         async (tx) => {
           // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
           const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+          if (freshProduct.status === ProductStatus.SOLD_OUT && freshProduct.quantity > 0) {
+            await tx.product.update({
+              where: { id: productId },
+              data: { status: ProductStatus.AVAILABLE },
+            });
+            freshProduct.status = ProductStatus.AVAILABLE;
+          }
           if (freshProduct.status !== ProductStatus.AVAILABLE) {
             throw new BadRequestException('Product is not available for purchase');
           }
@@ -131,6 +147,13 @@ export class CartService {
       async (tx) => {
         // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
         const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+        if (freshProduct.status === ProductStatus.SOLD_OUT && freshProduct.quantity > 0) {
+          await tx.product.update({
+            where: { id: productId },
+            data: { status: ProductStatus.AVAILABLE },
+          });
+          freshProduct.status = ProductStatus.AVAILABLE;
+        }
         if (freshProduct.status !== ProductStatus.AVAILABLE) {
           throw new BadRequestException('Product is not available for purchase');
         }

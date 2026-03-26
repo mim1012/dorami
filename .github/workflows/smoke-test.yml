@@ -18,8 +18,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: staging-deploy
-  cancel-in-progress: true
+  group: smoke-test-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   NODE_VERSION: '20'
