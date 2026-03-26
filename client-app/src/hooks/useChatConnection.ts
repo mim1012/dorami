@@ -27,6 +27,8 @@ export function useChatConnection(streamKey: string) {
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
   const authRetryCountRef = useRef(0);
   const mountedRef = useRef(true);
+  const streamKeyRef = useRef(streamKey);
+  streamKeyRef.current = streamKey;
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -47,83 +49,88 @@ export function useChatConnection(streamKey: string) {
     }
   }, []);
 
-  // Create a fresh socket instance (picks up latest cookies)
-  const createSocket = useCallback(() => {
+  useEffect(() => {
+    mountedRef.current = true;
+    authRetryCountRef.current = 0;
+
+    if (!streamKey) {
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      pendingMessageQueueRef.current = [];
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      return;
+    }
+
     const reconnectConfig = RECONNECT_CONFIG.chat;
-    const chatUrl = `${SOCKET_URL}/chat`;
 
-    return io(chatUrl, {
-      transports: ['websocket', 'polling'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: reconnectConfig.maxAttempts,
-      reconnectionDelay: reconnectConfig.delays[0],
-      reconnectionDelayMax: reconnectConfig.delays[reconnectConfig.delays.length - 1],
-      randomizationFactor: reconnectConfig.jitterFactor,
-      timeout: 20000,
-    });
-  }, []);
+    const buildSocket = (): Socket => {
+      return io(`${SOCKET_URL}/chat`, {
+        transports: ['websocket', 'polling'],
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: reconnectConfig.maxAttempts,
+        reconnectionDelay: reconnectConfig.delays[0],
+        reconnectionDelayMax: reconnectConfig.delays[reconnectConfig.delays.length - 1],
+        randomizationFactor: reconnectConfig.jitterFactor,
+        timeout: 20000,
+      });
+    };
 
-  // Destroy old socket, refresh token, create new socket with fresh cookies
-  const handleAuthFailureAndReconnect = useCallback(async () => {
-    if (!mountedRef.current || !streamKey) return;
+    // Destroy current socket, refresh token, create new one with fresh cookies
+    const handleAuthFailure = async () => {
+      if (!mountedRef.current) return;
 
-    authRetryCountRef.current += 1;
-    if (authRetryCountRef.current > MAX_AUTH_RETRIES) {
-      setConnectionStatus('failed');
-      return;
-    }
+      authRetryCountRef.current += 1;
+      if (authRetryCountRef.current > MAX_AUTH_RETRIES) {
+        setConnectionStatus('failed');
+        return;
+      }
 
-    // Destroy old socket completely
-    if (socketRef.current) {
-      socketRef.current.removeAllListeners();
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
+      // Destroy old socket
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
 
-    setConnectionStatus('reconnecting');
+      setConnectionStatus('reconnecting');
 
-    // Refresh token — this sets new httpOnly cookies via /api/auth/refresh
-    const refreshed = await refreshAuthToken();
-    if (!refreshed || !mountedRef.current) {
-      setConnectionStatus('failed');
-      return;
-    }
+      const refreshed = await refreshAuthToken();
+      if (!refreshed || !mountedRef.current) {
+        setConnectionStatus('failed');
+        return;
+      }
 
-    // Small delay for cookie to propagate
-    await new Promise((resolve) => setTimeout(resolve, 300));
+      // Brief delay for cookie propagation
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!mountedRef.current) return;
 
-    if (!mountedRef.current) return;
+      // New socket picks up fresh cookies
+      const fresh = buildSocket();
+      socketRef.current = fresh;
+      wireUp(fresh);
+    };
 
-    // Create brand new socket — picks up fresh cookies
-    const newSocket = createSocket();
-    socketRef.current = newSocket;
-    attachSocketListeners(newSocket);
-  }, [streamKey, createSocket, flushPendingMessages]);
-
-  // Attach all event listeners to a socket instance
-  const attachSocketListeners = useCallback(
-    (socket: Socket) => {
-      const emitJoin = () => {
-        socket.emit('chat:join-room', { liveId: streamKey });
-      };
-
+    const wireUp = (socket: Socket) => {
       socket.on('connect', () => {
-        emitJoin();
+        socket.emit('chat:join-room', { liveId: streamKeyRef.current });
       });
 
       socket.on('connection:success', () => {
         if (!mountedRef.current) return;
         setIsConnected(true);
         setConnectionStatus('connected');
-        authRetryCountRef.current = 0; // Reset on success
+        authRetryCountRef.current = 0;
         flushPendingMessages();
       });
 
       socket.on('error', (err: { errorCode?: string; message?: string }) => {
-        // AUTH_FAILED → destroy socket, refresh, reconnect with fresh cookies
         if (err.errorCode === 'AUTH_FAILED') {
-          void handleAuthFailureAndReconnect();
+          void handleAuthFailure();
         }
       });
 
@@ -133,9 +140,7 @@ export function useChatConnection(streamKey: string) {
         setConnectionStatus('disconnected');
 
         if (reason === 'io server disconnect') {
-          // Server kicked us — likely auth failure, handled by 'error' event above
-          // If error event didn't fire, try reconnect as fallback
-          void handleAuthFailureAndReconnect();
+          void handleAuthFailure();
         }
       });
 
@@ -163,29 +168,12 @@ export function useChatConnection(streamKey: string) {
       socket.io.on('reconnect', () => {
         flushPendingMessages();
       });
-    },
-    [streamKey, flushPendingMessages, handleAuthFailureAndReconnect],
-  );
-
-  useEffect(() => {
-    mountedRef.current = true;
-    authRetryCountRef.current = 0;
-
-    if (!streamKey) {
-      if (socketRef.current) {
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      pendingMessageQueueRef.current = [];
-      setIsConnected(false);
-      return;
-    }
+    };
 
     setConnectionStatus('connecting');
-    const socket = createSocket();
+    const socket = buildSocket();
     socketRef.current = socket;
-    attachSocketListeners(socket);
+    wireUp(socket);
 
     return () => {
       mountedRef.current = false;
@@ -197,13 +185,11 @@ export function useChatConnection(streamKey: string) {
       }
       pendingMessageQueueRef.current = [];
     };
-  }, [streamKey, createSocket, attachSocketListeners]);
+  }, [streamKey, flushPendingMessages]);
 
   const sendMessage = (message: string) => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage) {
-      return;
-    }
+    if (!trimmedMessage) return;
 
     const payload: QueuedMessage = {
       clientMessageId: createMessageId(),
@@ -218,7 +204,6 @@ export function useChatConnection(streamKey: string) {
     }
 
     pendingMessageQueueRef.current.push(payload);
-
     if (pendingMessageQueueRef.current.length > 50) {
       pendingMessageQueueRef.current = pendingMessageQueueRef.current.slice(-50);
     }
