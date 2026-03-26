@@ -1024,6 +1024,7 @@ describe('AdminService', () => {
       jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
 
       const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const ExcelJS = require('exceljs');
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);
@@ -1071,6 +1072,7 @@ describe('AdminService', () => {
       jest.spyOn(prisma.liveStream, 'findMany').mockResolvedValue([]);
 
       const buffer = await service.exportOrdersExcel({ sortOrder: 'desc' } as any);
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const ExcelJS = require('exceljs');
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);

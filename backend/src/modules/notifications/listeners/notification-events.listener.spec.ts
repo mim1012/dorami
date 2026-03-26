@@ -9,7 +9,7 @@ describe('NotificationEventsListener', () => {
   let listener: NotificationEventsListener;
   let prisma: PrismaService;
   let alimtalkService: AlimtalkService;
-  let notificationsService: NotificationsService;
+  let _notificationsService: NotificationsService;
 
   const mockOrder = {
     id: 'ORD-20260309-00001',
@@ -53,7 +53,7 @@ describe('NotificationEventsListener', () => {
     listener = module.get<NotificationEventsListener>(NotificationEventsListener);
     prisma = module.get<PrismaService>(PrismaService);
     alimtalkService = module.get<AlimtalkService>(AlimtalkService);
-    notificationsService = module.get<NotificationsService>(NotificationsService);
+    _notificationsService = module.get<NotificationsService>(NotificationsService);
   });
 
   afterEach(() => {
@@ -62,7 +62,7 @@ describe('NotificationEventsListener', () => {
 
   describe('EventEmitter2 통합 - order:created 이벤트', () => {
     let integrationModule: TestingModule;
-    let integrationListener: NotificationEventsListener;
+    let _integrationListener: NotificationEventsListener;
     let eventEmitter: EventEmitter2;
 
     const payload = { orderId: 'ORD-20260309-00001', userId: 'user-1' };
@@ -98,7 +98,7 @@ describe('NotificationEventsListener', () => {
       // onModuleInit 수명주기를 실행해야 @OnEvent 핸들러가 EventEmitter2에 등록된다
       await integrationModule.init();
 
-      integrationListener = integrationModule.get<NotificationEventsListener>(
+      _integrationListener = integrationModule.get<NotificationEventsListener>(
         NotificationEventsListener,
       );
       eventEmitter = integrationModule.get<EventEmitter2>(EventEmitter2);

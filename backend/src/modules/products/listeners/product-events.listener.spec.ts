@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProductEventsListener } from './product-events.listener';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { SocketIoProvider } from '../../websocket/socket-io.provider';
-import { LoggerService } from '../../../common/logger/logger.service';
+
 import { OrderCreatedEvent } from '../../../common/events/order.events';
 import { ProductStockUpdatedEvent } from '../../../common/events/product.events';
 import { ProductStatus } from '@live-commerce/shared-types';
