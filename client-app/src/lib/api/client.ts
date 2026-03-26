@@ -86,15 +86,25 @@ async function ensureCsrfToken(): Promise<void> {
 }
 
 export async function refreshAccessToken(): Promise<boolean> {
-  try {
-    await ensureCsrfToken();
-    const response = await executeFetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-    });
-    return response.ok;
-  } catch {
-    return false;
+  if (refreshPromise) {
+    return refreshPromise;
   }
+
+  refreshPromise = (async () => {
+    try {
+      await ensureCsrfToken();
+      const response = await executeFetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
 }
 
 /**
@@ -213,14 +223,7 @@ async function request<T>(
 
   // On 401, attempt to refresh the access token and retry once
   if (response.status === 401 && endpoint !== '/auth/refresh') {
-    // Coalesce concurrent refresh calls into a single request
-    if (!refreshPromise) {
-      refreshPromise = refreshAccessToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const refreshed = await refreshPromise;
+    const refreshed = await refreshAccessToken();
 
     if (refreshed) {
       // Retry the original request with fresh token

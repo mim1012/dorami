@@ -233,7 +233,7 @@ export class AuthService {
       const result = await this.login(user);
 
       // Cache result briefly for concurrent requests across instances
-      await this.redisService.set(`refresh_result:${userId}`, JSON.stringify(result), 5);
+      await this.redisService.set(`refresh_result:${userId}`, JSON.stringify(result), 30);
 
       return result;
     } catch (error) {
