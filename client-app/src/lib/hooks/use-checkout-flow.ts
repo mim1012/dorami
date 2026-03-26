@@ -37,7 +37,6 @@ export interface CheckoutFlowState {
   orderTotal: number;
   orderSubtotal: number;
   shippingFee: number;
-  shippingWaived: boolean;
 
   // Terms state
   termsAgreed: boolean;
@@ -61,9 +60,13 @@ export interface CheckoutFlowState {
 
 interface UseCheckoutFlowOptions {
   cartData: CartSummary | undefined;
+  selectedCartItemIds?: string[];
 }
 
-export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutFlowState {
+export function useCheckoutFlow({
+  cartData,
+  selectedCartItemIds,
+}: UseCheckoutFlowOptions): CheckoutFlowState {
   const queryClient = useQueryClient();
   const { data: balance } = usePointBalance();
   const idempotencyKeyRef = useRef<string>('');
@@ -117,10 +120,21 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
     };
   }, []);
 
-  // Derived totals
-  const orderSubtotal = cartData?.subtotal ? parseFloat(cartData.subtotal) : 0;
-  const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
-  const shippingWaived = cartData?.shippingWaived ?? false;
+  // Derived totals — filter by selected items if specified
+  const selectedItems = selectedCartItemIds?.length
+    ? (cartData?.items?.filter((i) => selectedCartItemIds.includes(i.id)) ?? [])
+    : (cartData?.items ?? []);
+  const orderSubtotal = selectedCartItemIds?.length
+    ? selectedItems.reduce((sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity, 0) /
+      100
+    : cartData?.subtotal
+      ? parseFloat(cartData.subtotal)
+      : 0;
+  const shippingFee = selectedCartItemIds?.length
+    ? selectedItems.reduce((sum, i) => sum + Math.round(Number(i.shippingFee ?? 0) * 100), 0) / 100
+    : cartData?.totalShippingFee
+      ? parseFloat(cartData.totalShippingFee)
+      : 0;
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig
@@ -169,9 +183,12 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
     setError(null);
 
     try {
-      const body: { pointsToUse?: number } = {};
+      const body: { pointsToUse?: number; cartItemIds?: string[] } = {};
       if (usePoints && pointsToUse > 0) {
         body.pointsToUse = pointsToUse;
+      }
+      if (selectedCartItemIds && selectedCartItemIds.length > 0) {
+        body.cartItemIds = selectedCartItemIds;
       }
 
       const response = await apiClient.post<{ id: string }>('/orders/from-cart', body, {
@@ -187,7 +204,7 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
     } finally {
       setIsSubmitting(false);
     }
-  }, [usePoints, pointsToUse, queryClient]);
+  }, [usePoints, pointsToUse, selectedCartItemIds, queryClient]);
 
   return {
     pointsConfig,
@@ -202,7 +219,6 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
     orderTotal,
     orderSubtotal,
     shippingFee,
-    shippingWaived,
     termsAgreed,
     privacyAgreed,
     isSubmitting,

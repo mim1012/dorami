@@ -39,7 +39,7 @@ export class OrdersController {
     @CurrentUser('userId') userId: string,
     @Body() dto?: CreateOrderFromCartDto,
   ) {
-    return this.ordersService.createOrderFromCart(userId, dto?.pointsToUse);
+    return this.ordersService.createOrderFromCart(userId, dto?.pointsToUse, dto?.cartItemIds);
   }
 
   @Post()

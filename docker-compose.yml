@@ -58,6 +58,7 @@ services:
       KAKAO_CALLBACK_URL: ${KAKAO_CALLBACK_URL:-http://localhost:3000/auth/callback}
       PROFILE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       CSRF_ENABLED: "false"
+      ENABLE_DEV_AUTH: "true"
       ADMIN_EMAILS: admin@dorami.shop
     depends_on:
       postgres:

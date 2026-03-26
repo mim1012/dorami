@@ -75,7 +75,11 @@ export class OrdersService {
    * Epic 8 Story 8.1: Create order from active cart items
    * Epic 13 Story 13.3: Support pointsToUse for point redemption
    */
-  async createOrderFromCart(userId: string, pointsToUse?: number): Promise<OrderResponseDto> {
+  async createOrderFromCart(
+    userId: string,
+    pointsToUse?: number,
+    cartItemIds?: string[],
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.$transaction(
       async (tx) => {
         // Fetch user data
@@ -87,12 +91,16 @@ export class OrdersService {
           throw new BusinessException('USER_NOT_FOUND', { userId });
         }
 
-        // Get active cart items
+        // Get active cart items (optionally filtered by cartItemIds)
+        const cartWhere: { userId: string; status: CartStatus; id?: { in: string[] } } = {
+          userId,
+          status: CartStatus.ACTIVE,
+        };
+        if (cartItemIds && cartItemIds.length > 0) {
+          cartWhere.id = { in: cartItemIds };
+        }
         const cartItems = await tx.cart.findMany({
-          where: {
-            userId,
-            status: CartStatus.ACTIVE,
-          },
+          where: cartWhere,
           include: {
             product: true,
           },
@@ -219,9 +227,11 @@ export class OrdersService {
           );
         }
 
-        // Mark cart items as COMPLETED
+        // Mark ordered cart items as COMPLETED (only selected items, not entire cart)
+        const cartItemIdsToComplete = cartItems.map((item) => item.id);
         await tx.cart.updateMany({
           where: {
+            id: { in: cartItemIdsToComplete },
             userId,
             status: CartStatus.ACTIVE,
           },

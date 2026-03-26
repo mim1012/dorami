@@ -29,8 +29,9 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [successOrderId, setSuccessOrderId] = useState('');
   const [successTotal, setSuccessTotal] = useState('');
+  const [selectedCartItemIds, setSelectedCartItemIds] = useState<string[]>([]);
 
-  const checkoutFlow = useCheckoutFlow({ cartData });
+  const checkoutFlow = useCheckoutFlow({ cartData, selectedCartItemIds });
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -53,25 +54,29 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
 
   useModalBehavior({ isOpen, onClose: handleClose });
 
-  const handleProceedToCheckout = useCallback(async () => {
-    if (!isAuthenticated || !user) {
-      showToast('로그인이 필요합니다');
-      return;
-    }
-    // Fetch full profile (includes decrypted shippingAddress, unlike /users/me)
-    try {
-      const res = await apiClient.get<{ shippingAddress?: unknown }>('/users/profile/me');
-      const addr = res.data?.shippingAddress as ShippingAddress | null | undefined;
-      if (!addr || !('fullName' in addr) || !addr.fullName) {
-        showToast('배송지를 먼저 등록해주세요');
+  const handleProceedToCheckout = useCallback(
+    async (ids: string[]) => {
+      if (!isAuthenticated || !user) {
+        showToast('로그인이 필요합니다');
         return;
       }
-    } catch {
-      showToast('사용자 정보를 확인할 수 없습니다');
-      return;
-    }
-    setStep('checkout');
-  }, [isAuthenticated, user, showToast]);
+      // Fetch full profile (includes decrypted shippingAddress, unlike /users/me)
+      try {
+        const res = await apiClient.get<{ shippingAddress?: unknown }>('/users/profile/me');
+        const addr = res.data?.shippingAddress as ShippingAddress | null | undefined;
+        if (!addr || !('fullName' in addr) || !addr.fullName) {
+          showToast('배송지를 먼저 등록해주세요');
+          return;
+        }
+      } catch {
+        showToast('사용자 정보를 확인할 수 없습니다');
+        return;
+      }
+      setSelectedCartItemIds(ids);
+      setStep('checkout');
+    },
+    [isAuthenticated, user, showToast],
+  );
 
   const handleCheckoutSuccess = useCallback((orderId: string, total: string) => {
     setSuccessOrderId(orderId);
@@ -87,7 +92,10 @@ export default function LiveCartSheet({ isOpen, onClose }: LiveCartSheetProps) {
     [handleClose, router],
   );
 
-  const cartItemCount = cartData?.items?.filter((i) => i.status === 'ACTIVE').length ?? 0;
+  const cartItemCount =
+    selectedCartItemIds.length > 0
+      ? selectedCartItemIds.length
+      : (cartData?.items?.filter((i) => i.status === 'ACTIVE').length ?? 0);
 
   // Step-specific max height
   const maxH = step === 'cart' ? 'max-h-[75dvh]' : 'max-h-[85dvh]';

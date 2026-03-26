@@ -31,7 +31,6 @@ function CheckoutContent() {
     orderTotal,
     orderSubtotal,
     shippingFee,
-    shippingWaived,
     termsAgreed,
     privacyAgreed,
     isSubmitting,
@@ -152,11 +151,7 @@ function CheckoutContent() {
             <div className="flex justify-between items-center">
               <Body className="text-secondary-text">배송비</Body>
               <Body className="text-primary-text">
-                {shippingFee === 0
-                  ? shippingWaived
-                    ? '무료 (동일 방송 추가 주문)'
-                    : '무료'
-                  : formatPrice(shippingFee)}
+                {shippingFee === 0 ? '무료' : formatPrice(shippingFee)}
               </Body>
             </div>
             {effectivePointsUsed > 0 && (

@@ -53,6 +53,16 @@ export class CreateOrderFromCartDto {
   @Min(0)
   @Type(() => Number)
   pointsToUse?: number;
+
+  @ApiPropertyOptional({
+    description: '주문할 장바구니 아이템 ID 목록 (미지정 시 전체 장바구니)',
+    example: ['clx1234abcd', 'clx5678efgh'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cartItemIds?: string[];
 }
 
 export class OrderResponseDto {

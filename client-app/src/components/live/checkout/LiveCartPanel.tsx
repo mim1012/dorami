@@ -12,7 +12,7 @@ import {
 import { formatPrice } from '@/lib/utils/price';
 
 interface LiveCartPanelProps {
-  onProceedToCheckout: () => void;
+  onProceedToCheckout: (selectedIds: string[]) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -312,7 +312,7 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
           <span>{selectedShipping === 0 ? '무료' : formatPrice(selectedShipping)}</span>
         </div>
         <button
-          onClick={onProceedToCheckout}
+          onClick={() => onProceedToCheckout(Array.from(selectedIds))}
           disabled={selectedItems.length === 0}
           className="w-full py-3.5 bg-hot-pink text-white font-bold rounded-2xl active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
         >
