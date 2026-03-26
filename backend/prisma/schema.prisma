@@ -60,6 +60,12 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum FreeShippingMode {
+  DISABLED
+  UNCONDITIONAL
+  THRESHOLD
+}
+
 // Epic 3: Live Streaming Foundation
 model LiveStream {
   id            String       @id @default(uuid())
@@ -73,7 +79,8 @@ model LiveStream {
   endedAt       DateTime?    @map("ended_at")
   totalDuration Int?         @map("total_duration") // seconds
   peakViewers   Int          @default(0) @map("peak_viewers")
-  freeShippingEnabled Boolean  @default(false) @map("free_shipping_enabled")
+  freeShippingMode      FreeShippingMode @default(DISABLED) @map("free_shipping_mode")
+  freeShippingThreshold Decimal?         @map("free_shipping_threshold") @db.Decimal(10, 2)
   scheduledAt   DateTime?    @map("scheduled_at")
   thumbnailUrl  String?      @map("thumbnail_url")
   expiresAt     DateTime     @map("expires_at")

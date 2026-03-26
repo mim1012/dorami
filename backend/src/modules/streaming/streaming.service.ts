@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma } from '@prisma/client';
+import { Prisma, FreeShippingMode } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import {
@@ -315,7 +315,8 @@ export class StreamingService implements OnModuleInit {
       expiresAt?: Date;
       scheduledAt?: Date | null;
       thumbnailUrl?: string | null;
-      freeShippingEnabled?: boolean;
+      freeShippingMode?: FreeShippingMode;
+      freeShippingThreshold?: number | null;
     } = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
@@ -329,8 +330,11 @@ export class StreamingService implements OnModuleInit {
     if (dto.thumbnailUrl !== undefined) {
       data.thumbnailUrl = dto.thumbnailUrl || null;
     }
-    if (dto.freeShippingEnabled !== undefined) {
-      data.freeShippingEnabled = dto.freeShippingEnabled;
+    if (dto.freeShippingMode !== undefined) {
+      data.freeShippingMode = dto.freeShippingMode;
+    }
+    if (dto.freeShippingThreshold !== undefined) {
+      data.freeShippingThreshold = dto.freeShippingThreshold;
     }
 
     const updated = await this.prisma.liveStream.update({
@@ -586,8 +590,11 @@ export class StreamingService implements OnModuleInit {
       if (dto.thumbnailUrl !== undefined) {
         pendingUpdates.thumbnailUrl = dto.thumbnailUrl || null;
       }
-      if (dto.freeShippingEnabled !== undefined) {
-        pendingUpdates.freeShippingEnabled = dto.freeShippingEnabled;
+      if (dto.freeShippingMode !== undefined) {
+        pendingUpdates.freeShippingMode = dto.freeShippingMode;
+      }
+      if (dto.freeShippingThreshold !== undefined) {
+        pendingUpdates.freeShippingThreshold = dto.freeShippingThreshold;
       }
       if (Object.keys(pendingUpdates).length > 0) {
         const updated = await this.prisma.liveStream.update({
@@ -614,7 +621,8 @@ export class StreamingService implements OnModuleInit {
         title: dto.title ?? 'Live Stream',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         thumbnailUrl: dto.thumbnailUrl ?? null,
-        freeShippingEnabled: dto.freeShippingEnabled ?? false,
+        freeShippingMode: dto.freeShippingMode ?? 'DISABLED',
+        freeShippingThreshold: dto.freeShippingThreshold ?? null,
         expiresAt,
         status: StreamStatus.PENDING,
       },
@@ -733,7 +741,10 @@ export class StreamingService implements OnModuleInit {
         title: stream.title,
         userId: stream.userId,
         userName: stream.user.name,
-        freeShippingEnabled: stream.freeShippingEnabled,
+        freeShippingMode: stream.freeShippingMode,
+        freeShippingThreshold: stream.freeShippingThreshold
+          ? Number(stream.freeShippingThreshold)
+          : null,
         scheduledAt: stream.scheduledAt?.toISOString() ?? null,
         startedAt: stream.startedAt?.toISOString() ?? null,
         endedAt: stream.endedAt?.toISOString() ?? null,

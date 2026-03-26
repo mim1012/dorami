@@ -5,12 +5,14 @@ import {
   IsDateString,
   IsInt,
   Min,
-  IsBoolean,
   IsArray,
   IsUUID,
   ArrayNotEmpty,
+  IsEnum,
+  IsNumber,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { FreeShippingMode } from '@prisma/client';
 
 export enum StreamingStatus {
   PENDING = 'PENDING',
@@ -41,9 +43,14 @@ export class GenerateKeyDto {
   @IsOptional()
   thumbnailUrl?: string;
 
-  @IsBoolean()
+  @IsEnum(FreeShippingMode)
   @IsOptional()
-  freeShippingEnabled?: boolean;
+  freeShippingMode?: FreeShippingMode;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  freeShippingThreshold?: number;
 }
 
 export class UpdateStreamDto {
@@ -70,9 +77,14 @@ export class UpdateStreamDto {
   @IsOptional()
   thumbnailUrl?: string;
 
-  @IsBoolean()
+  @IsEnum(FreeShippingMode)
   @IsOptional()
-  freeShippingEnabled?: boolean;
+  freeShippingMode?: FreeShippingMode;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  freeShippingThreshold?: number;
 }
 
 export class StreamStatusDto {
@@ -120,7 +132,8 @@ export class StreamHistoryItemDto {
   totalDuration!: number | null;
   peakViewers!: number;
   status!: string;
-  freeShippingEnabled!: boolean;
+  freeShippingMode!: string;
+  freeShippingThreshold?: number | null;
   rtmpUrl?: string;
   hlsUrl?: string;
   rtmpPort?: number;

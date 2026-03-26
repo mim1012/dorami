@@ -51,7 +51,8 @@ interface LiveStream {
   expiresAt: string;
   createdAt: string;
   thumbnailUrl: string | null;
-  freeShippingEnabled: boolean;
+  freeShippingMode: string;
+  freeShippingThreshold?: number | null;
   user?: {
     name: string;
     email: string;
@@ -177,7 +178,8 @@ export default function BroadcastsPage() {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [newStreamFreeShipping, setNewStreamFreeShipping] = useState(false);
+  const [newStreamFreeShippingMode, setNewStreamFreeShippingMode] = useState('DISABLED');
+  const [newStreamFreeShippingThreshold, setNewStreamFreeShippingThreshold] = useState(150);
   const [generatedStream, setGeneratedStream] = useState<GeneratedStreamKey | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -216,7 +218,8 @@ export default function BroadcastsPage() {
   const [editNewThumbnailUrl, setEditNewThumbnailUrl] = useState('');
   const [isUploadingEditThumbnail, setIsUploadingEditThumbnail] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [editFreeShipping, setEditFreeShipping] = useState(false);
+  const [editFreeShippingMode, setEditFreeShippingMode] = useState('DISABLED');
+  const [editFreeShippingThreshold, setEditFreeShippingThreshold] = useState(150);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
@@ -529,7 +532,10 @@ export default function BroadcastsPage() {
       if (newStreamScheduledAt)
         body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
       if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
-      body.freeShippingEnabled = newStreamFreeShipping;
+      body.freeShippingMode = newStreamFreeShippingMode;
+      if (newStreamFreeShippingMode === 'THRESHOLD') {
+        body.freeShippingThreshold = newStreamFreeShippingThreshold;
+      }
       const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
       setNewStreamTitle('');
@@ -723,7 +729,8 @@ export default function BroadcastsPage() {
     setNewStreamTitle('');
     setNewStreamScheduledAt('');
     setNewStreamThumbnailUrl('');
-    setNewStreamFreeShipping(false);
+    setNewStreamFreeShippingMode('DISABLED');
+    setNewStreamFreeShippingThreshold(150);
     setGenerateError(null);
     setModalStep(1);
     setRestreamTargets([]);
@@ -754,19 +761,22 @@ export default function BroadcastsPage() {
       setNewStreamTitle(stream.title || '');
       setNewStreamScheduledAt(formatDateTimeInput(stream.scheduledAt || null));
       setNewStreamThumbnailUrl(stream.thumbnailUrl || '');
-      setNewStreamFreeShipping(stream.freeShippingEnabled ?? false);
+      setNewStreamFreeShippingMode(stream.freeShippingMode ?? 'DISABLED');
+      setNewStreamFreeShippingThreshold(stream.freeShippingThreshold ?? 150);
     } else {
       setNewStreamTitle('');
       setNewStreamScheduledAt('');
       setNewStreamThumbnailUrl('');
-      setNewStreamFreeShipping(false);
+      setNewStreamFreeShippingMode('DISABLED');
+      setNewStreamFreeShippingThreshold(150);
     }
     setShowGenerateModal(true);
   };
 
   const handleOpenEditModal = (stream: LiveStream) => {
     setSelectedStreamForEdit(stream);
-    setEditFreeShipping(stream.freeShippingEnabled ?? false);
+    setEditFreeShippingMode(stream.freeShippingMode ?? 'DISABLED');
+    setEditFreeShippingThreshold(stream.freeShippingThreshold ?? 150);
     setEditThumbnailPreview(null);
     setEditNewThumbnailUrl('');
     setEditError(null);
@@ -815,14 +825,25 @@ export default function BroadcastsPage() {
     setEditError(null);
     setEditSuccess(null);
     try {
-      const body: Record<string, any> = { freeShippingEnabled: editFreeShipping };
+      const body: Record<string, any> = {
+        freeShippingMode: editFreeShippingMode,
+        ...(editFreeShippingMode === 'THRESHOLD'
+          ? { freeShippingThreshold: editFreeShippingThreshold }
+          : {}),
+      };
       if (editNewThumbnailUrl) body.thumbnailUrl = editNewThumbnailUrl;
       await apiClient.patch(`/streaming/${selectedStreamForEdit.id}`, body);
       const updatedThumbnail = editNewThumbnailUrl || selectedStreamForEdit.thumbnailUrl;
       setStreams((prev) =>
         prev.map((s) =>
           s.id === selectedStreamForEdit.id
-            ? { ...s, freeShippingEnabled: editFreeShipping, thumbnailUrl: updatedThumbnail }
+            ? {
+                ...s,
+                freeShippingMode: editFreeShippingMode,
+                freeShippingThreshold:
+                  editFreeShippingMode === 'THRESHOLD' ? editFreeShippingThreshold : null,
+                thumbnailUrl: updatedThumbnail,
+              }
             : s,
         ),
       );
@@ -831,7 +852,13 @@ export default function BroadcastsPage() {
       setEditNewThumbnailUrl('');
       setSelectedStreamForEdit((prev) =>
         prev
-          ? { ...prev, freeShippingEnabled: editFreeShipping, thumbnailUrl: updatedThumbnail }
+          ? {
+              ...prev,
+              freeShippingMode: editFreeShippingMode,
+              freeShippingThreshold:
+                editFreeShippingMode === 'THRESHOLD' ? editFreeShippingThreshold : null,
+              thumbnailUrl: updatedThumbnail,
+            }
           : null,
       );
       setEditSuccess('저장되었습니다');
@@ -1297,17 +1324,64 @@ export default function BroadcastsPage() {
                     />
                   </div>
                   {/* 무료배송 설정 */}
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newStreamFreeShipping}
-                      onChange={(e) => setNewStreamFreeShipping(e.target.checked)}
-                      className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
-                    />
-                    <span className="text-sm font-medium text-primary-text">
-                      이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
-                    </span>
-                  </label>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      배송비 설정
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="newFreeShipping"
+                          value="DISABLED"
+                          checked={newStreamFreeShippingMode === 'DISABLED'}
+                          onChange={() => setNewStreamFreeShippingMode('DISABLED')}
+                          className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                        />
+                        <span className="text-sm text-primary-text">기본 배송비 적용</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="newFreeShipping"
+                          value="UNCONDITIONAL"
+                          checked={newStreamFreeShippingMode === 'UNCONDITIONAL'}
+                          onChange={() => setNewStreamFreeShippingMode('UNCONDITIONAL')}
+                          className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                        />
+                        <span className="text-sm text-primary-text">무료배송 (전 주문)</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="newFreeShipping"
+                          value="THRESHOLD"
+                          checked={newStreamFreeShippingMode === 'THRESHOLD'}
+                          onChange={() => setNewStreamFreeShippingMode('THRESHOLD')}
+                          className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                        />
+                        <span className="text-sm text-primary-text">기준금액 이상 무료배송</span>
+                      </label>
+                      {newStreamFreeShippingMode === 'THRESHOLD' && (
+                        <div className="ml-7">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-secondary-text">$</span>
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={newStreamFreeShippingThreshold}
+                              onChange={(e) =>
+                                setNewStreamFreeShippingThreshold(Number(e.target.value))
+                              }
+                              className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none text-sm"
+                            />
+                            <span className="text-sm text-secondary-text">이상 무료</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-primary-text mb-2">
                       썸네일 <span className="text-secondary-text text-xs">(선택)</span>
@@ -1759,17 +1833,62 @@ export default function BroadcastsPage() {
               </p>
 
               {/* 무료배송 설정 */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editFreeShipping}
-                  onChange={(e) => setEditFreeShipping(e.target.checked)}
-                  className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
-                />
-                <span className="text-sm font-medium text-primary-text">
-                  이 방송 무료배송 적용 (설정의 기준금액 이상 시 무료)
-                </span>
-              </label>
+              <div>
+                <label className="block text-sm font-medium text-primary-text mb-2">
+                  배송비 설정
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editFreeShipping"
+                      value="DISABLED"
+                      checked={editFreeShippingMode === 'DISABLED'}
+                      onChange={() => setEditFreeShippingMode('DISABLED')}
+                      className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                    />
+                    <span className="text-sm text-primary-text">기본 배송비 적용</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editFreeShipping"
+                      value="UNCONDITIONAL"
+                      checked={editFreeShippingMode === 'UNCONDITIONAL'}
+                      onChange={() => setEditFreeShippingMode('UNCONDITIONAL')}
+                      className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                    />
+                    <span className="text-sm text-primary-text">무료배송 (전 주문)</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editFreeShipping"
+                      value="THRESHOLD"
+                      checked={editFreeShippingMode === 'THRESHOLD'}
+                      onChange={() => setEditFreeShippingMode('THRESHOLD')}
+                      className="w-4 h-4 text-hot-pink border-gray-300 focus:ring-hot-pink"
+                    />
+                    <span className="text-sm text-primary-text">기준금액 이상 무료배송</span>
+                  </label>
+                  {editFreeShippingMode === 'THRESHOLD' && (
+                    <div className="ml-7">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-secondary-text">$</span>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={editFreeShippingThreshold}
+                          onChange={(e) => setEditFreeShippingThreshold(Number(e.target.value))}
+                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none text-sm"
+                        />
+                        <span className="text-sm text-secondary-text">이상 무료</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* 썸네일 */}
               <div>

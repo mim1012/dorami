@@ -1206,13 +1206,6 @@ export class AdminService {
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
-      freeShippingThreshold:
-        config.freeShippingThreshold !== null && config.freeShippingThreshold !== undefined
-          ? parseFloat(config.freeShippingThreshold.toString())
-          : 150,
-      bankName: config.bankName,
-      bankAccountNumber: config.bankAccountNumber,
-      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,
@@ -1220,13 +1213,12 @@ export class AdminService {
       businessRegistrationNumber: config.businessRegistrationNumber,
       businessAddress: config.businessAddress,
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
-      freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
     };
   }
 
   /**
-   * Update system settings (cart timer, bank info, shipping fee, notifications)
+   * Update system settings (cart timer, shipping fee, payment, notifications)
    */
   async updateSystemSettings(dto: UpdateSystemSettingsDto) {
     const updateData: Record<string, unknown> = {};
@@ -1238,18 +1230,6 @@ export class AdminService {
     }
     if (dto.caShippingFee !== undefined) {
       updateData.caShippingFee = dto.caShippingFee;
-    }
-    if (dto.freeShippingThreshold !== undefined) {
-      updateData.freeShippingThreshold = dto.freeShippingThreshold;
-    }
-    if (dto.bankName !== undefined) {
-      updateData.bankName = dto.bankName;
-    }
-    if (dto.bankAccountNumber !== undefined) {
-      updateData.bankAccountNumber = dto.bankAccountNumber;
-    }
-    if (dto.bankAccountHolder !== undefined) {
-      updateData.bankAccountHolder = dto.bankAccountHolder;
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
@@ -1275,9 +1255,6 @@ export class AdminService {
     if (dto.onlineSalesRegistrationNumber !== undefined) {
       updateData.onlineSalesRegistrationNumber = dto.onlineSalesRegistrationNumber;
     }
-    if (dto.freeShippingEnabled !== undefined) {
-      updateData.freeShippingEnabled = dto.freeShippingEnabled;
-    }
 
     const config = await this.prisma.systemConfig.upsert({
       where: { id: 'system' },
@@ -1295,13 +1272,6 @@ export class AdminService {
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
-      freeShippingThreshold:
-        config.freeShippingThreshold !== null && config.freeShippingThreshold !== undefined
-          ? parseFloat(config.freeShippingThreshold.toString())
-          : 150,
-      bankName: config.bankName,
-      bankAccountNumber: config.bankAccountNumber,
-      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,
@@ -1309,7 +1279,6 @@ export class AdminService {
       businessRegistrationNumber: config.businessRegistrationNumber,
       businessAddress: config.businessAddress,
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
-      freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
     };
   }

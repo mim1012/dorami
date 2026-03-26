@@ -497,23 +497,6 @@ export class UpdateSystemSettingsDto {
   caShippingFee?: number;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  freeShippingThreshold?: number;
-
-  @IsOptional()
-  @IsString()
-  bankName?: string;
-
-  @IsOptional()
-  @IsString()
-  bankAccountNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  bankAccountHolder?: string;
-
-  @IsOptional()
   @IsBoolean()
   alimtalkEnabled?: boolean;
 
@@ -544,10 +527,6 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   onlineSalesRegistrationNumber?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  freeShippingEnabled?: boolean;
 }
 
 // Home featured products configuration DTO

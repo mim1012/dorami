@@ -488,7 +488,6 @@ export class CartService {
 
     // Calculate global shipping fee
     let totalShippingFee = 0;
-    let shippingWaived = false;
 
     if (items.length > 0) {
       // Fetch system config for shipping settings
@@ -501,62 +500,43 @@ export class CartService {
         config?.caShippingFee !== null && config?.caShippingFee !== undefined
           ? Number(config.caShippingFee)
           : 8;
-      const freeShippingThreshold =
-        config?.freeShippingThreshold !== null && config?.freeShippingThreshold !== undefined
-          ? Number(config.freeShippingThreshold)
-          : 150;
-
-      // Check if any product's live stream has freeShippingEnabled
-      let freeShippingEnabled = false;
-      let streamKeys: string[] = [];
+      // Check per-broadcast free shipping mode
+      let freeShippingApplied = false;
       if (items.length > 0) {
         const productIds = [...new Set(items.map((item) => item.productId))];
         const products = await this.prisma.product.findMany({
           where: { id: { in: productIds } },
           select: { streamKey: true },
         });
-        streamKeys = [...new Set(products.map((p) => p.streamKey).filter(Boolean))] as string[];
+        const streamKeys = [
+          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
+        ] as string[];
         if (streamKeys.length > 0) {
           const streams = await this.prisma.liveStream.findMany({
             where: { streamKey: { in: streamKeys } },
-            select: { freeShippingEnabled: true },
+            select: { freeShippingMode: true, freeShippingThreshold: true },
           });
-          freeShippingEnabled = streams.some((s) => s.freeShippingEnabled);
+          // UNCONDITIONAL: 무조건 무료
+          if (streams.some((s) => s.freeShippingMode === 'UNCONDITIONAL')) {
+            freeShippingApplied = true;
+          }
+          // THRESHOLD: 기준금액 이상일 때 무료
+          if (!freeShippingApplied) {
+            const thresholdStream = streams.find((s) => s.freeShippingMode === 'THRESHOLD');
+            if (thresholdStream) {
+              const threshold = thresholdStream.freeShippingThreshold
+                ? Number(thresholdStream.freeShippingThreshold)
+                : 150;
+              if (subtotal >= threshold) {
+                freeShippingApplied = true;
+              }
+            }
+          }
         }
       }
 
-      // Check if free shipping conditions are met
-      if (freeShippingEnabled && subtotal >= freeShippingThreshold) {
+      if (freeShippingApplied) {
         totalShippingFee = 0;
-      } else if (userId && streamKeys.length > 0) {
-        // 동일 방송 후속 주문 → 배송비 면제
-        const existingOrder = await this.prisma.orderItem.findFirst({
-          where: {
-            order: {
-              userId,
-              status: { not: 'CANCELLED' },
-              deletedAt: null,
-            },
-            Product: {
-              streamKey: { in: streamKeys },
-            },
-          },
-          select: { id: true },
-        });
-        if (existingOrder) {
-          totalShippingFee = 0;
-          shippingWaived = true;
-        } else {
-          let isCA = false;
-          const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { shippingAddress: true },
-          });
-          if (user?.shippingAddress) {
-            isCA = isCaliforniaAddress(user.shippingAddress);
-          }
-          totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
-        }
       } else {
         // Determine shipping fee based on user's shipping state
         let isCA = false;
@@ -589,7 +569,6 @@ export class CartService {
       totalShippingFee: String(totalShippingFee),
       grandTotal: String(subtotal + totalShippingFee),
       earliestExpiration,
-      shippingWaived,
     };
   }
 

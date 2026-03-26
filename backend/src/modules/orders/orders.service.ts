@@ -467,38 +467,11 @@ export class OrdersService {
   }
 
   /**
-   * Check if user already has a non-cancelled order with products from the same live stream.
-   * Used to waive shipping fee on subsequent orders within the same broadcast.
-   */
-  private async hasPriorOrderForStream(userId: string, streamKeys: string[]): Promise<boolean> {
-    if (!userId || streamKeys.length === 0) {
-      return false;
-    }
-
-    const existing = await this.prisma.orderItem.findFirst({
-      where: {
-        order: {
-          userId,
-          status: { not: 'CANCELLED' },
-          deletedAt: null,
-        },
-        Product: {
-          streamKey: { in: streamKeys },
-        },
-      },
-      select: { id: true },
-    });
-
-    return existing !== null;
-  }
-
-  /**
    * Calculate order totals from items (DRY - used by createOrderFromCart and createOrder)
-   * Shipping is now per-order based on global SystemConfig settings:
-   * - If broadcast freeShippingEnabled AND subtotal >= freeShippingThreshold: $0
-   * - Else if user has prior order in same stream: $0 (subsequent order waiver)
-   * - Else if shipping state === 'CA': caShippingFee
-   * - Else: defaultShippingFee
+   * Shipping is per-broadcast based on LiveStream.freeShippingMode:
+   * - UNCONDITIONAL: always $0
+   * - THRESHOLD: $0 if subtotal >= stream's freeShippingThreshold
+   * - DISABLED: use regional shipping fee (CA vs default)
    */
   private async calculateOrderTotals(
     items: OrderTotalsInput[],
@@ -514,46 +487,49 @@ export class OrdersService {
 
     const subtotal = subtotalCents / 100;
 
-    // Calculate global shipping fee
+    // Calculate shipping fee
     let totalShippingFee = 0;
 
     if (items.length > 0) {
       const config = await this.prisma.systemConfig.findFirst();
       const defaultShippingFee = config ? parseFloat(config.defaultShippingFee.toString()) : 10;
       const caShippingFee = config ? parseFloat(config.caShippingFee.toString()) : 8;
-      const freeShippingThreshold = config
-        ? parseFloat(config.freeShippingThreshold.toString())
-        : 150;
 
-      // Check if any product's live stream has freeShippingEnabled
-      let freeShippingEnabled = false;
-      let streamKeys: string[] = [];
+      // Check per-broadcast free shipping mode
+      let freeShippingApplied = false;
       if (productIds && productIds.length > 0) {
         const products = await this.prisma.product.findMany({
           where: { id: { in: productIds } },
           select: { streamKey: true },
         });
-        streamKeys = [...new Set(products.map((p) => p.streamKey).filter(Boolean))] as string[];
+        const streamKeys = [
+          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
+        ] as string[];
         if (streamKeys.length > 0) {
           const streams = await this.prisma.liveStream.findMany({
             where: { streamKey: { in: streamKeys } },
-            select: { freeShippingEnabled: true },
+            select: { freeShippingMode: true, freeShippingThreshold: true },
           });
-          freeShippingEnabled = streams.some((s) => s.freeShippingEnabled);
+          if (streams.some((s) => s.freeShippingMode === 'UNCONDITIONAL')) {
+            freeShippingApplied = true;
+          }
+          if (!freeShippingApplied) {
+            const thresholdStream = streams.find((s) => s.freeShippingMode === 'THRESHOLD');
+            if (thresholdStream) {
+              const threshold = thresholdStream.freeShippingThreshold
+                ? Number(thresholdStream.freeShippingThreshold)
+                : 150;
+              if (subtotal >= threshold) {
+                freeShippingApplied = true;
+              }
+            }
+          }
         }
       }
 
-      if (freeShippingEnabled && subtotal >= freeShippingThreshold) {
-        totalShippingFee = 0;
-      } else if (
-        userId &&
-        streamKeys.length > 0 &&
-        (await this.hasPriorOrderForStream(userId, streamKeys))
-      ) {
-        // 동일 방송 후속 주문 → 배송비 면제
+      if (freeShippingApplied) {
         totalShippingFee = 0;
       } else {
-        // Determine by user's shipping state
         let isCA = false;
         if (userId) {
           const user = await this.prisma.user.findUnique({

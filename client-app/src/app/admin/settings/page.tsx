@@ -38,8 +38,6 @@ interface SystemSettings {
   defaultCartTimerMinutes: number;
   defaultShippingFee: number;
   caShippingFee: number;
-  freeShippingEnabled: boolean;
-  freeShippingThreshold: number;
   zelleEmail: string;
   zelleRecipientName: string;
   venmoEmail: string;
@@ -223,8 +221,6 @@ export default function AdminSettingsPage() {
     defaultCartTimerMinutes: 60,
     defaultShippingFee: 10,
     caShippingFee: 8,
-    freeShippingEnabled: false,
-    freeShippingThreshold: 150,
     zelleEmail: '',
     zelleRecipientName: '',
     venmoEmail: '',
@@ -528,39 +524,9 @@ export default function AdminSettingsPage() {
                 }
                 fullWidth
               />
-              <div className="flex items-center gap-3 pt-1">
-                <input
-                  type="checkbox"
-                  id="freeShippingEnabled"
-                  checked={settings.freeShippingEnabled}
-                  onChange={(e) =>
-                    setSettings({ ...settings, freeShippingEnabled: e.target.checked })
-                  }
-                  className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="freeShippingEnabled"
-                  className="text-sm text-gray-700 cursor-pointer"
-                >
-                  무료배송 활성화
-                </label>
-              </div>
-              {settings.freeShippingEnabled && (
-                <Input
-                  label="무료배송 기준금액 ($)"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  value={settings.freeShippingThreshold}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      freeShippingThreshold: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  fullWidth
-                />
-              )}
+              <p className="text-xs text-gray-500 mt-1">
+                무료배송 설정은 방송관리 페이지에서 방송별로 설정합니다.
+              </p>
             </div>
           </div>
         </div>
