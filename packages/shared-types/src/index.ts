@@ -71,8 +71,6 @@ export enum ShippingStatus {
 export enum OrderStatus {
   PENDING_PAYMENT = 'PENDING_PAYMENT',
   PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED',
-  SHIPPED = 'SHIPPED',
-  DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED',
 }
 
