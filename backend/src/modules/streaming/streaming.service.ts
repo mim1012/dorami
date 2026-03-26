@@ -586,6 +586,9 @@ export class StreamingService implements OnModuleInit {
       if (dto.thumbnailUrl !== undefined) {
         pendingUpdates.thumbnailUrl = dto.thumbnailUrl || null;
       }
+      if (dto.freeShippingEnabled !== undefined) {
+        pendingUpdates.freeShippingEnabled = dto.freeShippingEnabled;
+      }
       if (Object.keys(pendingUpdates).length > 0) {
         const updated = await this.prisma.liveStream.update({
           where: { id: existingStream.id },
