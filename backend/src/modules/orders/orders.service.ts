@@ -457,9 +457,36 @@ export class OrdersService {
   }
 
   /**
+   * Check if user already has a non-cancelled order with products from the same live stream.
+   * Used to waive shipping on subsequent orders within the same broadcast.
+   */
+  private async hasPriorOrderForStream(userId: string, streamKeys: string[]): Promise<boolean> {
+    if (!userId || streamKeys.length === 0) {
+      return false;
+    }
+
+    const existing = await this.prisma.orderItem.findFirst({
+      where: {
+        order: {
+          userId,
+          status: { not: 'CANCELLED' },
+          deletedAt: null,
+        },
+        Product: {
+          streamKey: { in: streamKeys },
+        },
+      },
+      select: { id: true },
+    });
+
+    return existing !== null;
+  }
+
+  /**
    * Calculate order totals from items (DRY - used by createOrderFromCart and createOrder)
    * Shipping is now per-order based on global SystemConfig settings:
    * - If broadcast freeShippingEnabled AND subtotal >= freeShippingThreshold: $0
+   * - Else if user has prior order in same stream: $0 (subsequent order waiver)
    * - Else if shipping state === 'CA': caShippingFee
    * - Else: defaultShippingFee
    */
@@ -490,14 +517,13 @@ export class OrdersService {
 
       // Check if any product's live stream has freeShippingEnabled
       let freeShippingEnabled = false;
+      let streamKeys: string[] = [];
       if (productIds && productIds.length > 0) {
         const products = await this.prisma.product.findMany({
           where: { id: { in: productIds } },
           select: { streamKey: true },
         });
-        const streamKeys = [
-          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
-        ] as string[];
+        streamKeys = [...new Set(products.map((p) => p.streamKey).filter(Boolean))] as string[];
         if (streamKeys.length > 0) {
           const streams = await this.prisma.liveStream.findMany({
             where: { streamKey: { in: streamKeys } },
@@ -508,6 +534,13 @@ export class OrdersService {
       }
 
       if (freeShippingEnabled && subtotal >= freeShippingThreshold) {
+        totalShippingFee = 0;
+      } else if (
+        userId &&
+        streamKeys.length > 0 &&
+        (await this.hasPriorOrderForStream(userId, streamKeys))
+      ) {
+        // 동일 방송 후속 주문 → 배송비 면제
         totalShippingFee = 0;
       } else {
         // Determine by user's shipping state

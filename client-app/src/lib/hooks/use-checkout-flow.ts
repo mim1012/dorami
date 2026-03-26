@@ -37,6 +37,7 @@ export interface CheckoutFlowState {
   orderTotal: number;
   orderSubtotal: number;
   shippingFee: number;
+  shippingWaived: boolean;
 
   // Terms state
   termsAgreed: boolean;
@@ -119,6 +120,7 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
   // Derived totals
   const orderSubtotal = cartData?.subtotal ? parseFloat(cartData.subtotal) : 0;
   const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
+  const shippingWaived = cartData?.shippingWaived ?? false;
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig
@@ -200,6 +202,7 @@ export function useCheckoutFlow({ cartData }: UseCheckoutFlowOptions): CheckoutF
     orderTotal,
     orderSubtotal,
     shippingFee,
+    shippingWaived,
     termsAgreed,
     privacyAgreed,
     isSubmitting,

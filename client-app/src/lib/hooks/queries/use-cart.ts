@@ -33,6 +33,7 @@ export interface CartSummary {
   totalShippingFee: string; // From backend as string, needs parseFloat()
   grandTotal: string; // From backend as string, needs parseFloat()
   earliestExpiration?: string;
+  shippingWaived?: boolean;
 }
 
 // Query Keys

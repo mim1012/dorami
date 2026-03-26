@@ -8,6 +8,7 @@ interface CartSummaryCardProps {
   subtotal: number;
   totalShippingFee: number;
   grandTotal: number;
+  shippingWaived?: boolean;
 }
 
 export function CartSummaryCard({
@@ -15,6 +16,7 @@ export function CartSummaryCard({
   subtotal,
   totalShippingFee,
   grandTotal,
+  shippingWaived,
 }: CartSummaryCardProps) {
   return (
     <div className="bg-content-bg rounded-xl p-6 border border-border-color mb-6">
@@ -26,7 +28,13 @@ export function CartSummaryCard({
         </div>
         <div className="flex justify-between">
           <Body className="text-secondary-text">배송비</Body>
-          <Body className="text-primary-text">{formatPrice(totalShippingFee)}</Body>
+          <Body className="text-primary-text">
+            {totalShippingFee === 0
+              ? shippingWaived
+                ? '무료 (동일 방송 추가 주문)'
+                : '무료'
+              : formatPrice(totalShippingFee)}
+          </Body>
         </div>
         <div className="border-t border-border-color pt-2 mt-2">
           <div className="flex justify-between items-center">

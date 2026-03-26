@@ -122,4 +122,10 @@ export class CartSummaryDto {
     example: '2024-01-15T10:40:00.000Z',
   })
   earliestExpiration?: string;
+
+  @ApiPropertyOptional({
+    description: '동일 방송 후속 주문 배송비 면제 여부',
+    example: false,
+  })
+  shippingWaived?: boolean;
 }
