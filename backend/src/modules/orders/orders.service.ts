@@ -458,7 +458,7 @@ export class OrdersService {
 
   /**
    * Check if user already has a non-cancelled order with products from the same live stream.
-   * Used to waive shipping on subsequent orders within the same broadcast.
+   * Used to waive shipping fee on subsequent orders within the same broadcast.
    */
   private async hasPriorOrderForStream(userId: string, streamKeys: string[]): Promise<boolean> {
     if (!userId || streamKeys.length === 0) {
