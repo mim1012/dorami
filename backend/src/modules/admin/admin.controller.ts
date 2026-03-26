@@ -4,6 +4,7 @@ import {
   Put,
   Patch,
   Post,
+  Delete,
   Body,
   Query,
   Param,
@@ -31,14 +32,13 @@ import {
   UpdateUserStatusDto,
   UpdateAdminUserDto,
   UpdateOrderStatusDto,
-  UpdateOrderShippingStatusDto,
   UpdateSystemSettingsDto,
-  UpdateShippingMessagesDto,
   UpdateHomeFeaturedProductsDto,
   UpdateMarketingCampaignsDto,
   UpdatePaymentProvidersDto,
   UpdateNotificationTemplateDto,
   BulkUpdateOrderStatusDto,
+  BulkDeleteOrdersDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -125,20 +125,6 @@ export class AdminController {
     return this.adminService.updateSystemConfig(dto);
   }
 
-  @Get('config/shipping-messages')
-  @ApiOperation({ summary: '배송 메시지 템플릿 조회 (관리자)' })
-  @ApiResponse({ status: 200, description: '배송 단계별 메시지 템플릿' })
-  async getShippingMessages() {
-    return this.adminService.getShippingMessages();
-  }
-
-  @Put('config/shipping-messages')
-  @ApiOperation({ summary: '배송 메시지 템플릿 업데이트 (관리자)' })
-  @ApiResponse({ status: 200, description: '메시지 템플릿 업데이트 성공' })
-  async updateShippingMessages(@Body() dto: UpdateShippingMessagesDto) {
-    return this.adminService.updateShippingMessages(dto as unknown as Record<string, string>);
-  }
-
   @Get('config/home-featured-products')
   @ApiOperation({ summary: '홈 특가 상품 설정 조회 (관리자)' })
   @ApiResponse({ status: 200, description: '홈 특가 상품 목록' })
@@ -214,6 +200,28 @@ export class AdminController {
     return this.adminService.bulkUpdateOrderStatus(dto.orderIds, dto.status);
   }
 
+  @Delete('orders/:id')
+  @ApiOperation({
+    summary: '주문 삭제 (관리자)',
+    description: '취소된 주문을 soft delete합니다.',
+  })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '주문 삭제 성공' })
+  async deleteOrder(@Param('id') orderId: string) {
+    await this.adminService.softDeleteOrder(orderId);
+    return { message: '주문이 삭제되었습니다.' };
+  }
+
+  @Post('orders/bulk-delete')
+  @ApiOperation({
+    summary: '주문 일괄 삭제 (관리자)',
+    description: '취소된 주문을 일괄 soft delete합니다.',
+  })
+  @ApiResponse({ status: 200, description: '일괄 삭제 결과' })
+  async bulkDeleteOrders(@Body() dto: BulkDeleteOrdersDto) {
+    return this.adminService.bulkSoftDeleteOrders(dto.orderIds);
+  }
+
   @Get('orders/:id')
   @ApiOperation({ summary: '주문 상세 조회 (관리자)' })
   @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
@@ -239,24 +247,6 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '주문 상태 변경 성공' })
   async updateOrderStatus(@Param('id') orderId: string, @Body() dto: UpdateOrderStatusDto) {
     return this.adminService.updateOrderStatus(orderId, dto.status);
-  }
-
-  @Patch('orders/:id/shipping-status')
-  @ApiOperation({
-    summary: '배송 상태 변경 (관리자)',
-    description: '배송 상태와 운송장 번호를 업데이트합니다.',
-  })
-  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
-  @ApiResponse({ status: 200, description: '배송 상태 변경 성공' })
-  async updateOrderShippingStatus(
-    @Param('id') orderId: string,
-    @Body() dto: UpdateOrderShippingStatusDto,
-  ) {
-    return this.adminService.updateOrderShippingStatus(
-      orderId,
-      dto.shippingStatus,
-      dto.trackingNumber,
-    );
   }
 
   @Patch('orders/:id/send-reminder')

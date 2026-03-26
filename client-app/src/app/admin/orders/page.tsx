@@ -32,7 +32,7 @@ interface OrderListItem {
   userEmail: string;
   depositorName: string;
   instagramId: string;
-  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'CANCELLED';
   createdAt: string;
   paidAt: string | null;
   items?: OrderItem[];
@@ -55,16 +55,12 @@ const ORDER_STATUS_UPDATE_OPTIONS = [
 const ORDER_STATUS_FILTER_OPTIONS = [
   { value: 'PENDING_PAYMENT', label: '입금 대기' },
   { value: 'PAYMENT_CONFIRMED', label: '입금 완료' },
-  { value: 'SHIPPED', label: '배송중' },
-  { value: 'DELIVERED', label: '배송 완료' },
   { value: 'CANCELLED', label: '취소' },
 ] as const;
 
 const ORDER_STATUS_LABELS = {
   PENDING_PAYMENT: '입금 대기',
   PAYMENT_CONFIRMED: '입금 완료',
-  SHIPPED: '배송중',
-  DELIVERED: '배송 완료',
   CANCELLED: '취소',
 } as const;
 
@@ -293,6 +289,64 @@ function AdminOrdersContent() {
     }
   };
 
+  const handleDeleteOrder = async (order: OrderListItem) => {
+    if (order.status !== 'CANCELLED') {
+      showToast('취소된 주문만 삭제할 수 있습니다', 'error');
+      return;
+    }
+    const confirmed = await confirm({
+      title: '주문 삭제',
+      message: `주문번호 ${order.id}을(를) 삭제하시겠습니까? 삭제된 주문은 목록에서 숨겨집니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setIsUpdating(order.id);
+    try {
+      await apiClient.delete(`/admin/orders/${order.id}`);
+      showToast(`주문 ${order.id}이(가) 삭제되었습니다`, 'success');
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '삭제에 실패했습니다', 'error');
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedOrders = orders.filter((o) => selectedOrderIds.has(o.id));
+    const nonCancelled = selectedOrders.filter((o) => o.status !== 'CANCELLED');
+    if (nonCancelled.length > 0) {
+      showToast('취소된 주문만 삭제할 수 있습니다', 'error');
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: '일괄 삭제',
+      message: `${selectedOrderIds.size}개 주문을 삭제하시겠습니까? 삭제된 주문은 목록에서 숨겨집니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      const result = await apiClient.post('/admin/orders/bulk-delete', {
+        orderIds: Array.from(selectedOrderIds),
+      });
+      const data = result as any;
+      showToast(
+        `${data.success}개 삭제 완료${data.failed > 0 ? `, ${data.failed}개 실패` : ''}`,
+        data.failed > 0 ? 'error' : 'success',
+      );
+      setSelectedOrderIds(new Set());
+      setIsSelectionMode(false);
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.message || '일괄 삭제에 실패했습니다', 'error');
+    }
+  };
+
   const handleToggleSelectionMode = () => {
     setIsSelectionMode((prev) => !prev);
     setSelectedOrderIds(new Set());
@@ -499,6 +553,16 @@ function AdminOrdersContent() {
               {option.label}
             </button>
           ))}
+          {order.status === 'CANCELLED' && (
+            <button
+              type="button"
+              onClick={() => handleDeleteOrder(order)}
+              disabled={isUpdating === order.id}
+              className="inline-flex min-h-[44px] items-center justify-center px-2.5 py-2 text-xs rounded border bg-transparent text-gray-400 hover:text-error hover:bg-error/10"
+            >
+              삭제
+            </button>
+          )}
         </div>
       ),
     },
@@ -683,6 +747,7 @@ function AdminOrdersContent() {
                   setExpandedOrderId(expandedOrderId === order.id ? null : order.id)
                 }
                 onStatusChange={handleStatusChange}
+                onDelete={handleDeleteOrder}
                 onSelectionToggle={() => handleToggleSelect(order.id)}
                 formatDate={formatDate}
                 collectProductSummary={collectProductSummary}
@@ -733,6 +798,12 @@ function AdminOrdersContent() {
                 {option.label}
               </button>
             ))}
+            <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium bg-gray-600 hover:bg-gray-700"
+            >
+              삭제
+            </button>
           </div>
         </div>
       )}

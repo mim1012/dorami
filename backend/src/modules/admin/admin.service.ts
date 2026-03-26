@@ -48,10 +48,10 @@ interface OrderWhereClause {
   createdAt?: { gte?: Date; lte?: Date };
   status?: { in: OrderStatus[] };
   paymentStatus?: { in: PaymentStatus[] };
-  shippingStatus?: { in: ShippingStatus[] };
   userId?: string;
   total?: { gte?: number; lte?: number };
   orderItems?: Record<string, unknown>;
+  deletedAt?: null | { not: null };
 }
 
 interface SystemConfigUpdateData {
@@ -406,7 +406,6 @@ export class AdminService {
       dateTo,
       orderStatus,
       paymentStatus,
-      shippingStatus,
       userId,
       minAmount,
       maxAmount,
@@ -418,13 +417,11 @@ export class AdminService {
 
     const skip = (page - 1) * limit;
 
-    // Build where clause for filters
-    const where: OrderWhereClause = {};
+    // Build where clause for filters — exclude soft-deleted orders
+    const where: OrderWhereClause = { deletedAt: null };
     const allowedOrderStatuses: OrderStatus[] = [
       'PENDING_PAYMENT',
       'PAYMENT_CONFIRMED',
-      'SHIPPED',
-      'DELIVERED',
       'CANCELLED',
     ];
 
@@ -438,19 +435,10 @@ export class AdminService {
       ];
     }
 
-    // Date range filter (for createdAt)
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) {
-        const startDate = new Date(dateFrom);
-        startDate.setHours(0, 0, 0, 0); // Start of day
-        where.createdAt.gte = startDate;
-      }
-      if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999); // End of day
-        where.createdAt.lte = endDate;
-      }
+    // Date range filter (for createdAt) — KST timezone aware
+    const createdAtRange = this.parseKSTDateRange(dateFrom, dateTo);
+    if (createdAtRange) {
+      where.createdAt = createdAtRange;
     }
 
     // Order status filter
@@ -467,11 +455,6 @@ export class AdminService {
     // Payment status filter
     if (paymentStatus && paymentStatus.length > 0) {
       where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
-    }
-
-    // Shipping status filter
-    if (shippingStatus && shippingStatus.length > 0) {
-      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
     }
 
     if (userId) {
@@ -540,15 +523,12 @@ export class AdminService {
       instagramId: order.instagramId,
       status: order.status,
       paymentStatus: order.paymentStatus,
-      shippingStatus: order.shippingStatus,
       subtotal: String(order.subtotal),
       shippingFee: String(order.shippingFee),
       total: String(order.total),
       itemCount: order.orderItems.length,
       createdAt: order.createdAt.toISOString(),
       paidAt: order.paidAt?.toISOString() ?? null,
-      shippedAt: order.shippedAt?.toISOString() ?? null,
-      deliveredAt: order.deliveredAt?.toISOString() ?? null,
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
       items: order.orderItems.map((item) => ({
         productName: item.productName,
@@ -579,7 +559,6 @@ export class AdminService {
       dateTo,
       orderStatus,
       paymentStatus,
-      shippingStatus,
       userId,
       minAmount,
       maxAmount,
@@ -589,12 +568,10 @@ export class AdminService {
     const allowedOrderStatuses: OrderStatus[] = [
       'PENDING_PAYMENT',
       'PAYMENT_CONFIRMED',
-      'SHIPPED',
-      'DELIVERED',
       'CANCELLED',
     ];
 
-    const where: OrderWhereClause = {};
+    const where: OrderWhereClause = { deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -605,16 +582,10 @@ export class AdminService {
       ];
     }
 
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) {
-        where.createdAt.gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999);
-        where.createdAt.lte = endDate;
-      }
+    // KST timezone aware date filter
+    const csvCreatedAtRange = this.parseKSTDateRange(dateFrom, dateTo);
+    if (csvCreatedAtRange) {
+      where.createdAt = csvCreatedAtRange;
     }
 
     if (orderStatus && orderStatus.length > 0) {
@@ -626,16 +597,13 @@ export class AdminService {
         in:
           filteredOrderStatus.length > 0
             ? (filteredOrderStatus as OrderStatus[])
-            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'],
       };
     } else {
       where.status = { in: allowedOrderStatuses };
     }
     if (paymentStatus && paymentStatus.length > 0) {
       where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
-    }
-    if (shippingStatus && shippingStatus.length > 0) {
-      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
     }
 
     if (userId) {
@@ -678,8 +646,6 @@ export class AdminService {
     const ORDER_STATUS_KO: Record<string, string> = {
       PENDING_PAYMENT: '결제대기',
       PAYMENT_CONFIRMED: '결제완료',
-      SHIPPED: '배송중',
-      DELIVERED: '배송완료',
       CANCELLED: '취소',
     };
     const PAYMENT_STATUS_KO: Record<string, string> = {
@@ -687,11 +653,6 @@ export class AdminService {
       CONFIRMED: '완료',
       FAILED: '실패',
       REFUNDED: '환불',
-    };
-    const SHIPPING_STATUS_KO: Record<string, string> = {
-      PENDING: '준비중',
-      SHIPPED: '배송중',
-      DELIVERED: '배송완료',
     };
 
     const toKST = (date: Date) =>
@@ -717,7 +678,6 @@ export class AdminService {
       인스타그램ID: order.instagramId,
       주문상태: ORDER_STATUS_KO[order.status] ?? order.status,
       결제상태: PAYMENT_STATUS_KO[order.paymentStatus] ?? order.paymentStatus,
-      배송상태: SHIPPING_STATUS_KO[order.shippingStatus] ?? order.shippingStatus,
       소계: Number(order.subtotal),
       배송비: Number(order.shippingFee),
       합계: Number(order.total),
@@ -736,7 +696,6 @@ export class AdminService {
       dateTo,
       orderStatus,
       paymentStatus,
-      shippingStatus,
       userId,
       minAmount,
       maxAmount,
@@ -746,12 +705,10 @@ export class AdminService {
     const allowedOrderStatuses: OrderStatus[] = [
       'PENDING_PAYMENT',
       'PAYMENT_CONFIRMED',
-      'SHIPPED',
-      'DELIVERED',
       'CANCELLED',
     ];
 
-    const where: OrderWhereClause = {};
+    const where: OrderWhereClause = { deletedAt: null };
 
     if (search) {
       where.OR = [
@@ -761,16 +718,10 @@ export class AdminService {
         { instagramId: { contains: search, mode: 'insensitive' } },
       ];
     }
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) {
-        where.createdAt.gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999);
-        where.createdAt.lte = endDate;
-      }
+    // KST timezone aware date filter
+    const excelCreatedAtRange = this.parseKSTDateRange(dateFrom, dateTo);
+    if (excelCreatedAtRange) {
+      where.createdAt = excelCreatedAtRange;
     }
     if (orderStatus && orderStatus.length > 0) {
       const filteredOrderStatus = orderStatus.filter((status) =>
@@ -781,16 +732,13 @@ export class AdminService {
         in:
           filteredOrderStatus.length > 0
             ? (filteredOrderStatus as OrderStatus[])
-            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'],
+            : ['PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'CANCELLED'],
       };
     } else {
       where.status = { in: allowedOrderStatuses };
     }
     if (paymentStatus && paymentStatus.length > 0) {
       where.paymentStatus = { in: paymentStatus as PaymentStatus[] };
-    }
-    if (shippingStatus && shippingStatus.length > 0) {
-      where.shippingStatus = { in: shippingStatus as ShippingStatus[] };
     }
 
     if (userId) {
@@ -850,8 +798,6 @@ export class AdminService {
     const ORDER_STATUS_KO: Record<string, string> = {
       PENDING_PAYMENT: '입금 대기',
       PAYMENT_CONFIRMED: '결제 완료',
-      SHIPPED: '배송 중',
-      DELIVERED: '배송 완료',
       CANCELLED: '취소',
     };
 
@@ -1276,9 +1222,6 @@ export class AdminService {
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
-      solapiApiKey: config.solapiApiKey,
-      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
-      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -1310,15 +1253,6 @@ export class AdminService {
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
-    }
-    if (dto.solapiApiKey !== undefined) {
-      updateData.solapiApiKey = dto.solapiApiKey;
-    }
-    if (dto.solapiApiSecret !== undefined && dto.solapiApiSecret !== '••••••••') {
-      updateData.solapiApiSecret = dto.solapiApiSecret;
-    }
-    if (dto.kakaoChannelId !== undefined) {
-      updateData.kakaoChannelId = dto.kakaoChannelId;
     }
     if (dto.zelleEmail !== undefined) {
       updateData.zelleEmail = dto.zelleEmail;
@@ -1377,9 +1311,6 @@ export class AdminService {
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       freeShippingEnabled: config.freeShippingEnabled,
       alimtalkEnabled: config.alimtalkEnabled,
-      solapiApiKey: config.solapiApiKey,
-      solapiApiSecret: config.solapiApiSecret ? '••••••••' : '',
-      kakaoChannelId: config.kakaoChannelId,
     };
   }
 
@@ -1704,8 +1635,6 @@ export class AdminService {
         [
           OrderStatus.PENDING_PAYMENT,
           OrderStatus.PAYMENT_CONFIRMED,
-          OrderStatus.SHIPPED,
-          OrderStatus.DELIVERED,
           OrderStatus.CANCELLED,
         ] as string[]
       ).includes(status)
@@ -1730,30 +1659,11 @@ export class AdminService {
     } else if (status === OrderStatus.PAYMENT_CONFIRMED) {
       data.paymentStatus = PaymentStatus.CONFIRMED;
       data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus =
-        order.shippingStatus === ShippingStatus.DELIVERED
-          ? ShippingStatus.DELIVERED
-          : ShippingStatus.PENDING;
-    } else if (status === OrderStatus.SHIPPED) {
-      data.status = OrderStatus.SHIPPED;
-      data.paymentStatus = PaymentStatus.CONFIRMED;
-      data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus = ShippingStatus.SHIPPED;
-      data.shippedAt = order.shippedAt ?? new Date();
-    } else if (status === OrderStatus.DELIVERED) {
-      data.status = OrderStatus.DELIVERED;
-      data.paymentStatus = PaymentStatus.CONFIRMED;
-      data.paidAt = order.paidAt ?? new Date();
-      data.shippingStatus = ShippingStatus.DELIVERED;
-      data.shippedAt = order.shippedAt ?? order.paidAt ?? new Date();
-      data.deliveredAt = order.deliveredAt ?? new Date();
+      data.shippingStatus = ShippingStatus.PENDING;
     } else if (status === OrderStatus.CANCELLED) {
       data.paymentStatus = PaymentStatus.FAILED;
       data.paidAt = order.paidAt;
-      data.shippingStatus =
-        order.shippingStatus === ShippingStatus.DELIVERED
-          ? ShippingStatus.DELIVERED
-          : ShippingStatus.SHIPPED;
+      data.shippingStatus = ShippingStatus.PENDING;
 
       // Restore stock for each order item
       for (const item of order.orderItems) {
@@ -1792,49 +1702,14 @@ export class AdminService {
 
   /**
    * Update order shipping status (admin only)
+   * @deprecated Shipping status updates are no longer supported
    */
   async updateOrderShippingStatus(
-    orderId: string,
-    shippingStatus: string,
-    trackingNumber?: string,
+    _orderId: string,
+    _shippingStatus: string,
+    _trackingNumber?: string,
   ) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
-    const data: Record<string, unknown> = { shippingStatus };
-
-    if (shippingStatus === ShippingStatus.SHIPPED) {
-      data.shippedAt = order.shippedAt ?? new Date();
-      data.status = OrderStatus.SHIPPED;
-      if (trackingNumber) {
-        data.trackingNumber = trackingNumber;
-      }
-    } else if (shippingStatus === ShippingStatus.DELIVERED) {
-      data.deliveredAt = order.deliveredAt ?? new Date();
-      data.status = OrderStatus.DELIVERED;
-    }
-
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data,
-    });
-
-    return {
-      success: true,
-      data: {
-        orderId: updated.id,
-        status: updated.status,
-        shippingStatus: updated.shippingStatus,
-        trackingNumber: updated.trackingNumber,
-        shippedAt: updated.shippedAt?.toISOString() ?? null,
-        deliveredAt: updated.deliveredAt?.toISOString() ?? null,
-      },
-    };
+    throw new BadRequestException('Shipping status updates are no longer supported');
   }
 
   /**
@@ -2264,5 +2139,69 @@ export class AdminService {
         limit,
       },
     };
+  }
+
+  async softDeleteOrder(orderId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, status: true, deletedAt: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    if (order.status !== 'CANCELLED') {
+      throw new BadRequestException('Only cancelled orders can be deleted');
+    }
+    if (order.deletedAt) {
+      throw new BadRequestException('Order is already deleted');
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async bulkSoftDeleteOrders(
+    orderIds: string[],
+  ): Promise<{ success: number; failed: number; errors: string[] }> {
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const orderId of orderIds) {
+      try {
+        await this.softDeleteOrder(orderId);
+        success++;
+      } catch (err) {
+        failed++;
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        errors.push(`${orderId}: ${message}`);
+      }
+    }
+
+    return { success, failed, errors };
+  }
+
+  /**
+   * Parse date strings as KST (UTC+9) for filtering.
+   * Without this, `new Date("2026-03-26")` parses as UTC midnight,
+   * which is 09:00 KST — causing date filters to miss early-morning orders.
+   */
+  private parseKSTDateRange(
+    dateFrom?: string,
+    dateTo?: string,
+  ): { gte?: Date; lte?: Date } | undefined {
+    if (!dateFrom && !dateTo) {
+      return undefined;
+    }
+    const result: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) {
+      result.gte = new Date(dateFrom + 'T00:00:00+09:00');
+    }
+    if (dateTo) {
+      result.lte = new Date(dateTo + 'T23:59:59.999+09:00');
+    }
+    return result;
   }
 }

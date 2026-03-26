@@ -18,7 +18,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { Role, UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import { Role, UserStatus, OrderStatus, PaymentStatus } from '@prisma/client';
 import {
   KAKAO_PHONE_MESSAGE,
   PHONE_PAYLOAD_PATTERN,
@@ -300,27 +300,6 @@ export class GetOrdersQueryDto {
   })
   paymentStatus?: string[];
 
-  // Shipping status filter (array)
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @Transform(({ value }) => {
-    if (value === null || value === undefined) {
-      return undefined;
-    }
-    if (Array.isArray(value)) {
-      return value;
-    }
-    if (typeof value === 'string') {
-      return value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-    return [value];
-  })
-  shippingStatus?: string[];
-
   // Amount range filter
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : undefined))
@@ -348,15 +327,12 @@ export class OrderListItemDto {
   instagramId!: string;
   status!: OrderStatus;
   paymentStatus!: PaymentStatus;
-  shippingStatus!: ShippingStatus;
   subtotal!: string;
   shippingFee!: string;
   total!: string;
   itemCount!: number;
   createdAt!: string;
   paidAt!: string | null;
-  shippedAt!: string | null;
-  deliveredAt!: string | null;
   streamKey!: string | null;
   items?: Array<{
     productName: string;
@@ -543,18 +519,6 @@ export class UpdateSystemSettingsDto {
 
   @IsOptional()
   @IsString()
-  solapiApiKey?: string;
-
-  @IsOptional()
-  @IsString()
-  solapiApiSecret?: string;
-
-  @IsOptional()
-  @IsString()
-  kakaoChannelId?: string;
-
-  @IsOptional()
-  @IsString()
   zelleEmail?: string;
 
   @IsOptional()
@@ -584,29 +548,6 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   freeShippingEnabled?: boolean;
-}
-
-// Shipping Messages DTO
-export class UpdateShippingMessagesDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  preparing!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  shipped!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  inTransit!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  delivered!: string;
 }
 
 // Home featured products configuration DTO
@@ -650,16 +591,6 @@ export class UpdateOrderStatusDto {
   status!: OrderStatus;
 }
 
-export class UpdateOrderShippingStatusDto {
-  @IsString()
-  @IsEnum(['PENDING', 'SHIPPED', 'DELIVERED'])
-  shippingStatus!: string;
-
-  @IsOptional()
-  @IsString()
-  trackingNumber?: string;
-}
-
 export class BulkUpdateOrderStatusDto {
   @IsArray()
   @IsString({ each: true })
@@ -670,18 +601,9 @@ export class BulkUpdateOrderStatusDto {
   status!: string;
 }
 
-export interface BulkShippingNotificationItem {
-  orderId: string;
-  trackingNumber: string;
-}
-
-export interface BulkShippingNotificationResult {
-  total: number;
-  successful: number;
-  failed: number;
-  results: {
-    orderId: string;
-    success: boolean;
-    error?: string;
-  }[];
+export class BulkDeleteOrdersDto {
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  orderIds!: string[];
 }

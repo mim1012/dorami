@@ -262,6 +262,7 @@ model Order {
   deliveredAt     DateTime?      @map("delivered_at")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
 
   // Relations
   orderItems OrderItem[]
@@ -276,6 +277,7 @@ model Order {
   @@index([paymentStatus, createdAt])
   @@index([paymentStatus, paidAt])
   @@index([shippingStatus, createdAt])
+  @@index([deletedAt])
   @@map("orders")
 }
 
@@ -380,10 +382,8 @@ model SystemConfig {
   freeShippingEnabled Boolean @default(false) @map("free_shipping_enabled")
 
   // Alimtalk (카카오 알림톡) Settings
+  // API credentials moved to env vars: BIZGO_API_KEY, BIZGO_PF_ID
   alimtalkEnabled      Boolean @default(false) @map("alimtalk_enabled")
-  solapiApiKey         String  @default("") @map("solapi_api_key")
-  solapiApiSecret      String  @default("") @map("solapi_api_secret")
-  kakaoChannelId       String  @default("") @map("kakao_channel_id")
 
   // Points Configuration (Epic 13)
   pointsEnabled          Boolean @default(false) @map("points_enabled")

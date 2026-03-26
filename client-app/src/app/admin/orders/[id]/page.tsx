@@ -36,7 +36,7 @@ interface OrderDetail {
   depositorName: string;
   instagramId: string;
   shippingAddress: ShippingAddress | null;
-  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'CANCELLED';
   paymentStatus: string;
   shippingStatus: string;
   subtotal: number;
@@ -57,11 +57,9 @@ interface OrderDetail {
   };
 }
 
-const ORDER_STATUS_LABELS: Record<OrderDetail['status'], string> = {
+const ORDER_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   PENDING_PAYMENT: '입금 대기',
   PAYMENT_CONFIRMED: '입금 완료',
-  SHIPPED: '배송중',
-  DELIVERED: '배송 완료',
   CANCELLED: '취소',
 };
 
@@ -127,6 +125,29 @@ export default function AdminOrderDetailPage() {
     }
   };
 
+  const handleDeleteOrder = async () => {
+    if (!order || order.status !== 'CANCELLED') return;
+
+    const confirmed = await confirm({
+      title: '주문 삭제',
+      message: `주문번호 ${order.id}을(를) 삭제하시겠습니까?\n삭제된 주문은 목록에서 숨겨집니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setIsUpdating(true);
+    try {
+      await apiClient.delete(`/admin/orders/${orderId}`);
+      showToast('주문이 삭제되었습니다', 'success');
+      router.push('/admin/orders');
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '삭제에 실패했습니다', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -148,11 +169,9 @@ export default function AdminOrderDetailPage() {
   };
 
   const getOrderStatusBadge = (status: string) => {
-    const colors: Record<OrderDetail['status'], string> = {
+    const colors: Partial<Record<OrderStatus, string>> = {
       PENDING_PAYMENT: 'bg-warning/10 text-warning border-warning',
       PAYMENT_CONFIRMED: 'bg-success/10 text-success border-success',
-      SHIPPED: 'bg-info/10 text-info border-info',
-      DELIVERED: 'bg-success/10 text-success border-success',
       CANCELLED: 'bg-error/10 text-error border-error',
     };
     const labels = ORDER_STATUS_LABELS;
@@ -231,6 +250,15 @@ export default function AdminOrderDetailPage() {
             </p>
           )}
           <div className="mt-3">{getOrderStatusBadge(order.status)}</div>
+          {order.status === 'CANCELLED' && (
+            <button
+              onClick={handleDeleteOrder}
+              disabled={isUpdating}
+              className="mt-3 w-full px-4 py-2 min-h-[44px] rounded-lg border border-gray-600 text-gray-400 hover:text-error hover:border-error hover:bg-error/10 text-sm font-medium transition-colors"
+            >
+              주문 삭제
+            </button>
+          )}
         </div>
 
         <div className="bg-content-bg rounded-button p-6">

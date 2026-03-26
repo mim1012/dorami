@@ -16,7 +16,7 @@ interface OrderListItem {
   userEmail: string;
   depositorName: string;
   instagramId: string;
-  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'CANCELLED';
   createdAt: string;
   paidAt: string | null;
   items?: OrderItem[];
@@ -25,8 +25,6 @@ interface OrderListItem {
 const ORDER_STATUS_LABELS = {
   PENDING_PAYMENT: '입금 대기',
   PAYMENT_CONFIRMED: '입금 완료',
-  SHIPPED: '배송중',
-  DELIVERED: '배송 완료',
   CANCELLED: '취소',
 } as const;
 
@@ -39,8 +37,6 @@ const ORDER_STATUS_UPDATE_OPTIONS = [
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   PENDING_PAYMENT: 'bg-warning/20 text-warning',
   PAYMENT_CONFIRMED: 'bg-success/20 text-success',
-  SHIPPED: 'bg-blue-500/20 text-blue-400',
-  DELIVERED: 'bg-green-600/20 text-green-400',
   CANCELLED: 'bg-error/20 text-error',
 };
 
@@ -53,6 +49,7 @@ interface OrderMobileCardProps {
   onCardClick: () => void;
   onToggleExpand: () => void;
   onStatusChange: (order: OrderListItem, status: OrderListItem['status']) => void;
+  onDelete: (order: OrderListItem) => void;
   onSelectionToggle: () => void;
   formatDate: (date: string | null) => string;
   collectProductSummary: (items?: OrderItem[]) => string;
@@ -84,6 +81,7 @@ export function OrderMobileCard({
   isSelected,
   onCardClick,
   onStatusChange,
+  onDelete,
   onSelectionToggle,
   formatDate,
 }: OrderMobileCardProps) {
@@ -210,6 +208,19 @@ export function OrderMobileCard({
             {option.label}
           </button>
         ))}
+        {order.status === 'CANCELLED' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(order);
+            }}
+            disabled={isUpdating}
+            className="flex-1 min-h-[40px] px-2 py-2 text-xs font-medium border-l border-border-color bg-transparent text-gray-400 hover:text-error hover:bg-error/10 transition-colors"
+          >
+            삭제
+          </button>
+        )}
       </div>
     </div>
   );
