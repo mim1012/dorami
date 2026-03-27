@@ -29,6 +29,7 @@ on:
           - restart-nginx
           - restart-srs
           - restart-all
+          - docker-prune
 
 jobs:
   run:
@@ -426,4 +427,21 @@ jobs:
           ssh $USER@$HOST bash << 'EOF'
           docker restart backend-prod dorami-frontend-prod dorami-nginx-prod dorami-srs-prod
           docker ps --format "table {{.Names}}\t{{.Status}}"
+          EOF
+
+      - name: docker-prune
+        if: inputs.command == 'docker-prune'
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          ssh $USER@$HOST bash << 'EOF'
+          echo "=== Before ==="
+          df -h / && docker system df
+          echo "=== Pruning unused images and build cache ==="
+          docker image prune -a -f --filter "until=24h"
+          docker builder prune -a -f
+          docker volume prune -f
+          echo "=== After ==="
+          df -h / && docker system df
           EOF
