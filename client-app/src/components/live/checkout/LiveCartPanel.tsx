@@ -335,22 +335,9 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
           <span>배송비</span>
           <span>
             {dynamicShipping === 0 ? (
-              <span className="text-green-400">
-                {freeShippingMode === 'UNCONDITIONAL'
-                  ? '무료배송'
-                  : freeShippingMode === 'THRESHOLD' && freeShippingThreshold
-                    ? `무료배송 ($${freeShippingThreshold} 이상)`
-                    : '무료배송'}
-              </span>
+              <span className="text-green-400">무료배송</span>
             ) : (
-              <span>
-                {formatPrice(dynamicShipping)}
-                {freeShippingMode === 'THRESHOLD' && freeShippingThreshold && (
-                  <span className="text-white/30 ml-1 text-[10px]">
-                    (${freeShippingThreshold} 이상 무료)
-                  </span>
-                )}
-              </span>
+              formatPrice(dynamicShipping)
             )}
           </span>
         </div>
