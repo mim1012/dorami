@@ -1371,9 +1371,12 @@ export default function BroadcastsPage() {
                               step="1"
                               min="0"
                               value={newStreamFreeShippingThreshold}
-                              onChange={(e) =>
-                                setNewStreamFreeShippingThreshold(Number(e.target.value))
-                              }
+                              onChange={(e) => {
+                                setNewStreamFreeShippingThreshold(Number(e.target.value));
+                                if (Number(e.target.value) > 0) {
+                                  setNewStreamFreeShippingMode('THRESHOLD');
+                                }
+                              }}
                               className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none text-sm"
                             />
                             <span className="text-sm text-secondary-text">이상 무료</span>
@@ -1880,7 +1883,12 @@ export default function BroadcastsPage() {
                           step="1"
                           min="0"
                           value={editFreeShippingThreshold}
-                          onChange={(e) => setEditFreeShippingThreshold(Number(e.target.value))}
+                          onChange={(e) => {
+                            setEditFreeShippingThreshold(Number(e.target.value));
+                            if (Number(e.target.value) > 0) {
+                              setEditFreeShippingMode('THRESHOLD');
+                            }
+                          }}
                           className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none text-sm"
                         />
                         <span className="text-sm text-secondary-text">이상 무료</span>
