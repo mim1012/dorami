@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { refreshAuthToken } from '@/lib/auth/token-manager';
+import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
@@ -17,18 +17,13 @@ export type ChatConnectionStatus =
   | 'reconnecting'
   | 'failed';
 
-const MAX_AUTH_RETRIES = 3;
-
 export function useChatConnection(streamKey: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
-  const authRetryCountRef = useRef(0);
-  const mountedRef = useRef(true);
-  const streamKeyRef = useRef(streamKey);
-  streamKeyRef.current = streamKey;
+  const authRefreshAttemptedRef = useRef(false);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -50,146 +45,138 @@ export function useChatConnection(streamKey: string) {
   }, []);
 
   useEffect(() => {
-    mountedRef.current = true;
-    authRetryCountRef.current = 0;
-
+    // Guard: Don't connect if streamKey is not available
     if (!streamKey) {
+      // Clean up any stale socket and queue from previous renders
       if (socketRef.current) {
-        socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
         socketRef.current = null;
       }
       pendingMessageQueueRef.current = [];
       setIsConnected(false);
-      setConnectionStatus('disconnected');
       return;
     }
-
     const reconnectConfig = RECONNECT_CONFIG.chat;
 
-    const buildSocket = (): Socket => {
-      return io(`${SOCKET_URL}/chat`, {
-        transports: ['websocket', 'polling'],
-        withCredentials: true,
-        reconnection: true,
-        reconnectionAttempts: reconnectConfig.maxAttempts,
-        reconnectionDelay: reconnectConfig.delays[0],
-        reconnectionDelayMax: reconnectConfig.delays[reconnectConfig.delays.length - 1],
-        randomizationFactor: reconnectConfig.jitterFactor,
-        timeout: 20000,
-      });
-    };
+    // WebSocket connection - connect to /chat namespace
+    const chatUrl = `${SOCKET_URL}/chat`;
 
-    // Destroy current socket, refresh token, create new one with fresh cookies
-    const handleAuthFailure = async () => {
-      if (!mountedRef.current) return;
+    const socket = io(chatUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: reconnectConfig.maxAttempts,
+      reconnectionDelay: reconnectConfig.delays[0],
+      reconnectionDelayMax: reconnectConfig.delays[reconnectConfig.delays.length - 1],
+      randomizationFactor: reconnectConfig.jitterFactor,
+      timeout: 20000,
+    });
 
-      authRetryCountRef.current += 1;
-      if (authRetryCountRef.current > MAX_AUTH_RETRIES) {
-        setConnectionStatus('failed');
-        return;
-      }
-
-      // Destroy old socket
-      if (socketRef.current) {
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-
-      setConnectionStatus('reconnecting');
-
-      const refreshed = await refreshAuthToken();
-      if (!refreshed || !mountedRef.current) {
-        setConnectionStatus('failed');
-        return;
-      }
-
-      // Brief delay for cookie propagation
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      if (!mountedRef.current) return;
-
-      // New socket picks up fresh cookies
-      const fresh = buildSocket();
-      socketRef.current = fresh;
-      wireUp(fresh);
-    };
-
-    const wireUp = (socket: Socket) => {
-      socket.on('connect', () => {
-        socket.emit('chat:join-room', { liveId: streamKeyRef.current });
-      });
-
-      socket.on('connection:success', () => {
-        if (!mountedRef.current) return;
-        setIsConnected(true);
-        setConnectionStatus('connected');
-        authRetryCountRef.current = 0;
-        flushPendingMessages();
-      });
-
-      socket.on('error', (err: { errorCode?: string; message?: string }) => {
-        if (err.errorCode === 'AUTH_FAILED') {
-          void handleAuthFailure();
-        }
-      });
-
-      socket.on('disconnect', (reason) => {
-        if (!mountedRef.current) return;
-        setIsConnected(false);
-        setConnectionStatus('disconnected');
-
-        if (reason === 'io server disconnect') {
-          void handleAuthFailure();
-        }
-      });
-
-      socket.on('connect_error', () => {
-        if (!mountedRef.current) return;
-        setIsConnected(false);
-      });
-
-      socket.on('chat:user-joined', () => {
-        setUserCount((prev) => prev + 1);
-      });
-
-      socket.on('chat:user-left', () => {
-        setUserCount((prev) => Math.max(0, prev - 1));
-      });
-
-      socket.io.on('reconnect_attempt', () => {
-        if (mountedRef.current) setConnectionStatus('reconnecting');
-      });
-
-      socket.io.on('reconnect_failed', () => {
-        if (mountedRef.current) setConnectionStatus('failed');
-      });
-
-      socket.io.on('reconnect', () => {
-        flushPendingMessages();
-      });
-    };
-
-    setConnectionStatus('connecting');
-    const socket = buildSocket();
     socketRef.current = socket;
-    wireUp(socket);
+    setConnectionStatus('connecting');
+
+    const emitJoin = () => {
+      socket.emit('chat:join-room', { liveId: streamKey });
+    };
+
+    const handleAuthReconnect = async () => {
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        socket.connect();
+      } else {
+        socket.disconnect();
+      }
+    };
+
+    // Connection events
+    socket.on('connect', () => {
+      // Don't set connected yet — wait for server auth confirmation
+      // Join chat room (server will authenticate in connection handler)
+      emitJoin();
+    });
+
+    // Server sends this after successful authentication
+    socket.on('connection:success', () => {
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      authRefreshAttemptedRef.current = false;
+      flushPendingMessages();
+    });
+
+    // Server sends auth error details before disconnecting
+    socket.on('error', (err: { errorCode?: string; message?: string }) => {
+      console.error('[Chat WebSocket] server error:', err.errorCode, err.message);
+    });
+
+    socket.on('disconnect', async (reason) => {
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+
+      // "io server disconnect" means the server forcefully closed the connection
+      // (e.g., auth failure). Attempt token refresh and reconnect once.
+      if (reason === 'io server disconnect' && !authRefreshAttemptedRef.current) {
+        authRefreshAttemptedRef.current = true;
+        await handleAuthReconnect();
+      }
+    });
+
+    socket.on('connect_error', async (error) => {
+      setIsConnected(false);
+
+      if (!socket.disconnected) {
+        return;
+      }
+
+      if (isAuthError(error as Error)) {
+        if (authRefreshAttemptedRef.current) {
+          // Already tried a refresh — stop reconnecting to prevent infinite loop
+          socket.disconnect();
+          return;
+        }
+        authRefreshAttemptedRef.current = true;
+        await handleAuthReconnect();
+      }
+    });
+
+    // Track user count locally via join/leave events
+    // (backend emits 'chat:user-joined' and 'chat:user-left', not 'chat:user-count')
+    socket.on('chat:user-joined', () => {
+      setUserCount((prev) => prev + 1);
+    });
+
+    socket.on('chat:user-left', () => {
+      setUserCount((prev) => Math.max(0, prev - 1));
+    });
+
+    socket.io.on('reconnect_attempt', () => {
+      setConnectionStatus('reconnecting');
+    });
+
+    socket.io.on('reconnect_failed', () => {
+      setConnectionStatus('failed');
+    });
+
+    socket.io.on('reconnect', () => {
+      // Note: socket.on('connect') is also fired on reconnect, so emitJoin is called there
+      // Avoid double-calling emitJoin here
+      flushPendingMessages();
+    });
 
     return () => {
-      mountedRef.current = false;
       if (socketRef.current) {
         socketRef.current.emit('chat:leave-room', { liveId: streamKey });
-        socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
         socketRef.current = null;
       }
       pendingMessageQueueRef.current = [];
     };
-  }, [streamKey, flushPendingMessages]);
+  }, [streamKey]);
 
   const sendMessage = (message: string) => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage) return;
+    if (!trimmedMessage) {
+      return;
+    }
 
     const payload: QueuedMessage = {
       clientMessageId: createMessageId(),
@@ -204,6 +191,7 @@ export function useChatConnection(streamKey: string) {
     }
 
     pendingMessageQueueRef.current.push(payload);
+
     if (pendingMessageQueueRef.current.length > 50) {
       pendingMessageQueueRef.current = pendingMessageQueueRef.current.slice(-50);
     }

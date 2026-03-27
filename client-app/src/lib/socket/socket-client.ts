@@ -110,9 +110,10 @@ export class SocketClient {
     socket.on('connect_error', async (error) => {
       console.error(`❌ WebSocket connect_error (${namespace}):`, error);
 
-      // Handle auth errors: refresh token, then create NEW socket (old one has stale cookies)
+      // Handle auth errors: try refreshing token once, then stop to avoid infinite loop
       if (isAuthError(error)) {
         if (state.authRefreshAttempted) {
+          // Already tried a refresh — stop reconnecting to prevent infinite loop
           if (process.env.NODE_ENV !== 'production') {
             console.warn(
               `🚫 Auth error on ${namespace} after token refresh — stopping reconnection`,
@@ -129,15 +130,14 @@ export class SocketClient {
         const success = await refreshAuthToken();
         if (success) {
           if (process.env.NODE_ENV !== 'production') {
-            console.log(
-              `✅ Token refreshed for ${namespace}, recreating socket with fresh cookies...`,
-            );
+            console.log(`✅ Token refreshed for ${namespace}, reconnecting...`);
           }
-          // Destroy old socket and create new one to pick up fresh cookies
-          this.recreateSocket(namespace, state);
+          state.reconnectAttempts = 0;
+          socket.connect();
           return;
         }
 
+        // Refresh failed — stop reconnecting
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`🚫 Token refresh failed for ${namespace} — stopping reconnection`);
         }
@@ -173,52 +173,6 @@ export class SocketClient {
     socket.on('reconnect_failed', () => {
       console.error(`❌ Reconnection failed for ${namespace}`);
     });
-  }
-
-  /**
-   * Destroy old socket and create a new one with fresh cookies.
-   * Called after token refresh so the new handshake picks up the updated accessToken cookie.
-   */
-  private recreateSocket(namespace: string, oldState: SocketState) {
-    const namespaceKey = this.normalizeNamespace(namespace);
-    const { refCount, token, queue } = oldState;
-
-    // Destroy old socket
-    oldState.socket.removeAllListeners();
-    oldState.socket.disconnect();
-    this.sockets.delete(namespaceKey);
-
-    // Create new socket (picks up fresh cookies)
-    const config = this.getReconnectProfile(namespaceKey);
-    const inApp = typeof navigator !== 'undefined' && isInAppBrowser(navigator.userAgent);
-    const transports: ['polling', 'websocket'] | ['websocket', 'polling'] = inApp
-      ? ['polling', 'websocket']
-      : ['websocket', 'polling'];
-    const newSocket = io(this.buildUrl(namespaceKey), {
-      ...(token ? { auth: { token } } : {}),
-      withCredentials: true,
-      transports,
-      reconnection: true,
-      reconnectionAttempts: config.maxAttempts,
-      reconnectionDelay: config.delays[0],
-      reconnectionDelayMax: config.delays[config.delays.length - 1],
-      randomizationFactor: config.jitterFactor,
-      timeout: 20000,
-      autoConnect: true,
-    });
-
-    const newState: SocketState = {
-      socket: newSocket,
-      namespace: namespaceKey,
-      token,
-      refCount,
-      reconnectAttempts: 0,
-      authRefreshAttempted: false,
-      queue,
-    };
-
-    this.setupEventListeners(newState);
-    this.sockets.set(namespaceKey, newState);
   }
 
   disconnect(namespace: string = 'chat') {
