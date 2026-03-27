@@ -363,13 +363,18 @@ function AdminOrdersContent() {
     if (!confirmed) return;
 
     try {
-      const result = await apiClient.post('/admin/orders/bulk-delete', {
-        orderIds: cancelledOrders.map((o) => o.id),
-      });
-      const data = result as any;
+      const result = await apiClient.post<{ success: number; failed: number }>(
+        '/admin/orders/bulk-delete',
+        {
+          orderIds: cancelledOrders.map((o) => o.id),
+        },
+      );
+      const data = result.data ?? (result as any);
+      const successCount = data.success ?? cancelledOrders.length;
+      const failedCount = data.failed ?? 0;
       showToast(
-        `${data.success}개 삭제 완료${data.failed > 0 ? `, ${data.failed}개 실패` : ''}`,
-        data.failed > 0 ? 'error' : 'success',
+        `${successCount}개 삭제 완료${failedCount > 0 ? `, ${failedCount}개 실패` : ''}`,
+        failedCount > 0 ? 'error' : 'success',
       );
       await fetchOrders();
     } catch (err: any) {
