@@ -25,7 +25,7 @@ export function Button({
     secondary:
       'bg-content-bg text-primary-text not-disabled:hover:bg-content-bg/80 not-disabled:active:scale-95 border border-border-color',
     outline:
-      'border-2 border-hot-pink text-hot-pink not-disabled:hover:bg-hot-pink not-disabled:hover:text-white not-disabled:active:scale-95',
+      'border-2 border-hot-pink text-hot-pink not-disabled:hover:bg-hot-pink/10 not-disabled:active:scale-95',
     ghost: 'text-hot-pink not-disabled:hover:bg-hot-pink/10 not-disabled:active:scale-95',
   };
 

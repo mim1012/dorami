@@ -20,6 +20,7 @@ import { CartItemCard } from '@/components/cart/CartItemCard';
 import { CartSummaryCard } from '@/components/cart/CartSummaryCard';
 import { CartEmptyState } from '@/components/cart/CartEmptyState';
 import { formatPrice } from '@/lib/utils/format';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 import { ShoppingCart, ArrowLeft, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
@@ -203,13 +204,12 @@ function CartPageContent() {
     (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
     0,
   );
-  const selectedShippingCents = selectedItems.reduce(
-    (sum, item) => sum + Math.round(Number(item.shippingFee) * 100),
-    0,
-  );
   const selectedSubtotal = selectedSubtotalCents / 100;
-  const selectedShipping = selectedShippingCents / 100;
-  const selectedTotal = (selectedSubtotalCents + selectedShippingCents) / 100;
+
+  // Dynamic shipping based on broadcast free shipping mode
+  const selectedShipping = calculateDynamicShipping(selectedItems, cart);
+
+  const selectedTotal = selectedSubtotal + selectedShipping;
 
   const hasExpiredItems = cart?.items.some(
     (item) =>

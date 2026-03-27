@@ -5,6 +5,7 @@ import { LiveProduct } from './ProductCarousel';
 import { Body, Heading2 } from '@/components/common/Typography';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ProductOptionModalProps {
   isOpen: boolean;
@@ -32,14 +33,6 @@ export function ProductOptionModal({
   if (!isOpen || !product) {
     return null;
   }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   const totalPrice = product.price * quantity;
   const maxQuantity = Math.min(product.stock, 10); // Max 10 items per order

@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getUserMessage } from '@/lib/errors/error-messages';
 import { cartKeys, CartSummary } from '@/lib/hooks/queries/use-cart';
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 
 interface PointsConfig {
   pointsEnabled: boolean;
@@ -130,11 +131,7 @@ export function useCheckoutFlow({
     : cartData?.subtotal
       ? parseFloat(cartData.subtotal)
       : 0;
-  const shippingFee = selectedCartItemIds?.length
-    ? selectedItems.reduce((sum, i) => sum + Math.round(Number(i.shippingFee ?? 0) * 100), 0) / 100
-    : cartData?.totalShippingFee
-      ? parseFloat(cartData.totalShippingFee)
-      : 0;
+  const shippingFee = calculateDynamicShipping(selectedItems, cartData);
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig

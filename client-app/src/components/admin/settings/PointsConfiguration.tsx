@@ -6,6 +6,7 @@ import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Coins, Save } from 'lucide-react';
+import { formatPrice } from '@/lib/utils/price';
 
 interface PointsConfig {
   pointsEnabled: boolean;
@@ -201,12 +202,7 @@ export function PointsConfiguration() {
             <div className="bg-gray-50 rounded-button p-4 border border-gray-200">
               <Body className="text-primary-text font-medium mb-2">적용 예시</Body>
               <Caption className="text-secondary-text">
-                {new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD',
-                  maximumFractionDigits: 0,
-                }).format(exampleOrderTotal)}{' '}
-                주문 시:
+                {formatPrice(exampleOrderTotal)} 주문 시:
               </Caption>
               <div className="mt-2 space-y-1">
                 <Caption className="text-primary-text">

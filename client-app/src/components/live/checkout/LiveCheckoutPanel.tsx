@@ -98,8 +98,8 @@ export default function LiveCheckoutPanel({
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-white/60">배송비</span>
-            <span className="text-white">
-              {shippingFee === 0 ? '무료' : formatPrice(shippingFee)}
+            <span className={shippingFee === 0 ? 'text-green-400' : 'text-white'}>
+              {shippingFee === 0 ? '무료배송' : formatPrice(shippingFee)}
             </span>
           </div>
           {effectivePointsUsed > 0 && (

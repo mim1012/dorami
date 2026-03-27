@@ -20,6 +20,7 @@ export interface CartItem {
   subtotal: string; // Backend returns Decimal as string
   total: string; // Backend returns Decimal as string
   remainingSeconds?: number;
+  streamKey?: string;
   product?: {
     imageUrl?: string;
     status: 'AVAILABLE' | 'SOLD_OUT';
@@ -34,6 +35,10 @@ export interface CartSummary {
   grandTotal: string; // From backend as string, needs parseFloat()
   earliestExpiration?: string;
   shippingWaived?: boolean;
+  freeShippingMode?: string;
+  freeShippingThreshold?: number | null;
+  cumulativePreviousSubtotal?: string;
+  defaultShippingFee?: string;
 }
 
 // Query Keys

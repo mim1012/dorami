@@ -10,6 +10,7 @@ import {
   type CartItem,
 } from '@/lib/hooks/queries/use-cart';
 import { formatPrice } from '@/lib/utils/price';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 
 interface LiveCartPanelProps {
   onProceedToCheckout: (selectedIds: string[]) => void;
@@ -168,13 +169,12 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
     (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
     0,
   );
-  const selectedShippingCents = selectedItems.reduce(
-    (sum, i) => sum + Math.round(Number(i.shippingFee) * 100),
-    0,
-  );
-  const selectedTotal = selectedTotalCents / 100;
-  const selectedShipping = selectedShippingCents / 100;
-  const grandTotal = (selectedTotalCents + selectedShippingCents) / 100;
+  const selectedSubtotal = selectedTotalCents / 100;
+
+  // Dynamic shipping based on broadcast free shipping mode
+  const dynamicShipping = calculateDynamicShipping(selectedItems, cartData);
+
+  const grandTotal = selectedSubtotal + dynamicShipping;
 
   const handleSelectAll = useCallback(
     (checked: boolean) => {
@@ -305,11 +305,17 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
       <div className="px-5 py-4 border-t border-white/10">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-white/60">선택 상품 ({selectedItems.length}개)</span>
-          <span className="text-white font-semibold">{formatPrice(selectedTotal)}</span>
+          <span className="text-white font-semibold">{formatPrice(selectedSubtotal)}</span>
         </div>
         <div className="flex justify-between text-xs text-white/40 mb-4">
           <span>배송비</span>
-          <span>{selectedShipping === 0 ? '무료' : formatPrice(selectedShipping)}</span>
+          <span>
+            {dynamicShipping === 0 ? (
+              <span className="text-green-400">무료배송</span>
+            ) : (
+              formatPrice(dynamicShipping)
+            )}
+          </span>
         </div>
         <button
           onClick={() => onProceedToCheckout(Array.from(selectedIds))}

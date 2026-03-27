@@ -1,4 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -519,7 +525,27 @@ export class OrdersService {
               const threshold = thresholdStream.freeShippingThreshold
                 ? Number(thresholdStream.freeShippingThreshold)
                 : 150;
-              if (subtotal >= threshold) {
+
+              // 누적 합산: 같은 유저의 같은 방송 이전 주문 subtotal 합산
+              let cumulativeSubtotal = subtotal;
+              if (userId && streamKeys.length > 0) {
+                const previousOrders = await this.prisma.order.aggregate({
+                  where: {
+                    userId,
+                    status: { not: 'CANCELLED' },
+                    deletedAt: null,
+                    orderItems: {
+                      some: {
+                        Product: { streamKey: { in: streamKeys } },
+                      },
+                    },
+                  },
+                  _sum: { subtotal: true },
+                });
+                cumulativeSubtotal += Number(previousOrders._sum.subtotal ?? 0);
+              }
+
+              if (cumulativeSubtotal >= threshold) {
                 freeShippingApplied = true;
               }
             }
@@ -891,5 +917,29 @@ export class OrdersService {
         imageUrl: item.Product?.imageUrl ?? undefined,
       })),
     };
+  }
+
+  async softDeleteOrder(orderId: string, userId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, userId: true, status: true, deletedAt: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    if (order.userId !== userId) {
+      throw new ForbiddenException('본인 주문만 삭제할 수 있습니다');
+    }
+    if (order.status !== 'CANCELLED') {
+      throw new BadRequestException('취소된 주문만 삭제할 수 있습니다');
+    }
+    if (order.deletedAt !== null) {
+      throw new BadRequestException('이미 삭제된 주문입니다');
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { deletedAt: new Date() },
+    });
   }
 }
