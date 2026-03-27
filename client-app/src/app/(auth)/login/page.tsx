@@ -181,7 +181,7 @@ function LoginContent() {
         <div className="space-y-4">
           <button
             onClick={handleKakaoLogin}
-            className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] py-3.5 rounded-lg font-bold text-base hover:bg-[#FEE500]/90 transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] py-4 rounded-lg font-bold text-base hover:bg-[#FEE500]/90 transition-all active:scale-[0.98]"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#191919">
               <path d="M12 3C6.48 3 2 6.48 2 10.5c0 2.55 1.69 4.8 4.24 6.12-.18.67-.67 2.42-.77 2.8-.12.47.17.46.36.34.15-.1 2.37-1.6 3.34-2.25.6.09 1.21.13 1.83.13 5.52 0 10-3.48 10-7.64C22 6.48 17.52 3 12 3z" />
@@ -211,7 +211,7 @@ function LoginContent() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setDevRole('USER')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors ${
                     devRole === 'USER'
                       ? 'bg-hot-pink text-white'
                       : 'bg-primary-black text-secondary-text border border-border-color'
@@ -221,7 +221,7 @@ function LoginContent() {
                 </button>
                 <button
                   onClick={() => setDevRole('ADMIN')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors ${
                     devRole === 'ADMIN'
                       ? 'bg-hot-pink text-white'
                       : 'bg-primary-black text-secondary-text border border-border-color'
@@ -267,7 +267,7 @@ function LoginContent() {
               <button
                 onClick={handleDevLogin}
                 disabled={devLoading || !devEmail}
-                className="w-full py-2.5 bg-hot-pink text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-40 active:scale-[0.98]"
+                className="w-full py-3.5 bg-hot-pink text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-40 active:scale-[0.98]"
               >
                 {devLoading ? '로그인 중...' : '테스트 로그인'}
               </button>
