@@ -832,7 +832,7 @@ export default function LiveStreamPage() {
                         stream !== 'error' && (
                           <div className="flex items-center gap-1 bg-red-500 px-1.5 xs:px-2 py-0.5 rounded flex-shrink-0">
                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                            <span className="text-white text-[9px] uppercase tracking-wider">
+                            <span className="text-white text-[10px] uppercase tracking-wider">
                               LIVE
                             </span>
                           </div>
@@ -855,10 +855,10 @@ export default function LiveStreamPage() {
                     className="flex flex-col items-center gap-0.5"
                     aria-label="공지"
                   >
-                    <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                    <div className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                       <Bell className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                     </div>
-                    <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">공지</span>
+                    <span className="text-white text-[10px] drop-shadow-lg">공지</span>
                   </button>
 
                   <div className="relative flex flex-col items-center gap-0.5">
@@ -867,16 +867,14 @@ export default function LiveStreamPage() {
                       className="flex flex-col items-center gap-0.5"
                       aria-label="소리 조절"
                     >
-                      <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                      <div className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                         {isMobileMuted ? (
                           <VolumeX className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                         ) : (
                           <Volume2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                         )}
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
-                        소리
-                      </span>
+                      <span className="text-white text-[10px] drop-shadow-lg">소리</span>
                     </button>
 
                     {isVolumeControlOpen && (
@@ -929,12 +927,10 @@ export default function LiveStreamPage() {
                       className="flex flex-col items-center gap-0.5"
                       aria-label={ariaLabel}
                     >
-                      <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
+                      <div className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full bg-[#FF007A] backdrop-blur-sm transition-all active:scale-95">
                         <Icon className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                       </div>
-                      <span className="text-white text-[8px] xs:text-[9px] drop-shadow-lg">
-                        {label}
-                      </span>
+                      <span className="text-white text-[10px] drop-shadow-lg">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -979,7 +975,7 @@ export default function LiveStreamPage() {
               className="flex flex-col items-center gap-1"
               aria-label="공유하기"
             >
-              <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+              <div className="w-11 h-11 min-w-[44px] min-h-[44px] xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
                 <Share2 className="w-4 h-4 xs:w-5 xs:h-5 text-white" />
               </div>
               <span className="text-white text-[10px] xs:text-xs drop-shadow-lg">공유</span>
@@ -990,10 +986,10 @@ export default function LiveStreamPage() {
               className="flex flex-col items-center gap-1"
               aria-label="장바구니"
             >
-              <div className="relative w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+              <div className="relative w-11 h-11 min-w-[44px] min-h-[44px] xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
                 <ShoppingCart className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
                 {(cartData?.itemCount ?? 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF007A] rounded-full text-[9px] text-white font-black flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF007A] rounded-full text-[10px] text-white font-black flex items-center justify-center">
                     {(cartData?.itemCount ?? 0) > 9 ? '9+' : cartData?.itemCount}
                   </span>
                 )}
@@ -1008,15 +1004,13 @@ export default function LiveStreamPage() {
               className="flex flex-col items-center gap-1"
               aria-label="지난 상품 목록"
             >
-              <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
+              <div className="w-11 h-11 min-w-[44px] min-h-[44px] xs:w-12 xs:h-12 rounded-full bg-black/30 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95">
                 <Package className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-white" />
               </div>
               <span className="text-white text-[10px] xs:text-xs font-medium drop-shadow-lg">
                 {allProducts.length}개
               </span>
-              <span className="text-white/70 text-[8px] xs:text-[9px] drop-shadow-lg">
-                지난상품
-              </span>
+              <span className="text-white/70 text-[10px] drop-shadow-lg">지난상품</span>
             </button>
           </div>
 
@@ -1062,7 +1056,7 @@ export default function LiveStreamPage() {
                     <div className="flex items-baseline gap-0.5">
                       {displayedProduct.discountRate != null &&
                         displayedProduct.discountRate > 0 && (
-                          <span className="text-rose-400 text-[9px]">
+                          <span className="text-rose-400 text-[10px]">
                             {displayedProduct.discountRate}%
                           </span>
                         )}
