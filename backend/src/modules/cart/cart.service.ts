@@ -37,7 +37,7 @@ type PrismaTransactionClient = Omit<
 interface CartModel extends Cart {
   price: Decimal;
   shippingFee: Decimal;
-  product?: { imageUrl: string | null; status: string } | null;
+  product?: { imageUrl: string | null; status: string; streamKey?: string | null } | null;
 }
 
 @Injectable()
@@ -230,7 +230,7 @@ export class CartService {
         status: SharedCartStatus.ACTIVE,
       },
       include: {
-        product: { select: { imageUrl: true, status: true } },
+        product: { select: { imageUrl: true, status: true, streamKey: true } },
       },
       orderBy: {
         createdAt: 'desc',
@@ -691,6 +691,7 @@ export class CartService {
       subtotal: (subtotalCents / 100).toFixed(2),
       total: (totalCents / 100).toFixed(2),
       remainingSeconds,
+      streamKey: cartItem.product?.streamKey ?? undefined,
       product: cartItem.product
         ? { imageUrl: cartItem.product.imageUrl, status: cartItem.product.status }
         : undefined,

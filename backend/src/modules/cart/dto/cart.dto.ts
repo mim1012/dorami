@@ -94,6 +94,9 @@ export class CartItemResponseDto {
   @ApiPropertyOptional({ description: 'Remaining time in seconds', example: 600 })
   remainingSeconds?: number;
 
+  @ApiPropertyOptional({ description: 'Stream key of the broadcast this product belongs to' })
+  streamKey?: string;
+
   @ApiPropertyOptional({ description: 'Product info' })
   product?: {
     imageUrl?: string | null;

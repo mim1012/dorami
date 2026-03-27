@@ -176,11 +176,24 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
   const cumulativePrevious = parseFloat(cartData?.cumulativePreviousSubtotal ?? '0');
   const defaultFee = parseFloat(cartData?.defaultShippingFee ?? '10');
 
+  // Selected items that belong to the threshold broadcast (have a streamKey)
+  const selectedFromThresholdStream = selectedItems.filter(
+    (i) => i.streamKey && freeShippingMode === 'THRESHOLD',
+  );
+
   const dynamicShipping = (() => {
     if (selectedItems.length === 0) return 0;
     if (freeShippingMode === 'UNCONDITIONAL') return 0;
     if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
-      return selectedSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
+      // If none of the selected items belong to the threshold broadcast, apply default fee
+      if (selectedFromThresholdStream.length === 0) return defaultFee;
+      // Only sum subtotal of items belonging to the threshold broadcast
+      const thresholdSubtotal =
+        selectedFromThresholdStream.reduce(
+          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+          0,
+        ) / 100;
+      return thresholdSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
     }
     return defaultFee;
   })();
@@ -322,9 +335,22 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
           <span>배송비</span>
           <span>
             {dynamicShipping === 0 ? (
-              <span className="text-green-400">무료배송</span>
+              <span className="text-green-400">
+                {freeShippingMode === 'UNCONDITIONAL'
+                  ? '무료배송'
+                  : freeShippingMode === 'THRESHOLD' && freeShippingThreshold
+                    ? `무료배송 ($${freeShippingThreshold} 이상)`
+                    : '무료배송'}
+              </span>
             ) : (
-              formatPrice(dynamicShipping)
+              <span>
+                {formatPrice(dynamicShipping)}
+                {freeShippingMode === 'THRESHOLD' && freeShippingThreshold && (
+                  <span className="text-white/30 ml-1 text-[10px]">
+                    (${freeShippingThreshold} 이상 무료)
+                  </span>
+                )}
+              </span>
             )}
           </span>
         </div>
