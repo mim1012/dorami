@@ -130,11 +130,7 @@ export function useCheckoutFlow({
     : cartData?.subtotal
       ? parseFloat(cartData.subtotal)
       : 0;
-  const shippingFee = selectedCartItemIds?.length
-    ? selectedItems.reduce((sum, i) => sum + Math.round(Number(i.shippingFee ?? 0) * 100), 0) / 100
-    : cartData?.totalShippingFee
-      ? parseFloat(cartData.totalShippingFee)
-      : 0;
+  const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig

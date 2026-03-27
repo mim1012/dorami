@@ -168,13 +168,9 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
     (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
     0,
   );
-  const selectedShippingCents = selectedItems.reduce(
-    (sum, i) => sum + Math.round(Number(i.shippingFee) * 100),
-    0,
-  );
+  const selectedShipping = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
   const selectedTotal = selectedTotalCents / 100;
-  const selectedShipping = selectedShippingCents / 100;
-  const grandTotal = (selectedTotalCents + selectedShippingCents) / 100;
+  const grandTotal = selectedTotal + selectedShipping;
 
   const handleSelectAll = useCallback(
     (checked: boolean) => {
