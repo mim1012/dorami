@@ -13,7 +13,7 @@ import { Button } from '@/components/common/Button';
 import { Display, Body } from '@/components/common/Typography';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 import { OrderMobileCard } from './OrderMobileCard';
@@ -347,6 +347,36 @@ function AdminOrdersContent() {
     }
   };
 
+  const handleDeleteAllCancelled = async () => {
+    const cancelledOrders = orders.filter((o) => o.status === 'CANCELLED');
+    if (cancelledOrders.length === 0) {
+      showToast('취소된 주문이 없습니다', 'info');
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: '취소 주문 전체 삭제',
+      message: `현재 페이지의 취소된 주문 ${cancelledOrders.length}건을 모두 삭제하시겠습니까? 삭제된 주문은 목록에서 숨겨집니다.`,
+      confirmText: '전체 삭제',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      const result = await apiClient.post('/admin/orders/bulk-delete', {
+        orderIds: cancelledOrders.map((o) => o.id),
+      });
+      const data = result as any;
+      showToast(
+        `${data.success}개 삭제 완료${data.failed > 0 ? `, ${data.failed}개 실패` : ''}`,
+        data.failed > 0 ? 'error' : 'success',
+      );
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.message || '일괄 삭제에 실패했습니다', 'error');
+    }
+  };
+
   const handleToggleSelectionMode = () => {
     setIsSelectionMode((prev) => !prev);
     setSelectedOrderIds(new Set());
@@ -593,6 +623,14 @@ function AdminOrdersContent() {
             className="flex-1 sm:flex-none"
           >
             {isSelectionMode ? '선택 취소' : '선택 모드'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDeleteAllCancelled}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-error hover:bg-error/10 border-error/50"
+          >
+            <Trash2 className="w-4 h-4" />
+            취소 주문 전체 삭제
           </Button>
           <Button
             variant="outline"

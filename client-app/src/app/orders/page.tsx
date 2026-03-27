@@ -2,16 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { Button } from '@/components/common/Button';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
-import { useOrdersInfinite, useAllOrdersForCounts } from '@/lib/hooks/queries/use-orders';
+import {
+  useOrdersInfinite,
+  useAllOrdersForCounts,
+  orderKeys,
+} from '@/lib/hooks/queries/use-orders';
 import { useToast } from '@/components/common/Toast';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types';
 import Image from 'next/image';
-import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from 'lucide-react';
+import { Package, Clock, CheckCircle, XCircle, ShoppingBag, Trash2 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils/price';
 
 const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
@@ -48,11 +54,14 @@ const EMPTY_STATE_MESSAGES: Partial<Record<OrderStatus | 'ALL', string>> = {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'ALL'>('ALL');
   const [dateFilter, setDateFilter] = useState<DateFilterValue>('3months');
   const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const startDate = getStartDateForFilter(dateFilter);
@@ -136,6 +145,28 @@ export default function OrdersPage() {
       showToast('장바구니 담기에 실패했습니다', 'error');
     } finally {
       setReorderingId(null);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    const confirmed = await confirm({
+      title: '주문 삭제',
+      message: '취소된 주문을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      confirmText: '삭제',
+      cancelText: '취소',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setDeletingId(orderId);
+    try {
+      await apiClient.delete(`/orders/${orderId}`);
+      showToast('주문이 삭제되었습니다', 'success');
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+    } catch {
+      showToast('주문 삭제에 실패했습니다', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -449,8 +480,9 @@ export default function OrdersPage() {
                     </div>
 
                     {/* Actions */}
-                    {(order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'PENDING') ||
-                    showReorder ? (
+                    {((order.status === 'PENDING_PAYMENT' && order.paymentStatus === 'PENDING') ||
+                      showReorder ||
+                      isCancelled) && (
                       <div
                         className="p-4 border-t border-border-color bg-content-bg/50 flex gap-2"
                         onClick={(e) => e.stopPropagation()}
@@ -488,8 +520,21 @@ export default function OrdersPage() {
                             {reorderingId === order.id ? '담는 중...' : '다시 주문하기'}
                           </Button>
                         )}
+                        {isCancelled && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            fullWidth
+                            disabled={deletingId === order.id}
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                            {deletingId === order.id ? '삭제 중...' : '삭제'}
+                          </Button>
+                        )}
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 );
               })}

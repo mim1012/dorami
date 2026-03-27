@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -125,5 +135,17 @@ export class OrdersController {
   ) {
     await this.reservationService.cancelReservation(userId, productId);
     return { message: 'Reservation cancelled' };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: '취소된 주문 삭제 (soft delete)' })
+  @ApiParam({ name: 'id', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiResponse({ status: 200, description: '주문 삭제 성공' })
+  @ApiResponse({ status: 400, description: '취소된 주문만 삭제 가능' })
+  @ApiResponse({ status: 403, description: '본인 주문만 삭제 가능' })
+  @ApiResponse({ status: 404, description: '주문을 찾을 수 없음' })
+  async deleteOrder(@Param('id') orderId: string, @CurrentUser() user: { userId: string }) {
+    await this.ordersService.softDeleteOrder(orderId, user.userId);
+    return { message: 'Order deleted' };
   }
 }

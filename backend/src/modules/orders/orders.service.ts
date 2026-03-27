@@ -1,4 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -891,5 +897,29 @@ export class OrdersService {
         imageUrl: item.Product?.imageUrl ?? undefined,
       })),
     };
+  }
+
+  async softDeleteOrder(orderId: string, userId: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, userId: true, status: true, deletedAt: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    if (order.userId !== userId) {
+      throw new ForbiddenException('본인 주문만 삭제할 수 있습니다');
+    }
+    if (order.status !== 'CANCELLED') {
+      throw new BadRequestException('취소된 주문만 삭제할 수 있습니다');
+    }
+    if (order.deletedAt !== null) {
+      throw new BadRequestException('이미 삭제된 주문입니다');
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { deletedAt: new Date() },
+    });
   }
 }
