@@ -1,16 +1,7 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { RedisModule } from '../../common/redis/redis.module';
-import { ChatGateway } from './chat.gateway';
 
-@Module({
-  imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '15m' },
-    }),
-    RedisModule,
-  ],
-  providers: [ChatGateway],
-})
+// ChatGateway removed — /chat namespace is manually handled in main.ts
+// with Redis adapter, chat history, and room management.
+// The NestJS @WebSocketGateway decorator conflicts with the manual setup.
+@Module({})
 export class ChatModule {}
