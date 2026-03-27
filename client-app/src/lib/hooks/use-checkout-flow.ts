@@ -130,7 +130,19 @@ export function useCheckoutFlow({
     : cartData?.subtotal
       ? parseFloat(cartData.subtotal)
       : 0;
-  const shippingFee = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
+  const freeShippingMode = cartData?.freeShippingMode ?? 'DISABLED';
+  const freeShippingThreshold = cartData?.freeShippingThreshold ?? null;
+  const cumulativePrevious = parseFloat(cartData?.cumulativePreviousSubtotal ?? '0');
+  const defaultFee = parseFloat(cartData?.defaultShippingFee ?? '10');
+
+  const shippingFee = (() => {
+    if (!cartData || orderSubtotal === 0) return 0;
+    if (freeShippingMode === 'UNCONDITIONAL') return 0;
+    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
+      return orderSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
+    }
+    return defaultFee;
+  })();
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig

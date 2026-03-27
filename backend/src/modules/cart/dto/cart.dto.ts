@@ -128,4 +128,28 @@ export class CartSummaryDto {
     example: false,
   })
   shippingWaived?: boolean;
+
+  @ApiPropertyOptional({
+    description: '방송 무료배송 모드 (DISABLED/UNCONDITIONAL/THRESHOLD)',
+    example: 'THRESHOLD',
+  })
+  freeShippingMode?: string;
+
+  @ApiPropertyOptional({
+    description: '무료배송 기준금액 (THRESHOLD 모드)',
+    example: 150,
+  })
+  freeShippingThreshold?: number | null;
+
+  @ApiPropertyOptional({
+    description: '동일 방송 이전 주문 누적 소계',
+    example: '50.00',
+  })
+  cumulativePreviousSubtotal?: string;
+
+  @ApiPropertyOptional({
+    description: '기본 배송비 (CA 여부 반영)',
+    example: '10.00',
+  })
+  defaultShippingFee?: string;
 }

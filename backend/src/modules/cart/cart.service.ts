@@ -507,6 +507,12 @@ export class CartService {
     // Calculate global shipping fee
     let totalShippingFee = 0;
 
+    // Metadata for frontend dynamic calculation
+    let freeShippingMode: string = 'DISABLED';
+    let freeShippingThreshold: number | null = null;
+    let cumulativePreviousSubtotal = 0;
+    let appliedShippingFee = 0;
+
     if (items.length > 0) {
       // Fetch system config for shipping settings
       const config = await this.prisma.systemConfig.findFirst();
@@ -518,36 +524,68 @@ export class CartService {
         config?.caShippingFee !== null && config?.caShippingFee !== undefined
           ? Number(config.caShippingFee)
           : 8;
+
+      // Determine base shipping fee for this user (CA vs default)
+      let isCA = false;
+      if (userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { shippingAddress: true },
+        });
+        if (user?.shippingAddress) {
+          isCA = isCaliforniaAddress(user.shippingAddress);
+        }
+      }
+      appliedShippingFee = isCA ? caShippingFee : defaultShippingFee;
+
       // Check per-broadcast free shipping mode
       let freeShippingApplied = false;
-      if (items.length > 0) {
-        const productIds = [...new Set(items.map((item) => item.productId))];
-        const products = await this.prisma.product.findMany({
-          where: { id: { in: productIds } },
-          select: { streamKey: true },
+      const productIds = [...new Set(items.map((item) => item.productId))];
+      const products = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: { streamKey: true },
+      });
+      const streamKeys = [...new Set(products.map((p) => p.streamKey).filter(Boolean))] as string[];
+      if (streamKeys.length > 0) {
+        const streams = await this.prisma.liveStream.findMany({
+          where: { streamKey: { in: streamKeys } },
+          select: { freeShippingMode: true, freeShippingThreshold: true },
         });
-        const streamKeys = [
-          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
-        ] as string[];
-        if (streamKeys.length > 0) {
-          const streams = await this.prisma.liveStream.findMany({
-            where: { streamKey: { in: streamKeys } },
-            select: { freeShippingMode: true, freeShippingThreshold: true },
-          });
-          // UNCONDITIONAL: 무조건 무료
-          if (streams.some((s) => s.freeShippingMode === 'UNCONDITIONAL')) {
-            freeShippingApplied = true;
-          }
-          // THRESHOLD: 기준금액 이상일 때 무료
-          if (!freeShippingApplied) {
-            const thresholdStream = streams.find((s) => s.freeShippingMode === 'THRESHOLD');
-            if (thresholdStream) {
-              const threshold = thresholdStream.freeShippingThreshold
-                ? Number(thresholdStream.freeShippingThreshold)
-                : 150;
-              if (subtotal >= threshold) {
-                freeShippingApplied = true;
-              }
+        // UNCONDITIONAL: 무조건 무료
+        if (streams.some((s) => s.freeShippingMode === 'UNCONDITIONAL')) {
+          freeShippingApplied = true;
+          freeShippingMode = 'UNCONDITIONAL';
+        }
+        // THRESHOLD: 기준금액 이상일 때 무료 (누적 합산 기준)
+        if (!freeShippingApplied) {
+          const thresholdStream = streams.find((s) => s.freeShippingMode === 'THRESHOLD');
+          if (thresholdStream) {
+            freeShippingMode = 'THRESHOLD';
+            const threshold = thresholdStream.freeShippingThreshold
+              ? Number(thresholdStream.freeShippingThreshold)
+              : 150;
+            freeShippingThreshold = threshold;
+
+            // 누적 합산: 같은 유저의 같은 방송 이전 주문 subtotal 합산
+            if (userId) {
+              const previousOrders = await this.prisma.order.aggregate({
+                where: {
+                  userId,
+                  status: { not: 'CANCELLED' },
+                  deletedAt: null,
+                  orderItems: {
+                    some: {
+                      Product: { streamKey: { in: streamKeys } },
+                    },
+                  },
+                },
+                _sum: { subtotal: true },
+              });
+              cumulativePreviousSubtotal = Number(previousOrders._sum.subtotal ?? 0);
+            }
+
+            if (subtotal + cumulativePreviousSubtotal >= threshold) {
+              freeShippingApplied = true;
             }
           }
         }
@@ -556,18 +594,7 @@ export class CartService {
       if (freeShippingApplied) {
         totalShippingFee = 0;
       } else {
-        // Determine shipping fee based on user's shipping state
-        let isCA = false;
-        if (userId) {
-          const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { shippingAddress: true },
-          });
-          if (user?.shippingAddress) {
-            isCA = isCaliforniaAddress(user.shippingAddress);
-          }
-        }
-        totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
+        totalShippingFee = appliedShippingFee;
       }
     }
 
@@ -587,6 +614,10 @@ export class CartService {
       totalShippingFee: String(totalShippingFee),
       grandTotal: String(subtotal + totalShippingFee),
       earliestExpiration,
+      freeShippingMode,
+      freeShippingThreshold,
+      cumulativePreviousSubtotal: String(cumulativePreviousSubtotal),
+      defaultShippingFee: String(appliedShippingFee),
     };
   }
 

@@ -525,7 +525,27 @@ export class OrdersService {
               const threshold = thresholdStream.freeShippingThreshold
                 ? Number(thresholdStream.freeShippingThreshold)
                 : 150;
-              if (subtotal >= threshold) {
+
+              // 누적 합산: 같은 유저의 같은 방송 이전 주문 subtotal 합산
+              let cumulativeSubtotal = subtotal;
+              if (userId && streamKeys.length > 0) {
+                const previousOrders = await this.prisma.order.aggregate({
+                  where: {
+                    userId,
+                    status: { not: 'CANCELLED' },
+                    deletedAt: null,
+                    orderItems: {
+                      some: {
+                        Product: { streamKey: { in: streamKeys } },
+                      },
+                    },
+                  },
+                  _sum: { subtotal: true },
+                });
+                cumulativeSubtotal += Number(previousOrders._sum.subtotal ?? 0);
+              }
+
+              if (cumulativeSubtotal >= threshold) {
                 freeShippingApplied = true;
               }
             }

@@ -168,9 +168,24 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
     (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
     0,
   );
-  const selectedShipping = cartData?.totalShippingFee ? parseFloat(cartData.totalShippingFee) : 0;
-  const selectedTotal = selectedTotalCents / 100;
-  const grandTotal = selectedTotal + selectedShipping;
+  const selectedSubtotal = selectedTotalCents / 100;
+
+  // Dynamic shipping based on broadcast free shipping mode
+  const freeShippingMode = cartData?.freeShippingMode ?? 'DISABLED';
+  const freeShippingThreshold = cartData?.freeShippingThreshold ?? null;
+  const cumulativePrevious = parseFloat(cartData?.cumulativePreviousSubtotal ?? '0');
+  const defaultFee = parseFloat(cartData?.defaultShippingFee ?? '10');
+
+  const dynamicShipping = (() => {
+    if (selectedItems.length === 0) return 0;
+    if (freeShippingMode === 'UNCONDITIONAL') return 0;
+    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
+      return selectedSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
+    }
+    return defaultFee;
+  })();
+
+  const grandTotal = selectedSubtotal + dynamicShipping;
 
   const handleSelectAll = useCallback(
     (checked: boolean) => {
@@ -301,11 +316,17 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
       <div className="px-5 py-4 border-t border-white/10">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-white/60">선택 상품 ({selectedItems.length}개)</span>
-          <span className="text-white font-semibold">{formatPrice(selectedTotal)}</span>
+          <span className="text-white font-semibold">{formatPrice(selectedSubtotal)}</span>
         </div>
         <div className="flex justify-between text-xs text-white/40 mb-4">
           <span>배송비</span>
-          <span>{selectedShipping === 0 ? '무료' : formatPrice(selectedShipping)}</span>
+          <span>
+            {dynamicShipping === 0 ? (
+              <span className="text-green-400">무료배송</span>
+            ) : (
+              formatPrice(dynamicShipping)
+            )}
+          </span>
         </div>
         <button
           onClick={() => onProceedToCheckout(Array.from(selectedIds))}

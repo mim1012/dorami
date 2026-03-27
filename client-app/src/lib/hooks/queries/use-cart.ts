@@ -34,6 +34,10 @@ export interface CartSummary {
   grandTotal: string; // From backend as string, needs parseFloat()
   earliestExpiration?: string;
   shippingWaived?: boolean;
+  freeShippingMode?: string;
+  freeShippingThreshold?: number | null;
+  cumulativePreviousSubtotal?: string;
+  defaultShippingFee?: string;
 }
 
 // Query Keys
