@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api/client';
+import { formatPrice as formatUSD } from '@/lib/utils/price';
 import {
   TrendingUp,
   TrendingDown,
@@ -86,14 +87,6 @@ const streamStatusLabels: Record<string, string> = {
   PENDING: '예정',
   OFFLINE: '종료',
 };
-
-function formatUSD(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 const formatOrderProductNames = (
   items: OrderItem['items'] | undefined,

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, ShoppingBag } from 'lucide-react';
 import { getProductsByStreamKey, type Product } from '@/lib/api/products';
+import { formatPrice } from '@/lib/utils/price';
 
 interface StreamProductsModalProps {
   streamKey: string;
@@ -11,13 +12,6 @@ interface StreamProductsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price);
 
 export function StreamProductsModal({
   streamKey,

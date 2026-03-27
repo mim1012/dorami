@@ -11,6 +11,7 @@ import { PointAdjustmentModal } from '@/components/admin/users/PointAdjustmentMo
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
 import { useToast } from '@/components/common/Toast';
 import { validateUserStatusForm } from '@/lib/schemas/user';
+import { formatPrice } from '@/lib/utils/price';
 
 interface ShippingAddress {
   fullName: string;
@@ -189,13 +190,7 @@ export default function AdminUserDetailPage() {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatPrice(amount);
 
   const getUserFormDefaults = (nextUser: UserDetail): EditableUserForm => ({
     name: nextUser.name || '',

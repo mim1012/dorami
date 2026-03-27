@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Radio, Package, Users, Layers } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { Display, Body } from '@/components/common/Typography';
+import { formatPrice as formatUSD } from '@/lib/utils/price';
 
 interface StatItem {
   value: number;
@@ -38,14 +39,6 @@ interface DashboardStats {
   topProducts: TopProduct[];
   dailyRevenue: DailyRevenue[];
   optionSales?: OptionSalesItem[];
-}
-
-function formatUSD(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 export default function AdminAnalyticsPage() {

@@ -12,6 +12,7 @@ import { Button } from '@/components/common/Button';
 import { Display, Heading2, Body } from '@/components/common/Typography';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { useToast } from '@/components/common/Toast';
+import { formatPrice } from '@/lib/utils/price';
 
 type PaymentConfig = {
   zelleEmail: string;
@@ -108,12 +109,7 @@ export default function OrderDetailPage() {
     staleTime: 5 * 60_000,
   });
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
+  // Use global formatPrice from @/lib/utils/price (imported at top)
 
   const copyToClipboard = (value: string) => {
     navigator.clipboard.writeText(value).then(() => showToast('복사되었습니다', 'success'));
@@ -431,7 +427,7 @@ export default function OrderDetailPage() {
               <div className="flex justify-between gap-1">
                 <Body className="text-secondary-text text-sm">배송비</Body>
                 <Body className="text-secondary-text text-sm">
-                  {formatPrice(order.shippingFee)}
+                  {Number(order.shippingFee) === 0 ? '무료배송' : formatPrice(order.shippingFee)}
                 </Body>
               </div>
               <div className="flex justify-between gap-1 pt-2">

@@ -12,6 +12,7 @@ import { apiClient } from '@/lib/api/client';
 import { OrderStatus } from '@/lib/types';
 import Image from 'next/image';
 import { Package, Clock, CheckCircle, XCircle, ShoppingBag } from 'lucide-react';
+import { formatPrice } from '@/lib/utils/price';
 
 const STATUS_TABS: { label: string; value: OrderStatus | 'ALL' }[] = [
   { label: '전체', value: 'ALL' },
@@ -102,11 +103,7 @@ export default function OrdersPage() {
     setSelectedStatus(status);
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
+  // Use global formatPrice from @/lib/utils/price (imported at top)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {

@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { apiClient } from '@/lib/api/client';
 import { useKakaoShare } from '@/hooks/useKakaoShare';
 import { CheckCircle, Copy, MessageCircle, Package } from 'lucide-react';
+import { formatPrice } from '@/lib/utils/price';
 
 interface OrderDetail {
   id: string;
@@ -86,13 +87,7 @@ function OrderCompleteContent() {
     fetchPaymentConfig();
   }, [orderId, router]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
+  // Use global formatPrice from @/lib/utils/price (imported at top)
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

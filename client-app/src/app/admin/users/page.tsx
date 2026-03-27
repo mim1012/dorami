@@ -9,6 +9,7 @@ import { Pagination } from '@/components/common/Pagination';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Display, Body } from '@/components/common/Typography';
+import { formatPrice } from '@/lib/utils/price';
 
 interface UserListItem {
   id: string;
@@ -138,12 +139,7 @@ function AdminUsersContent() {
     });
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number) => formatPrice(amount);
 
   const columns: Column<UserListItem>[] = [
     {

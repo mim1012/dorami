@@ -431,6 +431,24 @@ export class CartService {
         count: expiredCarts.length,
         timestamp: now,
       });
+
+      // Emit per-user event for alimtalk notification
+      const userCartMap = new Map<string, typeof expiredCarts>();
+      for (const cart of expiredCarts) {
+        if (!cart.userId) {
+          continue;
+        }
+        const existing = userCartMap.get(cart.userId) ?? [];
+        userCartMap.set(cart.userId, [...existing, cart]);
+      }
+      for (const [userId, items] of userCartMap) {
+        this.eventEmitter.emit('cart:expired:user', {
+          userId,
+          productIds: items.map((i) => i.productId),
+          itemCount: items.length,
+          timestamp: now,
+        });
+      }
     } catch (error) {
       this.logger.error('Failed to expire timed-out carts', (error as Error).stack);
     }

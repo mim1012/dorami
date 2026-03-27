@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationsService } from '../notifications.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
@@ -57,6 +57,38 @@ export class NotificationEventsListener {
   async handleOrderPaid(payload: { orderId: string; userId: string }) {
     this.logger.log(`Sending payment confirmed notification to user ${payload.userId}`);
 
+    const [user, order, activeLiveStream] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { kakaoPhone: true },
+      }),
+      this.prisma.order.findUnique({
+        where: { id: payload.orderId },
+      }),
+      this.prisma.liveStream.findFirst({
+        where: { status: 'LIVE' },
+        select: { id: true },
+      }),
+    ]);
+
+    const effectivePhone = user?.kakaoPhone ?? null;
+
+    // 방송 중이 아닐 때만 즉시 알림톡 발송 (방송 중이면 stream:ended 에서 일괄 발송)
+    if (effectivePhone && order && !activeLiveStream) {
+      try {
+        await this.alimtalkService.sendOrderAlimtalk(
+          effectivePhone,
+          payload.orderId,
+          Number(order.total),
+        );
+      } catch (error) {
+        this.logger.error('Failed to send payment alimtalk', (error as Error).message);
+      }
+    } else if (activeLiveStream) {
+      this.logger.log(`Deferring invoice alimtalk for order ${payload.orderId} until stream ends`);
+    }
+
+    // Web Push는 항상 즉시 발송
     try {
       await this.notificationsService.sendPaymentConfirmedNotification(
         payload.userId,
@@ -64,6 +96,71 @@ export class NotificationEventsListener {
       );
     } catch (error) {
       this.logger.error('Failed to send payment confirmed notification', (error as Error).message);
+    }
+  }
+
+  @OnEvent('stream:ended')
+  async handleStreamEnded(payload: { streamId: string; streamKey?: string }) {
+    this.logger.log(`Stream ended: ${payload.streamId}, sending deferred invoice alimtalks`);
+
+    try {
+      // 방송 시간 조회
+      const stream = await this.prisma.liveStream.findUnique({
+        where: { id: payload.streamId },
+        select: { startedAt: true, endedAt: true },
+      });
+
+      if (!stream?.startedAt) {
+        this.logger.warn(`Stream ${payload.streamId} has no startedAt, skipping invoice alimtalk`);
+        return;
+      }
+
+      const streamStart = stream.startedAt;
+      const streamEnd = stream.endedAt ?? new Date();
+
+      // 방송 중 결제 확인된 주문 조회
+      const paidOrders = await this.prisma.order.findMany({
+        where: {
+          paymentStatus: 'CONFIRMED',
+          paidAt: {
+            gte: streamStart,
+            lte: streamEnd,
+          },
+        },
+        include: {
+          user: {
+            select: { kakaoPhone: true },
+          },
+        },
+      });
+
+      if (paidOrders.length === 0) {
+        this.logger.log('No paid orders during stream, skipping invoice alimtalk');
+        return;
+      }
+
+      this.logger.log(`Sending ${paidOrders.length} deferred invoice alimtalks`);
+
+      for (const order of paidOrders) {
+        const phone = order.user?.kakaoPhone;
+        if (!phone) {
+          continue;
+        }
+
+        try {
+          await this.alimtalkService.sendOrderAlimtalk(phone, order.id, Number(order.total));
+        } catch (error) {
+          this.logger.error(
+            `Failed to send deferred invoice alimtalk for order ${order.id}`,
+            (error as Error).message,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        'Failed to process stream ended invoice alimtalks',
+        (error as Error).message,
+      );
     }
   }
 
@@ -123,13 +220,77 @@ export class NotificationEventsListener {
     }
   }
 
+  @OnEvent('cart:expired:user')
+  async handleCartExpiredUser(payload: {
+    userId: string;
+    productIds: string[];
+    itemCount: number;
+    timestamp: Date;
+  }) {
+    this.logger.log(`Sending cart expired alimtalk to user ${payload.userId}`);
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { kakaoPhone: true, name: true },
+      });
+
+      if (!user?.kakaoPhone) {
+        return;
+      }
+
+      const firstProductId = payload.productIds[0];
+      const product = firstProductId
+        ? await this.prisma.product.findUnique({
+            where: { id: firstProductId },
+            select: { name: true },
+          })
+        : null;
+
+      const productName = product?.name ?? '상품';
+
+      await this.alimtalkService.sendCartExpiringAlimtalk(
+        user.kakaoPhone,
+        user.name,
+        productName,
+        payload.itemCount,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send cart expired alimtalk', (error as Error).message);
+    }
+  }
+
   @OnEvent('stream:started')
   async handleStreamStarted(payload: { streamId: string; userId: string }) {
-    // 라이브 시작 시 판매자에게 알림톡 발송 (선택적)
-    // 현재는 로그만 기록 (알림톡 템플릿 미정)
-    Logger.log(
-      `Stream started: ${payload.streamId} by user: ${payload.userId}`,
-      'NotificationEventsListener',
-    );
+    this.logger.log(`Stream started: ${payload.streamId} by user: ${payload.userId}`);
+
+    try {
+      const stream = await this.prisma.liveStream.findUnique({
+        where: { id: payload.streamId },
+        select: { title: true, streamKey: true },
+      });
+
+      if (!stream) {
+        this.logger.error(`Stream not found for alimtalk: ${payload.streamId}`, 'stream not found');
+        return;
+      }
+
+      const users = await this.prisma.user.findMany({
+        where: { kakaoPhone: { not: null } },
+        select: { kakaoPhone: true },
+      });
+
+      const phoneNumbers = users.map((u) => u.kakaoPhone).filter((p): p is string => p !== null);
+
+      if (phoneNumbers.length === 0) {
+        return;
+      }
+
+      const streamUrl = `https://www.doremi-live.com/live/${stream.streamKey}`;
+
+      await this.alimtalkService.sendLiveStartAlimtalk(phoneNumbers, stream.title, streamUrl);
+    } catch (error) {
+      this.logger.error('Failed to send live start alimtalk', (error as Error).message);
+    }
   }
 }

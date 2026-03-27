@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Body, Heading2 } from '@/components/common/Typography';
 import { ShoppingBag, AlertCircle } from 'lucide-react';
+import { formatPrice } from '@/lib/utils/price';
 
 export interface LiveProduct {
   id: string;
@@ -26,14 +27,6 @@ interface ProductCarouselProps {
 export function ProductCarousel({ streamKey, products, onProductClick }: ProductCarouselProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   const getStockStatus = (product: LiveProduct) => {
     if (product.status === 'SOLD_OUT' || product.stock === 0) {
