@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getUserMessage } from '@/lib/errors/error-messages';
 import { cartKeys, CartSummary } from '@/lib/hooks/queries/use-cart';
 import { usePointBalance } from '@/lib/hooks/queries/use-points';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 
 interface PointsConfig {
   pointsEnabled: boolean;
@@ -130,32 +131,7 @@ export function useCheckoutFlow({
     : cartData?.subtotal
       ? parseFloat(cartData.subtotal)
       : 0;
-  const freeShippingMode = cartData?.freeShippingMode ?? 'DISABLED';
-  const freeShippingThreshold = cartData?.freeShippingThreshold ?? null;
-  const cumulativePrevious = parseFloat(cartData?.cumulativePreviousSubtotal ?? '0');
-  const defaultFee = parseFloat(cartData?.defaultShippingFee ?? '10');
-
-  // Items belonging to the threshold broadcast (have a streamKey)
-  const selectedFromThresholdStream = selectedItems.filter(
-    (i) => i.streamKey && freeShippingMode === 'THRESHOLD',
-  );
-
-  const shippingFee = (() => {
-    if (!cartData || orderSubtotal === 0) return 0;
-    if (freeShippingMode === 'UNCONDITIONAL') return 0;
-    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
-      // If none of the selected items belong to the threshold broadcast, apply default fee
-      if (selectedFromThresholdStream.length === 0) return defaultFee;
-      // Only sum subtotal of items belonging to the threshold broadcast
-      const thresholdSubtotal =
-        selectedFromThresholdStream.reduce(
-          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
-          0,
-        ) / 100;
-      return thresholdSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
-    }
-    return defaultFee;
-  })();
+  const shippingFee = calculateDynamicShipping(selectedItems, cartData);
   const orderTotal = orderSubtotal + shippingFee;
 
   const maxPointsAllowed = pointsConfig

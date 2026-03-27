@@ -20,6 +20,7 @@ import { CartItemCard } from '@/components/cart/CartItemCard';
 import { CartSummaryCard } from '@/components/cart/CartSummaryCard';
 import { CartEmptyState } from '@/components/cart/CartEmptyState';
 import { formatPrice } from '@/lib/utils/format';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 import { ShoppingCart, ArrowLeft, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
 import { useConfirm } from '@/components/common/ConfirmDialog';
@@ -206,29 +207,7 @@ function CartPageContent() {
   const selectedSubtotal = selectedSubtotalCents / 100;
 
   // Dynamic shipping based on broadcast free shipping mode
-  const freeShippingMode = cart?.freeShippingMode ?? 'DISABLED';
-  const freeShippingThreshold = cart?.freeShippingThreshold ?? null;
-  const cumulativePrevious = parseFloat(cart?.cumulativePreviousSubtotal ?? '0');
-  const defaultFee = parseFloat(cart?.defaultShippingFee ?? '10');
-
-  const selectedFromThresholdStream = selectedItems.filter(
-    (i) => i.streamKey && freeShippingMode === 'THRESHOLD',
-  );
-
-  const selectedShipping = (() => {
-    if (selectedItems.length === 0) return 0;
-    if (freeShippingMode === 'UNCONDITIONAL') return 0;
-    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
-      if (selectedFromThresholdStream.length === 0) return defaultFee;
-      const thresholdSubtotal =
-        selectedFromThresholdStream.reduce(
-          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
-          0,
-        ) / 100;
-      return thresholdSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
-    }
-    return defaultFee;
-  })();
+  const selectedShipping = calculateDynamicShipping(selectedItems, cart);
 
   const selectedTotal = selectedSubtotal + selectedShipping;
 

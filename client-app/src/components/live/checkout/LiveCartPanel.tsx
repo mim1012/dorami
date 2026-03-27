@@ -10,6 +10,7 @@ import {
   type CartItem,
 } from '@/lib/hooks/queries/use-cart';
 import { formatPrice } from '@/lib/utils/price';
+import { calculateDynamicShipping } from '@/lib/utils/shipping';
 
 interface LiveCartPanelProps {
   onProceedToCheckout: (selectedIds: string[]) => void;
@@ -171,32 +172,7 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
   const selectedSubtotal = selectedTotalCents / 100;
 
   // Dynamic shipping based on broadcast free shipping mode
-  const freeShippingMode = cartData?.freeShippingMode ?? 'DISABLED';
-  const freeShippingThreshold = cartData?.freeShippingThreshold ?? null;
-  const cumulativePrevious = parseFloat(cartData?.cumulativePreviousSubtotal ?? '0');
-  const defaultFee = parseFloat(cartData?.defaultShippingFee ?? '10');
-
-  // Selected items that belong to the threshold broadcast (have a streamKey)
-  const selectedFromThresholdStream = selectedItems.filter(
-    (i) => i.streamKey && freeShippingMode === 'THRESHOLD',
-  );
-
-  const dynamicShipping = (() => {
-    if (selectedItems.length === 0) return 0;
-    if (freeShippingMode === 'UNCONDITIONAL') return 0;
-    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
-      // If none of the selected items belong to the threshold broadcast, apply default fee
-      if (selectedFromThresholdStream.length === 0) return defaultFee;
-      // Only sum subtotal of items belonging to the threshold broadcast
-      const thresholdSubtotal =
-        selectedFromThresholdStream.reduce(
-          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
-          0,
-        ) / 100;
-      return thresholdSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
-    }
-    return defaultFee;
-  })();
+  const dynamicShipping = calculateDynamicShipping(selectedItems, cartData);
 
   const grandTotal = selectedSubtotal + dynamicShipping;
 
