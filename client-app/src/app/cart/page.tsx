@@ -203,13 +203,34 @@ function CartPageContent() {
     (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
     0,
   );
-  const selectedShippingCents = selectedItems.reduce(
-    (sum, item) => sum + Math.round(Number(item.shippingFee) * 100),
-    0,
-  );
   const selectedSubtotal = selectedSubtotalCents / 100;
-  const selectedShipping = selectedShippingCents / 100;
-  const selectedTotal = (selectedSubtotalCents + selectedShippingCents) / 100;
+
+  // Dynamic shipping based on broadcast free shipping mode
+  const freeShippingMode = cart?.freeShippingMode ?? 'DISABLED';
+  const freeShippingThreshold = cart?.freeShippingThreshold ?? null;
+  const cumulativePrevious = parseFloat(cart?.cumulativePreviousSubtotal ?? '0');
+  const defaultFee = parseFloat(cart?.defaultShippingFee ?? '10');
+
+  const selectedFromThresholdStream = selectedItems.filter(
+    (i) => i.streamKey && freeShippingMode === 'THRESHOLD',
+  );
+
+  const selectedShipping = (() => {
+    if (selectedItems.length === 0) return 0;
+    if (freeShippingMode === 'UNCONDITIONAL') return 0;
+    if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {
+      if (selectedFromThresholdStream.length === 0) return defaultFee;
+      const thresholdSubtotal =
+        selectedFromThresholdStream.reduce(
+          (sum, i) => sum + Math.round(Number(i.price) * 100) * i.quantity,
+          0,
+        ) / 100;
+      return thresholdSubtotal + cumulativePrevious >= freeShippingThreshold ? 0 : defaultFee;
+    }
+    return defaultFee;
+  })();
+
+  const selectedTotal = selectedSubtotal + selectedShipping;
 
   const hasExpiredItems = cart?.items.some(
     (item) =>
