@@ -168,22 +168,22 @@ jobs:
             echo "Triggering test alimtalk via docker exec (backend container)"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
               set -euo pipefail
-              docker exec dorami-backend-1 bash -s <<'INNEREOF'
+              docker exec dorami-backend-1 sh -s <<'INNEREOF'
               set -e
               BASE="http://localhost:3001"
               LOGIN=$(curl -s -c /tmp/tc.txt -X POST "$BASE/api/auth/dev-login" \
                 -H "Content-Type: application/json" -d '{"email":"dksk0359@gmail.com"}')
               echo "Login: $LOGIN"
               PROD=$(curl -s -b /tmp/tc.txt "$BASE/api/products?limit=1" | \
-                python3 -c "import sys,json; d=json.load(sys.stdin); items=d.get('data',{}).get('items',d.get('items',[])); print(items[0]['id'])")
+                node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d);const items=(r.data||r).items||(r.items||[]);console.log(items[0].id)})")
               echo "Product: $PROD"
               CART=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/cart" \
                 -H "Content-Type: application/json" -d "{\"productId\":\"$PROD\",\"quantity\":1}")
-              CID=$(echo "$CART" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+              CID=$(echo "$CART" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).data.id))")
               echo "Cart: $CID"
               ORDER=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/orders" \
                 -H "Content-Type: application/json" -d "{\"cartId\":\"$CID\"}")
-              OID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+              OID=$(echo "$ORDER" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).data.id))")
               echo "Order: $OID"
               CONFIRM=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/orders/$OID/confirm-payment" \
                 -H "Content-Type: application/json" -d "{}")
