@@ -165,30 +165,32 @@ jobs:
               rm -f "$TMP_CODES"
           ENDSSH
           elif [ "$CMD" = "__RUN_TEST_ALIMTALK__" ]; then
-            echo "Triggering test alimtalk via docker exec (backend container)"
+            echo "Triggering test alimtalk (runs on staging host via nginx)"
             ssh $USER@$HOST 'cat > /tmp/alimtest.sh' <<'ALIMSCRIPT'
             set -e
-            B="http://localhost:3001"
-            LOGIN=$(curl -s -c /tmp/tc.txt -X POST "$B/api/auth/dev-login" \
+            B="http://localhost/api"
+            LOGIN=$(curl -s -c /tmp/tc.txt -X POST "$B/auth/dev-login" \
               -H "Content-Type: application/json" -d '{"email":"dksk0359@gmail.com"}')
             echo "Login: $LOGIN"
-            PROD=$(curl -s -b /tmp/tc.txt "$B/api/products?limit=1" | \
-              node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const r=JSON.parse(d);const a=(r.data||r).items||(r.items||[]);console.log(a[0].id)})")
+            PROD=$(curl -s -b /tmp/tc.txt "$B/products?limit=1" | \
+              python3 -c "import sys,json; d=json.load(sys.stdin); items=(d.get('data') or d).get('items') or d.get('items',[]); print(items[0]['id'])")
             echo "Product: $PROD"
-            CART=$(curl -s -b /tmp/tc.txt -X POST "$B/api/cart" \
+            CART=$(curl -s -b /tmp/tc.txt -X POST "$B/cart" \
               -H "Content-Type: application/json" -d "{\"productId\":\"$PROD\",\"quantity\":1}")
-            CID=$(echo "$CART" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).data.id))")
-            echo "Cart: $CID"
-            ORDER=$(curl -s -b /tmp/tc.txt -X POST "$B/api/orders" \
+            echo "Cart response: $CART"
+            CID=$(echo "$CART" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+            echo "Cart ID: $CID"
+            ORDER=$(curl -s -b /tmp/tc.txt -X POST "$B/orders" \
               -H "Content-Type: application/json" -d "{\"cartId\":\"$CID\"}")
-            OID=$(echo "$ORDER" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).data.id))")
-            echo "Order: $OID"
-            CONFIRM=$(curl -s -b /tmp/tc.txt -X POST "$B/api/orders/$OID/confirm-payment" \
+            echo "Order response: $ORDER"
+            OID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+            echo "Order ID: $OID"
+            CONFIRM=$(curl -s -b /tmp/tc.txt -X POST "$B/orders/$OID/confirm-payment" \
               -H "Content-Type: application/json" -d "{}")
             echo "Confirm: $CONFIRM"
             echo "Done - alimtalk sent!"
           ALIMSCRIPT
-            ssh $USER@$HOST "docker exec -i dorami-backend-1 sh < /tmp/alimtest.sh"
+            ssh $USER@$HOST "bash /tmp/alimtest.sh"
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
