@@ -331,7 +331,7 @@ jobs:
 
             # Run migrations
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend ./node_modules/.bin/prisma migrate deploy < /dev/null
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma@6.19.2 migrate deploy < /dev/null
 
             # Start all services
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
