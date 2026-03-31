@@ -189,16 +189,20 @@ jobs:
               const csrfToken=csrfCk?decodeURIComponent(csrfCk.split(';')[0].split('=')[1]):'';
               console.log('CSRF token:', csrfToken.slice(0,20));
               const prods = await req({host:H,port:P,method:'GET',path:'/api/products?limit=1'},null,jar);
+              prods.ck.forEach(c=>jar.push(c));
               const pd=JSON.parse(prods.b); const items=Array.isArray(pd.data)?pd.data:(pd.data||pd).items||pd.items||[];
               console.log('Items count:', items.length); if(!items.length){console.error('No products');process.exit(1);}
               const productId=items[0].id; console.log('Product:', productId);
-              const cartRes = await req({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken}},JSON.stringify({productId,quantity:1}),jar);
+              const csrfCk2=jar.find(c=>c.startsWith('csrf-token='));
+              const csrfToken2=csrfCk2?decodeURIComponent(csrfCk2.split(';')[0].split('=')[1]):'';
+              console.log('CSRF token after GET:', csrfToken2.slice(0,20));
+              const cartRes = await req({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({productId,quantity:1}),jar);
               console.log('Cart status:', cartRes.s, cartRes.b.slice(0,120));
               const cartId=JSON.parse(cartRes.b).data.id;
-              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken}},JSON.stringify({cartId}),jar);
+              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({cartId}),jar);
               console.log('Order status:', orderRes.s, orderRes.b.slice(0,120));
               const orderId=JSON.parse(orderRes.b).data.id;
-              const confirm = await req({host:H,port:P,method:'POST',path:`/api/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json','x-csrf-token':csrfToken}},JSON.stringify({}),jar);
+              const confirm = await req({host:H,port:P,method:'POST',path:`/api/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({}),jar);
               console.log('Confirm status:', confirm.s, confirm.b.slice(0,200));
               console.log('Done - alimtalk sent!');
             }
