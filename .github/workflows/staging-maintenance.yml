@@ -21,6 +21,7 @@ on:
           - restart-frontend
           - db-migrate
           - disk-usage
+          - test-alimtalk
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -100,6 +101,9 @@ jobs:
             disk-usage)
               CMD="df -h / && docker system df"
               ;;
+            test-alimtalk)
+              CMD="__RUN_TEST_ALIMTALK__"
+              ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
               ;;
@@ -159,6 +163,33 @@ jobs:
                 grep -E 'dorami-(backend|frontend|nginx|postgres|redis|srs)' || true
 
               rm -f "$TMP_CODES"
+          ENDSSH
+          elif [ "$CMD" = "__RUN_TEST_ALIMTALK__" ]; then
+            echo "Triggering test alimtalk via docker exec (backend container)"
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              set -euo pipefail
+              docker exec dorami-backend-1 bash -s <<'INNEREOF'
+              set -e
+              BASE="http://localhost:3001"
+              LOGIN=$(curl -s -c /tmp/tc.txt -X POST "$BASE/api/auth/dev-login" \
+                -H "Content-Type: application/json" -d '{"email":"dksk0359@gmail.com"}')
+              echo "Login: $LOGIN"
+              PROD=$(curl -s -b /tmp/tc.txt "$BASE/api/products?limit=1" | \
+                python3 -c "import sys,json; d=json.load(sys.stdin); items=d.get('data',{}).get('items',d.get('items',[])); print(items[0]['id'])")
+              echo "Product: $PROD"
+              CART=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/cart" \
+                -H "Content-Type: application/json" -d "{\"productId\":\"$PROD\",\"quantity\":1}")
+              CID=$(echo "$CART" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+              echo "Cart: $CID"
+              ORDER=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/orders" \
+                -H "Content-Type: application/json" -d "{\"cartId\":\"$CID\"}")
+              OID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+              echo "Order: $OID"
+              CONFIRM=$(curl -s -b /tmp/tc.txt -X POST "$BASE/api/orders/$OID/confirm-payment" \
+                -H "Content-Type: application/json" -d "{}")
+              echo "Confirm: $CONFIRM"
+              echo "Done - alimtalk should arrive now"
+          INNEREOF
           ENDSSH
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
