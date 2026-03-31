@@ -168,24 +168,24 @@ jobs:
             echo "Triggering test alimtalk (runs on staging host via nginx)"
             ssh $USER@$HOST 'cat > /tmp/alimtest.sh' <<'ALIMSCRIPT'
             set -e
-            B="http://localhost/api"
-            LOGIN=$(curl -s -c /tmp/tc.txt -X POST "$B/auth/dev-login" \
+            B="https://localhost/api"
+            LOGIN=$(curl -sk -c /tmp/tc.txt -X POST "$B/auth/dev-login" \
               -H "Content-Type: application/json" -d '{"email":"dksk0359@gmail.com"}')
             echo "Login: $LOGIN"
-            PROD=$(curl -s -b /tmp/tc.txt "$B/products?limit=1" | \
+            PROD=$(curl -sk -b /tmp/tc.txt "$B/products?limit=1" | \
               python3 -c "import sys,json; d=json.load(sys.stdin); items=(d.get('data') or d).get('items') or d.get('items',[]); print(items[0]['id'])")
             echo "Product: $PROD"
-            CART=$(curl -s -b /tmp/tc.txt -X POST "$B/cart" \
+            CART=$(curl -sk -b /tmp/tc.txt -X POST "$B/cart" \
               -H "Content-Type: application/json" -d "{\"productId\":\"$PROD\",\"quantity\":1}")
             echo "Cart response: $CART"
             CID=$(echo "$CART" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
             echo "Cart ID: $CID"
-            ORDER=$(curl -s -b /tmp/tc.txt -X POST "$B/orders" \
+            ORDER=$(curl -sk -b /tmp/tc.txt -X POST "$B/orders" \
               -H "Content-Type: application/json" -d "{\"cartId\":\"$CID\"}")
             echo "Order response: $ORDER"
             OID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
             echo "Order ID: $OID"
-            CONFIRM=$(curl -s -b /tmp/tc.txt -X POST "$B/orders/$OID/confirm-payment" \
+            CONFIRM=$(curl -sk -b /tmp/tc.txt -X POST "$B/orders/$OID/confirm-payment" \
               -H "Content-Type: application/json" -d "{}")
             echo "Confirm: $CONFIRM"
             echo "Done - alimtalk sent!"
