@@ -173,7 +173,7 @@ jobs:
             function csrf(jar){const c=jar.find(c=>c.startsWith('csrf-token='));return c?decodeURIComponent(c.split(';')[0].split('=')[1]):'';}
             async function session(email){const j=[];const l=await rq({host:H,port:P,method:'POST',path:'/api/auth/dev-login',headers:{'Content-Type':'application/json'}},JSON.stringify({email}),j);if(l.s<200||l.s>=300){throw new Error('Login failed: '+l.b);}l.ck.forEach(c=>j.push(c));const g=await rq({host:H,port:P,method:'GET',path:'/api/products?limit=1'},null,j);g.ck.forEach(c=>j.push(c));return {jar:j,csrf:csrf(j),prods:JSON.parse(g.b)};}
             async function main(){
-              const s1=await session('dksk0359@gmail.com');
+              const s1=await session('aq04031@naver.com');
               console.log('User login ok, CSRF:', s1.csrf.slice(0,15));
               const items=Array.isArray(s1.prods.data)?s1.prods.data:(s1.prods.data||{}).items||[];
               if(!items.length){throw new Error('No products');}
