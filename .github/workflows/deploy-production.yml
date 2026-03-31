@@ -433,6 +433,8 @@ jobs:
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
+          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Write .env.production locally (GitHub Actions runner is ephemeral & isolated).
@@ -491,6 +493,8 @@ jobs:
           SRS_WEBHOOK_SECRET=${SRS_WEBHOOK_SECRET}
           TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
           TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+          BIZGO_API_KEY=${BIZGO_API_KEY}
+          BIZGO_SENDER_KEY=${BIZGO_SENDER_KEY}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
           SENTRY_DSN=${PROD_SENTRY_DSN}

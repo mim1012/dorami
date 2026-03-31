@@ -52,7 +52,7 @@ const MIN_CART_TIMER_HOURS = 1;
 const MAX_CART_TIMER_HOURS = 120;
 const MINUTES_PER_HOUR = 60;
 
-type NotificationEventType = 'ORDER_CONFIRMATION' | 'SHIPPING_STARTED';
+type NotificationEventType = 'ORDER_CONFIRMATION' | 'CART_EXPIRING' | 'LIVE_START';
 
 const NOTIFICATION_EVENT_GROUPS: Array<{
   type: NotificationEventType;
@@ -60,27 +60,35 @@ const NOTIFICATION_EVENT_GROUPS: Array<{
   description: string;
 }> = [
   {
-    type: 'ORDER_CONFIRMATION',
-    label: '주문 완료 알림',
-    description: '주문 완료 시 발송',
+    type: 'LIVE_START',
+    label: '라이브 시작 알림',
+    description: '방송 시작 시 전체 유저에게 발송',
   },
   {
-    type: 'SHIPPING_STARTED',
-    label: '배송 시작 알림',
-    description: '배송 시작 시 발송',
+    type: 'CART_EXPIRING',
+    label: '장바구니 리마인더 (친구톡)',
+    description: '장바구니 만료 3분 전 발송 — 친구톡이므로 카카오 템플릿 심사 불필요',
+  },
+  {
+    type: 'ORDER_CONFIRMATION',
+    label: '인보이스 알림',
+    description: '결제 완료 시 발송 (방송 중엔 방송 종료 후 일괄 발송)',
   },
 ];
 
 const EVENT_PREVIEW_VARIABLES: Record<string, Record<string, string>> = {
+  LIVE_START: {
+    streamTitle: '오늘의 라이브 쇼핑',
+  },
+  CART_EXPIRING: {
+    customerName: '김민수',
+    productName: '니트 가디건',
+    itemCount: '2',
+  },
   ORDER_CONFIRMATION: {
     customerName: '김민수',
     orderId: 'ORD-20260308-10001',
     amount: '$12.00',
-  },
-  SHIPPING_STARTED: {
-    customerName: '김민수',
-    orderId: 'ORD-20260308-10001',
-    trackingNumber: 'DOR-123456789',
   },
 };
 

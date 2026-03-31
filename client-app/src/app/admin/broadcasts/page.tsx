@@ -173,6 +173,7 @@ export default function BroadcastsPage() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [modalStep, setModalStep] = useState<1 | 2 | 3>(1);
   const [newStreamTitle, setNewStreamTitle] = useState('');
+  const [newStreamDescription, setNewStreamDescription] = useState('');
   const [newStreamScheduledAt, setNewStreamScheduledAt] = useState('');
   const [newStreamThumbnailUrl, setNewStreamThumbnailUrl] = useState('');
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -529,6 +530,7 @@ export default function BroadcastsPage() {
     setGenerateError(null);
     try {
       const body: Record<string, any> = { title: newStreamTitle.trim() };
+      if (newStreamDescription.trim()) body.description = newStreamDescription.trim();
       if (newStreamScheduledAt)
         body.scheduledAt = new Date(newStreamScheduledAt + '+09:00').toISOString();
       if (newStreamThumbnailUrl.trim()) body.thumbnailUrl = newStreamThumbnailUrl.trim();
@@ -539,6 +541,7 @@ export default function BroadcastsPage() {
       const response = await apiClient.post<GeneratedStreamKey>('/streaming/generate-key', body);
       setGeneratedStream(response.data);
       setNewStreamTitle('');
+      setNewStreamDescription('');
       setNewStreamScheduledAt('');
       setNewStreamThumbnailUrl('');
       setModalStep(2);
@@ -1307,6 +1310,21 @@ export default function BroadcastsPage() {
                       onChange={(e) => setNewStreamTitle(e.target.value)}
                       placeholder="예: 오늘의 라이브 방송"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-text mb-2">
+                      방송 상세내용{' '}
+                      <span className="text-secondary-text text-xs">
+                        (선택 · 알림톡 상세내용 변수)
+                      </span>
+                    </label>
+                    <textarea
+                      value={newStreamDescription}
+                      onChange={(e) => setNewStreamDescription(e.target.value)}
+                      placeholder="예: 오늘 방송에서는 신상 니트, 가디건을 소개합니다."
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors resize-none"
                     />
                   </div>
                   <div>

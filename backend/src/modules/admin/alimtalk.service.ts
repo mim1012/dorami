@@ -1,18 +1,22 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  OMNI,
-  OMNIOptionsBuilder,
-  AlimtalkRequestBodyBuilder,
+  Bizgo,
+  BizgoOptionsBuilder,
+  AlimtalkBuilder,
+  AlimtalkAttachmentBuilder,
+  BrandMessageBuilder,
+  BrandMessageAttachmentBuilder,
+  DestinationBuilder,
+  OMNIRequestBodyBuilder,
   KakaoButtonBuilder,
-} from '@infobank/infobank-omni-sdk-js';
+} from '@bizgo/bizgo-sdk-comm-js';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface AlimtalkMessage {
   to: string; // phone number e.g. "01012345678"
   templateCode: string;
   text: string; // full message body (must match registered template)
-  variables?: Record<string, string>;
   buttons?: Array<{
     buttonType: 'WL';
     buttonName: string;
@@ -21,93 +25,111 @@ interface AlimtalkMessage {
   }>;
 }
 
+interface OrderAlimtalkData {
+  id: string;
+  total: unknown;
+  user: { kakaoPhone: string | null; name: string | null } | null;
+  orderItems: Array<{ productName: string }>;
+}
+
+interface PaymentConfig {
+  zelleEmail?: string | null;
+  zelleRecipientName?: string | null;
+  venmoEmail?: string | null;
+  venmoRecipientName?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountHolder?: string | null;
+}
+
+interface OrderTemplate {
+  template: string;
+  kakaoTemplateCode: string;
+}
+
+const SEND_CONCURRENCY = 10;
+
 @Injectable()
-export class AlimtalkService implements OnModuleInit {
+export class AlimtalkService {
   private readonly logger = new Logger(AlimtalkService.name);
-  private omni: OMNI | null = null;
+  private readonly bizgo: Bizgo | null = null;
   private readonly senderKey: string;
-  private readonly baseUrl: string;
-  private readonly apiId: string;
-  private readonly apiPassword: string;
+  private readonly frontendUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.senderKey = this.configService.get<string>('BIZGO_PF_ID', '');
-    this.apiId = this.configService.get<string>('BIZGO_API_ID', '');
-    this.apiPassword = this.configService.get<string>('BIZGO_API_PASSWORD', '');
-
-    const isSandbox = this.configService.get<string>('BIZGO_SANDBOX', 'false') === 'true';
-    this.baseUrl = this.configService.get<string>(
-      'BIZGO_API_URL',
-      isSandbox ? 'https://sandbox-api.omni.co.kr' : 'https://api.omni.co.kr',
+    this.senderKey = this.configService.get<string>('BIZGO_SENDER_KEY', '');
+    this.frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'https://www.doremi-live.com',
     );
-  }
+    const apiKey = this.configService.get<string>('BIZGO_API_KEY', '');
+    const baseUrl = this.configService.get<string>(
+      'BIZGO_API_URL',
+      'https://mars.ibapi.kr/api/comm',
+    );
 
-  async onModuleInit(): Promise<void> {
-    if (!this.apiId || !this.apiPassword) {
-      this.logger.warn(
-        'Bizgo OMNI SDK credentials not configured (BIZGO_API_ID or BIZGO_API_PASSWORD missing)',
-      );
+    if (!apiKey) {
+      this.logger.warn('BIZGO_API_KEY not configured — alimtalk/friendtalk disabled');
       return;
     }
 
-    try {
-      await this.initializeOmni();
-      this.logger.log('Bizgo OMNI SDK initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to initialize Bizgo OMNI SDK', error);
-    }
+    this.bizgo = new Bizgo(new BizgoOptionsBuilder().setBaseURL(baseUrl).setApiKey(apiKey).build());
+
+    this.logger.log('Bizgo SDK initialized');
   }
 
-  private async initializeOmni(): Promise<void> {
-    const authClient = new OMNI(
-      new OMNIOptionsBuilder()
-        .setBaseURL(this.baseUrl)
-        .setId(this.apiId)
-        .setPassword(this.apiPassword)
-        .build(),
-    );
-
-    const tokenResponse = await authClient.auth!.getToken();
-
-    this.omni = new OMNI(
-      new OMNIOptionsBuilder().setBaseURL(this.baseUrl).setToken(tokenResponse.data.token).build(),
-    );
-
-    this.logger.debug(`Bizgo token acquired, expires: ${tokenResponse.data.expired}`);
-  }
-
-  private async ensureOmniClient(): Promise<OMNI | null> {
-    if (!this.omni) {
-      try {
-        await this.initializeOmni();
-      } catch (error) {
-        this.logger.error('Failed to re-initialize Bizgo OMNI SDK', error);
-        return null;
-      }
-    }
-    return this.omni;
-  }
-
-  async sendAlimtalk(messages: AlimtalkMessage[]): Promise<void> {
+  private async isEnabled(): Promise<boolean> {
     const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+    return !!config?.alimtalkEnabled;
+  }
 
-    if (!config?.alimtalkEnabled) {
+  private logSendError(context: string, error: unknown): void {
+    const axiosError = error as { response?: { status: number; data: unknown } };
+    if (axiosError.response) {
+      this.logger.error(
+        `${context} API error (${axiosError.response.status})`,
+        axiosError.response.data,
+      );
+    } else {
+      this.logger.error(`Failed to ${context}`, error);
+    }
+  }
+
+  /** Public: checks isEnabled, then sends in parallel chunks */
+  async sendAlimtalk(messages: AlimtalkMessage[]): Promise<void> {
+    if (!(await this.isEnabled())) {
       this.logger.debug('Alimtalk disabled, skipping send');
       return;
     }
+    await this._sendAlimtalk(messages);
+  }
 
-    const client = await this.ensureOmniClient();
-    if (!client?.send) {
-      this.logger.warn('Bizgo OMNI SDK not available, skipping send');
+  /** Internal: skips isEnabled check (caller is responsible) */
+  private async _sendAlimtalk(messages: AlimtalkMessage[]): Promise<void> {
+    if (!this.bizgo?.send) {
+      this.logger.warn('Bizgo SDK not available, skipping send');
       return;
     }
 
-    for (const msg of messages) {
-      try {
-        const buttons = msg.buttons?.map((btn) =>
+    for (let i = 0; i < messages.length; i += SEND_CONCURRENCY) {
+      const chunk = messages.slice(i, i + SEND_CONCURRENCY);
+      await Promise.all(chunk.map((msg) => this._sendSingle(msg)));
+    }
+  }
+
+  private async _sendSingle(msg: AlimtalkMessage): Promise<void> {
+    try {
+      const alimtalkBuilder = new AlimtalkBuilder()
+        .setSenderKey(this.senderKey)
+        .setMsgType('AT')
+        .setTemplateCode(msg.templateCode)
+        .setText(msg.text);
+
+      if (msg.buttons?.length) {
+        const buttons = msg.buttons.map((btn) =>
           new KakaoButtonBuilder()
             .setType(btn.buttonType)
             .setName(btn.buttonName)
@@ -115,80 +137,158 @@ export class AlimtalkService implements OnModuleInit {
             .setUrlPc(btn.linkPc ?? btn.linkMo)
             .build(),
         );
-
-        const body = new AlimtalkRequestBodyBuilder()
-          .setSenderKey(this.senderKey)
-          .setMsgType('AT')
-          .setTo(msg.to)
-          .setTemplateCode(msg.templateCode)
-          .setText(msg.text)
-          .setButton(buttons ?? [])
-          .build();
-
-        const response = await client.send.Alimtalk(body);
-
-        if (response.code === '1000') {
-          this.logger.log(`Alimtalk sent to ${msg.to}`, { msgKey: response.msgKey });
-        } else {
-          this.logger.warn(`Alimtalk send returned code ${response.code}: ${response.result}`, {
-            to: msg.to,
-          });
-        }
-      } catch (error: unknown) {
-        const axiosError = error as { response?: { status: number; data: unknown } };
-        if (axiosError.response) {
-          this.logger.error(
-            `Alimtalk API error (${axiosError.response.status})`,
-            axiosError.response.data,
-          );
-
-          if (axiosError.response.status === 401) {
-            this.omni = null;
-          }
-        } else {
-          this.logger.error('Failed to send alimtalk', error);
-        }
+        const attachment = new AlimtalkAttachmentBuilder().setButton(buttons).build();
+        alimtalkBuilder.setAttachment(attachment);
       }
+
+      const alimtalk = alimtalkBuilder.build();
+      const destination = new DestinationBuilder().setTo(msg.to).build();
+
+      const request = new OMNIRequestBodyBuilder()
+        .setDestinations([destination])
+        .setMessageFlow([{ alimtalk }])
+        .build();
+
+      const result = await this.bizgo!.send!.OMNI(request);
+      const dest = result?.data?.data?.destinations?.[0];
+
+      if (dest?.code === 'A000') {
+        this.logger.log(`Alimtalk sent to ${msg.to}`, { msgKey: dest.msgKey });
+      } else {
+        this.logger.warn(`Alimtalk send returned code ${dest?.code}: ${dest?.result}`, {
+          to: msg.to,
+        });
+      }
+    } catch (error: unknown) {
+      this.logSendError('send alimtalk', error);
     }
   }
 
-  async sendOrderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'ORDER_CONFIRMATION' },
-    });
+  private buildOrderMessage(
+    phone: string,
+    orderId: string,
+    total: number,
+    order: {
+      user: { name: string | null } | null;
+      orderItems: Array<{ productName: string }>;
+    } | null,
+    config: PaymentConfig | null,
+    template: OrderTemplate,
+  ): AlimtalkMessage {
+    const customerName = order?.user?.name ?? '고객';
+    const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
+    const itemCount = order?.orderItems?.length ?? 1;
 
-    if (!template?.kakaoTemplateCode) {
-      this.logger.warn('ORDER_CONFIRMATION alimtalk template code not configured, skipping');
-      return;
+    let paymentLabel: string;
+    let paymentAccount: string;
+    let paymentHolder: string;
+    if (config?.zelleEmail) {
+      paymentLabel = 'Zelle';
+      paymentAccount = config.zelleEmail;
+      paymentHolder = config.zelleRecipientName ?? '';
+    } else if (config?.venmoEmail) {
+      paymentLabel = 'Venmo';
+      paymentAccount = config.venmoEmail;
+      paymentHolder = config.venmoRecipientName ?? '';
+    } else {
+      paymentLabel = config?.bankName ?? '';
+      paymentAccount = config?.bankAccountNumber ?? '';
+      paymentHolder = config?.bankAccountHolder ?? '';
     }
 
     const text = template.template
+      .replace('#{고객명}', customerName)
       .replace('#{주문번호}', orderId)
-      .replace('#{금액}', total.toLocaleString());
+      .replace('#{상품명}', firstItem)
+      .replace('#{수량}', String(itemCount))
+      .replace('#{금액}', total.toLocaleString())
+      .replace('#{은행명}', paymentLabel)
+      .replace('#{계좌번호}', paymentAccount)
+      .replace('#{예금주}', paymentHolder);
 
-    await this.sendAlimtalk([
-      {
-        to: phone,
-        templateCode: template.kakaoTemplateCode,
-        text,
-        buttons: [
-          {
-            buttonType: 'WL',
-            buttonName: '주문 상세 보기',
-            linkMo: `https://www.doremi-live.com/orders/${orderId}`,
-          },
-        ],
-      },
+    return {
+      to: phone,
+      templateCode: template.kakaoTemplateCode,
+      text,
+      buttons: [
+        {
+          buttonType: 'WL',
+          buttonName: '주문 상세 보기',
+          linkMo: `${this.frontendUrl}/orders/${orderId}`,
+        },
+      ],
+    };
+  }
+
+  async sendOrderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk disabled, skipping send');
+      return;
+    }
+
+    const [template, order, config] = await Promise.all([
+      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: { select: { name: true } },
+          orderItems: { select: { productName: true }, orderBy: { productName: 'asc' } },
+        },
+      }),
+      this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+      return;
+    }
+
+    const msg = this.buildOrderMessage(phone, orderId, total, order, config, template);
+    await this._sendAlimtalk([msg]);
+  }
+
+  /** Batch send for multiple orders — fetches template + config once instead of N times */
+  async sendOrderAlimtalkBatch(orders: OrderAlimtalkData[]): Promise<void> {
+    if (orders.length === 0) {
+      return;
+    }
+
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk disabled, skipping batch send');
+      return;
+    }
+
+    const [template, config] = await Promise.all([
+      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
+    ]);
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+      return;
+    }
+
+    const messages = orders
+      .filter((o) => o.user?.kakaoPhone)
+      .map((o) =>
+        this.buildOrderMessage(o.user!.kakaoPhone!, o.id, Number(o.total), o, config, template),
+      );
+
+    await this._sendAlimtalk(messages);
   }
 
   async sendPaymentReminderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk disabled, skipping send');
+      return;
+    }
+
     const template = await this.prisma.notificationTemplate.findFirst({
       where: { type: 'PAYMENT_REMINDER' },
     });
 
     if (!template?.kakaoTemplateCode) {
-      this.logger.warn('PAYMENT_REMINDER alimtalk template code not configured, skipping');
+      this.logger.warn('PAYMENT_REMINDER template code not configured, skipping');
       return;
     }
 
@@ -196,7 +296,7 @@ export class AlimtalkService implements OnModuleInit {
       .replace('#{주문번호}', orderId)
       .replace('#{금액}', total.toLocaleString());
 
-    await this.sendAlimtalk([
+    await this._sendAlimtalk([
       {
         to: phone,
         templateCode: template.kakaoTemplateCode,
@@ -205,7 +305,7 @@ export class AlimtalkService implements OnModuleInit {
           {
             buttonType: 'WL',
             buttonName: '주문 확인하기',
-            linkMo: `https://www.doremi-live.com/orders/${orderId}`,
+            linkMo: `${this.frontendUrl}/orders/${orderId}`,
           },
         ],
       },
@@ -218,12 +318,17 @@ export class AlimtalkService implements OnModuleInit {
     productName: string,
     itemCount: number,
   ): Promise<void> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk disabled, skipping send');
+      return;
+    }
+
     const template = await this.prisma.notificationTemplate.findFirst({
       where: { type: 'CART_EXPIRING' },
     });
 
     if (!template?.kakaoTemplateCode) {
-      this.logger.warn('CART_EXPIRING alimtalk template code not configured, skipping');
+      this.logger.warn('CART_EXPIRING template code not configured, skipping');
       return;
     }
 
@@ -232,7 +337,7 @@ export class AlimtalkService implements OnModuleInit {
       .replace('#{상품명}', productName)
       .replace('#{수량}', String(itemCount));
 
-    await this.sendAlimtalk([
+    await this._sendAlimtalk([
       {
         to: phone,
         templateCode: template.kakaoTemplateCode,
@@ -241,18 +346,82 @@ export class AlimtalkService implements OnModuleInit {
           {
             buttonType: 'WL',
             buttonName: '장바구니 확인',
-            linkMo: 'https://www.doremi-live.com/cart',
-            linkPc: 'https://www.doremi-live.com/cart',
+            linkMo: `${this.frontendUrl}/cart`,
+            linkPc: `${this.frontendUrl}/cart`,
           },
         ],
       },
     ]);
   }
 
+  async sendCartReminderFriendtalk(
+    phone: string,
+    productName: string,
+    minutesLeft: number,
+    streamKey?: string,
+  ): Promise<void> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk/Friendtalk disabled, skipping send');
+      return;
+    }
+
+    if (!this.bizgo?.send) {
+      this.logger.warn('Bizgo SDK not available, skipping friendtalk send');
+      return;
+    }
+
+    const cartUrl = streamKey
+      ? `${this.frontendUrl}/live/${streamKey}`
+      : `${this.frontendUrl}/cart`;
+
+    const text = `장바구니에 담긴 "${productName}" 구매를 잊지 마세요!\n\n⏰ 장바구니 만료까지 약 ${minutesLeft}분 남았습니다.\n지금 바로 결제를 완료해보세요.`;
+
+    try {
+      const button = new KakaoButtonBuilder()
+        .setType('WL')
+        .setName('지금 결제하기')
+        .setUrlMobile(cartUrl)
+        .setUrlPc(cartUrl)
+        .build();
+
+      const attachment = new BrandMessageAttachmentBuilder().setButton([button]).build();
+
+      const friendtalk = new BrandMessageBuilder()
+        .setSenderKey(this.senderKey)
+        .setSendType('free')
+        .setMsgType('FT')
+        .setText(text)
+        .setAttachment(attachment)
+        .setAdFlag('Y')
+        .build();
+
+      const destination = new DestinationBuilder().setTo(phone).build();
+
+      const request = new OMNIRequestBodyBuilder()
+        .setDestinations([destination])
+        .setMessageFlow([{ brandmessage: friendtalk }])
+        .build();
+
+      const result = await this.bizgo.send.OMNI(request);
+      const dest = result?.data?.data?.destinations?.[0];
+
+      if (dest?.code === 'A000') {
+        this.logger.log(`Cart reminder friendtalk sent to ${phone}`);
+      } else {
+        this.logger.warn(`Friendtalk send returned code ${dest?.code}: ${dest?.result}`, {
+          to: phone,
+        });
+      }
+    } catch (error: unknown) {
+      this.logSendError('send cart reminder friendtalk', error);
+    }
+  }
+
   async sendLiveStartAlimtalk(
     phoneNumbers: string[],
     streamTitle: string,
     streamUrl: string,
+    streamDescription?: string,
   ): Promise<void> {
     if (phoneNumbers.length === 0) {
       return;
@@ -263,14 +432,20 @@ export class AlimtalkService implements OnModuleInit {
     });
 
     if (!template?.kakaoTemplateCode) {
-      this.logger.warn('LIVE_START alimtalk template code not configured');
+      this.logger.warn('LIVE_START template code not configured');
       return;
     }
+
+    const text = template.template
+      .replace('#{쇼핑몰명}', '도레미마켓')
+      .replace('#{라이브주제}', streamTitle)
+      .replace('#{상세내용}', streamDescription ?? streamTitle)
+      .replace('#{방송URL}', streamUrl);
 
     const messages: AlimtalkMessage[] = phoneNumbers.map((phone) => ({
       to: phone,
       templateCode: template.kakaoTemplateCode,
-      text: template.template.replace('#{streamTitle}', streamTitle),
+      text,
       buttons: [
         {
           buttonType: 'WL',

@@ -455,6 +455,67 @@ export class CartService {
   }
 
   /**
+   * Cron job: Send cart reminder friendtalk when ~5 minutes remain
+   * Runs every minute, targets carts expiring in 4–6 minutes that haven't been notified yet
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async sendCartReminders() {
+    try {
+      const now = new Date();
+      const windowStart = new Date(now.getTime() + 4 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + 6 * 60 * 1000);
+
+      const remindableCarts = await this.prisma.cart.findMany({
+        where: {
+          status: SharedCartStatus.ACTIVE,
+          timerEnabled: true,
+          reminderSent: false,
+          expiresAt: {
+            gte: windowStart,
+            lte: windowEnd,
+          },
+        },
+        include: {
+          product: { select: { streamKey: true } },
+        },
+      });
+
+      if (remindableCarts.length === 0) {
+        return;
+      }
+
+      // Mark reminder as sent before emitting to prevent double-send on retry
+      await this.prisma.cart.updateMany({
+        where: { id: { in: remindableCarts.map((c) => c.id) } },
+        data: { reminderSent: true },
+      });
+
+      const userCartMap = new Map<string, typeof remindableCarts>();
+      for (const cart of remindableCarts) {
+        if (!cart.userId) {
+          continue;
+        }
+        const existing = userCartMap.get(cart.userId) ?? [];
+        userCartMap.set(cart.userId, [...existing, cart]);
+      }
+
+      for (const [userId, items] of userCartMap) {
+        this.eventEmitter.emit('cart:reminder', {
+          userId,
+          productIds: items.map((i) => i.productId),
+          productNames: items.map((i) => i.productName),
+          streamKey: items[0]?.product?.streamKey ?? null,
+          minutesLeft: 5,
+        });
+      }
+
+      this.logger.log(`Cart reminder emitted for ${remindableCarts.length} carts`);
+    } catch (error) {
+      this.logger.error('Failed to send cart reminders', (error as Error).stack);
+    }
+  }
+
+  /**
    * Get reserved quantity for a product (sum of all active cart items)
    */
   private async getReservedQuantity(productId: string): Promise<number> {

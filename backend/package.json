@@ -24,7 +24,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@infobank/infobank-omni-sdk-js": "^1.1.1",
+    "@bizgo/bizgo-sdk-comm-js": "^1.0.1",
     "@live-commerce/shared-types": "*",
     "@nestjs/common": "^11.1.12",
     "@nestjs/config": "^4.0.2",

@@ -198,6 +198,7 @@ model Cart {
   shippingFee  Decimal    @default(0) @map("shipping_fee") @db.Decimal(10, 2)
   timerEnabled Boolean    @default(false) @map("timer_enabled")
   expiresAt    DateTime?  @map("expires_at")
+  reminderSent Boolean    @default(false) @map("reminder_sent")
   status       CartStatus @default(ACTIVE)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
@@ -206,6 +207,7 @@ model Cart {
   @@index([productId, status])  // For reserved quantity calculation (N+1 fix)
   @@index([expiresAt])
   @@index([status, timerEnabled, expiresAt])  // For cron job: expireTimedOutCarts
+  @@index([status, timerEnabled, reminderSent, expiresAt])  // For cron: sendCartReminders
   @@map("carts")
 }
 

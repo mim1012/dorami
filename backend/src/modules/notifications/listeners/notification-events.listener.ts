@@ -118,7 +118,7 @@ export class NotificationEventsListener {
       const streamStart = stream.startedAt;
       const streamEnd = stream.endedAt ?? new Date();
 
-      // 방송 중 결제 확인된 주문 조회
+      // 방송 중 결제 확인된 주문 조회 (template + config는 sendOrderAlimtalkBatch에서 한 번만 fetch)
       const paidOrders = await this.prisma.order.findMany({
         where: {
           paymentStatus: 'CONFIRMED',
@@ -129,8 +129,9 @@ export class NotificationEventsListener {
         },
         include: {
           user: {
-            select: { kakaoPhone: true },
+            select: { kakaoPhone: true, name: true },
           },
+          orderItems: { select: { productName: true }, orderBy: { productName: 'asc' } },
         },
       });
 
@@ -140,22 +141,7 @@ export class NotificationEventsListener {
       }
 
       this.logger.log(`Sending ${paidOrders.length} deferred invoice alimtalks`);
-
-      for (const order of paidOrders) {
-        const phone = order.user?.kakaoPhone;
-        if (!phone) {
-          continue;
-        }
-
-        try {
-          await this.alimtalkService.sendOrderAlimtalk(phone, order.id, Number(order.total));
-        } catch (error) {
-          this.logger.error(
-            `Failed to send deferred invoice alimtalk for order ${order.id}`,
-            (error as Error).message,
-          );
-        }
-      }
+      await this.alimtalkService.sendOrderAlimtalkBatch(paidOrders);
     } catch (error) {
       this.logger.error(
         'Failed to process stream ended invoice alimtalks',
@@ -260,6 +246,39 @@ export class NotificationEventsListener {
     }
   }
 
+  @OnEvent('cart:reminder')
+  async handleCartReminder(payload: {
+    userId: string;
+    productIds: string[];
+    productNames: string[];
+    streamKey: string | null;
+    minutesLeft: number;
+  }) {
+    this.logger.log(`Sending cart reminder friendtalk to user ${payload.userId}`);
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { kakaoPhone: true },
+      });
+
+      if (!user?.kakaoPhone) {
+        return;
+      }
+
+      const productName = payload.productNames[0] ?? '상품';
+
+      await this.alimtalkService.sendCartReminderFriendtalk(
+        user.kakaoPhone,
+        productName,
+        payload.minutesLeft,
+        payload.streamKey ?? undefined,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send cart reminder friendtalk', (error as Error).message);
+    }
+  }
+
   @OnEvent('stream:started')
   async handleStreamStarted(payload: { streamId: string; userId: string }) {
     this.logger.log(`Stream started: ${payload.streamId} by user: ${payload.userId}`);
@@ -267,7 +286,7 @@ export class NotificationEventsListener {
     try {
       const stream = await this.prisma.liveStream.findUnique({
         where: { id: payload.streamId },
-        select: { title: true, streamKey: true },
+        select: { title: true, streamKey: true, description: true },
       });
 
       if (!stream) {
@@ -288,7 +307,12 @@ export class NotificationEventsListener {
 
       const streamUrl = `https://www.doremi-live.com/live/${stream.streamKey}`;
 
-      await this.alimtalkService.sendLiveStartAlimtalk(phoneNumbers, stream.title, streamUrl);
+      await this.alimtalkService.sendLiveStartAlimtalk(
+        phoneNumbers,
+        stream.title,
+        streamUrl,
+        stream.description ?? undefined,
+      );
     } catch (error) {
       this.logger.error('Failed to send live start alimtalk', (error as Error).message);
     }
