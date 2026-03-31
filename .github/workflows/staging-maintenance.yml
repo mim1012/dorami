@@ -21,6 +21,7 @@ on:
           - restart-frontend
           - db-migrate
           - disk-usage
+          - test-alimtalk
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -100,6 +101,9 @@ jobs:
             disk-usage)
               CMD="df -h / && docker system df"
               ;;
+            test-alimtalk)
+              CMD="__RUN_TEST_ALIMTALK__"
+              ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
               ;;
@@ -160,6 +164,73 @@ jobs:
 
               rm -f "$TMP_CODES"
           ENDSSH
+          elif [ "$CMD" = "__RUN_TEST_ALIMTALK__" ]; then
+            echo "Triggering test alimtalk via staging API (localhost)"
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              set -euo pipefail
+              BASE="http://localhost:3001"
+
+              # 1) CSRF token
+              CSRF=$(curl -s -c /tmp/tc.txt "$BASE/api/csrf" | sed 's/.*"csrfToken":"\([^"]*\)".*/\1/')
+              echo "CSRF: ${CSRF:0:16}..."
+
+              # 2) dev-login as admin
+              LOGIN=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt \
+                -X POST "$BASE/api/auth/dev-login" \
+                -H "Content-Type: application/json" \
+                -H "x-csrf-token: $CSRF" \
+                -d '{"email":"dksk0359@gmail.com"}')
+              echo "Login: $LOGIN"
+
+              # 3) find first available product
+              PRODUCT=$(curl -s -b /tmp/tc.txt "$BASE/api/products?limit=1&status=AVAILABLE" | \
+                python3 -c "import sys,json; d=json.load(sys.stdin); p=d['data']['items'][0] if d.get('data') else d['items'][0]; print(p['id'],p['price'],p.get('shippingFee',0))")
+              PROD_ID=$(echo $PRODUCT | awk '{print $1}')
+              PROD_PRICE=$(echo $PRODUCT | awk '{print $2}')
+              echo "Product: id=$PROD_ID price=$PROD_PRICE"
+
+              # 4) add to cart
+              CSRF2=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt "$BASE/api/csrf" | sed 's/.*"csrfToken":"\([^"]*\)".*/\1/')
+              CART=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt \
+                -X POST "$BASE/api/cart" \
+                -H "Content-Type: application/json" \
+                -H "x-csrf-token: $CSRF2" \
+                -d "{\"productId\":\"$PROD_ID\",\"quantity\":1}")
+              echo "Cart: $(echo $CART | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("data",{}).get("id","err"))' 2>/dev/null || echo $CART)"
+
+              # 5) get cart id
+              CART_ID=$(echo $CART | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"]["id"])' 2>/dev/null || echo "")
+
+              if [ -z "$CART_ID" ]; then
+                echo "Failed to get cart id — check product availability"
+                exit 1
+              fi
+
+              # 6) create order
+              CSRF3=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt "$BASE/api/csrf" | sed 's/.*"csrfToken":"\([^"]*\)".*/\1/')
+              ORDER=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt \
+                -X POST "$BASE/api/orders" \
+                -H "Content-Type: application/json" \
+                -H "x-csrf-token: $CSRF3" \
+                -d "{\"cartId\":\"$CART_ID\"}")
+              ORDER_ID=$(echo $ORDER | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"]["id"])' 2>/dev/null || echo "")
+              echo "Order created: $ORDER_ID"
+
+              if [ -z "$ORDER_ID" ]; then
+                echo "Order creation failed: $ORDER"
+                exit 1
+              fi
+
+              # 7) confirm payment (triggers alimtalk)
+              CSRF4=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt "$BASE/api/csrf" | sed 's/.*"csrfToken":"\([^"]*\)".*/\1/')
+              CONFIRM=$(curl -s -c /tmp/tc.txt -b /tmp/tc.txt \
+                -X POST "$BASE/api/orders/$ORDER_ID/confirm-payment" \
+                -H "Content-Type: application/json" \
+                -H "x-csrf-token: $CSRF4" \
+                -d '{}')
+              echo "Payment confirm: $CONFIRM"
+              echo "✅ Alimtalk should be sent now!"
+            ENDSSH
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
