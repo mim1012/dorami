@@ -97,6 +97,10 @@ temp/
 tmp/
 *.tmp
 nul
+
+# Security: test auth tokens / curl session files (never commit)
+cookies.txt
+**/cookies.txt
 backend/uploads/
 ssh/
 

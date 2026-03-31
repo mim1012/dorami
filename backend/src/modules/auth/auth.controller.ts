@@ -282,12 +282,17 @@ export class AuthController {
   @SkipCsrf()
   @ApiResponse({ status: 200, description: '개발 로그인 성공' })
   @ApiResponse({ status: 403, description: '개발 인증 비활성화됨' })
-  async devLogin(@Body() body: DevLoginDto, @Res() res: Response) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    const devDefault = nodeEnv === 'development' ? 'true' : 'false';
-    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH', devDefault);
+  async devLogin(@Body() body: DevLoginDto, @Res() res: Response, @Req() request: any) {
+    const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH');
     if (enableDevAuth !== 'true') {
       throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
+    }
+    const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
+    const isLocal =
+      clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+    if (!isLocal) {
+      this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
+      throw new ForbiddenException('Dev login only available from localhost');
     }
 
     const { email, name } = body;

@@ -18,13 +18,13 @@ const MAX_LIMIT = 999999;
 
 const shortLimit = isDisabled
   ? MAX_LIMIT
-  : parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '5000'), 10);
+  : parseInt(process.env.THROTTLE_SHORT_LIMIT ?? (isDev ? '30' : '20'), 10);
 const mediumLimit = isDisabled
   ? MAX_LIMIT
-  : parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '10000'), 10);
+  : parseInt(process.env.THROTTLE_MEDIUM_LIMIT ?? (isDev ? '200' : '100'), 10);
 const longLimit = isDisabled
   ? MAX_LIMIT
-  : parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '50000'), 10);
+  : parseInt(process.env.THROTTLE_LONG_LIMIT ?? (isDev ? '1000' : '500'), 10);
 
 export const throttlerConfig: ThrottlerModuleOptions = [
   {
@@ -51,5 +51,5 @@ export const throttlerConfig: ThrottlerModuleOptions = [
  */
 export const authThrottlerConfig = {
   ttl: parseInt(process.env.AUTH_THROTTLE_WINDOW_MS ?? '60000', 10),
-  limit: parseInt(process.env.AUTH_THROTTLE_LIMIT ?? '500', 10),
+  limit: parseInt(process.env.AUTH_THROTTLE_LIMIT ?? '10', 10),
 };

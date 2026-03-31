@@ -169,7 +169,11 @@ services:
     container_name: dorami-srs-prod
     restart: always
     ports:
-      - '1935:1935'  # RTMP ingest
+      # SECURITY: RTMP port exposed to all interfaces — restrict via server firewall (ufw):
+      #   ufw allow from <OBS_IP> to any port 1935 proto tcp
+      #   ufw deny 1935
+      # Never expose to 0.0.0.0 in production without IP whitelisting.
+      - '1935:1935'  # RTMP ingest (restrict via ufw on host)
     volumes:
       - ./infrastructure/docker/srs/srs.conf:/usr/local/srs/conf/docker.conf:ro
     mem_limit: 1g

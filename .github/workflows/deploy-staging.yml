@@ -220,6 +220,8 @@ jobs:
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Creating .env.staging from GitHub Secrets ==="
+            # Security: disable shell trace to prevent secrets leaking via ACTIONS_STEP_DEBUG
+            set +x
             {
               echo "DATABASE_URL=\"postgresql://postgres:${STAGING_POSTGRES_PASSWORD}@postgres:5432/live_commerce_staging\""
               echo "POSTGRES_USER=\"postgres\""
