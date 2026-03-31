@@ -168,45 +168,32 @@ jobs:
             echo "Triggering test alimtalk (node.js script inside backend container)"
             ssh $USER@$HOST 'cat > /tmp/alimtest.js' <<'ALIMSCRIPT'
             const http = require('http');
-            function req(opts, body, jar) {
-              return new Promise((res, rej) => {
-                const h = {...(opts.headers||{})};
-                if (jar && jar.length) h['Cookie'] = jar.map(c=>c.split(';')[0]).join('; ');
-                if (body) h['Content-Length'] = Buffer.byteLength(body);
-                const r = http.request({...opts, headers:h}, (resp) => {
-                  let d=''; resp.on('data',c=>d+=c); resp.on('end',()=>res({s:resp.statusCode,b:d,ck:resp.headers['set-cookie']||[]}));
-                });
-                r.on('error',rej); if(body)r.write(body); r.end();
-              });
-            }
-            async function main() {
-              const H='localhost', P=3001; const jar=[];
-              const login = await req({host:H,port:P,method:'POST',path:'/api/auth/dev-login',headers:{'Content-Type':'application/json'}},JSON.stringify({email:'dksk0359@gmail.com'}),jar);
-              console.log('Login status:', login.s, login.b.slice(0,120));
-              if(login.s<200||login.s>=300){console.error('Login failed');process.exit(1);}
-              login.ck.forEach(c=>jar.push(c));
-              const csrfCk=jar.find(c=>c.startsWith('csrf-token='));
-              const csrfToken=csrfCk?decodeURIComponent(csrfCk.split(';')[0].split('=')[1]):'';
-              console.log('CSRF token:', csrfToken.slice(0,20));
-              const prods = await req({host:H,port:P,method:'GET',path:'/api/products?limit=1'},null,jar);
-              prods.ck.forEach(c=>jar.push(c));
-              const pd=JSON.parse(prods.b); const items=Array.isArray(pd.data)?pd.data:(pd.data||pd).items||pd.items||[];
-              console.log('Items count:', items.length); if(!items.length){console.error('No products');process.exit(1);}
+            const H='localhost', P=3001;
+            function rq(opts,body,jar){return new Promise((res,rej)=>{const h={...(opts.headers||{})};if(jar&&jar.length)h['Cookie']=jar.map(c=>c.split(';')[0]).join('; ');if(body)h['Content-Length']=Buffer.byteLength(body);const r=http.request({...opts,headers:h},resp=>{let d='';resp.on('data',c=>d+=c);resp.on('end',()=>res({s:resp.statusCode,b:d,ck:resp.headers['set-cookie']||[]}));});r.on('error',rej);if(body)r.write(body);r.end();});}
+            function csrf(jar){const c=jar.find(c=>c.startsWith('csrf-token='));return c?decodeURIComponent(c.split(';')[0].split('=')[1]):'';}
+            async function session(email){const j=[];const l=await rq({host:H,port:P,method:'POST',path:'/api/auth/dev-login',headers:{'Content-Type':'application/json'}},JSON.stringify({email}),j);if(l.s<200||l.s>=300){throw new Error('Login failed: '+l.b);}l.ck.forEach(c=>j.push(c));const g=await rq({host:H,port:P,method:'GET',path:'/api/products?limit=1'},null,j);g.ck.forEach(c=>j.push(c));return {jar:j,csrf:csrf(j),prods:JSON.parse(g.b)};}
+            async function main(){
+              const s1=await session('dksk0359@gmail.com');
+              console.log('User login ok, CSRF:', s1.csrf.slice(0,15));
+              const items=Array.isArray(s1.prods.data)?s1.prods.data:(s1.prods.data||{}).items||[];
+              if(!items.length){throw new Error('No products');}
               const productId=items[0].id; console.log('Product:', productId);
-              const csrfCk2=jar.find(c=>c.startsWith('csrf-token='));
-              const csrfToken2=csrfCk2?decodeURIComponent(csrfCk2.split(';')[0].split('=')[1]):'';
-              console.log('CSRF token after GET:', csrfToken2.slice(0,20));
-              const cartRes = await req({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({productId,quantity:1}),jar);
-              console.log('Cart status:', cartRes.s, cartRes.b.slice(0,120));
-              const cartId=JSON.parse(cartRes.b).data.id;
-              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({cartItemIds:[cartId]}),jar);
-              console.log('Order status:', orderRes.s, orderRes.b.slice(0,120));
-              const orderId=JSON.parse(orderRes.b).data.id;
-              const confirm = await req({host:H,port:P,method:'POST',path:`/api/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({}),jar);
-              console.log('Confirm status:', confirm.s, confirm.b.slice(0,200));
+              const cr=await rq({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json','x-csrf-token':s1.csrf}},JSON.stringify({productId,quantity:1}),s1.jar);
+              console.log('Cart:', cr.s, cr.b.slice(0,100));
+              if(cr.s<200||cr.s>=300){throw new Error('Cart failed');}
+              const cartId=JSON.parse(cr.b).data.id;
+              const or=await rq({host:H,port:P,method:'POST',path:'/api/orders/from-cart',headers:{'Content-Type':'application/json','x-csrf-token':s1.csrf}},JSON.stringify({cartItemIds:[cartId]}),s1.jar);
+              console.log('Order:', or.s, or.b.slice(0,150));
+              if(or.s<200||or.s>=300){throw new Error('Order failed: '+or.b);}
+              const orderId=JSON.parse(or.b).data.id; console.log('Order ID:', orderId);
+              const s2=await session('admin@dorami.shop');
+              console.log('Admin login ok, CSRF:', s2.csrf.slice(0,15));
+              const cf=await rq({host:H,port:P,method:'PATCH',path:`/api/admin/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json','x-csrf-token':s2.csrf}},JSON.stringify({}),s2.jar);
+              console.log('Confirm:', cf.s, cf.b.slice(0,200));
+              if(cf.s<200||cf.s>=300){throw new Error('Confirm failed: '+cf.b);}
               console.log('Done - alimtalk sent!');
             }
-            main().catch(e=>{console.error(e);process.exit(1);});
+            main().catch(e=>{console.error(e.message||e);process.exit(1);});
           ALIMSCRIPT
             ssh $USER@$HOST "docker exec -i dorami-backend-1 node - < /tmp/alimtest.js"
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
