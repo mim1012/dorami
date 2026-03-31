@@ -165,32 +165,42 @@ jobs:
               rm -f "$TMP_CODES"
           ENDSSH
           elif [ "$CMD" = "__RUN_TEST_ALIMTALK__" ]; then
-            echo "Triggering test alimtalk (runs on staging host via nginx)"
-            ssh $USER@$HOST 'cat > /tmp/alimtest.sh' <<'ALIMSCRIPT'
-            set -e
-            B="https://localhost/api"
-            LOGIN=$(curl -sk -c /tmp/tc.txt -X POST "$B/auth/dev-login" \
-              -H "Content-Type: application/json" -d '{"email":"dksk0359@gmail.com"}')
-            echo "Login: $LOGIN"
-            PROD=$(curl -sk -b /tmp/tc.txt "$B/products?limit=1" | \
-              python3 -c "import sys,json; d=json.load(sys.stdin); items=(d.get('data') or d).get('items') or d.get('items',[]); print(items[0]['id'])")
-            echo "Product: $PROD"
-            CART=$(curl -sk -b /tmp/tc.txt -X POST "$B/cart" \
-              -H "Content-Type: application/json" -d "{\"productId\":\"$PROD\",\"quantity\":1}")
-            echo "Cart response: $CART"
-            CID=$(echo "$CART" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
-            echo "Cart ID: $CID"
-            ORDER=$(curl -sk -b /tmp/tc.txt -X POST "$B/orders" \
-              -H "Content-Type: application/json" -d "{\"cartId\":\"$CID\"}")
-            echo "Order response: $ORDER"
-            OID=$(echo "$ORDER" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
-            echo "Order ID: $OID"
-            CONFIRM=$(curl -sk -b /tmp/tc.txt -X POST "$B/orders/$OID/confirm-payment" \
-              -H "Content-Type: application/json" -d "{}")
-            echo "Confirm: $CONFIRM"
-            echo "Done - alimtalk sent!"
+            echo "Triggering test alimtalk (node.js script inside backend container)"
+            ssh $USER@$HOST 'cat > /tmp/alimtest.js' <<'ALIMSCRIPT'
+            const http = require('http');
+            function req(opts, body, jar) {
+              return new Promise((res, rej) => {
+                const h = {...(opts.headers||{})};
+                if (jar && jar.length) h['Cookie'] = jar.map(c=>c.split(';')[0]).join('; ');
+                if (body) h['Content-Length'] = Buffer.byteLength(body);
+                const r = http.request({...opts, headers:h}, (resp) => {
+                  let d=''; resp.on('data',c=>d+=c); resp.on('end',()=>res({s:resp.statusCode,b:d,ck:resp.headers['set-cookie']||[]}));
+                });
+                r.on('error',rej); if(body)r.write(body); r.end();
+              });
+            }
+            async function main() {
+              const H='localhost', P=3001; const jar=[];
+              const login = await req({host:H,port:P,method:'POST',path:'/api/auth/dev-login',headers:{'Content-Type':'application/json'}},JSON.stringify({email:'dksk0359@gmail.com'}),jar);
+              console.log('Login status:', login.s, login.b.slice(0,120));
+              if(login.s!==200){console.error('Login failed');process.exit(1);}
+              login.ck.forEach(c=>jar.push(c));
+              const prods = await req({host:H,port:P,method:'GET',path:'/api/products?limit=1'},null,jar);
+              const pd=JSON.parse(prods.b); const items=(pd.data||pd).items||pd.items||[];
+              const productId=items[0].id; console.log('Product:', productId);
+              const cartRes = await req({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json'}},JSON.stringify({productId,quantity:1}),jar);
+              console.log('Cart status:', cartRes.s, cartRes.b.slice(0,120));
+              const cartId=JSON.parse(cartRes.b).data.id;
+              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json'}},JSON.stringify({cartId}),jar);
+              console.log('Order status:', orderRes.s, orderRes.b.slice(0,120));
+              const orderId=JSON.parse(orderRes.b).data.id;
+              const confirm = await req({host:H,port:P,method:'POST',path:`/api/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json'}},JSON.stringify({}),jar);
+              console.log('Confirm status:', confirm.s, confirm.b.slice(0,200));
+              console.log('Done - alimtalk sent!');
+            }
+            main().catch(e=>{console.error(e);process.exit(1);});
           ALIMSCRIPT
-            ssh $USER@$HOST "bash /tmp/alimtest.sh"
+            ssh $USER@$HOST "docker exec -i dorami-backend-1 node - < /tmp/alimtest.js"
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
