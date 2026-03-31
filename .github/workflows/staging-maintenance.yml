@@ -199,7 +199,7 @@ jobs:
               const cartRes = await req({host:H,port:P,method:'POST',path:'/api/cart',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({productId,quantity:1}),jar);
               console.log('Cart status:', cartRes.s, cartRes.b.slice(0,120));
               const cartId=JSON.parse(cartRes.b).data.id;
-              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({cartId}),jar);
+              const orderRes = await req({host:H,port:P,method:'POST',path:'/api/orders',headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({cartItemIds:[cartId]}),jar);
               console.log('Order status:', orderRes.s, orderRes.b.slice(0,120));
               const orderId=JSON.parse(orderRes.b).data.id;
               const confirm = await req({host:H,port:P,method:'POST',path:`/api/orders/${orderId}/confirm-payment`,headers:{'Content-Type':'application/json','x-csrf-token':csrfToken2}},JSON.stringify({}),jar);
