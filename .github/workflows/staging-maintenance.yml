@@ -24,6 +24,7 @@ on:
           - disk-usage
           - test-alimtalk
           - enable-alimtalk
+          - check-alimtalk-config
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -111,6 +112,9 @@ jobs:
               ;;
             enable-alimtalk)
               CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE system_config SET alimtalk_enabled=true WHERE id='system'; SELECT id, alimtalk_enabled FROM system_config WHERE id='system';\""
+              ;;
+            check-alimtalk-config)
+              CMD="__RUN_CHECK_ALIMTALK_CONFIG__"
               ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
@@ -204,6 +208,24 @@ jobs:
             main().catch(e=>{console.error(e.message||e);process.exit(1);});
           ALIMSCRIPT
             ssh $USER@$HOST "docker exec -i dorami-backend-1 node - < /tmp/alimtest.js"
+          elif [ "$CMD" = "__RUN_CHECK_ALIMTALK_CONFIG__" ]; then
+            echo "=== Checking alimtalk config in staging ==="
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              echo "--- BIZGO_API_KEY set? ---"
+              docker exec dorami-backend-1 sh -c 'if [ -n "$BIZGO_API_KEY" ]; then echo "YES (len=${#BIZGO_API_KEY})"; else echo "NOT SET"; fi'
+
+              echo "--- BIZGO_SENDER_KEY set? ---"
+              docker exec dorami-backend-1 sh -c 'if [ -n "$BIZGO_SENDER_KEY" ]; then echo "YES (len=${#BIZGO_SENDER_KEY})"; else echo "NOT SET"; fi'
+
+              echo "--- notification_templates ---"
+              docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c "SELECT type, kakao_template_code, LEFT(template,60) AS template_preview FROM notification_templates ORDER BY type;"
+
+              echo "--- system_config ---"
+              docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c "SELECT id, alimtalk_enabled FROM system_config WHERE id='system';"
+
+              echo "--- recent alimtalk-related backend logs (journalctl fallback) ---"
+              docker logs dorami-backend-1 2>&1 | grep -i -E "(alimtalk|bizgo|A000|template|ORDER_CONFIRM)" | tail -30 || true
+            ENDSSH
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
