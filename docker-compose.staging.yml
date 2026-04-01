@@ -72,6 +72,8 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@live-commerce.com}
+      BIZGO_API_KEY: ${BIZGO_API_KEY:-}
+      BIZGO_SENDER_KEY: ${BIZGO_SENDER_KEY:-}
     expose:
       - 3001
     volumes:
