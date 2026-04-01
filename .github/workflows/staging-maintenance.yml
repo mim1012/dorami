@@ -110,7 +110,7 @@ jobs:
               CMD="__RUN_TEST_ALIMTALK__"
               ;;
             enable-alimtalk)
-              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE system_configs SET alimtalk_enabled=true WHERE id='system'; SELECT id, alimtalk_enabled FROM system_configs WHERE id='system';\""
+              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE system_config SET alimtalk_enabled=true WHERE id='system'; SELECT id, alimtalk_enabled FROM system_config WHERE id='system';\""
               ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
