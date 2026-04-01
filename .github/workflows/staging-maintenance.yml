@@ -213,19 +213,15 @@ jobs:
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
               echo "--- BIZGO_API_KEY set? ---"
               docker exec dorami-backend-1 sh -c 'if [ -n "$BIZGO_API_KEY" ]; then echo "YES (len=${#BIZGO_API_KEY})"; else echo "NOT SET"; fi'
-
               echo "--- BIZGO_SENDER_KEY set? ---"
               docker exec dorami-backend-1 sh -c 'if [ -n "$BIZGO_SENDER_KEY" ]; then echo "YES (len=${#BIZGO_SENDER_KEY})"; else echo "NOT SET"; fi'
-
               echo "--- notification_templates ---"
               docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c "SELECT type, kakao_template_code, LEFT(template,60) AS template_preview FROM notification_templates ORDER BY type;"
-
               echo "--- system_config ---"
               docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c "SELECT id, alimtalk_enabled FROM system_config WHERE id='system';"
-
-              echo "--- recent alimtalk-related backend logs (journalctl fallback) ---"
-              docker logs dorami-backend-1 2>&1 | grep -i -E "(alimtalk|bizgo|A000|template|ORDER_CONFIRM)" | tail -30 || true
-            ENDSSH
+              echo "--- alimtalk backend logs ---"
+              docker logs dorami-backend-1 2>&1 | grep -i -E "(alimtalk|bizgo|A000|ORDER_CONFIRM)" | tail -30 || true
+          ENDSSH
           elif [ "$CMD" = "__RUN_NGINX_HEALTH__" ]; then
             echo "Executing nginx health diagnostics in staging"
             ssh $USER@$HOST "bash -s" <<'ENDSSH'
