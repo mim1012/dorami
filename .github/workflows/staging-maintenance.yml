@@ -23,6 +23,7 @@ on:
           - user-check
           - disk-usage
           - test-alimtalk
+          - enable-alimtalk
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -107,6 +108,9 @@ jobs:
               ;;
             test-alimtalk)
               CMD="__RUN_TEST_ALIMTALK__"
+              ;;
+            enable-alimtalk)
+              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE system_configs SET alimtalk_enabled=true WHERE id='system'; SELECT id, alimtalk_enabled FROM system_configs WHERE id='system';\""
               ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
