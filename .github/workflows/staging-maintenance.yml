@@ -100,7 +100,7 @@ jobs:
               CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c 'SELECT id, name, quantity, status FROM products ORDER BY status, name;'"
               ;;
             user-check)
-              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"SELECT email, kakao_phone, profile_completed_at, role, status FROM users WHERE email='aq04031@naver.com';\""
+              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"SELECT email, kakao_phone, instagram_id, profile_completed_at, role, status FROM users WHERE email='aq04031@naver.com';\""
               ;;
             disk-usage)
               CMD="df -h / && docker system df"
