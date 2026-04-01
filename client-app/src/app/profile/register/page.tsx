@@ -10,6 +10,7 @@ import {
   formatPhoneNumberForInput,
   formatZipCode,
   formatInstagramId,
+  inferPhoneRegion,
   isValidProfilePhone,
   normalizePhoneForBackend,
   PhoneRegion,
@@ -64,16 +65,6 @@ interface ProfileResponse {
 
 const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
 const ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
-const inferPhoneRegion = (value?: string): PhoneRegion => {
-  if (!value) {
-    return 'US';
-  }
-  const compact = value.replace(/\s/g, '');
-  if (compact.startsWith('+82') || compact.startsWith('0')) {
-    return 'KR';
-  }
-  return 'US';
-};
 
 const sanitizeReturnPath = (raw: string | null): string | null => {
   if (!raw) return null;

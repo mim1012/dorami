@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
 import {
   formatPhoneNumberForInput,
+  inferPhoneRegion,
   isValidProfilePhone,
   normalizePhoneForBackend,
   PhoneRegion,
@@ -46,17 +47,6 @@ interface ProfileData {
   createdAt: string;
   updatedAt: string;
 }
-
-const inferPhoneRegion = (value?: string): PhoneRegion => {
-  if (!value) {
-    return 'US';
-  }
-  const compact = value.replace(/\s/g, '');
-  if (compact.startsWith('+82') || compact.startsWith('0')) {
-    return 'KR';
-  }
-  return 'US';
-};
 
 export default function MyPagePage() {
   const router = useRouter();

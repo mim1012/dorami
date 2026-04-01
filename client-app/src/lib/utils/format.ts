@@ -134,7 +134,21 @@ export function normalizePhoneForBackend(value: string): string {
     return `+1${compact.slice(2).replace(/[^\d]/g, '')}`;
   }
 
+  // 82로 시작하지만 + 없는 경우 (+82 누락) — 한국 국가코드로 처리
+  if (/^82\d{8,11}$/.test(compact)) {
+    return `+${compact}`;
+  }
+
   return compact;
+}
+
+export function inferPhoneRegion(value?: string): PhoneRegion {
+  if (!value) return 'US';
+  const compact = value.replace(/\s/g, '');
+  if (compact.startsWith('+82') || compact.startsWith('0') || /^82\d{8,11}$/.test(compact)) {
+    return 'KR';
+  }
+  return 'US';
 }
 
 /**

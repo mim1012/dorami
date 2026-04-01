@@ -24,5 +24,10 @@ export function normalizePhoneForBackend(value: string): string {
     return `+1${compact.slice(2)}`;
   }
 
+  // 82로 시작하지만 + 없는 경우 — 한국 국가코드로 처리
+  if (/^82\d{8,11}$/.test(compact)) {
+    return `+${compact}`;
+  }
+
   return compact;
 }

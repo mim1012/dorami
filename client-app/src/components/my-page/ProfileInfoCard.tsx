@@ -1,6 +1,7 @@
 'use client';
 
 import { Body, Heading2 } from '@/components/common/Typography';
+import { formatPhoneNumberForInput, inferPhoneRegion } from '@/lib/utils/format';
 
 interface ProfileInfoCardProps {
   instagramId?: string;
@@ -83,7 +84,11 @@ export function ProfileInfoCard({
         <div>
           <Body className="text-secondary-text text-caption">카카오톡 전화번호</Body>
           <div className="flex items-center gap-2">
-            <Body className="text-primary-text">{kakaoPhone || '미설정'}</Body>
+            <Body className="text-primary-text">
+              {kakaoPhone
+                ? formatPhoneNumberForInput(kakaoPhone, inferPhoneRegion(kakaoPhone))
+                : '미설정'}
+            </Body>
             {onPhoneEdit && (
               <button
                 onClick={onPhoneEdit}
