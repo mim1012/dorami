@@ -150,6 +150,7 @@ export class AlimtalkService {
         .build();
 
       const result = await this.bizgo!.send!.OMNI(request);
+      this.logger.log(`Bizgo raw response: ${JSON.stringify(result?.data)}`);
       const dest = result?.data?.data?.destinations?.[0];
 
       if (dest?.code === 'A000') {
