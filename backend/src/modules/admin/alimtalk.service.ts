@@ -15,8 +15,8 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface AlimtalkMessage {
   to: string; // phone number e.g. "01012345678"
-  templateCode: string;
-  text: string; // full message body (must match registered template)
+  templateCode?: string; // required for alimtalk, not needed for friendtalk
+  text: string; // full message body
   buttons?: Array<{
     buttonType: 'WL';
     buttonName: string;
@@ -44,7 +44,7 @@ interface PaymentConfig {
 
 interface OrderTemplate {
   template: string;
-  kakaoTemplateCode: string;
+  kakaoTemplateCode?: string | null;
 }
 
 const SEND_CONCURRENCY = 10;
@@ -120,12 +120,69 @@ export class AlimtalkService {
     }
   }
 
+  private async _sendOrderFriendtalks(messages: AlimtalkMessage[]): Promise<void> {
+    if (!this.bizgo?.send) {
+      this.logger.warn('Bizgo SDK not available, skipping send');
+      return;
+    }
+    for (let i = 0; i < messages.length; i += SEND_CONCURRENCY) {
+      const chunk = messages.slice(i, i + SEND_CONCURRENCY);
+      await Promise.all(chunk.map((msg) => this._sendSingleOrderFriendtalk(msg)));
+    }
+  }
+
+  private async _sendSingleOrderFriendtalk(msg: AlimtalkMessage): Promise<void> {
+    try {
+      const friendtalkBuilder = new BrandMessageBuilder()
+        .setSenderKey(this.senderKey)
+        .setMsgType('FT')
+        .setText(msg.text)
+        .setAdFlag('N');
+
+      if (msg.buttons?.length) {
+        const buttons = msg.buttons.map((btn) =>
+          new KakaoButtonBuilder()
+            .setType(btn.buttonType)
+            .setName(btn.buttonName)
+            .setUrlMobile(btn.linkMo)
+            .setUrlPc(btn.linkPc ?? btn.linkMo)
+            .build(),
+        );
+        friendtalkBuilder.setAttachment(
+          new BrandMessageAttachmentBuilder().setButton(buttons).build(),
+        );
+      }
+
+      const friendtalk = friendtalkBuilder.build();
+      const destination = new DestinationBuilder().setTo(msg.to).build();
+
+      const request = new OMNIRequestBodyBuilder()
+        .setDestinations([destination])
+        .setMessageFlow([{ brandmessage: friendtalk }])
+        .build();
+
+      const result = await this.bizgo!.send!.OMNI(request);
+      this.logger.log(`Bizgo raw response: ${JSON.stringify(result?.data)}`);
+      const dest = result?.data?.data?.destinations?.[0];
+
+      if (dest?.code === 'A000') {
+        this.logger.log(`Order friendtalk sent to ${msg.to}`, { msgKey: dest.msgKey });
+      } else {
+        this.logger.warn(`Order friendtalk returned code ${dest?.code}: ${dest?.result}`, {
+          to: msg.to,
+        });
+      }
+    } catch (error: unknown) {
+      this.logSendError('send order friendtalk', error);
+    }
+  }
+
   private async _sendSingle(msg: AlimtalkMessage): Promise<void> {
     try {
       const alimtalkBuilder = new AlimtalkBuilder()
         .setSenderKey(this.senderKey)
         .setMsgType('AT')
-        .setTemplateCode(msg.templateCode)
+        .setTemplateCode(msg.templateCode ?? '')
         .setText(msg.text);
 
       if (msg.buttons?.length) {
@@ -209,7 +266,6 @@ export class AlimtalkService {
 
     return {
       to: phone,
-      templateCode: template.kakaoTemplateCode,
       text,
       buttons: [
         {
@@ -239,13 +295,13 @@ export class AlimtalkService {
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
-    if (!template?.kakaoTemplateCode) {
-      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+    if (!template?.template) {
+      this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping');
       return;
     }
 
     const msg = this.buildOrderMessage(phone, orderId, total, order, config, template);
-    await this._sendAlimtalk([msg]);
+    await this._sendOrderFriendtalks([msg]);
   }
 
   /** Batch send for multiple orders — fetches template + config once instead of N times */
@@ -264,8 +320,8 @@ export class AlimtalkService {
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
-    if (!template?.kakaoTemplateCode) {
-      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+    if (!template?.template) {
+      this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping');
       return;
     }
 
@@ -275,7 +331,7 @@ export class AlimtalkService {
         this.buildOrderMessage(o.user!.kakaoPhone!, o.id, Number(o.total), o, config, template),
       );
 
-    await this._sendAlimtalk(messages);
+    await this._sendOrderFriendtalks(messages);
   }
 
   async sendPaymentReminderAlimtalk(phone: string, orderId: string, total: number): Promise<void> {
