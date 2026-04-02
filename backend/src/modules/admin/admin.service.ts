@@ -2264,4 +2264,13 @@ export class AdminService {
       remainingItemCount: remainingItems.length,
     };
   }
+
+  async testLiveAlimtalk(phone: string): Promise<void> {
+    await this.alimtalkService.sendLiveStartAlimtalk(
+      [phone],
+      '테스트 방송',
+      'https://staging.doremi-live.com/live/test',
+      '알림톡 발송 테스트',
+    );
+  }
 }

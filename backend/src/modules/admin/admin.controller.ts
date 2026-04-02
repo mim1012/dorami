@@ -269,6 +269,13 @@ export class AdminController {
     return this.adminService.sendPaymentReminder(orderId);
   }
 
+  @Post('alimtalk/test-live')
+  @ApiOperation({ summary: '라이브 알림톡 테스트 발송 (관리자)' })
+  async testLiveAlimtalk(@Body('phone') phone: string) {
+    await this.adminService.testLiveAlimtalk(phone);
+    return { sent: true, phone };
+  }
+
   @Get('users/:id')
   @ApiOperation({ summary: '사용자 상세 조회 (관리자)' })
   @ApiParam({ name: 'id', description: '사용자 ID' })
