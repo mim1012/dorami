@@ -135,6 +135,7 @@ export class AlimtalkService {
     try {
       const friendtalkBuilder = new BrandMessageBuilder()
         .setSenderKey(this.senderKey)
+        .setSendType('free')
         .setMsgType('FT')
         .setText(msg.text)
         .setAdFlag('N');
