@@ -12,6 +12,7 @@ import {
   KakaoButtonBuilder,
 } from '@bizgo/bizgo-sdk-comm-js';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { generateOrderId } from '@live-commerce/shared-types';
 
 interface AlimtalkMessage {
   to: string; // phone number e.g. "01012345678"
@@ -511,29 +512,19 @@ export class AlimtalkService {
       return;
     }
 
-    const testOrderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-00001`;
-    const text = template.template
-      .replace('#{고객명}', '테스트')
-      .replace('#{주문번호}', testOrderId)
-      .replace('#{상품명}', '테스트 상품')
-      .replace('#{수량}', '1')
-      .replace('#{금액}', '50,000')
-      .replace('#{은행명}', 'KB국민은행')
-      .replace('#{계좌번호}', '123-456-789')
-      .replace('#{예금주}', '도레미마켓');
-
-    await this._sendOrderFriendtalks([
+    const testOrderId = generateOrderId(1);
+    const msg = this.buildOrderMessage(
+      phone,
+      testOrderId,
+      50000,
+      { user: { name: '테스트' }, orderItems: [{ productName: '테스트 상품' }] },
       {
-        to: phone,
-        text,
-        buttons: [
-          {
-            buttonType: 'WL',
-            buttonName: '주문 상세 보기',
-            linkMo: `${this.frontendUrl}/orders/${testOrderId}`,
-          },
-        ],
-      },
-    ]);
+        bankName: 'KB국민은행',
+        bankAccountNumber: '123-456-789',
+        bankAccountHolder: '도레미마켓',
+      } as PaymentConfig,
+      template,
+    );
+    await this._sendOrderFriendtalks([msg]);
   }
 }
