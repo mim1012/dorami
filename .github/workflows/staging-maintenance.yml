@@ -28,6 +28,7 @@ on:
           - check-alimtalk-config
           - test-live-alimtalk
           - test-all-alimtalk
+          - set-cart-template-code
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -118,6 +119,9 @@ jobs:
               ;;
             enable-alimtalk)
               CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE system_config SET alimtalk_enabled=true WHERE id='system'; SELECT id, alimtalk_enabled FROM system_config WHERE id='system';\""
+              ;;
+            set-cart-template-code)
+              CMD="docker exec dorami-postgres-1 psql -U postgres -d live_commerce_staging -c \"UPDATE notification_templates SET kakao_template_code='CART_ALAM' WHERE type='CART_EXPIRING'; SELECT type, kakao_template_code FROM notification_templates WHERE type='CART_EXPIRING';\""
               ;;
             check-alimtalk-config)
               CMD="__RUN_CHECK_ALIMTALK_CONFIG__"
