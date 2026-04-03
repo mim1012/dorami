@@ -400,14 +400,6 @@ export class AlimtalkService {
         to: phone,
         templateCode: template.kakaoTemplateCode,
         text,
-        buttons: [
-          {
-            buttonType: 'WL',
-            buttonName: '장바구니 확인',
-            linkMo: `${this.frontendUrl}/cart`,
-            linkPc: `${this.frontendUrl}/cart`,
-          },
-        ],
       },
     ]);
   }

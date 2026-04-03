@@ -2278,7 +2278,15 @@ export class AdminService {
     await this.alimtalkService.sendTestOrderFriendtalk(phone);
   }
 
+  async testCartAlimtalk(phone: string): Promise<void> {
+    await this.alimtalkService.sendCartExpiringAlimtalk(phone, '테스트', '테스트 상품', 1);
+  }
+
   async testAllAlimtalk(phone: string): Promise<void> {
-    await Promise.allSettled([this.testLiveAlimtalk(phone), this.testOrderAlimtalk(phone)]);
+    await Promise.allSettled([
+      this.testLiveAlimtalk(phone),
+      this.testOrderAlimtalk(phone),
+      this.testCartAlimtalk(phone),
+    ]);
   }
 }
