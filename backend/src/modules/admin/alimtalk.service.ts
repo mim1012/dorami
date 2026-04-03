@@ -504,16 +504,44 @@ export class AlimtalkService {
       to: phone,
       templateCode: template.kakaoTemplateCode,
       text,
-      buttons: [
-        {
-          buttonType: 'WL',
-          buttonName: '라이브 보러가기',
-          linkMo: streamUrl,
-          linkPc: streamUrl,
-        },
-      ],
     }));
 
     await this.sendAlimtalk(messages);
+  }
+
+  async sendTestOrderFriendtalk(phone: string): Promise<void> {
+    const template = await this.prisma.notificationTemplate.findFirst({
+      where: { type: 'ORDER_CONFIRMATION' },
+    });
+
+    if (!template?.template) {
+      this.logger.warn('ORDER_CONFIRMATION template not configured, skipping test');
+      return;
+    }
+
+    const testOrderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-00001`;
+    const text = template.template
+      .replace('#{고객명}', '테스트')
+      .replace('#{주문번호}', testOrderId)
+      .replace('#{상품명}', '테스트 상품')
+      .replace('#{수량}', '1')
+      .replace('#{금액}', '50,000')
+      .replace('#{은행명}', 'KB국민은행')
+      .replace('#{계좌번호}', '123-456-789')
+      .replace('#{예금주}', '도레미마켓');
+
+    await this._sendOrderFriendtalks([
+      {
+        to: phone,
+        text,
+        buttons: [
+          {
+            buttonType: 'WL',
+            buttonName: '주문 상세 보기',
+            linkMo: `${this.frontendUrl}/orders/${testOrderId}`,
+          },
+        ],
+      },
+    ]);
   }
 }

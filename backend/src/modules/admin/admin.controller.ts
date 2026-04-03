@@ -276,6 +276,13 @@ export class AdminController {
     return { sent: true, phone };
   }
 
+  @Post('alimtalk/test-all')
+  @ApiOperation({ summary: '전체 알림톡/친구톡 테스트 일괄 발송 (관리자)' })
+  async testAllAlimtalk(@Body('phone') phone: string) {
+    await this.adminService.testAllAlimtalk(phone);
+    return { sent: true, phone };
+  }
+
   @Get('users/:id')
   @ApiOperation({ summary: '사용자 상세 조회 (관리자)' })
   @ApiParam({ name: 'id', description: '사용자 ID' })

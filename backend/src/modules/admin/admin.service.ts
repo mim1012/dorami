@@ -2273,4 +2273,12 @@ export class AdminService {
       '알림톡 발송 테스트',
     );
   }
+
+  async testOrderAlimtalk(phone: string): Promise<void> {
+    await this.alimtalkService.sendTestOrderFriendtalk(phone);
+  }
+
+  async testAllAlimtalk(phone: string): Promise<void> {
+    await Promise.allSettled([this.testLiveAlimtalk(phone), this.testOrderAlimtalk(phone)]);
+  }
 }

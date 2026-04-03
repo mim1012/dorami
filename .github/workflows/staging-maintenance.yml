@@ -27,6 +27,7 @@ on:
           - enable-alimtalk
           - check-alimtalk-config
           - test-live-alimtalk
+          - test-all-alimtalk
           - docker-cleanup
       stream_key:
         description: 'Optional stream key for load-test-live (blank=auto active stream)'
@@ -123,6 +124,9 @@ jobs:
               ;;
             test-live-alimtalk)
               CMD="__RUN_TEST_LIVE_ALIMTALK__"
+              ;;
+            test-all-alimtalk)
+              CMD="__RUN_TEST_ALL_ALIMTALK__"
               ;;
             docker-cleanup)
               CMD="docker system prune -af --filter 'until=24h' && docker builder prune -af"
@@ -320,6 +324,34 @@ jobs:
               sleep 5
               echo "--- backend logs (alimtalk/bizgo) ---"
               docker logs dorami-backend-1 2>&1 | grep -i -E "(alimtalk|bizgo|A000|live|LIVE)" | tail -20
+          ENDSSH
+          elif [ "$CMD" = "__RUN_TEST_ALL_ALIMTALK__" ]; then
+            echo "=== Sending test ALL alimtalk/friendtalk ==="
+            ssh $USER@$HOST 'cat > /tmp/alltest.js' <<'ALLSCRIPT'
+            const http = require('http');
+            const H='localhost', P=3001;
+            function rq(opts,body,jar){return new Promise((res,rej)=>{const h={...(opts.headers||{})};if(jar&&jar.length)h['Cookie']=jar.map(c=>c.split(';')[0]).join('; ');if(body)h['Content-Length']=Buffer.byteLength(body);const r=http.request({...opts,headers:h},resp=>{let d='';resp.on('data',c=>d+=c);resp.on('end',()=>res({s:resp.statusCode,b:d,ck:resp.headers['set-cookie']||[]}));});r.on('error',rej);if(body)r.write(body);r.end();});}
+            function csrf(jar){const c=jar.find(c=>c.startsWith('csrf-token='));return c?decodeURIComponent(c.split(';')[0].split('=')[1]):'';}
+            async function main(){
+              const j=[];
+              const l=await rq({host:H,port:P,method:'POST',path:'/api/auth/dev-login',headers:{'Content-Type':'application/json'}},JSON.stringify({email:'admin@dorami.shop'}),j);
+              if(l.s<200||l.s>=300){throw new Error('Admin login failed: '+l.b);}
+              l.ck.forEach(c=>j.push(c));
+              const g=await rq({host:H,port:P,method:'GET',path:'/api/admin/orders?limit=1'},null,j);
+              g.ck.forEach(c=>j.push(c));
+              console.log('Admin login ok');
+              const ct=csrf(j); console.log('CSRF:', ct.slice(0,15));
+              const r=await rq({host:H,port:P,method:'POST',path:'/api/admin/alimtalk/test-all',headers:{'Content-Type':'application/json','x-csrf-token':ct}},JSON.stringify({phone:'01075358897'}),j);
+              console.log('Result:', r.s, r.b);
+            }
+            main().catch(e=>{console.error(e.message||e);process.exit(1);});
+          ALLSCRIPT
+            ssh $USER@$HOST "bash -s" <<'ENDSSH'
+              docker exec -i dorami-backend-1 node - < /tmp/alltest.js
+              echo "--- waiting 5s for async alimtalk ---"
+              sleep 5
+              echo "--- backend logs (alimtalk/bizgo) ---"
+              docker logs dorami-backend-1 2>&1 | grep -i -E "(alimtalk|bizgo|A000|friendtalk|FT|AT|ORDER|LIVE)" | tail -30
           ENDSSH
           else
             echo "Executing: $CMD"
