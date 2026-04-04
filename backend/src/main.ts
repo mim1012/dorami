@@ -1,3 +1,4 @@
+import './instrument'; // Sentry must be imported before everything else
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';

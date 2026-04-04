@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class BusinessExceptionFilter implements ExceptionFilter {
@@ -57,6 +58,7 @@ export class BusinessExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       // Log the real error server-side but never expose raw message/stack to clients
       this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
+      Sentry.captureException(exception);
       errorResponse = {
         success: false,
         timestamp: new Date().toISOString(),
