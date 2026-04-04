@@ -92,7 +92,7 @@ export default function ProductList({
         type: string;
         data: { productId: string; productName: string; remainingStock: number };
       }) => {
-        console.log('[Products] Low stock warning:', data.data);
+        // low-stock event received; stock store updated via useProductStock
       },
     );
 

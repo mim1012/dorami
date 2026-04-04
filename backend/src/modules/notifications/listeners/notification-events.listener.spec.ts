@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { NotificationEventsListener } from './notification-events.listener';
 import { PrismaService } from '../../../common/prisma/prisma.service';
@@ -47,6 +48,10 @@ describe('NotificationEventsListener', () => {
             sendCartExpiredNotification: jest.fn(),
           },
         },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
+        },
       ],
     }).compile();
 
@@ -91,6 +96,10 @@ describe('NotificationEventsListener', () => {
               sendReservationPromotedNotification: jest.fn(),
               sendCartExpiredNotification: jest.fn(),
             },
+          },
+          {
+            provide: ConfigService,
+            useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
           },
         ],
       }).compile();

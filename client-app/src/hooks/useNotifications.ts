@@ -39,8 +39,6 @@ export function useNotifications(): UseNotificationsReturn {
   const registerServiceWorker = useCallback(async (): Promise<ServiceWorkerRegistration | null> => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
-      if (process.env.NODE_ENV !== 'production')
-        console.log('[useNotifications] Service Worker registered:', registration);
       return registration;
     } catch (error) {
       console.error('[useNotifications] Service Worker registration failed:', error);
@@ -53,7 +51,6 @@ export function useNotifications(): UseNotificationsReturn {
    */
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) {
-      console.warn('[useNotifications] Push notifications not supported');
       return false;
     }
 
@@ -62,12 +59,8 @@ export function useNotifications(): UseNotificationsReturn {
       setPermission(result);
 
       if (result === 'granted') {
-        if (process.env.NODE_ENV !== 'production')
-          console.log('[useNotifications] Notification permission granted');
         return true;
       } else {
-        if (process.env.NODE_ENV !== 'production')
-          console.log('[useNotifications] Notification permission denied');
         return false;
       }
     } catch (error) {
@@ -83,7 +76,6 @@ export function useNotifications(): UseNotificationsReturn {
   const subscribe = useCallback(
     async (liveStreamId?: string): Promise<boolean> => {
       if (!isSupported) {
-        console.warn('[useNotifications] Push notifications not supported');
         return false;
       }
 
@@ -111,9 +103,6 @@ export function useNotifications(): UseNotificationsReturn {
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
           });
-
-          if (process.env.NODE_ENV !== 'production')
-            console.log('[useNotifications] Push subscription created:', subscription);
         }
 
         // Send subscription to backend
@@ -127,8 +116,6 @@ export function useNotifications(): UseNotificationsReturn {
         });
 
         setIsSubscribed(true);
-        if (process.env.NODE_ENV !== 'production')
-          console.log('[useNotifications] Subscribed to notifications');
         return true;
       } catch (error) {
         console.error('[useNotifications] Failed to subscribe:', error);
@@ -147,8 +134,6 @@ export function useNotifications(): UseNotificationsReturn {
       const subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
-        if (process.env.NODE_ENV !== 'production')
-          console.log('[useNotifications] No active subscription found');
         return true;
       }
 
@@ -163,8 +148,6 @@ export function useNotifications(): UseNotificationsReturn {
       });
 
       setIsSubscribed(false);
-      if (process.env.NODE_ENV !== 'production')
-        console.log('[useNotifications] Unsubscribed from notifications');
       return true;
     } catch (error) {
       console.error('[useNotifications] Failed to unsubscribe:', error);

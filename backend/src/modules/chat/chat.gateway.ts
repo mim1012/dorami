@@ -8,6 +8,7 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -36,6 +37,8 @@ interface DeleteMessagePayload {
   transports: ['websocket', 'polling'],
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
+  private readonly logger = new Logger(ChatGateway.name);
+
   @WebSocketServer()
   server!: Server;
 
@@ -43,13 +46,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     private readonly jwtService: JwtService,
     private readonly prismaService: PrismaService,
   ) {
-    console.log('🔥 ChatGateway constructor called');
+    this.logger.log('ChatGateway constructor called');
   }
 
   afterInit(server: Server) {
-    console.log('✅ Chat Gateway initialized');
-    console.log('   Server namespaces:', Array.from(server._nsps.keys()));
-    console.log('   Chat namespace path:', '/chat');
+    this.logger.log('Chat Gateway initialized');
+    this.logger.debug('Server namespaces: ' + Array.from(server._nsps.keys()).join(', '));
   }
 
   async handleConnection(client: Socket) {
@@ -61,8 +63,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         this.prismaService,
       );
 
-      console.log(
-        `✅ Client connected: ${authenticatedClient.id} (User: ${authenticatedClient.user.userId})`,
+      this.logger.log(
+        'Client connected: ' + authenticatedClient.id + ' user=' + authenticatedClient.user.userId,
       );
 
       // Send welcome message
@@ -75,7 +77,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         },
       });
     } catch (error) {
-      console.error('❌ Connection failed:', (error as Error).message);
+      this.logger.warn('Connection failed: ' + (error as Error).message);
       client.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -87,7 +89,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`👋 Client disconnected: ${client.id}`);
+    this.logger.debug('Client disconnected: ' + client.id);
   }
 
   @SubscribeMessage('chat:join-room')
@@ -99,7 +101,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     await client.join(roomName);
 
-    console.log(`📥 User ${client.user.userId} joined room ${roomName}`);
+    this.logger.debug('User ' + client.user.userId + ' joined room ' + roomName);
 
     // Notify room members
     this.server.to(roomName).emit('chat:user-joined', {
@@ -130,7 +132,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     await client.leave(roomName);
 
-    console.log(`📤 User ${client.user.userId} left room ${roomName}`);
+    this.logger.debug('User ' + client.user.userId + ' left room ' + roomName);
 
     // Notify room members
     this.server.to(roomName).emit('chat:user-left', {
@@ -233,8 +235,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const roomName = `live:${payload.liveId}`;
 
-    console.log(
-      `🗑️  Admin ${client.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+    this.logger.log(
+      'Admin ' + client.user.userId + ' deleted message ' + payload.messageId + ' in ' + roomName,
     );
 
     // Broadcast deletion to all clients in room

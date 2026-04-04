@@ -366,7 +366,11 @@ export class ReStreamService implements OnModuleDestroy {
         where: { id: logId },
         data: { status: 'ACTIVE' },
       })
-      .catch(() => {});
+      .catch((e: unknown) =>
+        this.logger.warn(
+          'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+        ),
+      );
 
     this.emitStatus(liveStreamId, targetId, 'ACTIVE', logId);
   }
@@ -398,7 +402,11 @@ export class ReStreamService implements OnModuleDestroy {
             endedAt: new Date(),
           },
         })
-        .catch(() => {});
+        .catch((e: unknown) =>
+          this.logger.warn(
+            'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+          ),
+        );
 
       this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
       return;
@@ -416,7 +424,11 @@ export class ReStreamService implements OnModuleDestroy {
             endedAt: new Date(),
           },
         })
-        .catch(() => {});
+        .catch((e: unknown) =>
+          this.logger.warn(
+            'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+          ),
+        );
 
       this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
       return;
@@ -434,7 +446,11 @@ export class ReStreamService implements OnModuleDestroy {
             endedAt: new Date(),
           },
         })
-        .catch(() => {});
+        .catch((e: unknown) =>
+          this.logger.warn(
+            'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+          ),
+        );
 
       this.emitStatus(liveStreamId, target.id, 'STOPPED', proc.logId);
       currentMap?.delete(target.id);
@@ -463,7 +479,11 @@ export class ReStreamService implements OnModuleDestroy {
             restartCount: proc.restartCount,
           },
         })
-        .catch(() => {});
+        .catch((e: unknown) =>
+          this.logger.warn(
+            'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+          ),
+        );
 
       this.emitStatus(liveStreamId, target.id, 'FAILED', proc.logId);
 
@@ -480,7 +500,11 @@ export class ReStreamService implements OnModuleDestroy {
               return this.spawnFFmpegForTarget(liveStreamId, streamKey, target, proc.restartCount);
             }
           })
-          .catch(() => {});
+          .catch((e: unknown) =>
+            this.logger.warn(
+              'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+            ),
+          );
       }, delay);
     } else {
       this.logger.error(`FFmpeg for target "${target.name}" exceeded max restart attempts`);
@@ -495,7 +519,11 @@ export class ReStreamService implements OnModuleDestroy {
             restartCount: proc.restartCount,
           },
         })
-        .catch(() => {});
+        .catch((e: unknown) =>
+          this.logger.warn(
+            'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+          ),
+        );
 
       this.emitStatus(liveStreamId, target.id, 'FAILED', proc.logId);
       currentMap?.delete(target.id);
@@ -547,7 +575,11 @@ export class ReStreamService implements OnModuleDestroy {
           endedAt: new Date(),
         },
       })
-      .catch(() => {});
+      .catch((e: unknown) =>
+        this.logger.warn(
+          'Restream log update failed: ' + (e instanceof Error ? e.message : String(e)),
+        ),
+      );
 
     this.emitStatus(liveStreamId, targetId, 'STOPPED', ffmpegProc.logId);
   }

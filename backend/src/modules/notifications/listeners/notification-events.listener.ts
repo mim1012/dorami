@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationsService } from '../notifications.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
@@ -13,6 +14,7 @@ export class NotificationEventsListener {
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('NotificationEventsListener');
@@ -305,7 +307,11 @@ export class NotificationEventsListener {
         return;
       }
 
-      const streamUrl = `https://www.doremi-live.com/live/${stream.streamKey}`;
+      const frontendUrl = this.configService.get<string>(
+        'FRONTEND_URL',
+        'https://www.doremi-live.com',
+      );
+      const streamUrl = `${frontendUrl}/live/${stream.streamKey}`;
 
       await this.alimtalkService.sendLiveStartAlimtalk(
         phoneNumbers,

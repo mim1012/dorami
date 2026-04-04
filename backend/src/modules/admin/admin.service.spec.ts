@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -113,6 +114,10 @@ describe('AdminService', () => {
         {
           provide: 'WEBSOCKET_GATEWAY',
           useValue: mockWebsocketGateway,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
         },
       ],
     }).compile();

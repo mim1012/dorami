@@ -152,9 +152,6 @@ export function useProductStock(streamKey?: string) {
     );
 
     socket.on('connect', () => {
-      if (process.env.NODE_ENV !== 'production')
-        console.log('[useProductStock] Connected to WebSocket');
-
       // 연결 성공 → 실패 카운터 및 인증 에러 플래그 초기화
       circuitBreakerRef.current.recordSuccess();
       lastAuthErrorRef.current = false;
@@ -183,14 +180,9 @@ export function useProductStock(streamKey?: string) {
     });
 
     socket.on('connect_error', (err) => {
-      console.warn('[useProductStock] WebSocket connection error:', err.message);
-
       // 인증 에러(토큰 만료 등) 여부를 기록해 다음 reconnect_attempt에서 갱신 시도
       if (isAuthError(err)) {
         lastAuthErrorRef.current = true;
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[useProductStock] 인증 에러 감지 — 다음 재연결 시 토큰 갱신 예정');
-        }
       }
 
       // 연결 실패를 Circuit Breaker에 기록한다
@@ -207,27 +199,14 @@ export function useProductStock(streamKey?: string) {
      */
     socket.io.on('reconnect_attempt', async () => {
       if (!circuitBreakerRef.current.canAttemptReconnect()) {
-        const { cooldownRemainingMs } = circuitBreakerRef.current.getState();
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `[useProductStock] Circuit Breaker OPEN — 재연결 차단. ` +
-              `${Math.ceil(cooldownRemainingMs / 1000)}초 후 재시도 가능`,
-          );
-        }
         socket.disconnect();
         return;
       }
 
       // 마지막 인증 에러 여부 확인 후 토큰 갱신 시도
       if (lastAuthErrorRef.current) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[useProductStock] 인증 에러 감지 — 토큰 갱신 시도');
-        }
         const refreshed = await refreshAuthToken();
         if (!refreshed) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('[useProductStock] 토큰 갱신 실패 — 강제 로그아웃');
-          }
           circuitBreakerRef.current.recordFailure();
           socket.disconnect();
           // Only force logout if the circuit breaker has fully opened — a single stock
@@ -238,9 +217,6 @@ export function useProductStock(streamKey?: string) {
           return;
         }
         lastAuthErrorRef.current = false;
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[useProductStock] 토큰 갱신 성공 — 재연결 진행');
-        }
       }
     });
 

@@ -100,6 +100,7 @@ export default function HeartAnimation() {
       ))}
       <button
         onClick={handleTap}
+        aria-label="좋아요"
         className="absolute bottom-0 right-2 w-14 h-14 rounded-full flex items-center justify-center pointer-events-auto z-30"
         style={{
           background: 'linear-gradient(135deg, #FF007A, #FF4500)',

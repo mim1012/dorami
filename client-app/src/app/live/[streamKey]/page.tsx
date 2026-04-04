@@ -21,6 +21,8 @@ import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
+import HeartAnimation from '@/components/live/HeartAnimation';
+import { NoticeBox } from '@/components/notices/NoticeBox';
 import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
 import { productKeys } from '@/lib/hooks/queries/use-products';
 import { useChatConnection } from '@/hooks/useChatConnection';
@@ -415,9 +417,6 @@ export default function LiveStreamPage() {
 
     const handleReconnect = () => {
       if (isCancelled) return;
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[LiveEvents] reconnect - rejoin stream', streamKey);
-      }
       handleConnect();
     };
 
@@ -754,6 +753,9 @@ export default function LiveStreamPage() {
             onProductClick={handleProductClick}
             products={allProducts}
           />
+          <div className="p-3 border-t border-white/10">
+            <NoticeBox />
+          </div>
         </aside>
       )}
 
@@ -1130,6 +1132,7 @@ export default function LiveStreamPage() {
               </div>
             </div>
           )}
+          {streamStatus.status === 'LIVE' && <HeartAnimation />}
         </div>
       )}
 

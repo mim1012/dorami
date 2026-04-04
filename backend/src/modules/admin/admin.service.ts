@@ -5,6 +5,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -126,6 +127,7 @@ export class AdminService {
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private redisService: RedisService,
+    private readonly configService: ConfigService,
   ) {}
 
   private getSystemConfigDefaults(
@@ -2269,7 +2271,7 @@ export class AdminService {
     await this.alimtalkService.sendLiveStartAlimtalk(
       [phone],
       '테스트 방송',
-      'https://staging.doremi-live.com/live/test',
+      `${this.configService.get<string>('FRONTEND_URL', 'https://www.doremi-live.com')}/live/test`,
       '알림톡 발송 테스트',
     );
   }

@@ -1,8 +1,13 @@
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { Display, Heading1, Heading2, Body, Caption, Small } from '@/components/common/Typography';
 
 export default function DesignSystemDemo() {
+  if (process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production') {
+    redirect('/');
+  }
+
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-4xl mx-auto space-y-12">
@@ -54,7 +59,10 @@ export default function DesignSystemDemo() {
               <Heading2>Heading 2 - 18px SemiBold</Heading2>
             </div>
             <div>
-              <Body>Body Text - 16px Regular. This is the main text used throughout the application for readable content.</Body>
+              <Body>
+                Body Text - 16px Regular. This is the main text used throughout the application for
+                readable content.
+              </Body>
             </div>
             <div>
               <Caption>Caption - 14px Medium. Used for labels and secondary information.</Caption>
@@ -70,9 +78,15 @@ export default function DesignSystemDemo() {
           <Heading1 className="mb-4">Buttons</Heading1>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-4">
-              <Button variant="primary" size="sm">Small Primary</Button>
-              <Button variant="primary" size="md">Medium Primary</Button>
-              <Button variant="primary" size="lg">Large Primary</Button>
+              <Button variant="primary" size="sm">
+                Small Primary
+              </Button>
+              <Button variant="primary" size="md">
+                Medium Primary
+              </Button>
+              <Button variant="primary" size="lg">
+                Large Primary
+              </Button>
             </div>
             <div className="flex flex-wrap gap-4">
               <Button variant="secondary">Secondary</Button>
@@ -80,8 +94,12 @@ export default function DesignSystemDemo() {
               <Button variant="ghost">Ghost</Button>
             </div>
             <div className="flex flex-wrap gap-4">
-              <Button variant="primary" disabled>Disabled</Button>
-              <Button variant="primary" fullWidth>Full Width Button</Button>
+              <Button variant="primary" disabled>
+                Disabled
+              </Button>
+              <Button variant="primary" fullWidth>
+                Full Width Button
+              </Button>
             </div>
           </div>
         </Card>
@@ -124,11 +142,21 @@ export default function DesignSystemDemo() {
         <Card>
           <Heading1 className="mb-4">Responsive Breakpoints</Heading1>
           <div className="space-y-2">
-            <div className="block xs:hidden"><Body className="text-hot-pink">XS (320px+): Visible</Body></div>
-            <div className="hidden xs:block sm:hidden"><Body className="text-hot-pink">SM (640px+): Visible</Body></div>
-            <div className="hidden sm:block md:hidden"><Body className="text-hot-pink">MD (768px+): Visible</Body></div>
-            <div className="hidden md:block lg:hidden"><Body className="text-hot-pink">LG (1024px+): Visible</Body></div>
-            <div className="hidden lg:block"><Body className="text-hot-pink">XL (1280px+): Visible</Body></div>
+            <div className="block xs:hidden">
+              <Body className="text-hot-pink">XS (320px+): Visible</Body>
+            </div>
+            <div className="hidden xs:block sm:hidden">
+              <Body className="text-hot-pink">SM (640px+): Visible</Body>
+            </div>
+            <div className="hidden sm:block md:hidden">
+              <Body className="text-hot-pink">MD (768px+): Visible</Body>
+            </div>
+            <div className="hidden md:block lg:hidden">
+              <Body className="text-hot-pink">LG (1024px+): Visible</Body>
+            </div>
+            <div className="hidden lg:block">
+              <Body className="text-hot-pink">XL (1280px+): Visible</Body>
+            </div>
           </div>
         </Card>
       </div>

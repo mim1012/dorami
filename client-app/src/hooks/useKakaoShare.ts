@@ -39,8 +39,6 @@ export function useKakaoShare() {
           try {
             window.Kakao.init(kakaoKey);
             setIsInitialized(true);
-            if (process.env.NODE_ENV !== 'production')
-              console.log('[useKakaoShare] Kakao SDK initialized');
           } catch (error) {
             console.error('[useKakaoShare] Failed to initialize Kakao SDK:', error);
           }
@@ -101,9 +99,6 @@ export function useKakaoShare() {
           },
         ],
       });
-
-      if (process.env.NODE_ENV !== 'production')
-        console.log('[useKakaoShare] Order shared successfully');
     } catch (error) {
       console.error('[useKakaoShare] Failed to share order:', error);
       showToast('카카오톡 공유 중 오류가 발생했습니다.', 'error');
@@ -147,9 +142,6 @@ export function useKakaoShare() {
           },
         ],
       });
-
-      if (process.env.NODE_ENV !== 'production')
-        console.log('[useKakaoShare] Live stream shared successfully');
     } catch (error) {
       console.error('[useKakaoShare] Failed to share live stream:', error);
       showToast('카카오톡 공유 중 오류가 발생했습니다.', 'error');

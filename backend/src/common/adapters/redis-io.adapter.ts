@@ -15,7 +15,6 @@ export class RedisIoAdapter extends IoAdapter {
 
   constructor(app: any) {
     super(app);
-    console.log('🔥 RedisIoAdapter constructor called');
   }
 
   /**

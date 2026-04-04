@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { isCaliforniaAddress } from '../../common/utils/address.util';
 import { RedisService } from '../../common/redis/redis.service';
@@ -762,7 +762,6 @@ export class OrdersService {
    * - Or after explicit user timeout (user doesn't make payment for X days)
    * - Not based on 10-minute cart timer which is inappropriate for orders
    */
-  @Cron(CronExpression.EVERY_MINUTE)
   async cancelExpiredOrders() {
     // INTENTIONALLY DISABLED - See comment above
     return;
