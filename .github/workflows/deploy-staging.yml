@@ -180,6 +180,10 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
           BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
+          STAGING_SENTRY_DSN_BACKEND: ${{ secrets.STAGING_SENTRY_DSN_BACKEND }}
+          STAGING_SENTRY_DSN_FRONTEND: ${{ secrets.STAGING_SENTRY_DSN_FRONTEND }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         run: |
           # Validate variables are available before SSH
           echo "Pre-SSH validation:"
@@ -206,6 +210,10 @@ jobs:
             export STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
             export STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
+            export STAGING_SENTRY_DSN_BACKEND="${STAGING_SENTRY_DSN_BACKEND}"
+            export STAGING_SENTRY_DSN_FRONTEND="${STAGING_SENTRY_DSN_FRONTEND}"
+            export SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
+            export SENTRY_ORG="${SENTRY_ORG}"
 
             echo "SSH connection successful"
             cd /opt/dorami
@@ -261,6 +269,12 @@ jobs:
               echo "TELEGRAM_CHAT_ID=\"${TELEGRAM_CHAT_ID}\""
               echo "BIZGO_API_KEY=\"${BIZGO_API_KEY}\""
               echo "BIZGO_SENDER_KEY=\"${BIZGO_SENDER_KEY}\""
+              echo "SENTRY_DSN=\"${STAGING_SENTRY_DSN_BACKEND}\""
+              echo "NEXT_PUBLIC_SENTRY_DSN=\"${STAGING_SENTRY_DSN_FRONTEND}\""
+              echo "SENTRY_AUTH_TOKEN=\"${SENTRY_AUTH_TOKEN}\""
+              echo "SENTRY_ORG=\"${SENTRY_ORG}\""
+              echo "SENTRY_PROJECT=\"dorami-frontend-staging\""
+              echo "SENTRY_PROJECT_BACKEND=\"dorami-backend-staging\""
             } > /opt/dorami/.env.staging
             chmod 600 /opt/dorami/.env.staging
             echo "✓ .env.staging created"
