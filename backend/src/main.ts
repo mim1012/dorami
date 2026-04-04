@@ -1,4 +1,5 @@
 import './instrument'; // Sentry must be imported before everything else
+import * as Sentry from '@sentry/nestjs';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -628,6 +629,9 @@ async function bootstrap() {
       logger.error(
         `❌ Chat connection failed: ${errorMessage} | hasAccessToken=${hasAccessToken} | origin=${socket.handshake.headers.origin ?? 'N/A'}`,
       );
+      if (error instanceof Error) {
+        Sentry.captureException(error, { tags: { namespace: 'chat', event: 'connection' } });
+      }
       socket.emit('error', {
         type: 'error',
         errorCode: 'AUTH_FAILED',
@@ -666,39 +670,50 @@ async function bootstrap() {
         if (!rateLimitCheck(socket, 'stream:viewer:join', { windowMs: 10000, maxEvents: 10 })) {
           return;
         }
-        const { streamKey } = payload;
-        const roomName = `stream:${streamKey}`;
+        try {
+          const { streamKey } = payload;
+          const roomName = `stream:${streamKey}`;
 
-        await socket.join(roomName);
-        socketStreams.set(socket.id, streamKey);
+          await socket.join(roomName);
+          socketStreams.set(socket.id, streamKey);
 
-        // Add userId to viewer Set (idempotent — reconnects don't double-count)
-        const userId = authenticatedSocket.user.userId;
-        await pubClient.sAdd(`stream:${streamKey}:viewer_ids`, userId);
-        const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
+          // Add userId to viewer Set (idempotent — reconnects don't double-count)
+          const userId = authenticatedSocket.user.userId;
+          await pubClient.sAdd(`stream:${streamKey}:viewer_ids`, userId);
+          const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
-        logger.log(
-          `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
-        );
+          logger.log(
+            `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
+          );
 
-        // Broadcast viewer count update
-        streamingNamespace.to(roomName).emit('stream:viewer:update', {
-          type: 'stream:viewer:update',
-          data: {
-            streamKey,
-            viewerCount,
-            timestamp: new Date().toISOString(),
-          },
-        });
+          // Broadcast viewer count update
+          streamingNamespace.to(roomName).emit('stream:viewer:update', {
+            type: 'stream:viewer:update',
+            data: {
+              streamKey,
+              viewerCount,
+              timestamp: new Date().toISOString(),
+            },
+          });
 
-        socket.emit('stream:viewer:join:success', {
-          type: 'stream:viewer:join:success',
-          data: {
-            streamKey,
-            viewerCount,
-            timestamp: new Date().toISOString(),
-          },
-        });
+          socket.emit('stream:viewer:join:success', {
+            type: 'stream:viewer:join:success',
+            data: {
+              streamKey,
+              viewerCount,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          logger.error(
+            `❌ stream:viewer:join error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          if (error instanceof Error) {
+            Sentry.captureException(error, {
+              tags: { namespace: 'streaming', event: 'stream:viewer:join' },
+            });
+          }
+        }
       });
 
       // Handle stream:viewer:leave
@@ -706,47 +721,21 @@ async function bootstrap() {
         if (!rateLimitCheck(socket, 'stream:viewer:leave', { windowMs: 10000, maxEvents: 10 })) {
           return;
         }
-        const { streamKey } = payload;
-        const roomName = `stream:${streamKey}`;
-
-        await socket.leave(roomName);
-        socketStreams.delete(socket.id);
-
-        // Remove userId from viewer Set
-        const userId = authenticatedSocket.user.userId;
-        await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
-        const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
-
-        logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
-
-        // Broadcast viewer count update
-        streamingNamespace.to(roomName).emit('stream:viewer:update', {
-          type: 'stream:viewer:update',
-          data: {
-            streamKey,
-            viewerCount: Math.max(0, viewerCount),
-            timestamp: new Date().toISOString(),
-          },
-        });
-
-        socket.emit('stream:viewer:leave:success', {
-          type: 'stream:viewer:leave:success',
-          data: {
-            streamKey,
-            timestamp: new Date().toISOString(),
-          },
-        });
-      });
-
-      // Handle disconnect
-      socket.on('disconnect', async () => {
-        const streamKey = socketStreams.get(socket.id);
-        if (streamKey) {
+        try {
+          const { streamKey } = payload;
           const roomName = `stream:${streamKey}`;
+
+          await socket.leave(roomName);
+          socketStreams.delete(socket.id);
+
+          // Remove userId from viewer Set
           const userId = authenticatedSocket.user.userId;
           await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
           const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
+          logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
+
+          // Broadcast viewer count update
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',
             data: {
@@ -756,15 +745,66 @@ async function bootstrap() {
             },
           });
 
-          socketStreams.delete(socket.id);
+          socket.emit('stream:viewer:leave:success', {
+            type: 'stream:viewer:leave:success',
+            data: {
+              streamKey,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          logger.error(
+            `❌ stream:viewer:leave error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          if (error instanceof Error) {
+            Sentry.captureException(error, {
+              tags: { namespace: 'streaming', event: 'stream:viewer:leave' },
+            });
+          }
         }
-        logger.log(`👋 Client disconnected from /streaming: ${authenticatedSocket.id}`);
+      });
+
+      // Handle disconnect
+      socket.on('disconnect', async () => {
+        try {
+          const streamKey = socketStreams.get(socket.id);
+          if (streamKey) {
+            const roomName = `stream:${streamKey}`;
+            const userId = authenticatedSocket.user.userId;
+            await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
+            const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
+
+            streamingNamespace.to(roomName).emit('stream:viewer:update', {
+              type: 'stream:viewer:update',
+              data: {
+                streamKey,
+                viewerCount: Math.max(0, viewerCount),
+                timestamp: new Date().toISOString(),
+              },
+            });
+
+            socketStreams.delete(socket.id);
+          }
+          logger.log(`👋 Client disconnected from /streaming: ${authenticatedSocket.id}`);
+        } catch (error) {
+          logger.error(
+            `❌ streaming disconnect error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          if (error instanceof Error) {
+            Sentry.captureException(error, {
+              tags: { namespace: 'streaming', event: 'disconnect' },
+            });
+          }
+        }
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ Streaming connection failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
         logger.error(error instanceof Error ? error.stack : String(error));
+      }
+      if (error instanceof Error) {
+        Sentry.captureException(error, { tags: { namespace: 'streaming', event: 'connection' } });
       }
       socket.emit('error', {
         type: 'error',
