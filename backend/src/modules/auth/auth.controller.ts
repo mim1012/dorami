@@ -287,12 +287,16 @@ export class AuthController {
     if (enableDevAuth !== 'true') {
       throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }
-    const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
-    const isLocal =
-      clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
-    if (!isLocal) {
-      this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
-      throw new ForbiddenException('Dev login only available from localhost');
+    const appEnv = this.configService.get<string>('APP_ENV', 'development');
+    const isStaging = appEnv === 'staging';
+    if (!isStaging) {
+      const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
+      const isLocal =
+        clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+      if (!isLocal) {
+        this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
+        throw new ForbiddenException('Dev login only available from localhost');
+      }
     }
 
     const { email, name } = body;
