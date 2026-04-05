@@ -42,6 +42,7 @@ interface LiveStream {
   streamKey: string;
   userId: string;
   title: string;
+  description?: string | null;
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
   scheduledAt?: string | null;
   startedAt: string | null;
@@ -215,6 +216,7 @@ export default function BroadcastsPage() {
 
   // Edit stream modal state
   const [selectedStreamForEdit, setSelectedStreamForEdit] = useState<LiveStream | null>(null);
+  const [editDescription, setEditDescription] = useState('');
   const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
   const [editNewThumbnailUrl, setEditNewThumbnailUrl] = useState('');
   const [isUploadingEditThumbnail, setIsUploadingEditThumbnail] = useState(false);
@@ -778,6 +780,7 @@ export default function BroadcastsPage() {
 
   const handleOpenEditModal = (stream: LiveStream) => {
     setSelectedStreamForEdit(stream);
+    setEditDescription(stream.description ?? '');
     setEditFreeShippingMode(stream.freeShippingMode ?? 'DISABLED');
     setEditFreeShippingThreshold(stream.freeShippingThreshold ?? 150);
     setEditThumbnailPreview(null);
@@ -833,6 +836,7 @@ export default function BroadcastsPage() {
         ...(editFreeShippingMode === 'THRESHOLD'
           ? { freeShippingThreshold: editFreeShippingThreshold }
           : {}),
+        description: editDescription.trim() || null,
       };
       if (editNewThumbnailUrl) body.thumbnailUrl = editNewThumbnailUrl;
       await apiClient.patch(`/streaming/${selectedStreamForEdit.id}`, body);
@@ -842,6 +846,7 @@ export default function BroadcastsPage() {
           s.id === selectedStreamForEdit.id
             ? {
                 ...s,
+                description: editDescription.trim() || null,
                 freeShippingMode: editFreeShippingMode,
                 freeShippingThreshold:
                   editFreeShippingMode === 'THRESHOLD' ? editFreeShippingThreshold : null,
@@ -1852,6 +1857,20 @@ export default function BroadcastsPage() {
                   &quot;{selectedStreamForEdit.title}&quot;
                 </span>
               </p>
+
+              {/* 방송 설명 (알림톡 #{상세내용} 변수에 사용) */}
+              <div>
+                <label className="block text-sm font-medium text-primary-text mb-1">
+                  방송 설명
+                </label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={3}
+                  placeholder="알림톡 #{상세내용} 변수에 사용됩니다"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none resize-none"
+                />
+              </div>
 
               {/* 무료배송 설정 */}
               <div>

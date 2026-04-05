@@ -20,7 +20,6 @@ import {
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
-import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
 
 interface NotificationTemplate {
   id: string;
@@ -115,7 +114,6 @@ type SectionKey =
   | 'payment'
   | 'commerce'
   | 'notification'
-  | 'shippingMessages'
   | 'points'
   | 'noticeManagement'
   | 'noticeList'
@@ -125,7 +123,6 @@ const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   payment: true,
   commerce: true,
   notification: true,
-  shippingMessages: false,
   points: false,
   noticeManagement: false,
   noticeList: false,
@@ -136,7 +133,6 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'payment', label: '입금', icon: DollarSign },
   { key: 'commerce', label: '장바구니/배송', icon: ShoppingCart },
   { key: 'notification', label: '알림', icon: Bell },
-  { key: 'shippingMessages', label: '배송안내', icon: Package },
   { key: 'points', label: '포인트', icon: Package },
   { key: 'noticeManagement', label: '공지관리', icon: SettingsIcon },
   { key: 'noticeList', label: '공지목록', icon: SettingsIcon },
@@ -705,15 +701,6 @@ export default function AdminSettingsPage() {
         </div>
       </SectionCard>
       {/* Extended Sections */}
-      <SectionCard
-        icon={Package}
-        title="배송 안내 메시지"
-        sectionId="shippingMessages"
-        isOpen={expandedSections.shippingMessages}
-        onToggle={() => handleToggleSection('shippingMessages')}
-      >
-        <ShippingMessages />
-      </SectionCard>
       <SectionCard
         icon={Package}
         title="포인트 설정"
