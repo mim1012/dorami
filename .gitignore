@@ -21,6 +21,9 @@ out/
 .env.production
 .env.staging
 
+# Claude Code local secrets (토큰 등 민감 정보)
+.claude/.env
+
 # IDE
 .vscode/
 .idea/

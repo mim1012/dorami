@@ -580,3 +580,40 @@ if (!valid) {
 **Issue:** Redis with `allkeys-lru` policy evicts ANY key under memory pressure, including `refresh_token:{userId}` → silent mass logout.
 **Rule:** Use `volatile-lru` (evicts only keys with TTL). All auth tokens already have explicit TTLs. Set explicit `--maxmemory` (staging: 256mb, prod: 512mb).
 **Action:** `docker-compose.base.yml`, `docker-compose.staging.yml`, `docker-compose.prod.yml` all use `volatile-lru` now.
+
+## Sentry 에러 모니터링
+
+### 개요
+
+Sentry 프로젝트 구성:
+
+| 환경       | 백엔드 프로젝트             | 프론트엔드 프로젝트          |
+| ---------- | --------------------------- | ---------------------------- |
+| production | `dorami-backend-production` | `dorami-frontend-production` |
+| staging    | `dorami-backend-staging`    | `dorami-frontend-staging`    |
+
+### Sentry 에러 현황 체크 방법
+
+`.claude/.env` 파일에 `SENTRY_AUTH_TOKEN`과 `SENTRY_ORG`가 설정되어 있어야 합니다.
+
+```bash
+# staging 에러 현황 체크 (최근 24시간)
+python3 .claude/sentry_check.py
+
+# production 에러 체크 시 sentry_check.py 내 suffix를 "production"으로 변경 후 실행
+```
+
+### 에러 대응 워크플로우
+
+버그 수정 또는 배포 후 반드시 아래 순서로 Sentry를 확인합니다:
+
+1. **배포 완료 후 5분 대기** — 에러가 수집될 시간 확보
+2. **`python3 .claude/sentry_check.py` 실행** — 신규 이슈 및 빈도 높은 이슈 확인
+3. **신규 이슈(⚡) 발견 시** — 해당 이슈 URL로 접속하여 스택트레이스 분석
+4. **이슈 해결 후** — Sentry에서 해당 이슈 Resolve 처리
+
+### 주의사항
+
+- `.claude/.env` 파일은 절대 커밋하지 않습니다 (`.gitignore` 확인)
+- `SENTRY_AUTH_TOKEN`은 `org:read`, `project:read` 권한만 있으면 됩니다
+- 토큰 만료 시 `https://bizsolution.sentry.io/settings/account/api/auth-tokens/` 에서 재발급
