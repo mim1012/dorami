@@ -413,7 +413,7 @@ jobs:
         # IMAGE_TAG is set to a placeholder here; the deploy script updates it with the actual tag.
         # Required GitHub Secrets: PROD_POSTGRES_PASSWORD, PROD_REDIS_PASSWORD, PROD_JWT_SECRET,
         #   PROD_PROFILE_ENCRYPTION_KEY, PROD_KAKAO_CLIENT_ID, PROD_KAKAO_CLIENT_SECRET
-        # Optional GitHub Secrets: PROD_ADMIN_EMAILS, PROD_SENTRY_DSN, PROD_PROFILE_LEGACY_ENCRYPTION_KEYS
+        # Optional GitHub Secrets: PROD_ADMIN_EMAILS, PROD_SENTRY_DSN_BACKEND, PROD_SENTRY_DSN_FRONTEND, PROD_PROFILE_LEGACY_ENCRYPTION_KEYS
         env:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
@@ -425,7 +425,8 @@ jobs:
           PROD_KAKAO_CLIENT_ID: ${{ secrets.PROD_KAKAO_CLIENT_ID }}
           PROD_KAKAO_CLIENT_SECRET: ${{ secrets.PROD_KAKAO_CLIENT_SECRET }}
           PROD_ADMIN_EMAILS: ${{ secrets.PROD_ADMIN_EMAILS }}
-          PROD_SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
+          PROD_SENTRY_DSN_BACKEND: ${{ secrets.PROD_SENTRY_DSN_BACKEND }}
+          PROD_SENTRY_DSN_FRONTEND: ${{ secrets.PROD_SENTRY_DSN_FRONTEND }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
@@ -497,8 +498,8 @@ jobs:
           BIZGO_SENDER_KEY=${BIZGO_SENDER_KEY}
 
           ADMIN_EMAILS=${PROD_ADMIN_EMAILS}
-          SENTRY_DSN=${PROD_SENTRY_DSN}
-          NEXT_PUBLIC_SENTRY_DSN=${PROD_SENTRY_DSN}
+          SENTRY_DSN=${PROD_SENTRY_DSN_BACKEND}
+          NEXT_PUBLIC_SENTRY_DSN=${PROD_SENTRY_DSN_FRONTEND}
 
           GITHUB_REPOSITORY_OWNER=${REPO_OWNER}
           IMAGE_TAG=placeholder
