@@ -2018,7 +2018,7 @@ export class AdminService {
   /**
    * Update notification template
    */
-  async updateNotificationTemplate(id: string, template?: string, kakaoTemplateCode?: string) {
+  async updateNotificationTemplate(id: string, kakaoTemplateCode?: string) {
     const existingTemplate = await this.prisma.notificationTemplate.findUnique({
       where: { id },
     });
@@ -2027,10 +2027,7 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
-    const updateData: { template?: string; kakaoTemplateCode?: string } = {};
-    if (template !== undefined) {
-      updateData.template = template;
-    }
+    const updateData: { kakaoTemplateCode?: string } = {};
     if (kakaoTemplateCode !== undefined) {
       updateData.kakaoTemplateCode = kakaoTemplateCode;
     }
@@ -2276,11 +2273,23 @@ export class AdminService {
     );
   }
 
+  async sendTestOrderFriendtalk(phone: string): Promise<void> {
+    await this.alimtalkService.sendTestOrderFriendtalk(phone);
+  }
+
+  async sendTestPaymentReminder(phone: string): Promise<void> {
+    await this.alimtalkService.sendTestPaymentReminder(phone);
+  }
+
+  async sendTestCartExpiring(phone: string): Promise<void> {
+    await this.alimtalkService.sendTestCartExpiring(phone);
+  }
+
   async testAllAlimtalk(phone: string): Promise<void> {
     await Promise.allSettled([
       this.testLiveAlimtalk(phone),
-      this.alimtalkService.sendTestOrderFriendtalk(phone),
-      this.alimtalkService.sendCartExpiringAlimtalk(phone, '테스트', '테스트 상품', 1),
+      this.sendTestOrderFriendtalk(phone),
+      this.sendTestCartExpiring(phone),
     ]);
   }
 }
