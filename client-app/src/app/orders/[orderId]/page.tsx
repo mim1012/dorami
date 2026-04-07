@@ -15,6 +15,9 @@ import { useToast } from '@/components/common/Toast';
 import { formatPrice } from '@/lib/utils/price';
 
 type PaymentConfig = {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
   zelleEmail: string;
   zelleRecipientName: string;
   venmoEmail: string;
@@ -178,6 +181,9 @@ export default function OrderDetailPage() {
   const statusSteps = getStatusSteps();
   const isCancelled = order.status === OrderStatus.CANCELLED;
   const isPendingPayment = order.status === OrderStatus.PENDING_PAYMENT;
+  const bankName = paymentConfig?.bankName ?? '';
+  const bankAccountNumber = paymentConfig?.bankAccountNumber ?? '';
+  const bankAccountHolder = paymentConfig?.bankAccountHolder ?? '';
   const zelleEmail = paymentConfig?.zelleEmail ?? '';
   const zelleRecipientName = paymentConfig?.zelleRecipientName ?? '';
   const venmoEmail = paymentConfig?.venmoEmail ?? '';
@@ -279,7 +285,7 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Payment Instructions */}
-          {isPendingPayment && (zelleEmail || venmoEmail) && (
+          {isPendingPayment && (zelleEmail || venmoEmail || bankAccountNumber) && (
             <div className="rounded-2xl border-2 border-hot-pink/30 bg-hot-pink/5 p-5 mb-4">
               <Heading2 className="text-hot-pink mb-4">결제 방법</Heading2>
               <div className="space-y-3">
@@ -345,6 +351,44 @@ export default function OrderDetailPage() {
                           onClick={() => copyToClipboard(venmoEmail)}
                           className="flex-shrink-0"
                           aria-label="Venmo 이메일 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {bankAccountNumber && (
+                  <div className="bg-content-bg rounded-xl p-4 space-y-3">
+                    <Body className="text-primary-text font-bold text-sm">
+                      {bankName || '은행 계좌 이체'}
+                    </Body>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">예금주</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-primary-text font-semibold text-sm">
+                          {bankAccountHolder}
+                        </Body>
+                        <button
+                          onClick={() => copyToClipboard(bankAccountHolder)}
+                          className="flex-shrink-0"
+                          aria-label="예금주 복사"
+                        >
+                          <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Body className="text-secondary-text text-sm">계좌번호</Body>
+                      <div className="flex items-center gap-2">
+                        <Body className="text-emerald-400 font-semibold text-sm">
+                          {bankAccountNumber}
+                        </Body>
+                        <button
+                          onClick={() => copyToClipboard(bankAccountNumber)}
+                          className="flex-shrink-0"
+                          aria-label="계좌번호 복사"
                         >
                           <Copy className="w-4 h-4 text-secondary-text hover:text-hot-pink transition-colors" />
                         </button>

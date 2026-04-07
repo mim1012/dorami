@@ -45,7 +45,7 @@ function LoginContent() {
   const [devLoading, setDevLoading] = useState(false);
   const [devError, setDevError] = useState('');
   const [isDevAuthEnabled, setIsDevAuthEnabled] = useState(process.env.NODE_ENV === 'development');
-  const [returnTo, setReturnTo] = useState('/');
+  const [returnTo, setReturnTo] = useState('');
   const hasExplicitReturnTo = searchParams.has('returnTo') || searchParams.has('redirect');
 
   useEffect(() => {
@@ -57,7 +57,7 @@ function LoginContent() {
       return;
     }
 
-    setReturnTo(consumeStoredReturnTo() || '/');
+    setReturnTo(consumeStoredReturnTo() || '');
   }, [searchParams, hasExplicitReturnTo]);
 
   useEffect(() => {
@@ -132,14 +132,6 @@ function LoginContent() {
       setDevLoading(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-primary-black flex items-center justify-center">
-        <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-primary-black flex items-center justify-center p-4">
@@ -244,7 +236,7 @@ function LoginContent() {
                 </button>
                 <button
                   onClick={() => {
-                    setDevEmail('admin@doremi.shop');
+                    setDevEmail('admin@dorami.shop');
                     setDevRole('ADMIN');
                   }}
                   className="flex-1 py-1.5 text-xs rounded bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"

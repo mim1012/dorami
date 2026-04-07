@@ -46,7 +46,15 @@ function CheckoutContent() {
     submitOrder,
   } = useCheckoutFlow({ cartData });
 
-  const { zelleEmail, zelleRecipientName, venmoEmail, venmoRecipientName } = paymentSettings;
+  const {
+    bankName,
+    bankAccountNumber,
+    bankAccountHolder,
+    zelleEmail,
+    zelleRecipientName,
+    venmoEmail,
+    venmoRecipientName,
+  } = paymentSettings;
 
   const earliestExpiry = items
     .map((item) => item.expiresAt)
@@ -279,6 +287,33 @@ function CheckoutContent() {
                   </Body>
                   <Body className="text-secondary-text text-sm">
                     Zelle 이메일: <span className="text-hot-pink font-semibold">{zelleEmail}</span>
+                  </Body>
+                </div>
+              </div>
+            )}
+            {/* Bank transfer */}
+            {bankAccountNumber && (
+              <div className="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/30 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <Heading2 className="text-primary-text">은행 계좌 이체</Heading2>
+                </div>
+                <div className="space-y-1 pl-4 sm:pl-9">
+                  <Body className="text-secondary-text text-sm">
+                    은행명:{' '}
+                    <span className="text-primary-text font-semibold">
+                      {bankName || '은행 계좌'}
+                    </span>
+                  </Body>
+                  <Body className="text-secondary-text text-sm">
+                    계좌번호:{' '}
+                    <span className="text-emerald-400 font-semibold">{bankAccountNumber}</span>
+                  </Body>
+                  <Body className="text-secondary-text text-sm">
+                    예금주:{' '}
+                    <span className="text-primary-text font-semibold">{bankAccountHolder}</span>
                   </Body>
                 </div>
               </div>

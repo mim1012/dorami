@@ -16,6 +16,9 @@ interface PointsConfig {
 }
 
 interface PaymentSettings {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
   zelleEmail: string;
   zelleRecipientName: string;
   venmoEmail: string;
@@ -74,6 +77,9 @@ export function useCheckoutFlow({
 
   const [pointsConfig, setPointsConfig] = useState<PointsConfig | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+    bankName: '',
+    bankAccountNumber: '',
+    bankAccountHolder: '',
     zelleEmail: '',
     zelleRecipientName: '',
     venmoEmail: '',
@@ -108,6 +114,9 @@ export function useCheckoutFlow({
       if (paymentResult.status === 'fulfilled') {
         const d = paymentResult.value.data;
         setPaymentSettings({
+          bankName: d.bankName || '',
+          bankAccountNumber: d.bankAccountNumber || '',
+          bankAccountHolder: d.bankAccountHolder || '',
           zelleEmail: d.zelleEmail || '',
           zelleRecipientName: d.zelleRecipientName || '',
           venmoEmail: d.venmoEmail || '',

@@ -32,6 +32,9 @@ export class AppController {
       where: { id: 'system' },
     });
     return {
+      bankName: config?.bankName ?? '',
+      bankAccountNumber: config?.bankAccountNumber ?? '',
+      bankAccountHolder: config?.bankAccountHolder ?? '',
       zelleEmail: config?.zelleEmail ?? '',
       zelleRecipientName: config?.zelleRecipientName ?? '',
       venmoEmail: config?.venmoEmail ?? '',

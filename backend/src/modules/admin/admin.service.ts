@@ -1208,6 +1208,9 @@ export class AdminService {
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,
@@ -1235,6 +1238,15 @@ export class AdminService {
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
+    }
+    if (dto.bankName !== undefined) {
+      updateData.bankName = dto.bankName;
+    }
+    if (dto.bankAccountNumber !== undefined) {
+      updateData.bankAccountNumber = dto.bankAccountNumber;
+    }
+    if (dto.bankAccountHolder !== undefined) {
+      updateData.bankAccountHolder = dto.bankAccountHolder;
     }
     if (dto.zelleEmail !== undefined) {
       updateData.zelleEmail = dto.zelleEmail;
@@ -1274,6 +1286,9 @@ export class AdminService {
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,

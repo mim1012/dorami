@@ -50,7 +50,21 @@ export function useAuth() {
     // Skip profile fetch on /login page to avoid 401 infinite loops
     const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-    if (!isLoginPage && !fetchedRef.current && isLoading) {
+    if (isLoginPage) {
+      if (useAuthStore.persist.hasHydrated()) {
+        if (isLoading) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      const unsub = useAuthStore.persist.onFinishHydration(() => {
+        setLoading(false);
+      });
+      return unsub;
+    }
+
+    if (!fetchedRef.current && isLoading) {
       fetchedRef.current = true;
 
       // Zustand persist uses async/await internally: even with synchronous localStorage,

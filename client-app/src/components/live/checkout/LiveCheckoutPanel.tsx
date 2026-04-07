@@ -133,7 +133,9 @@ export default function LiveCheckoutPanel({
         )}
 
         {/* Payment method */}
-        {(paymentSettings.zelleEmail || paymentSettings.venmoEmail) && (
+        {(paymentSettings.zelleEmail ||
+          paymentSettings.venmoEmail ||
+          paymentSettings.bankAccountNumber) && (
           <div className="bg-white/5 rounded-2xl p-4 space-y-2">
             <div className="flex items-center gap-1.5 mb-2">
               <DollarSign className="w-3.5 h-3.5 text-hot-pink" />
@@ -151,6 +153,17 @@ export default function LiveCheckoutPanel({
                 <p className="text-white text-xs font-semibold">Venmo</p>
                 <p className="text-white/60 text-xs">{paymentSettings.venmoRecipientName}</p>
                 <p className="text-blue-400 text-xs font-mono">{paymentSettings.venmoEmail}</p>
+              </div>
+            )}
+            {paymentSettings.bankAccountNumber && (
+              <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20">
+                <p className="text-white text-xs font-semibold">
+                  {paymentSettings.bankName || '은행 계좌 이체'}
+                </p>
+                <p className="text-white/60 text-xs">{paymentSettings.bankAccountHolder}</p>
+                <p className="text-emerald-400 text-xs font-mono">
+                  {paymentSettings.bankAccountNumber}
+                </p>
               </div>
             )}
           </div>
