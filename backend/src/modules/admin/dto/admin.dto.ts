@@ -554,17 +554,14 @@ export class UpdatePaymentProvidersDto {
 export class UpdateNotificationTemplateDto {
   @IsOptional()
   @IsString()
-  @MaxLength(50)
-  @Matches(/^[A-Z0-9_]*$/)
-  kakaoTemplateCode?: string;
-}
+  @IsNotEmpty()
+  @MaxLength(2000)
+  template?: string;
 
-export class SendTestAlimtalkDto {
+  @IsOptional()
   @IsString()
-  @Matches(PHONE_PAYLOAD_PATTERN, {
-    message: KAKAO_PHONE_MESSAGE,
-  })
-  phone!: string;
+  @MaxLength(100)
+  kakaoTemplateCode?: string;
 }
 
 export class UpdateOrderStatusDto {

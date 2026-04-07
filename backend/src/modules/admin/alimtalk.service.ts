@@ -527,12 +527,4 @@ export class AlimtalkService {
     );
     await this._sendOrderFriendtalks([msg]);
   }
-
-  async sendTestPaymentReminder(phone: string): Promise<void> {
-    await this.sendPaymentReminderAlimtalk(phone, 'TEST-001', 50000);
-  }
-
-  async sendTestCartExpiring(phone: string): Promise<void> {
-    await this.sendCartExpiringAlimtalk(phone, '테스트 고객', '테스트 상품', 1);
-  }
 }
