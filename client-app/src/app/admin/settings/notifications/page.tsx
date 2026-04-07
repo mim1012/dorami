@@ -27,6 +27,33 @@ interface NotificationTemplate {
   updatedAt: string;
 }
 
+type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
+type KakaoMessageChannel = 'AT' | 'FT';
+
+interface KakaoDeliveryResult {
+  status: KakaoDeliveryStatus;
+  channel: KakaoMessageChannel;
+  recipient: string;
+  providerCode?: string;
+  providerMessage?: string;
+  providerMessageKey?: string;
+  reason?: string;
+}
+
+interface KakaoDeliveryBatchResult {
+  results: KakaoDeliveryResult[];
+  totals: {
+    sent: number;
+    failed: number;
+    skipped: number;
+  };
+}
+
+interface TestDeliveryResponse {
+  phone: string;
+  result: KakaoDeliveryBatchResult;
+}
+
 const EVENT_TYPES = Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType[];
 
 type TestEndpointMap = Record<NotificationEventType, string>;
@@ -48,6 +75,55 @@ function getVisibleTemplates(templates: NotificationTemplate[]): NotificationTem
   ) as NotificationTemplate[];
 }
 
+function formatDeliveryStatus(status: KakaoDeliveryStatus) {
+  switch (status) {
+    case 'sent':
+      return '발송 성공';
+    case 'failed':
+      return '발송 실패';
+    case 'skipped':
+      return '발송 건너뜀';
+  }
+}
+
+function formatDeliveryReason(reason?: string) {
+  switch (reason) {
+    case 'disabled':
+      return '알림톡 기능이 비활성화되어 있습니다.';
+    case 'provider_unavailable':
+      return 'Bizgo 연동이 준비되지 않았습니다.';
+    case 'template_missing':
+      return '템플릿 본문이 설정되지 않았습니다.';
+    case 'template_code_missing':
+      return '카카오 템플릿 코드가 설정되지 않았습니다.';
+    case 'provider_rejected':
+      return '카카오 발송이 공급자 정책에 의해 거부되었습니다.';
+    case 'provider_error':
+      return 'Bizgo 요청 처리 중 오류가 발생했습니다.';
+    default:
+      return reason ? `사유: ${reason}` : null;
+  }
+}
+
+function buildTestMessage(result: KakaoDeliveryBatchResult) {
+  const summary = `성공 ${result.totals.sent}건 · 실패 ${result.totals.failed}건 · 건너뜀 ${result.totals.skipped}건`;
+  const detail = result.results[0];
+
+  if (!detail) {
+    return summary;
+  }
+
+  const parts = [
+    `${detail.channel} ${formatDeliveryStatus(detail.status)}`,
+    detail.providerCode ? `코드 ${detail.providerCode}` : null,
+    detail.providerMessage ? detail.providerMessage : null,
+    detail.providerMessageKey ? `msgKey ${detail.providerMessageKey}` : null,
+    formatDeliveryReason(detail.reason),
+  ].filter(Boolean);
+
+  return `${summary}\n${parts.join(' · ')}`;
+}
+
 export default function NotificationSettingsPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
@@ -61,6 +137,7 @@ export default function NotificationSettingsPage() {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [testMessageTone, setTestMessageTone] = useState<'success' | 'error'>('success');
 
   const visibleTemplates = useMemo(() => getVisibleTemplates(templates), [templates]);
   const activeTemplate = useMemo(
@@ -123,6 +200,7 @@ export default function NotificationSettingsPage() {
     setPhone('');
     setIsTestModalOpen(true);
     setTestMessage(null);
+    setTestMessageTone('success');
   };
 
   const closeTestModal = () => {
@@ -130,6 +208,7 @@ export default function NotificationSettingsPage() {
     setTestTarget(null);
     setPhone('');
     setTestMessage(null);
+    setTestMessageTone('success');
   };
 
   const handleSendTest = async () => {
@@ -142,11 +221,15 @@ export default function NotificationSettingsPage() {
     setIsSendingTest(true);
     setTestMessage(null);
     try {
-      await apiClient.post(endpoint, { phone: phone.trim() });
-      setTestMessage('테스트 발송을 전송했습니다.');
-      setTimeout(closeTestModal, 1000);
+      const response = await apiClient.post<TestDeliveryResponse>(endpoint, { phone: phone.trim() });
+      setTestMessage(buildTestMessage(response.data.result));
+      setTestMessageTone(response.data.result.totals.failed > 0 ? 'error' : 'success');
+      if (response.data.result.totals.failed === 0) {
+        setTimeout(closeTestModal, 1800);
+      }
     } catch (err: unknown) {
       setTestMessage(getUserMessage(err));
+      setTestMessageTone('error');
     } finally {
       setIsSendingTest(false);
     }
@@ -381,7 +464,7 @@ export default function NotificationSettingsPage() {
             {testMessage && (
               <p
                 className={`text-sm mb-3 ${
-                  testMessage === '테스트 발송을 전송했습니다.'
+                  testMessageTone === 'success'
                     ? 'text-green-600 dark:text-green-300'
                     : 'text-red-600 dark:text-red-300'
                 }`}

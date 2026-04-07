@@ -2279,8 +2279,8 @@ export class AdminService {
     };
   }
 
-  async testLiveAlimtalk(phone: string): Promise<void> {
-    await this.alimtalkService.sendLiveStartAlimtalk(
+  async testLiveAlimtalk(phone: string) {
+    return this.alimtalkService.sendLiveStartAlimtalk(
       [phone],
       '테스트 방송',
       `${this.configService.get<string>('FRONTEND_URL', 'https://www.doremi-live.com')}/live/test`,
@@ -2288,23 +2288,29 @@ export class AdminService {
     );
   }
 
-  async sendTestOrderFriendtalk(phone: string): Promise<void> {
-    await this.alimtalkService.sendTestOrderFriendtalk(phone);
+  async sendTestOrderFriendtalk(phone: string) {
+    return this.alimtalkService.sendTestOrderFriendtalk(phone);
   }
 
-  async sendTestPaymentReminder(phone: string): Promise<void> {
-    await this.alimtalkService.sendTestPaymentReminder(phone);
+  async sendTestPaymentReminder(phone: string) {
+    return this.alimtalkService.sendTestPaymentReminder(phone);
   }
 
-  async sendTestCartExpiring(phone: string): Promise<void> {
-    await this.alimtalkService.sendTestCartExpiring(phone);
+  async sendTestCartExpiring(phone: string) {
+    return this.alimtalkService.sendTestCartExpiring(phone);
   }
 
-  async testAllAlimtalk(phone: string): Promise<void> {
-    await Promise.allSettled([
+  async testAllAlimtalk(phone: string) {
+    const results = await Promise.allSettled([
       this.testLiveAlimtalk(phone),
       this.sendTestOrderFriendtalk(phone),
+      this.sendTestPaymentReminder(phone),
       this.sendTestCartExpiring(phone),
     ]);
+
+    return {
+      phone,
+      results,
+    };
   }
 }
