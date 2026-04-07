@@ -37,6 +37,7 @@ import {
   UpdateMarketingCampaignsDto,
   UpdatePaymentProvidersDto,
   UpdateNotificationTemplateDto,
+  SendTestAlimtalkDto,
   BulkUpdateOrderStatusDto,
   BulkDeleteOrdersDto,
 } from './dto/admin.dto';
@@ -270,17 +271,38 @@ export class AdminController {
   }
 
   @Post('alimtalk/test-live')
-  @ApiOperation({ summary: '라이브 알림톡 테스트 발송 (관리자)' })
-  async testLiveAlimtalk(@Body('phone') phone: string) {
-    await this.adminService.testLiveAlimtalk(phone);
-    return { sent: true, phone };
+  @ApiOperation({ summary: '라이브 시작 알림톡 테스트 발송 (관리자)' })
+  async testLiveAlimtalk(@Body() dto: SendTestAlimtalkDto) {
+    await this.adminService.testLiveAlimtalk(dto.phone);
+    return { sent: true, phone: dto.phone };
   }
 
   @Post('alimtalk/test-all')
-  @ApiOperation({ summary: '전체 알림톡/친구톡 테스트 일괄 발송 (관리자)' })
-  async testAllAlimtalk(@Body('phone') phone: string) {
-    await this.adminService.testAllAlimtalk(phone);
-    return { sent: true, phone };
+  @ApiOperation({ summary: '전체 알림톡 테스트 일괄 발송 (관리자)' })
+  async testAllAlimtalk(@Body() dto: SendTestAlimtalkDto) {
+    await this.adminService.testAllAlimtalk(dto.phone);
+    return { sent: true, phone: dto.phone };
+  }
+
+  @Post('alimtalk/test-order-friendtalk')
+  @ApiOperation({ summary: '주문 확인 친구톡 테스트 발송 (관리자)' })
+  async testOrderFriendtalk(@Body() dto: SendTestAlimtalkDto) {
+    await this.adminService.sendTestOrderFriendtalk(dto.phone);
+    return { sent: true, phone: dto.phone };
+  }
+
+  @Post('alimtalk/test-payment-reminder')
+  @ApiOperation({ summary: '입금 안내 알림톡 테스트 발송 (관리자)' })
+  async testPaymentReminder(@Body() dto: SendTestAlimtalkDto) {
+    await this.adminService.sendTestPaymentReminder(dto.phone);
+    return { sent: true, phone: dto.phone };
+  }
+
+  @Post('alimtalk/test-cart-expiring')
+  @ApiOperation({ summary: '장바구니 만료 알림톡 테스트 발송 (관리자)' })
+  async testCartExpiring(@Body() dto: SendTestAlimtalkDto) {
+    await this.adminService.sendTestCartExpiring(dto.phone);
+    return { sent: true, phone: dto.phone };
   }
 
   @Get('users/:id')
@@ -328,7 +350,7 @@ export class AdminController {
     @Param('id') id: string,
     @Body() dto: UpdateNotificationTemplateDto,
   ) {
-    return this.adminService.updateNotificationTemplate(id, dto.template, dto.kakaoTemplateCode);
+    return this.adminService.updateNotificationTemplate(id, dto.kakaoTemplateCode);
   }
 
   @Post('orders/bulk-notify')
