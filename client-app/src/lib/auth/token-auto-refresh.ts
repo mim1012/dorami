@@ -114,8 +114,9 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
               return;
             } else {
               console.warn(
-                '[TokenAutoRefresh] Broadcast mode: skipping logout to avoid interruption.',
+                '[TokenAutoRefresh] Broadcast mode: stopping auto-refresh to avoid spam. Reload the page to resume.',
               );
+              return;
             }
           }
         }
