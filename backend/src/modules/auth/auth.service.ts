@@ -117,14 +117,18 @@ export class AuthService {
     );
 
     const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';
+    // Generate jti separately so we can use it as the Redis key (per-device isolation)
+    const refreshJti = randomUUID();
     const refreshToken = this.jwtService.sign(
-      { ...payload, type: 'refresh', jti: randomUUID() },
+      { ...payload, type: 'refresh', jti: refreshJti },
       { expiresIn: refreshExpiresIn },
     );
 
     const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
     try {
-      await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
+      // Key: refresh_token:{jti} — each device gets its own key, so rotating on
+      // one device does not invalidate the refresh token on another device.
+      await this.redisService.set(`refresh_token:${refreshJti}`, user.id, refreshTokenTTL);
       // Clear blacklist entry so new tokens are not rejected after a previous logout
       await this.redisService.del(`blacklist:${user.id}`);
     } catch (error) {
@@ -145,7 +149,7 @@ export class AuthService {
     };
   }
 
-  // In-memory dedupe for concurrent refresh requests (same process)
+  // In-memory dedupe for concurrent refresh requests (same process, keyed by jti)
   private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
 
   async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
@@ -164,76 +168,96 @@ export class AuthService {
     }
 
     const userId = payload.sub;
+    // Use jti for dedup key so each device is deduplicated independently.
+    // Fall back to userId for legacy tokens issued before per-device jti was added.
+    const dedupeKey = payload.jti ?? userId;
 
-    // In-memory dedupe: if refresh is already in-flight for this user, return same promise
-    const existing = this.refreshLocks.get(userId);
+    // In-memory dedupe: if same token is already being refreshed in this process, coalesce
+    const existing = this.refreshLocks.get(dedupeKey);
     if (existing) {
       return existing;
     }
 
-    const promise = this._doRefreshToken(userId, refreshToken);
-    this.refreshLocks.set(userId, promise);
+    const promise = this._doRefreshToken(userId, refreshToken, payload.jti);
+    this.refreshLocks.set(dedupeKey, promise);
 
     try {
       return await promise;
     } finally {
-      this.refreshLocks.delete(userId);
+      this.refreshLocks.delete(dedupeKey);
     }
   }
 
-  private async _doRefreshToken(userId: string, refreshToken: string): Promise<LoginResponseDto> {
-    const lockKey = `refresh_lock:${userId}`;
+  private async _doRefreshToken(
+    userId: string,
+    refreshToken: string,
+    jti: string | undefined,
+  ): Promise<LoginResponseDto> {
+    // Lock key is per-jti when available, otherwise per-user (legacy tokens)
+    const lockKey = jti ? `refresh_lock:${jti}` : `refresh_lock:${userId}`;
+    const resultCacheKey = jti ? `refresh_result:${jti}` : `refresh_result:${userId}`;
     let lockAcquired = false;
+
     try {
-      // Acquire Redis lock FIRST — prevents race condition where two instances
-      // both read the same stored token before either deletes it
       const acquired = await this.redisService.getClient().set(lockKey, '1', 'EX', 5, 'NX');
 
       if (!acquired) {
-        // Another instance is processing — wait and check cached result
-        this.logger.log(
-          `[Refresh] Lock contention for userId=${userId} — waiting for cached result`,
-        );
-        await new Promise((r) => setTimeout(r, 200));
-        const cached = await this.redisService.get(`refresh_result:${userId}`);
-        if (cached) {
-          return JSON.parse(cached) as LoginResponseDto;
+        // Another instance holds the lock — poll up to 2s for the cached result
+        this.logger.log(`[Refresh] Lock contention for key=${lockKey} — polling for cached result`);
+        for (let i = 0; i < 10; i++) {
+          await new Promise((r) => setTimeout(r, 200));
+          const cached = await this.redisService.get(resultCacheKey);
+          if (cached) {
+            return JSON.parse(cached) as LoginResponseDto;
+          }
         }
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       lockAcquired = true;
 
-      // Now safely read and compare token inside the lock
-      const storedToken = await this.redisService.get(`refresh_token:${userId}`);
-
-      if (!storedToken) {
-        this.logger.warn(`[Refresh] No stored token in Redis for userId=${userId}`);
-        throw new UnauthorizedException('Invalid refresh token');
+      // --- Per-device lookup (new format: refresh_token:{jti} → userId) ---
+      let tokenValid = false;
+      if (jti) {
+        const storedUserId = await this.redisService.get(`refresh_token:${jti}`);
+        if (storedUserId && storedUserId === userId) {
+          tokenValid = true;
+          await this.redisService.del(`refresh_token:${jti}`);
+        } else if (storedUserId) {
+          // jti exists but userId mismatch — token tampering
+          this.logger.warn(`[Refresh] UserId mismatch for jti=${jti}`);
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+        // storedUserId === null means the jti key has expired or was already used;
+        // fall through to legacy lookup for tokens issued during rollout window
       }
 
-      if (storedToken !== refreshToken) {
-        this.logger.warn(
-          `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
-        );
-        throw new UnauthorizedException('Invalid refresh token');
+      // --- Legacy fallback (old format: refresh_token:{userId} → token string) ---
+      if (!tokenValid) {
+        const legacyStored = await this.redisService.get(`refresh_token:${userId}`);
+        if (!legacyStored) {
+          this.logger.warn(`[Refresh] Token not found for userId=${userId}, jti=${jti ?? 'none'}`);
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+        if (legacyStored !== refreshToken) {
+          this.logger.warn(
+            `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
+          );
+          throw new UnauthorizedException('Invalid refresh token');
+        }
+        await this.redisService.del(`refresh_token:${userId}`);
       }
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
-
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         this.logger.warn(`[Refresh] User not found in DB: userId=${userId}`);
         throw new UnauthorizedException('User not found');
       }
 
-      await this.redisService.del(`refresh_token:${userId}`);
-
       const result = await this.login(user);
 
-      // Cache result briefly for concurrent requests across instances
-      await this.redisService.set(`refresh_result:${userId}`, JSON.stringify(result), 30);
+      // Cache result briefly so lock-contention waiters can pick it up
+      await this.redisService.set(resultCacheKey, JSON.stringify(result), 30);
 
       return result;
     } catch (error) {

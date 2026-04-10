@@ -33,6 +33,8 @@ describe('AuthService', () => {
     email: 'test@example.com',
     kakaoId: 'kakao-123',
     role: 'USER',
+    type: 'refresh',
+    jti: 'test-jti-abc123',
   };
 
   beforeEach(async () => {
@@ -105,12 +107,13 @@ describe('AuthService', () => {
       expect(result.user.id).toBe(mockUser.id);
     });
 
-    it('should store refresh token in Redis', async () => {
+    it('should store refresh token in Redis with per-device jti key', async () => {
       await service.login(mockUser as any);
 
+      // Key is refresh_token:{jti} (not userId) for per-device isolation
       expect(redisService.set).toHaveBeenCalledWith(
-        `refresh_token:${mockUser.id}`,
-        expect.any(String),
+        expect.stringMatching(/^refresh_token:[0-9a-f-]{36}$/),
+        mockUser.id,
         expect.any(Number),
       );
     });
@@ -118,20 +121,25 @@ describe('AuthService', () => {
 
   describe('refreshToken', () => {
     const validRefreshToken = 'valid-refresh-token';
+    const jti = mockTokenPayload.jti; // 'test-jti-abc123'
 
     beforeEach(() => {
-      jest.spyOn(redisService, 'get').mockResolvedValue(validRefreshToken);
+      // New format: refresh_token:{jti} → userId
+      jest.spyOn(redisService, 'get').mockImplementation((key: string) => {
+        if (key === `refresh_token:${jti}`) return Promise.resolve(mockUser.id);
+        return Promise.resolve(null);
+      });
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
     });
 
-    it('should delete old token before issuing new one (Token Rotation)', async () => {
+    it('should delete per-device token before issuing new one (Token Rotation)', async () => {
       const delSpy = jest.spyOn(redisService, 'del');
       const setSpy = jest.spyOn(redisService, 'set');
 
       await service.refreshToken(validRefreshToken);
 
-      // Verify deletion happens
-      expect(delSpy).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
+      // Verify deletion uses per-device jti key
+      expect(delSpy).toHaveBeenCalledWith(`refresh_token:${jti}`);
 
       // Verify deletion is called before set (Token Rotation)
       const delCallOrder = delSpy.mock.invocationCallOrder[0];
@@ -139,8 +147,11 @@ describe('AuthService', () => {
       expect(delCallOrder).toBeLessThan(setCallOrder);
     });
 
-    it('should throw UnauthorizedException for invalid token', async () => {
-      jest.spyOn(redisService, 'get').mockResolvedValue('different-token');
+    it('should throw UnauthorizedException when jti key has a userId mismatch', async () => {
+      jest.spyOn(redisService, 'get').mockImplementation((key: string) => {
+        if (key === `refresh_token:${jti}`) return Promise.resolve('different-user-id');
+        return Promise.resolve(null);
+      });
 
       await expect(service.refreshToken(validRefreshToken)).rejects.toThrow(UnauthorizedException);
     });
@@ -192,6 +203,49 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('user');
+    });
+
+    it('should allow two devices to refresh independently (multi-device isolation)', async () => {
+      const jtiA = 'jti-device-a';
+      const jtiB = 'jti-device-b';
+
+      // Device A refreshes — its jti key exists
+      jest.spyOn(jwtService, 'verify').mockReturnValue({ ...mockTokenPayload, jti: jtiA });
+      jest.spyOn(redisService, 'get').mockImplementation((key: string) => {
+        if (key === `refresh_token:${jtiA}`) return Promise.resolve(mockUser.id);
+        return Promise.resolve(null);
+      });
+      const resultA = await service.refreshToken('token-device-a');
+      expect(resultA).toHaveProperty('accessToken');
+
+      // Device B refreshes independently — its jti key is separate
+      jest.spyOn(jwtService, 'verify').mockReturnValue({ ...mockTokenPayload, jti: jtiB });
+      jest.spyOn(redisService, 'get').mockImplementation((key: string) => {
+        if (key === `refresh_token:${jtiB}`) return Promise.resolve(mockUser.id);
+        return Promise.resolve(null);
+      });
+      const resultB = await service.refreshToken('token-device-b');
+      expect(resultB).toHaveProperty('accessToken');
+    });
+
+    it('should fall back to legacy userId key for tokens without jti', async () => {
+      // Old token format — no jti in payload
+      jest.spyOn(jwtService, 'verify').mockReturnValue({
+        sub: mockUser.id,
+        userId: mockUser.id,
+        email: mockUser.email,
+        kakaoId: mockUser.kakaoId,
+        role: mockUser.role,
+        type: 'refresh',
+        // no jti
+      });
+      jest.spyOn(redisService, 'get').mockImplementation((key: string) => {
+        if (key === `refresh_token:${mockUser.id}`) return Promise.resolve(validRefreshToken);
+        return Promise.resolve(null);
+      });
+
+      const result = await service.refreshToken(validRefreshToken);
+      expect(result).toHaveProperty('accessToken');
     });
   });
 
