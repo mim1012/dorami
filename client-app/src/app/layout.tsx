@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { InAppBrowserGuard } from '@/components/common/InAppBrowserGuard';
 import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
+import { TokenRefreshProvider } from '@/components/auth/TokenRefreshProvider';
 
 export const metadata: Metadata = {
   title: '도레미 마켓 | Doremi Market',
@@ -66,7 +67,9 @@ export default function RootLayout({
             <ToastProvider>
               <ConfirmProvider>
                 <ProfileGuardBoundary>
-                  <div id="main-content">{children}</div>
+                  <TokenRefreshProvider>
+                    <div id="main-content">{children}</div>
+                  </TokenRefreshProvider>
                 </ProfileGuardBoundary>
               </ConfirmProvider>
             </ToastProvider>

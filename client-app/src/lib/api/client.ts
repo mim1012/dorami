@@ -96,6 +96,13 @@ export async function refreshAccessToken(): Promise<boolean> {
       const response = await executeFetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
       });
+      if (response.ok) {
+        try {
+          localStorage.setItem('dorami-last-token-refresh', Date.now().toString());
+        } catch {
+          // ignore — localStorage may be unavailable (private browsing)
+        }
+      }
       return response.ok;
     } catch {
       return false;

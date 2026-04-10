@@ -47,7 +47,6 @@ import {
 import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
-import { useTokenAutoRefresh } from '@/lib/auth/token-auto-refresh';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
@@ -75,9 +74,6 @@ export default function LiveStreamPage() {
   const router = useRouter();
   const pathname = usePathname();
   const streamKey = typeof params.streamKey === 'string' ? params.streamKey : undefined;
-
-  // 10분 주기 토큰 자동 갱신 — 장기 방송(3시간+) 지원
-  useTokenAutoRefresh(streamKey ?? '', { suspendForBroadcast: true });
 
   const isMobile = useIsMobile(1024);
   const [isMobileReady, setIsMobileReady] = useState(false);

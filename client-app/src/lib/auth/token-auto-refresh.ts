@@ -3,12 +3,13 @@
 import { useEffect } from 'react';
 import { refreshAuthToken, forceLogout } from './token-manager';
 
-const FALLBACK_REFRESH_INTERVAL_MS = 45 * 60 * 1000; // 45분 (token decode 실패 시)
-const BUFFER_BEFORE_EXPIRY_MS = 5 * 60 * 1000; // 만료 5분 전
+const FALLBACK_REFRESH_INTERVAL_MS = 45 * 60 * 1000; // 45분 (마지막 갱신 이후 목표 주기)
 const JITTER_MAX_MS = 3 * 60 * 1000; // 0~3분 랜덤
-const MIN_REFRESH_DELAY_MS = 30_000; // 최소 30초
+const MIN_REFRESH_DELAY_MS = 30_000; // 최소 30초 (너무 빨리 재시도 방지)
 const RETRY_DELAYS = [5_000, 15_000, 30_000]; // 3회 retry (jitter 추가됨)
 const DEFAULT_MAX_CONSECUTIVE_REFRESH_FAILURES = 4;
+const BROADCAST_SLOW_RETRY_MS = 10 * 60 * 1000; // 방송 모드 suspend 후 10분마다 재시도
+const LAST_REFRESH_LS_KEY = 'dorami-last-token-refresh';
 
 type AutoRefreshOptions = {
   /**
@@ -24,18 +25,29 @@ type AutoRefreshOptions = {
 };
 
 /**
- * Access token의 exp claim에서 다음 refresh 시점을 계산한다.
- * token.exp - 5분 + random(0~3분) jitter로 동시 refresh를 분산.
+ * 다음 refresh 시점을 계산한다.
+ *
+ * localStorage에 저장된 마지막 갱신 시각을 읽어 남은 시간을 계산한다.
+ * 예) 마지막 갱신 40분 전 → 5분 후 refresh
+ *     마지막 갱신 50분 전 → 30초 후 refresh (stale token 즉시 처리)
+ *     기록 없음 → 45분 후 (기존 동작)
+ *
+ * httpOnly 쿠키라 exp claim을 직접 읽을 수 없으므로 갱신 시각을 추적한다.
+ * client.ts refreshAccessToken()이 성공 시 LAST_REFRESH_LS_KEY를 기록한다.
  */
 function getNextRefreshDelay(): number {
   try {
-    // httpOnly 쿠키라 직접 읽을 수 없음 — fallback 사용
-    // 서버에서 token 발급 시 exp를 알 수 없으므로 고정 간격 + jitter
-    const jitter = Math.random() * JITTER_MAX_MS;
-    return FALLBACK_REFRESH_INTERVAL_MS + jitter;
+    const lastRefreshRaw = localStorage.getItem(LAST_REFRESH_LS_KEY);
+    if (lastRefreshRaw) {
+      const elapsed = Date.now() - parseInt(lastRefreshRaw, 10);
+      const remaining = FALLBACK_REFRESH_INTERVAL_MS - elapsed;
+      const delay = remaining + Math.random() * JITTER_MAX_MS;
+      return Math.max(MIN_REFRESH_DELAY_MS, delay);
+    }
   } catch {
-    return FALLBACK_REFRESH_INTERVAL_MS;
+    // localStorage 비활성화(시크릿 모드 등) — fallback
   }
+  return FALLBACK_REFRESH_INTERVAL_MS + Math.random() * JITTER_MAX_MS;
 }
 
 /**
@@ -108,14 +120,21 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
           consecutiveRefreshFailures += 1;
 
           if (consecutiveRefreshFailures >= maxConsecutiveFailures) {
-            console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
             if (!suspendForBroadcast) {
+              console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
               forceLogout();
               return;
             } else {
-              console.warn(
-                '[TokenAutoRefresh] Broadcast mode: stopping auto-refresh to avoid spam. Reload the page to resume.',
-              );
+              // 방송 모드: 강제 로그아웃 대신 10분마다 조용히 재시도한다.
+              // 일시적 네트워크 장애 후 복구되면 정상 주기로 복귀한다.
+              console.warn('[TokenAutoRefresh] Broadcast mode: slow retry in 10min');
+              consecutiveRefreshFailures = 0;
+              if (!cancelled) {
+                timeoutId = setTimeout(
+                  refreshCycle,
+                  BROADCAST_SLOW_RETRY_MS + Math.random() * JITTER_MAX_MS,
+                );
+              }
               return;
             }
           }
