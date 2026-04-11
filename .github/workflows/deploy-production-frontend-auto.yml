@@ -140,31 +140,31 @@ jobs:
 
           echo "=== Verifying deployed frontend image is immutable sha tag ==="
           FRONTEND_IMAGE_REF="ghcr.io/${REPO_OWNER}/dorami-frontend:${IMAGE_TAG}"
-          FRONTEND_IMAGE_ID=$(docker image inspect --format='{{.Id}}' "$FRONTEND_IMAGE_REF")
-          if [[ ! "$FRONTEND_IMAGE_REF" =~ ^ghcr\.io/${REPO_OWNER}/dorami-frontend:sha-[0-9a-f]{40}$ ]]; then
-            echo "ERROR: Frontend image ref is not immutable sha tag: $FRONTEND_IMAGE_REF"
+          FRONTEND_IMAGE_ID=\$(docker image inspect --format='{{.Id}}' "\$FRONTEND_IMAGE_REF")
+          if [[ ! "\$FRONTEND_IMAGE_REF" =~ ^ghcr\.io/${REPO_OWNER}/dorami-frontend:sha-[0-9a-f]{40}$ ]]; then
+            echo "ERROR: Frontend image ref is not immutable sha tag: \$FRONTEND_IMAGE_REF"
             exit 1
           fi
-          if [[ "$FRONTEND_IMAGE_REF" != "ghcr.io/${REPO_OWNER}/dorami-frontend:${IMAGE_TAG}" ]]; then
+          if [[ "\$FRONTEND_IMAGE_REF" != "ghcr.io/${REPO_OWNER}/dorami-frontend:${IMAGE_TAG}" ]]; then
             echo "ERROR: Frontend image ref mismatch (expected ghcr.io/${REPO_OWNER}/dorami-frontend:${IMAGE_TAG})"
             exit 1
           fi
-          echo "Frontend image immutable check passed: $FRONTEND_IMAGE_REF"
-          echo "Frontend image sha id: $FRONTEND_IMAGE_ID"
+          echo "Frontend image immutable check passed: \$FRONTEND_IMAGE_REF"
+          echo "Frontend image sha id: \$FRONTEND_IMAGE_ID"
 
           echo "=== Waiting for frontend health ==="
           for i in {1..18}; do
-            status=$(docker inspect --format='{{.State.Health.Status}}' dorami-frontend-prod 2>/dev/null || echo unknown)
-            if [ "$status" = "healthy" ]; then
+            status=\$(docker inspect --format='{{.State.Health.Status}}' dorami-frontend-prod 2>/dev/null || echo unknown)
+            if [ "\$status" = "healthy" ]; then
               echo "Frontend healthy!"
               break
             fi
-            if [ "$i" = "18" ]; then
+            if [ "\$i" = "18" ]; then
               echo "ERROR: Frontend not healthy after 3 minutes"
               docker logs dorami-frontend-prod --tail 40 || true
               exit 1
             fi
-            echo "  waiting... $i/18 (status: $status)"
+            echo "  waiting... \$i/18 (status: \$status)"
             sleep 10
           done
 
