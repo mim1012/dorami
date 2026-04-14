@@ -128,6 +128,10 @@ export class AdminService {
     private redisService: RedisService,
   ) {}
 
+  private getDisplayProductName(item: { productName: string; Product?: { name?: string | null } | null }) {
+    return item.Product?.name?.trim() || item.productName;
+  }
+
   private getSystemConfigDefaults(
     overrides: Record<string, unknown> = {},
   ): Record<string, unknown> {
@@ -505,6 +509,7 @@ export class AdminService {
               size: true,
               Product: {
                 select: {
+                  name: true,
                   streamKey: true,
                 },
               },
@@ -531,7 +536,7 @@ export class AdminService {
       paidAt: order.paidAt?.toISOString() ?? null,
       streamKey: order.orderItems[0]?.Product?.streamKey ?? null,
       items: order.orderItems.map((item) => ({
-        productName: item.productName,
+        productName: this.getDisplayProductName(item),
         price: String(item.price),
         quantity: item.quantity,
         color: item.color,
@@ -767,7 +772,7 @@ export class AdminService {
             orderItems: {
               include: {
                 Product: {
-                  select: { streamKey: true },
+                  select: { name: true, streamKey: true },
                 },
               },
             },
@@ -861,7 +866,7 @@ export class AdminService {
             instagramId: order.instagramId?.replace(/^@/, ''),
             recipientName,
             depositorName: order.depositorName ?? '',
-            productName: item.productName,
+            productName: this.getDisplayProductName(item),
             price: Number(item.price),
             quantity: item.quantity,
             color: item.color ?? '-',
@@ -1510,7 +1515,7 @@ export class AdminService {
       items: order.orderItems.map((item) => ({
         id: item.id,
         productId: item.productId,
-        productName: item.productName,
+        productName: this.getDisplayProductName(item),
         productImage: item.Product?.imageUrl,
         quantity: item.quantity,
         price: String(item.price),
