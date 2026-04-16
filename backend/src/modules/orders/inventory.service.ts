@@ -75,18 +75,26 @@ export class InventoryService {
    * Restore stock (e.g., when order is cancelled)
    */
   async restoreStock(productId: string, quantity: number): Promise<void> {
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
-    if (!product) {
-      return;
-    }
-    await this.prisma.product.update({
-      where: { id: productId },
-      data: {
-        quantity: { increment: quantity },
-        // Only restore to AVAILABLE if currently SOLD_OUT (don't override other statuses)
-        ...(product.status === 'SOLD_OUT' ? { status: 'AVAILABLE' } : {}),
+    await this.prisma.$transaction(
+      async (tx) => {
+        const product = await tx.product.findUnique({ where: { id: productId } });
+        if (!product) {
+          return;
+        }
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            quantity: { increment: quantity },
+            // Only restore to AVAILABLE if currently SOLD_OUT (don't override other statuses)
+            ...(product.status === 'SOLD_OUT' ? { status: 'AVAILABLE' } : {}),
+          },
+        });
       },
-    });
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 3000,
+      },
+    );
   }
 
   /**

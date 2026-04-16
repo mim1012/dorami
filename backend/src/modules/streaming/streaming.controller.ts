@@ -23,6 +23,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
+import * as crypto from 'crypto';
 import { SkipThrottle } from '@nestjs/throttler';
 import { StreamingService } from './streaming.service';
 import {
@@ -310,8 +311,15 @@ export class StreamingController {
     const secret = this.configService.get<string>('SRS_WEBHOOK_SECRET');
     if (secret) {
       const provided = req.headers['x-srs-secret'] ?? req.query?.['secret'];
-      if (!provided || provided !== secret) {
-        this.logger.warn('SRS callback rejected: missing or invalid webhook secret');
+      if (!provided) {
+        this.logger.warn('SRS callback rejected: missing webhook secret');
+        return false;
+      }
+      const secretBuf = Buffer.from(secret);
+      const providedBuf = Buffer.alloc(secretBuf.length);
+      Buffer.from(String(provided)).copy(providedBuf);
+      if (!crypto.timingSafeEqual(secretBuf, providedBuf)) {
+        this.logger.warn('SRS callback rejected: invalid webhook secret');
         return false;
       }
     }

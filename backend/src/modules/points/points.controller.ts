@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Param, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { PointsService } from './points.service';
 import { PointsConfigService } from './points-config.service';
@@ -58,7 +68,7 @@ export class PointsController {
   ) {
     // Only allow access to own data or if admin
     if (targetUserId !== currentUserId && role !== 'ADMIN') {
-      throw new Error("Forbidden: Cannot view another user's points");
+      throw new ForbiddenException('다른 사용자의 포인트를 조회할 수 없습니다');
     }
     return this.pointsService.getBalance(targetUserId);
   }
@@ -79,7 +89,7 @@ export class PointsController {
   ) {
     // Only allow access to own data or if admin
     if (targetUserId !== currentUserId && role !== 'ADMIN') {
-      throw new Error("Forbidden: Cannot view another user's point history");
+      throw new ForbiddenException('다른 사용자의 포인트 내역을 조회할 수 없습니다');
     }
     return this.pointsService.getTransactionHistory(targetUserId, query);
   }
