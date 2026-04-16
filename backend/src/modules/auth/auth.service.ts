@@ -20,6 +20,10 @@ interface KakaoUserProfile {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly adminEmailSet: Set<string>;
+  private readonly refreshLockTtlSeconds = 5;
+  private readonly refreshResultTtlSeconds = 30;
+  private readonly refreshContentionWaitMs = 4000;
+  private readonly refreshContentionPollMs = 250;
 
   constructor(
     private prisma: PrismaService,
@@ -148,6 +152,93 @@ export class AuthService {
   // In-memory dedupe for concurrent refresh requests (same process)
   private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
 
+  private logRefresh(
+    level: 'log' | 'warn' | 'error',
+    reason: string,
+    userId: string,
+    details?: Record<string, unknown>,
+    trace?: string,
+  ): void {
+    const payload = JSON.stringify({
+      reason,
+      userId,
+      ...details,
+    });
+
+    if (level === 'error') {
+      this.logger.error(`[Refresh] ${payload}`, trace);
+      return;
+    }
+
+    this.logger[level](`[Refresh] ${payload}`);
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async readCachedRefreshResult(userId: string): Promise<LoginResponseDto | null> {
+    const cacheKey = `refresh_result:${userId}`;
+    const cached = await this.redisService.get(cacheKey);
+
+    if (!cached) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(cached) as LoginResponseDto;
+    } catch (error) {
+      this.logRefresh('warn', 'INVALID_CACHED_REFRESH_RESULT', userId, {
+        message: (error as Error)?.message ?? 'Failed to parse cached refresh result',
+      });
+
+      try {
+        await this.redisService.del(cacheKey);
+      } catch (cleanupError) {
+        this.logRefresh('warn', 'CACHED_REFRESH_RESULT_DELETE_FAILED', userId, {
+          message: (cleanupError as Error)?.message ?? 'Failed to delete malformed cache entry',
+        });
+      }
+
+      return null;
+    }
+  }
+
+  private async waitForCachedRefreshResult(userId: string): Promise<{
+    attempts: number;
+    waitedMs: number;
+    result: LoginResponseDto | null;
+  }> {
+    const startedAt = Date.now();
+    let attempts = 0;
+
+    while (true) {
+      attempts += 1;
+
+      const result = await this.readCachedRefreshResult(userId);
+      if (result) {
+        return {
+          attempts,
+          waitedMs: Date.now() - startedAt,
+          result,
+        };
+      }
+
+      const elapsedMs = Date.now() - startedAt;
+      if (elapsedMs >= this.refreshContentionWaitMs) {
+        return {
+          attempts,
+          waitedMs: elapsedMs,
+          result: null,
+        };
+      }
+
+      await this.delay(
+        Math.min(this.refreshContentionPollMs, this.refreshContentionWaitMs - elapsedMs),
+      );
+    }
+  }
+
   async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
     let payload: TokenPayload;
     try {
@@ -156,10 +247,18 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
+
+      this.logRefresh('warn', 'JWT_VERIFY_FAILED', 'unknown', {
+        message: (error as Error)?.message ?? 'Unknown JWT verification error',
+      });
+
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     if (payload.type && payload.type !== 'refresh') {
+      this.logRefresh('warn', 'INVALID_TOKEN_TYPE', payload.sub, {
+        tokenType: payload.type,
+      });
       throw new UnauthorizedException('Invalid token type');
     }
 
@@ -187,18 +286,29 @@ export class AuthService {
     try {
       // Acquire Redis lock FIRST — prevents race condition where two instances
       // both read the same stored token before either deletes it
-      const acquired = await this.redisService.getClient().set(lockKey, '1', 'EX', 5, 'NX');
+      const acquired = await this.redisService
+        .getClient()
+        .set(lockKey, '1', 'EX', this.refreshLockTtlSeconds, 'NX');
 
       if (!acquired) {
-        // Another instance is processing — wait and check cached result
-        this.logger.log(
-          `[Refresh] Lock contention for userId=${userId} — waiting for cached result`,
-        );
-        await new Promise((r) => setTimeout(r, 200));
-        const cached = await this.redisService.get(`refresh_result:${userId}`);
-        if (cached) {
-          return JSON.parse(cached) as LoginResponseDto;
+        this.logRefresh('log', 'LOCK_CONTENTION', userId, {
+          waitWindowMs: this.refreshContentionWaitMs,
+          pollIntervalMs: this.refreshContentionPollMs,
+        });
+
+        const waitResult = await this.waitForCachedRefreshResult(userId);
+        if (waitResult.result) {
+          this.logRefresh('log', 'LOCK_CONTENTION_RECOVERED', userId, {
+            attempts: waitResult.attempts,
+            waitedMs: waitResult.waitedMs,
+          });
+          return waitResult.result;
         }
+
+        this.logRefresh('warn', 'LOCK_TIMEOUT', userId, {
+          attempts: waitResult.attempts,
+          waitedMs: waitResult.waitedMs,
+        });
         throw new UnauthorizedException('Invalid refresh token');
       }
 
@@ -208,14 +318,14 @@ export class AuthService {
       const storedToken = await this.redisService.get(`refresh_token:${userId}`);
 
       if (!storedToken) {
-        this.logger.warn(`[Refresh] No stored token in Redis for userId=${userId}`);
+        this.logRefresh('warn', 'NO_STORED_TOKEN', userId);
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       if (storedToken !== refreshToken) {
-        this.logger.warn(
-          `[Refresh] Token mismatch for userId=${userId} — possible reuse or rotation race`,
-        );
+        this.logRefresh('warn', 'TOKEN_MISMATCH', userId, {
+          possibleCause: 'reuse_or_rotation_race',
+        });
         throw new UnauthorizedException('Invalid refresh token');
       }
 
@@ -224,7 +334,7 @@ export class AuthService {
       });
 
       if (!user) {
-        this.logger.warn(`[Refresh] User not found in DB: userId=${userId}`);
+        this.logRefresh('warn', 'USER_NOT_FOUND', userId);
         throw new UnauthorizedException('User not found');
       }
 
@@ -233,15 +343,26 @@ export class AuthService {
       const result = await this.login(user);
 
       // Cache result briefly for concurrent requests across instances
-      await this.redisService.set(`refresh_result:${userId}`, JSON.stringify(result), 30);
+      await this.redisService.set(
+        `refresh_result:${userId}`,
+        JSON.stringify(result),
+        this.refreshResultTtlSeconds,
+      );
 
       return result;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.error(
-        `[Refresh] Unexpected error for userId=${userId}: ${(error as Error)?.message || 'no message'}`,
+
+      this.logRefresh(
+        'error',
+        'UNEXPECTED_INFRA_ERROR',
+        userId,
+        {
+          message: (error as Error)?.message ?? 'no message',
+          name: (error as Error)?.name ?? 'Error',
+        },
         (error as Error)?.stack,
       );
       throw new UnauthorizedException('Invalid or expired refresh token');

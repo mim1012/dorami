@@ -3,10 +3,8 @@
 import { useEffect } from 'react';
 import { refreshAuthToken, forceLogout } from './token-manager';
 
-const FALLBACK_REFRESH_INTERVAL_MS = 45 * 60 * 1000; // 45분 (token decode 실패 시)
-const BUFFER_BEFORE_EXPIRY_MS = 5 * 60 * 1000; // 만료 5분 전
-const JITTER_MAX_MS = 3 * 60 * 1000; // 0~3분 랜덤
-const MIN_REFRESH_DELAY_MS = 30_000; // 최소 30초
+const FALLBACK_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8분 (15분 access 만료 전에 선제 갱신)
+const JITTER_MAX_MS = 2 * 60 * 1000; // 0~2분 랜덤
 const RETRY_DELAYS = [5_000, 15_000, 30_000]; // 3회 retry (jitter 추가됨)
 const DEFAULT_MAX_CONSECUTIVE_REFRESH_FAILURES = 4;
 
@@ -21,21 +19,19 @@ type AutoRefreshOptions = {
    * 기본값은 4회.
    */
   maxConsecutiveFailures?: number;
+  /**
+   * 인증된 세션일 때만 자동 갱신 루프를 실행한다.
+   */
+  enabled?: boolean;
 };
 
 /**
- * Access token의 exp claim에서 다음 refresh 시점을 계산한다.
- * token.exp - 5분 + random(0~3분) jitter로 동시 refresh를 분산.
+ * 서버 exp claim을 직접 읽을 수 없으므로 access 만료(15분)보다 충분히 이른 시점에
+ * fallback refresh를 실행한다. 각 탭이 동시에 refresh하지 않도록 작은 jitter를 더한다.
  */
 function getNextRefreshDelay(): number {
-  try {
-    // httpOnly 쿠키라 직접 읽을 수 없음 — fallback 사용
-    // 서버에서 token 발급 시 exp를 알 수 없으므로 고정 간격 + jitter
-    const jitter = Math.random() * JITTER_MAX_MS;
-    return FALLBACK_REFRESH_INTERVAL_MS + jitter;
-  } catch {
-    return FALLBACK_REFRESH_INTERVAL_MS;
-  }
+  const jitter = Math.random() * JITTER_MAX_MS;
+  return FALLBACK_REFRESH_INTERVAL_MS + jitter;
 }
 
 /**
@@ -50,22 +46,20 @@ function getRetryDelay(attempt: number): number {
 /**
  * useTokenAutoRefresh
  *
- * 라이브 스트림 페이지에서 장기 방송(3시간+) 지원을 위해
- * token.exp 기준 + jitter로 JWT accessToken을 자동 갱신한다.
+ * 인증된 세션에 대해 setTimeout 기반으로 access token을 선제 갱신한다.
  *
  * - setTimeout 기반 (setInterval 대신) — 매 refresh 후 다음 시점 재계산
  * - 실패 시 3회 retry with exponential backoff + jitter
  * - 연속 실패 임계값(4회) 초과 시 forceLogout (broadcast mode 제외)
- *
- * @param streamKey - 스트림 키 (의존성 배열용, 스트림 변경 시 타이머 재시작)
  */
 export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptions = {}): void {
   const maxConsecutiveFailures =
     options.maxConsecutiveFailures ?? DEFAULT_MAX_CONSECUTIVE_REFRESH_FAILURES;
   const suspendForBroadcast = options.suspendForBroadcast ?? false;
+  const enabled = options.enabled ?? true;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !enabled) return;
 
     let consecutiveRefreshFailures = 0;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -141,5 +135,5 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [streamKey, maxConsecutiveFailures, suspendForBroadcast]);
+  }, [enabled, streamKey, maxConsecutiveFailures, suspendForBroadcast]);
 }

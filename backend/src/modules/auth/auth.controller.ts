@@ -109,6 +109,61 @@ export class AuthController {
     };
   }
 
+  private logRefreshEvent(reason: string, details?: Record<string, unknown>): void {
+    this.logger.warn(
+      `[Refresh] ${JSON.stringify({
+        reason,
+        ...details,
+      })}`,
+    );
+  }
+
+  private sendRefreshError(res: Response, errorCode: string, message: string): Response {
+    return res.status(401).json({
+      success: false,
+      error: errorCode,
+      errorCode,
+      statusCode: 401,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private getRefreshFailureReason(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (error instanceof UnauthorizedException) {
+      switch (message) {
+        case 'Invalid token type':
+          return 'INVALID_TOKEN_TYPE';
+        case 'User not found':
+          return 'USER_NOT_FOUND';
+        case 'Invalid refresh token':
+          return 'INVALID_REFRESH_TOKEN';
+        case 'Invalid or expired refresh token':
+          return 'INVALID_OR_EXPIRED_REFRESH_TOKEN';
+        default:
+          return 'UNAUTHORIZED';
+      }
+    }
+
+    if (
+      (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED' ||
+      message.toLowerCase().includes('redis')
+    ) {
+      return 'REDIS_ERROR';
+    }
+
+    if (
+      (error as NodeJS.ErrnoException)?.code === 'P2025' ||
+      message.toLowerCase().includes('prisma')
+    ) {
+      return 'DB_ERROR';
+    }
+
+    return 'UNKNOWN';
+  }
+
   @Public()
   @Get('kakao')
   @UseGuards(KakaoAuthGuard)
@@ -181,14 +236,8 @@ export class AuthController {
       const refreshToken = req.cookies?.refreshToken;
 
       if (!refreshToken) {
-        return res.status(401).json({
-          success: false,
-          error: 'NO_REFRESH_TOKEN',
-          errorCode: 'NO_REFRESH_TOKEN',
-          statusCode: 401,
-          message: 'Refresh token not found',
-          timestamp: new Date().toISOString(),
-        });
+        this.logRefreshEvent('NO_REFRESH_TOKEN', { source: 'cookie' });
+        return this.sendRefreshError(res, 'NO_REFRESH_TOKEN', 'Refresh token not found');
       }
 
       const loginResponse = await this.authService.refreshToken(refreshToken);
@@ -198,7 +247,9 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
-      this.logger.log(`[Refresh] Success: userId=${loginResponse.user.id}`);
+      this.logger.log(
+        `[Refresh] ${JSON.stringify({ reason: 'SUCCESS', userId: loginResponse.user.id })}`,
+      );
 
       return res.json({
         success: true,
@@ -206,28 +257,12 @@ export class AuthController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      const reason =
-        error instanceof UnauthorizedException
-          ? error.message
-          : (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED' ||
-              (error as Error)?.message?.includes('Redis')
-            ? 'REDIS_ERROR'
-            : (error as NodeJS.ErrnoException)?.code === 'P2025' ||
-                (error as Error)?.message?.toLowerCase().includes('prisma')
-              ? 'DB_ERROR'
-              : 'UNKNOWN';
-      this.logger.warn(
-        `[Refresh] Failed: ${reason} | ${(error as Error)?.message || 'no message'}`,
-      );
+      const message = error instanceof Error ? error.message : 'no message';
+      const reason = this.getRefreshFailureReason(error);
+      this.logRefreshEvent(reason, { message });
+
       // Never leak internal error details from token refresh — always return generic 401
-      return res.status(401).json({
-        success: false,
-        error: 'TOKEN_REFRESH_FAILED',
-        errorCode: 'TOKEN_REFRESH_FAILED',
-        statusCode: 401,
-        message: 'Token refresh failed',
-        timestamp: new Date().toISOString(),
-      });
+      return this.sendRefreshError(res, 'TOKEN_REFRESH_FAILED', 'Token refresh failed');
     }
   }
 

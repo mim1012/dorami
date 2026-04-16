@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/common/Toast';
 import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { InAppBrowserGuard } from '@/components/common/InAppBrowserGuard';
 import { ProfileGuardBoundary } from '@/components/auth/ProfileGuardBoundary';
+import { AuthSessionManager } from '@/components/auth/AuthSessionManager';
 import { ConditionalFloatingNav } from '@/components/layout/ConditionalFloatingNav';
 
 export const metadata: Metadata = {
@@ -66,10 +67,12 @@ export default function RootLayout({
           <ThemeProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <ProfileGuardBoundary>
-                  <ConditionalFloatingNav />
-                  <div id="main-content">{children}</div>
-                </ProfileGuardBoundary>
+                <AuthSessionManager>
+                  <ProfileGuardBoundary>
+                    <ConditionalFloatingNav />
+                    <div id="main-content">{children}</div>
+                  </ProfileGuardBoundary>
+                </AuthSessionManager>
               </ConfirmProvider>
             </ToastProvider>
           </ThemeProvider>

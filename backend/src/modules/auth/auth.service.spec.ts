@@ -91,6 +91,10 @@ describe('AuthService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
@@ -192,6 +196,63 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('user');
+    });
+
+    it('should reuse cached refresh result during cross-instance lock contention', async () => {
+      jest.useFakeTimers();
+
+      const cachedResult = {
+        accessToken: 'cached-access-token',
+        refreshToken: 'cached-refresh-token',
+        user: {
+          id: mockUser.id,
+          kakaoId: mockUser.kakaoId,
+          email: mockUser.email,
+          name: mockUser.name,
+          role: mockUser.role,
+          profileComplete: false,
+        },
+      };
+
+      const redisClient = redisService.getClient() as unknown as {
+        set: jest.Mock;
+      };
+      redisClient.set.mockResolvedValueOnce(null);
+
+      let cacheReads = 0;
+      jest.spyOn(redisService, 'get').mockImplementation(async (key: string) => {
+        if (key === `refresh_result:${mockUser.id}`) {
+          cacheReads += 1;
+          return cacheReads >= 3 ? JSON.stringify(cachedResult) : null;
+        }
+
+        return validRefreshToken;
+      });
+
+      const refreshPromise = service.refreshToken(validRefreshToken);
+
+      await jest.advanceTimersByTimeAsync(500);
+
+      await expect(refreshPromise).resolves.toEqual(cachedResult);
+      expect(redisService.get).toHaveBeenCalledWith(`refresh_result:${mockUser.id}`);
+    });
+
+    it('should fail after the contention grace window if no cached refresh result appears', async () => {
+      jest.useFakeTimers();
+
+      const redisClient = redisService.getClient() as unknown as {
+        set: jest.Mock;
+      };
+      redisClient.set.mockResolvedValueOnce(null);
+      jest.spyOn(redisService, 'get').mockResolvedValue(null);
+
+      const refreshPromise = service.refreshToken(validRefreshToken);
+
+      await jest.advanceTimersByTimeAsync(4500);
+
+      const error = await refreshPromise.catch((e) => e);
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(error.message).toBe('Invalid refresh token');
     });
   });
 
