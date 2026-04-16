@@ -178,8 +178,6 @@ jobs:
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
-          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
         run: |
           # Validate variables are available before SSH
           echo "Pre-SSH validation:"
@@ -220,8 +218,6 @@ jobs:
             git reset --hard origin/${GITHUB_REF_NAME}
 
             echo "=== Creating .env.staging from GitHub Secrets ==="
-            # Security: disable shell trace to prevent secrets leaking via ACTIONS_STEP_DEBUG
-            set +x
             {
               echo "DATABASE_URL=\"postgresql://postgres:${STAGING_POSTGRES_PASSWORD}@postgres:5432/live_commerce_staging\""
               echo "POSTGRES_USER=\"postgres\""
@@ -259,8 +255,6 @@ jobs:
               echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
               echo "TELEGRAM_BOT_TOKEN=\"${TELEGRAM_BOT_TOKEN}\""
               echo "TELEGRAM_CHAT_ID=\"${TELEGRAM_CHAT_ID}\""
-              echo "BIZGO_API_KEY=\"${BIZGO_API_KEY}\""
-              echo "BIZGO_SENDER_KEY=\"${BIZGO_SENDER_KEY}\""
             } > /opt/dorami/.env.staging
             chmod 600 /opt/dorami/.env.staging
             echo "✓ .env.staging created"
@@ -331,7 +325,7 @@ jobs:
 
             # Run migrations
             echo "=== Running database migrations ==="
-            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend npx prisma@6.19.2 migrate deploy < /dev/null
+            docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging run --rm -T backend ./node_modules/.bin/prisma migrate deploy < /dev/null
 
             # Start all services
             docker compose -f docker-compose.base.yml -f docker-compose.staging.yml --env-file .env.staging up -d
