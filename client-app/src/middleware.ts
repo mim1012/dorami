@@ -151,6 +151,10 @@ function handleNonKakaoInAppRedirect(request: NextRequest): NextResponse | null 
     return null;
   }
 
+  if (request.nextUrl.pathname === '/open-in-browser') {
+    return null;
+  }
+
   const targetUrl = getPublicUrl(request);
 
   if (isAndroidUserAgent(userAgent)) {
