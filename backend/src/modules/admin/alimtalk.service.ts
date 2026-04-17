@@ -11,6 +11,10 @@ import {
   OMNIRequestBodyBuilder,
   KakaoButtonBuilder,
 } from '@bizgo/bizgo-sdk-comm-js';
+import {
+  getNotificationTemplateVariableDefinition,
+  type NotificationTemplateType,
+} from '@live-commerce/shared-types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 interface AlimtalkMessage {
@@ -48,6 +52,46 @@ interface OrderTemplate {
 }
 
 const SEND_CONCURRENCY = 10;
+const LIVE_START_MARKET_NAME = 'Doremi Market';
+
+type TemplateVariables = Record<string, string>;
+
+interface PaymentDetails {
+  label: string;
+  account: string;
+  recipient: string;
+}
+
+function renderTemplate(template: string, variables: TemplateVariables): string {
+  return Object.entries(variables).reduce(
+    (rendered, [key, value]) => rendered.replaceAll(key, value ?? ''),
+    template,
+  );
+}
+
+function resolvePreferredPaymentDetails(config: PaymentConfig | null): PaymentDetails {
+  if (config?.zelleEmail) {
+    return {
+      label: 'Zelle',
+      account: config.zelleEmail,
+      recipient: config.zelleRecipientName ?? '',
+    };
+  }
+
+  if (config?.venmoEmail) {
+    return {
+      label: 'Venmo',
+      account: config.venmoEmail,
+      recipient: config.venmoRecipientName ?? '',
+    };
+  }
+
+  return {
+    label: config?.bankName ?? '',
+    account: config?.bankAccountNumber ?? '',
+    recipient: config?.bankAccountHolder ?? '',
+  };
+}
 
 @Injectable()
 export class AlimtalkService {
@@ -96,6 +140,99 @@ export class AlimtalkService {
     } else {
       this.logger.error(`Failed to ${context}`, error);
     }
+  }
+
+  private getTemplateKeys(type: NotificationTemplateType): string[] {
+    return getNotificationTemplateVariableDefinition(type).variables.map((variable) => variable.key);
+  }
+
+  private buildTemplateVariables(
+    type: NotificationTemplateType,
+    values: Partial<TemplateVariables>,
+  ): TemplateVariables {
+    return this.getTemplateKeys(type).reduce<TemplateVariables>((acc, key) => {
+      acc[key] = values[key] ?? '';
+      return acc;
+    }, {});
+  }
+
+  private buildPaymentTemplateVariables(
+    config: PaymentConfig | null,
+    orderId?: string,
+  ): Partial<TemplateVariables> {
+    const paymentDetails = resolvePreferredPaymentDetails(config);
+
+    return {
+      '#{결제수단명}': paymentDetails.label,
+      '#{결제계정}': paymentDetails.account,
+      '#{수취인명}': paymentDetails.recipient,
+      '#{은행명}': paymentDetails.label,
+      '#{계좌번호}': paymentDetails.account,
+      '#{예금주}': paymentDetails.recipient,
+      '#{주문상세URL}': orderId ? `${this.frontendUrl}/orders/${orderId}` : '',
+    };
+  }
+
+  private buildOrderConfirmationVariables(
+    orderId: string,
+    total: number,
+    order: {
+      user: { name: string | null } | null;
+      orderItems: Array<{ productName: string }>;
+    } | null,
+    config: PaymentConfig | null,
+  ): TemplateVariables {
+    const customerName = order?.user?.name ?? '고객';
+    const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
+    const itemCount = order?.orderItems?.length ?? 1;
+
+    return this.buildTemplateVariables('ORDER_CONFIRMATION', {
+      '#{고객명}': customerName,
+      '#{주문번호}': orderId,
+      '#{상품명}': firstItem,
+      '#{수량}': String(itemCount),
+      '#{금액}': total.toLocaleString(),
+      ...this.buildPaymentTemplateVariables(config, orderId),
+    });
+  }
+
+  private buildPaymentReminderVariables(
+    orderId: string,
+    total: number,
+    customerName: string | null | undefined,
+    config: PaymentConfig | null,
+  ): TemplateVariables {
+    return this.buildTemplateVariables('PAYMENT_REMINDER', {
+      '#{고객명}': customerName ?? '고객',
+      '#{주문번호}': orderId,
+      '#{금액}': total.toLocaleString(),
+      ...this.buildPaymentTemplateVariables(config, orderId),
+    });
+  }
+
+  private buildCartExpiringVariables(
+    customerName: string,
+    productName: string,
+    itemCount: number,
+  ): TemplateVariables {
+    return this.buildTemplateVariables('CART_EXPIRING', {
+      '#{고객명}': customerName,
+      '#{상품명}': productName,
+      '#{수량}': String(itemCount),
+    });
+  }
+
+  private buildLiveStartVariables(
+    streamTitle: string,
+    streamUrl: string,
+    streamDescription?: string,
+  ): TemplateVariables {
+    return this.buildTemplateVariables('LIVE_START', {
+      '#{쇼핑몰명}': LIVE_START_MARKET_NAME,
+      '#{라이브주제}': streamTitle,
+      '#{상세내용}': streamDescription ?? streamTitle,
+      '#{방송URL}': streamUrl,
+    });
   }
 
   /** Public: checks isEnabled, then sends in parallel chunks */
@@ -175,36 +312,10 @@ export class AlimtalkService {
     config: PaymentConfig | null,
     template: OrderTemplate,
   ): AlimtalkMessage {
-    const customerName = order?.user?.name ?? '고객';
-    const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
-    const itemCount = order?.orderItems?.length ?? 1;
-
-    let paymentLabel: string;
-    let paymentAccount: string;
-    let paymentHolder: string;
-    if (config?.zelleEmail) {
-      paymentLabel = 'Zelle';
-      paymentAccount = config.zelleEmail;
-      paymentHolder = config.zelleRecipientName ?? '';
-    } else if (config?.venmoEmail) {
-      paymentLabel = 'Venmo';
-      paymentAccount = config.venmoEmail;
-      paymentHolder = config.venmoRecipientName ?? '';
-    } else {
-      paymentLabel = config?.bankName ?? '';
-      paymentAccount = config?.bankAccountNumber ?? '';
-      paymentHolder = config?.bankAccountHolder ?? '';
-    }
-
-    const text = template.template
-      .replace('#{고객명}', customerName)
-      .replace('#{주문번호}', orderId)
-      .replace('#{상품명}', firstItem)
-      .replace('#{수량}', String(itemCount))
-      .replace('#{금액}', total.toLocaleString())
-      .replace('#{은행명}', paymentLabel)
-      .replace('#{계좌번호}', paymentAccount)
-      .replace('#{예금주}', paymentHolder);
+    const text = renderTemplate(
+      template.template,
+      this.buildOrderConfirmationVariables(orderId, total, order, config),
+    );
 
     return {
       to: phone,
@@ -283,18 +394,28 @@ export class AlimtalkService {
       return;
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'PAYMENT_REMINDER' },
-    });
+    const [template, order, config] = await Promise.all([
+      this.prisma.notificationTemplate.findFirst({
+        where: { type: 'PAYMENT_REMINDER' },
+      }),
+      this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: { select: { name: true } },
+        },
+      }),
+      this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
+    ]);
 
     if (!template?.kakaoTemplateCode) {
       this.logger.warn('PAYMENT_REMINDER template code not configured, skipping');
       return;
     }
 
-    const text = template.template
-      .replace('#{주문번호}', orderId)
-      .replace('#{금액}', total.toLocaleString());
+    const text = renderTemplate(
+      template.template,
+      this.buildPaymentReminderVariables(orderId, total, order?.user?.name, config),
+    );
 
     await this._sendAlimtalk([
       {
@@ -332,10 +453,10 @@ export class AlimtalkService {
       return;
     }
 
-    const text = template.template
-      .replace('#{고객명}', customerName)
-      .replace('#{상품명}', productName)
-      .replace('#{수량}', String(itemCount));
+    const text = renderTemplate(
+      template.template,
+      this.buildCartExpiringVariables(customerName, productName, itemCount),
+    );
 
     await this._sendAlimtalk([
       {
@@ -436,11 +557,10 @@ export class AlimtalkService {
       return;
     }
 
-    const text = template.template
-      .replace('#{쇼핑몰명}', '도레미마켓')
-      .replace('#{라이브주제}', streamTitle)
-      .replace('#{상세내용}', streamDescription ?? streamTitle)
-      .replace('#{방송URL}', streamUrl);
+    const text = renderTemplate(
+      template.template,
+      this.buildLiveStartVariables(streamTitle, streamUrl, streamDescription),
+    );
 
     const messages: AlimtalkMessage[] = phoneNumbers.map((phone) => ({
       to: phone,
