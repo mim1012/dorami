@@ -174,6 +174,8 @@ export interface LiveStreamWithProducts extends LiveStream {
   products: Product[];
 }
 
+export * from './notification-variables';
+
 export interface ChatMessage {
   id: string;
   streamKey: string;

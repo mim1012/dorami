@@ -33,6 +33,7 @@ const securityHeaders = isProduction
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   // Enable standalone output for Docker deployment
   output: 'standalone',
   images: {

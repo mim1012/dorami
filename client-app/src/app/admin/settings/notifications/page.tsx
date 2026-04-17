@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
+import { getNotificationPresentation } from './presentation';
 
 interface NotificationTemplate {
   id: string;
@@ -221,7 +222,9 @@ export default function NotificationSettingsPage() {
     setIsSendingTest(true);
     setTestMessage(null);
     try {
-      const response = await apiClient.post<TestDeliveryResponse>(endpoint, { phone: phone.trim() });
+      const response = await apiClient.post<TestDeliveryResponse>(endpoint, {
+        phone: phone.trim(),
+      });
       setTestMessage(buildTestMessage(response.data.result));
       setTestMessageTone(response.data.result.totals.failed > 0 ? 'error' : 'success');
       if (response.data.result.totals.failed === 0) {
@@ -318,107 +321,155 @@ export default function NotificationSettingsPage() {
 
           {activeTemplate && (
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100">
-                    {activeTemplate.name}
-                  </h3>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
-                    {activeTemplate.type}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {successId === activeTemplate.id && (
-                    <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-300">
-                      <CheckCircle className="w-4 h-4" />
-                      저장 완료
-                    </span>
-                  )}
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleSave(activeTemplate)}
-                    disabled={savingId === activeTemplate.id}
-                  >
-                    {savingId === activeTemplate.id ? (
-                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-1.5" />
-                    )}
-                    {savingId === activeTemplate.id ? '저장 중...' : '저장'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openTestModal(activeTemplate.type as NotificationEventType)}
-                  >
-                    테스트 발송
-                  </Button>
-                </div>
-              </div>
+              {(() => {
+                const presentation = getNotificationPresentation(
+                  activeTemplate.type as NotificationEventType,
+                );
 
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
-                    카카오템플릿 코드
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={activeTemplate.kakaoTemplateCode ?? ''}
-                      onChange={(event) =>
-                        handleTemplateCodeChange(activeTemplate.id, event.target.value)
-                      }
-                      className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-100 dark:focus:ring-pink-700/30 focus:border-[#FF4D8D] transition-colors"
-                      placeholder="예: KA01TP..."
-                    />
-                    {NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
-                      .channel === 'AT' &&
-                      !activeTemplate.kakaoTemplateCode?.trim() && (
-                        <span className="shrink-0 px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
-                          미설정
-                        </span>
-                      )}
-                  </div>
-                  <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
-                    알림톡 전송 채널 코드입니다.
-                  </p>
-                </div>
+                return (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100">
+                          {activeTemplate.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+                          {presentation.sendTiming}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {successId === activeTemplate.id && (
+                          <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-300">
+                            <CheckCircle className="w-4 h-4" />
+                            저장 완료
+                          </span>
+                        )}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleSave(activeTemplate)}
+                          disabled={savingId === activeTemplate.id}
+                        >
+                          {savingId === activeTemplate.id ? (
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-1.5" />
+                          )}
+                          {savingId === activeTemplate.id ? '저장 중...' : '저장'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            openTestModal(activeTemplate.type as NotificationEventType)
+                          }
+                        >
+                          테스트 발송
+                        </Button>
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="mb-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
-                    본문은 운영 심사본 기준으로 읽기 전용이며 수정할 수 없습니다.
-                  </div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
-                    템플릿 본문
-                  </label>
-                  <textarea
-                    value={activeTemplate.template}
-                    readOnly
-                    rows={8}
-                    className="w-full px-4 py-3 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono focus:outline-none resize-none transition-colors"
-                    placeholder="알림톡 본문을 불러올 수 없습니다."
-                  />
-                </div>
+                    <div className="space-y-5">
+                      <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4 dark:border-pink-900/40 dark:bg-pink-950/20">
+                        <p className="text-sm font-semibold text-pink-700 dark:text-pink-200">
+                          값 입력 방식
+                        </p>
+                        <p className="mt-1 text-sm text-pink-700/90 dark:text-pink-100/90">
+                          {presentation.valueIntro}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {presentation.primaryAction && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(presentation.primaryAction!.path)}
+                            >
+                              {presentation.primaryAction.label}
+                            </Button>
+                          )}
+                          {presentation.secondaryAction && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(presentation.secondaryAction!.path)}
+                            >
+                              {presentation.secondaryAction.label}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
 
-                <div className="bg-blue-50 dark:bg-zinc-800 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-200 mb-2">
-                    사용 가능한 변수
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {NOTIFICATION_VARIABLES[
-                      activeTemplate.type as NotificationEventType
-                    ].variables.map((variable) => (
-                      <code
-                        key={variable}
-                        className="px-2 py-1 bg-white dark:bg-zinc-900 border border-blue-200 dark:border-zinc-700 text-blue-700 dark:text-blue-200 rounded text-xs font-mono"
-                      >
-                        {variable}
-                      </code>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {presentation.sourceGroups.map((group) => (
+                          <div
+                            key={group.heading}
+                            className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/70"
+                          >
+                            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                              {group.heading}
+                            </p>
+                            <div className="mt-3 space-y-3">
+                              {group.items.map((item) => (
+                                <div key={item.title}>
+                                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-100">
+                                    {item.title}
+                                  </p>
+                                  <p className="mt-1 text-sm text-gray-600 dark:text-zinc-300">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
+                          카카오템플릿 코드
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={activeTemplate.kakaoTemplateCode ?? ''}
+                            onChange={(event) =>
+                              handleTemplateCodeChange(activeTemplate.id, event.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-100 dark:focus:ring-pink-700/30 focus:border-[#FF4D8D] transition-colors"
+                            placeholder="예: KA01TP..."
+                          />
+                          {NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
+                            .channel === 'AT' &&
+                            !activeTemplate.kakaoTemplateCode?.trim() && (
+                              <span className="shrink-0 px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
+                                미설정
+                              </span>
+                            )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                          카카오 심사 완료된 템플릿 코드를 입력하면 됩니다.
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="mb-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
+                          본문은 운영 심사본 기준으로 읽기 전용이며 수정할 수 없습니다.
+                        </div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
+                          템플릿 본문
+                        </label>
+                        <textarea
+                          value={activeTemplate.template}
+                          readOnly
+                          rows={8}
+                          className="w-full px-4 py-3 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono focus:outline-none resize-none transition-colors"
+                          placeholder="알림톡 본문을 불러올 수 없습니다."
+                        />
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
