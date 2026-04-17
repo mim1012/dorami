@@ -7,31 +7,13 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { isProfileComplete } from '@/lib/utils/profile';
 import { Display, Body } from '@/components/common/Typography';
 import Image from 'next/image';
-
-const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
-
-function sanitizeReturnPath(raw: string | null): string {
-  if (!raw) return '/';
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded.startsWith('/')) return '/';
-    if (decoded.startsWith('//')) return '/';
-    return decoded;
-  } catch {
-    return '/';
-  }
-}
-
-function getReturnToFromSearchParams(searchParams: URLSearchParams): string {
-  return sanitizeReturnPath(searchParams.get('returnTo') || searchParams.get('redirect'));
-}
-
-function consumeStoredReturnTo(): string | null {
-  if (typeof window === 'undefined') return null;
-  const stored = window.localStorage.getItem(POST_LOGIN_RETURN_KEY);
-  window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
-  return sanitizeReturnPath(stored);
-}
+import {
+  clearStoredPostLoginReturnTo,
+  consumeStoredPostLoginReturnTo,
+  getReturnToFromSearchParams,
+  persistPostLoginReturnTo,
+  resolveAuthenticatedRedirect,
+} from '@/lib/auth/navigation';
 
 function LoginContent() {
   const router = useRouter();
@@ -51,14 +33,12 @@ function LoginContent() {
 
   useEffect(() => {
     if (hasExplicitReturnTo) {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
-      }
+      clearStoredPostLoginReturnTo();
       setReturnTo(getReturnToFromSearchParams(searchParams));
       return;
     }
 
-    setReturnTo(consumeStoredReturnTo() || '');
+    setReturnTo(consumeStoredPostLoginReturnTo());
   }, [searchParams, hasExplicitReturnTo]);
 
   useEffect(() => {
@@ -71,13 +51,7 @@ function LoginContent() {
 
     // All users can login without profile completion (instagramId/depositorName not required)
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
-    const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
-
-    if (safeTarget) {
-      router.push(safeTarget);
-    } else {
-      router.push('/');
-    }
+    router.push(resolveAuthenticatedRedirect(user.role, target, '/'));
   }, [
     hasExplicitReturnTo,
     isAuthenticated,
@@ -97,9 +71,7 @@ function LoginContent() {
   }, []);
 
   const handleKakaoLogin = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(POST_LOGIN_RETURN_KEY, returnTo);
-    }
+    persistPostLoginReturnTo(returnTo);
     const callback = `/api/auth/kakao`;
     window.location.href = callback;
   };

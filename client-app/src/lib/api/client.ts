@@ -1,3 +1,6 @@
+import { useAuthStore } from '../store/auth';
+import { sanitizeReturnPath } from '../auth/navigation';
+
 const API_BASE_URL = '/api';
 
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -105,6 +108,41 @@ export async function refreshAccessToken(): Promise<boolean> {
   });
 
   return refreshPromise;
+}
+
+function handleSessionExpiry(endpoint: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  useAuthStore.getState().markAnonymous();
+
+  const currentPath = window.location.pathname || '/';
+  const currentSearch = window.location.search || '';
+  const currentDestination = sanitizeReturnPath(`${currentPath}${currentSearch}`, '/');
+  const isLivePath = currentPath.startsWith('/live');
+  const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
+
+  try {
+    localStorage.removeItem('auth-storage');
+  } catch {
+    // ignore — storage may be unavailable (e.g. private browsing restrictions)
+  }
+
+  if (isAuthEndpoint) {
+    return;
+  }
+
+  if (!isLivePath) {
+    const params = new URLSearchParams({ reason: 'session_expired' });
+    if (currentDestination !== '/') {
+      params.set('returnTo', currentDestination);
+    }
+    window.location.href = `/login?${params.toString()}`;
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(LIVE_SESSION_EXPIRED_EVENT));
 }
 
 /**
@@ -230,30 +268,9 @@ async function request<T>(
       response = await executeFetch(url, options, timeoutMs, callerSignal);
     } else {
       // Refresh failed.
-      // For non-auth endpoints: redirect to login with clear reason so users
-      // see "세션이 만료되었습니다" instead of a generic app error.
-      // Auth endpoints (/auth/, /users/me) are excluded to avoid loops —
-      // useAuth and useProfileGuard handle those redirects themselves.
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-      const isLivePath = currentPath.startsWith('/live');
-      const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
-      if (typeof window !== 'undefined' && !isAuthEndpoint) {
-        // Synchronously clear persisted auth before the page reload so that
-        // the login page never sees stale isAuthenticated=true from localStorage.
-        // Without this, window.location.href fires before setUser(null) can
-        // persist, causing the login page to immediately redirect back to '/'
-        // and creating an infinite redirect loop.
-        try {
-          localStorage.removeItem('auth-storage');
-        } catch {
-          // ignore — storage may be unavailable (e.g. private browsing restrictions)
-        }
-        if (!isLivePath) {
-          window.location.href = '/login?reason=session_expired';
-        } else {
-          window.dispatchEvent(new CustomEvent(LIVE_SESSION_EXPIRED_EVENT));
-        }
-      }
+      // Clear in-memory + persisted auth state immediately so the login page
+      // never revives stale user state during the redirect.
+      handleSessionExpiry(endpoint);
       throw new ApiError(401, 'Session expired', 'SESSION_EXPIRED');
     }
   }

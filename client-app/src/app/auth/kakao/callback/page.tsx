@@ -1,28 +1,69 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { useAuthStore } from '@/lib/store/auth';
+import { isProfileComplete } from '@/lib/utils/profile';
+import {
+  buildProfileRegisterRedirect,
+  consumeStoredPostLoginReturnTo,
+  readStoredPostLoginReturnTo,
+  resolveAuthenticatedRedirect,
+} from '@/lib/auth/navigation';
 
 function KakaoCallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshProfile } = useAuth();
 
   useEffect(() => {
-    const profileComplete = searchParams.get('profileComplete') === 'true';
-    const kakaoName = searchParams.get('kakaoName');
+    let cancelled = false;
 
-    if (profileComplete) {
-      router.replace('/');
-    } else {
-      const params = new URLSearchParams();
-      if (kakaoName) {
-        params.set('kakaoName', kakaoName);
+    const finalizeCallback = async () => {
+      const profileCompleteFromCallback = searchParams.get('profileComplete') === 'true';
+      const kakaoName = searchParams.get('kakaoName');
+      const preservedReturnTo = readStoredPostLoginReturnTo();
+
+      try {
+        await refreshProfile();
+      } catch {
+        if (!cancelled) {
+          router.replace('/login?error=auth_failed');
+        }
+        return;
       }
-      const target = params.toString() ? `/profile/register?${params}` : '/profile/register';
-      router.replace(target);
-    }
-  }, [router, searchParams]);
+
+      if (cancelled) return;
+
+      const refreshedUser = useAuthStore.getState().user;
+      if (!refreshedUser) {
+        router.replace('/login?error=auth_failed');
+        return;
+      }
+
+      const role = refreshedUser.role;
+      const profileComplete = role === 'ADMIN' ? true : profileCompleteFromCallback || isProfileComplete(refreshedUser);
+
+      if (!profileComplete) {
+        router.replace(buildProfileRegisterRedirect(kakaoName, preservedReturnTo));
+        return;
+      }
+
+      const nextPath = resolveAuthenticatedRedirect(
+        role,
+        consumeStoredPostLoginReturnTo(),
+        role === 'ADMIN' ? '/admin' : '/',
+      );
+      router.replace(nextPath);
+    };
+
+    void finalizeCallback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshProfile, router, searchParams]);
 
   return (
     <div className="min-h-screen bg-primary-black flex items-center justify-center">
