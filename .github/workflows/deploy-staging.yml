@@ -460,9 +460,16 @@ jobs:
       - name: Save staging image tag to repo variable
         if: success() && needs.build.outputs.image_tag != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Built-in GITHUB_TOKEN can deploy, but cannot mutate repo Actions variables here.
+          # Use a dedicated fine-grained token secret with Variables write/admin access.
+          GH_TOKEN: ${{ secrets.ACTIONS_VARIABLES_WRITE_TOKEN }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "⚠️ ACTIONS_VARIABLES_WRITE_TOKEN is not configured; skipping STAGING_LATEST_IMAGE_TAG update"
+            exit 0
+          fi
+
           gh variable set STAGING_LATEST_IMAGE_TAG --body "${IMAGE_TAG}" --repo ${{ github.repository }} \
             && echo "✅ STAGING_LATEST_IMAGE_TAG=${IMAGE_TAG} saved" \
             || echo "⚠️ Failed to save variable (non-critical, deploy succeeded)"
