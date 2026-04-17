@@ -49,6 +49,41 @@ function getAvailableVariables(type: string): string[] {
   }
 }
 
+function getTemplateSourceGuide(type: string) {
+  switch (type) {
+    case 'LIVE_START':
+      return {
+        title: '이 템플릿의 실제 값은 방송 관리에서 입력합니다',
+        description:
+          '매 방송마다 방송 제목/상세내용을 관리자 > 방송 관리에서 입력하면, 방송 시작 알림톡에 자동으로 치환됩니다.',
+        items: [
+          '방송 제목 → #{라이브주제}',
+          '방송 상세내용 → #{상세내용}',
+          '방송 URL → 해당 방송 링크 자동 생성',
+          '쇼핑몰명 → Doremi Market 고정',
+        ],
+        actionLabel: '방송 관리로 이동',
+        actionHref: '/admin/broadcasts',
+      };
+    case 'ORDER_CONFIRMATION':
+    case 'PAYMENT_REMINDER':
+      return {
+        title: '결제 관련 값은 관리자 설정에서 가져옵니다',
+        description:
+          '은행명/계좌번호/예금주 대신 Zelle 또는 Venmo가 설정되어 있으면 그 값을 우선 사용합니다. 주문번호/고객명/금액은 주문 데이터에서 자동 치환됩니다.',
+        items: [
+          '1순위: Zelle 이메일 + 받는 사람 이름',
+          '2순위: Venmo 계정 + 받는 사람 이름',
+          '3순위: 은행명 + 계좌번호 + 예금주',
+        ],
+        actionLabel: '관리자 설정으로 이동',
+        actionHref: '/admin/settings',
+      };
+    default:
+      return null;
+  }
+}
+
 export default function NotificationSettingsPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
@@ -105,6 +140,7 @@ export default function NotificationSettingsPage() {
   };
 
   const activeTemplate = templates.find((t) => t.type === activeTab);
+  const sourceGuide = activeTemplate ? getTemplateSourceGuide(activeTemplate.type) : null;
 
   if (isLoading) {
     return (
@@ -207,6 +243,25 @@ export default function NotificationSettingsPage() {
               </div>
 
               <div className="space-y-5">
+                {sourceGuide && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-900">{sourceGuide.title}</p>
+                    <p className="mt-1 text-sm text-amber-800">{sourceGuide.description}</p>
+                    <ul className="mt-3 space-y-1 text-sm text-amber-900 list-disc pl-5">
+                      {sourceGuide.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => router.push(sourceGuide.actionHref)}
+                      className="mt-4 inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-medium text-amber-900 border border-amber-300 hover:bg-amber-100 transition-colors"
+                    >
+                      {sourceGuide.actionLabel}
+                    </button>
+                  </div>
+                )}
+
                 {/* Kakao Template Code */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">

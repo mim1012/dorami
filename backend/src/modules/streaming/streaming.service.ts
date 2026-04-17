@@ -312,6 +312,7 @@ export class StreamingService implements OnModuleInit {
 
     const data: {
       title?: string;
+      description?: string | null;
       expiresAt?: Date;
       scheduledAt?: Date | null;
       thumbnailUrl?: string | null;
@@ -320,6 +321,9 @@ export class StreamingService implements OnModuleInit {
     } = {};
     if (dto.title !== undefined) {
       data.title = dto.title;
+    }
+    if (dto.description !== undefined) {
+      data.description = dto.description?.trim() ? dto.description.trim() : null;
     }
     if (dto.expiresAt !== undefined) {
       data.expiresAt = new Date(dto.expiresAt);
@@ -579,10 +583,16 @@ export class StreamingService implements OnModuleInit {
 
       // If PENDING, return the existing session so user can see their stream key
       this.logger.log(`Returning existing PENDING stream ${existingStream.id} for user ${userId}`);
-      // Update title/scheduledAt/thumbnailUrl if new values were provided
+      // Update title/description/scheduledAt/thumbnailUrl if new values were provided
       const pendingUpdates: Record<string, unknown> = {};
       if (dto.title && dto.title !== existingStream.title) {
         pendingUpdates.title = dto.title;
+      }
+      if (dto.description !== undefined) {
+        const normalizedDescription = dto.description?.trim() ? dto.description.trim() : null;
+        if (normalizedDescription !== (existingStream.description ?? null)) {
+          pendingUpdates.description = normalizedDescription;
+        }
       }
       if (dto.scheduledAt !== undefined) {
         pendingUpdates.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
@@ -619,6 +629,7 @@ export class StreamingService implements OnModuleInit {
         userId,
         streamKey,
         title: dto.title ?? 'Live Stream',
+        description: dto.description?.trim() ? dto.description.trim() : null,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         thumbnailUrl: dto.thumbnailUrl ?? null,
         freeShippingMode: dto.freeShippingMode ?? 'DISABLED',

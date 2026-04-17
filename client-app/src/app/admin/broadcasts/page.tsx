@@ -42,6 +42,7 @@ interface LiveStream {
   streamKey: string;
   userId: string;
   title: string;
+  description?: string | null;
   status: 'PENDING' | 'LIVE' | 'OFFLINE';
   scheduledAt?: string | null;
   startedAt: string | null;
@@ -215,6 +216,8 @@ export default function BroadcastsPage() {
 
   // Edit stream modal state
   const [selectedStreamForEdit, setSelectedStreamForEdit] = useState<LiveStream | null>(null);
+  const [editStreamTitle, setEditStreamTitle] = useState('');
+  const [editStreamDescription, setEditStreamDescription] = useState('');
   const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(null);
   const [editNewThumbnailUrl, setEditNewThumbnailUrl] = useState('');
   const [isUploadingEditThumbnail, setIsUploadingEditThumbnail] = useState(false);
@@ -778,6 +781,8 @@ export default function BroadcastsPage() {
 
   const handleOpenEditModal = (stream: LiveStream) => {
     setSelectedStreamForEdit(stream);
+    setEditStreamTitle(stream.title ?? '');
+    setEditStreamDescription(stream.description ?? '');
     setEditFreeShippingMode(stream.freeShippingMode ?? 'DISABLED');
     setEditFreeShippingThreshold(stream.freeShippingThreshold ?? 150);
     setEditThumbnailPreview(null);
@@ -789,6 +794,8 @@ export default function BroadcastsPage() {
   const handleCloseEditModal = () => {
     if (editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
     setSelectedStreamForEdit(null);
+    setEditStreamTitle('');
+    setEditStreamDescription('');
     setEditThumbnailPreview(null);
     setEditNewThumbnailUrl('');
     setEditError(null);
@@ -824,11 +831,17 @@ export default function BroadcastsPage() {
 
   const handleSaveEdit = async () => {
     if (!selectedStreamForEdit) return;
+    if (!editStreamTitle.trim()) {
+      setEditError('방송 제목을 입력해주세요.');
+      return;
+    }
     setIsSavingEdit(true);
     setEditError(null);
     setEditSuccess(null);
     try {
       const body: Record<string, any> = {
+        title: editStreamTitle.trim(),
+        description: editStreamDescription.trim(),
         freeShippingMode: editFreeShippingMode,
         ...(editFreeShippingMode === 'THRESHOLD'
           ? { freeShippingThreshold: editFreeShippingThreshold }
@@ -842,6 +855,8 @@ export default function BroadcastsPage() {
           s.id === selectedStreamForEdit.id
             ? {
                 ...s,
+                title: editStreamTitle.trim(),
+                description: editStreamDescription.trim() || null,
                 freeShippingMode: editFreeShippingMode,
                 freeShippingThreshold:
                   editFreeShippingMode === 'THRESHOLD' ? editFreeShippingThreshold : null,
@@ -857,6 +872,8 @@ export default function BroadcastsPage() {
         prev
           ? {
               ...prev,
+              title: editStreamTitle.trim(),
+              description: editStreamDescription.trim() || null,
               freeShippingMode: editFreeShippingMode,
               freeShippingThreshold:
                 editFreeShippingMode === 'THRESHOLD' ? editFreeShippingThreshold : null,
@@ -1847,11 +1864,38 @@ export default function BroadcastsPage() {
             </div>
 
             <div className="p-6 space-y-5">
-              <p className="text-sm text-secondary-text">
-                <span className="font-medium text-primary-text">
-                  &quot;{selectedStreamForEdit.title}&quot;
-                </span>
-              </p>
+              <div>
+                <label className="block text-sm font-medium text-primary-text mb-2">
+                  방송 제목 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editStreamTitle}
+                  onChange={(e) => setEditStreamTitle(e.target.value)}
+                  placeholder="예: 오늘의 라이브 방송"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-primary-text mb-2">
+                  방송 상세내용{' '}
+                  <span className="text-secondary-text text-xs">
+                    (선택 · 방송 시작 알림톡에 자동 치환)
+                  </span>
+                </label>
+                <textarea
+                  value={editStreamDescription}
+                  onChange={(e) => setEditStreamDescription(e.target.value)}
+                  placeholder="예: 오늘 방송에서는 신상 니트, 가디건을 소개합니다."
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hot-pink focus:border-hot-pink outline-none transition-colors resize-none"
+                />
+                <p className="mt-2 text-xs text-secondary-text">
+                  방송 시작 알림톡의 #{`{라이브주제}`} / #{`{상세내용}`} 값은 여기서 입력한
+                  제목/상세내용을 사용합니다.
+                </p>
+              </div>
 
               {/* 무료배송 설정 */}
               <div>

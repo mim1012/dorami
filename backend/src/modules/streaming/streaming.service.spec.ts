@@ -48,6 +48,7 @@ describe('StreamingService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
               count: jest.fn(),
             },
             product: {
@@ -485,18 +486,66 @@ describe('StreamingService', () => {
     });
   });
 
+  describe('generateKey', () => {
+    it('should persist description when creating a pending stream', async () => {
+      const created = { ...mockStream, description: '이번 방송 상세 설명' };
+      jest.spyOn(prismaService.liveStream, 'updateMany').mockResolvedValue({ count: 0 } as any);
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prismaService.liveStream, 'create').mockResolvedValue(created as any);
+      jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
+
+      const result = await service.generateKey('user-1', {
+        title: '라이브 제목',
+        description: '이번 방송 상세 설명',
+      } as any);
+
+      expect(result.description).toBe('이번 방송 상세 설명');
+      expect(prismaService.liveStream.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: '라이브 제목',
+            description: '이번 방송 상세 설명',
+          }),
+        }),
+      );
+    });
+
+    it('should persist description when reusing an existing pending stream', async () => {
+      const existingPending = { ...mockStream, description: null };
+      const updatedPending = { ...mockStream, description: '업데이트된 방송 상세 설명' };
+      jest.spyOn(prismaService.liveStream, 'updateMany').mockResolvedValue({ count: 0 } as any);
+      jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(existingPending as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updatedPending as any);
+
+      const result = await service.generateKey('user-1', {
+        title: 'Live Stream',
+        description: '업데이트된 방송 상세 설명',
+      } as any);
+
+      expect(result.description).toBe('업데이트된 방송 상세 설명');
+      expect(prismaService.liveStream.update).toHaveBeenCalledWith({
+        where: { id: 'stream-1' },
+        data: { description: '업데이트된 방송 상세 설명' },
+      });
+    });
+  });
+
   describe('updateStream', () => {
-    it('should update title of PENDING stream', async () => {
-      const updated = { ...mockStream, title: '새 방송 제목' };
+    it('should update title and description of PENDING stream', async () => {
+      const updated = { ...mockStream, title: '새 방송 제목', description: '이번 방송 상세 설명' };
       jest.spyOn(prismaService.liveStream, 'findFirst').mockResolvedValue(mockStream as any);
       jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(updated as any);
 
-      const result = await service.updateStream('stream-1', 'user-1', { title: '새 방송 제목' });
+      const result = await service.updateStream('stream-1', 'user-1', {
+        title: '새 방송 제목',
+        description: '이번 방송 상세 설명',
+      });
 
       expect(result.title).toBe('새 방송 제목');
+      expect(result.description).toBe('이번 방송 상세 설명');
       expect(prismaService.liveStream.update).toHaveBeenCalledWith({
         where: { id: 'stream-1' },
-        data: { title: '새 방송 제목' },
+        data: { title: '새 방송 제목', description: '이번 방송 상세 설명' },
       });
     });
 
