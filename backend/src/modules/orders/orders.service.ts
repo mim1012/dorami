@@ -32,7 +32,7 @@ import { CartStatus } from '@live-commerce/shared-types';
 
 // Type for Order with items (optionally including Product relation)
 interface OrderItemWithProduct extends OrderItem {
-  Product?: { imageUrl: string | null } | null;
+  Product?: { imageUrl: string | null; name?: string | null } | null;
 }
 
 interface OrderWithItems extends Order {
@@ -75,6 +75,10 @@ export class OrdersService {
     private configService: ConfigService,
   ) {
     this.orderExpirationMinutes = this.configService.get<number>('ORDER_EXPIRATION_MINUTES', 10);
+  }
+
+  private getDisplayProductName(item: OrderItemWithProduct): string {
+    return item.Product?.name?.trim() || item.productName;
   }
 
   /**
@@ -907,7 +911,7 @@ export class OrdersService {
       items: order.orderItems.map((item) => ({
         id: item.id,
         productId: item.productId!,
-        productName: item.productName,
+        productName: this.getDisplayProductName(item),
         quantity: item.quantity,
         price: String(item.price),
         shippingFee: String(item.shippingFee),

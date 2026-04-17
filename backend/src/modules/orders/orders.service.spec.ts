@@ -511,6 +511,39 @@ describe('OrdersService - createOrderFromCart', () => {
       // Total should reflect both items ($15 + $15 + $10 shipping = $40)
       expect(result.total).toBe('40');
     });
+
+    it('should prefer current product name in order responses when product title was edited later', async () => {
+      const updatedNameOrder = {
+        ...mockOrder,
+        orderItems: [
+          {
+            ...mockOrder.orderItems[0],
+            productName: '예전 상품명',
+            Product: {
+              name: '수정된 상품명',
+              imageUrl: 'https://example.com/product-1.png',
+            },
+          },
+        ],
+      };
+
+      const mockTransaction = jest.fn(async (callback) => {
+        const tx = {
+          user: { findUnique: jest.fn().mockResolvedValue(mockUser) },
+          cart: {
+            findMany: jest.fn().mockResolvedValue([mockCartItems[0]]),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          order: { create: jest.fn().mockResolvedValue(updatedNameOrder) },
+        };
+        return callback(tx);
+      });
+      prismaService.$transaction = mockTransaction as any;
+
+      const result = await service.createOrderFromCart('user-123');
+
+      expect(result.items[0]?.productName).toBe('수정된 상품명');
+    });
   });
 
   describe('Error Handling', () => {

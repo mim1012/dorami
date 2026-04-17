@@ -99,6 +99,13 @@ export async function refreshAccessToken(): Promise<boolean> {
       const response = await executeFetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
       });
+      if (response.ok) {
+        try {
+          localStorage.setItem('dorami-last-token-refresh', Date.now().toString());
+        } catch {
+          // ignore — localStorage may be unavailable (private browsing)
+        }
+      }
       return response.ok;
     } catch {
       return false;
@@ -327,7 +334,14 @@ async function request<T>(
     return { data: undefined as T };
   }
 
-  const result = JSON.parse(text);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let result: any;
+  try {
+    result = JSON.parse(text);
+  } catch {
+    // Non-JSON response (e.g. nginx HTML error page during backend outage)
+    throw new ApiError(response.status, 'An unexpected error occurred', 'INTERNAL_SERVER_ERROR');
+  }
 
   // Backend wraps responses in { data: ..., success: true, timestamp: "..." }
   // Extract the actual data from the wrapper

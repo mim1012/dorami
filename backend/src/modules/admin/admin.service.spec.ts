@@ -469,10 +469,78 @@ describe('AdminService', () => {
       });
     });
 
+    it('should prefer current product name when product title was edited after the order', async () => {
+      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue({
+        ...mockOrder,
+        orderItems: [
+          {
+            ...mockOrder.orderItems[0],
+            productName: '예전 상품명',
+            Product: {
+              ...mockOrder.orderItems[0].Product,
+              name: '수정된 상품명',
+            },
+          },
+        ],
+      } as any);
+      jest.spyOn(encryptionService, 'decryptAddress').mockImplementation(() => {
+        throw new Error('not encrypted');
+      });
+
+      const result = await service.getOrderDetail(orderId);
+
+      expect(result.items[0]?.productName).toBe('수정된 상품명');
+    });
+
     it('should throw NotFoundException when order does not exist', async () => {
       jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(null);
 
       await expect(service.getOrderDetail(orderId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getOrderList', () => {
+    it('should prefer current product name in order list items when product title was edited later', async () => {
+      jest.spyOn(prisma.order, 'count').mockResolvedValue(1 as any);
+      jest.spyOn(prisma.order, 'findMany').mockResolvedValue([
+        {
+          id: 'ORD-20260131-00002',
+          userId: 'user-123',
+          userEmail: 'user@example.com',
+          depositorName: 'Test Depositor',
+          instagramId: '@test',
+          status: 'PAYMENT_CONFIRMED',
+          paymentStatus: 'CONFIRMED',
+          subtotal: 3000,
+          shippingFee: 500,
+          total: 3500,
+          createdAt: new Date('2026-01-15'),
+          paidAt: new Date('2026-01-15'),
+          orderItems: [
+            {
+              productId: 'prod-1',
+              productName: '예전 상품명',
+              price: 3000,
+              quantity: 1,
+              color: null,
+              size: null,
+              Product: {
+                name: '수정된 상품명',
+                streamKey: 'stream-1',
+              },
+            },
+          ],
+        },
+      ] as any);
+
+      const result = await service.getOrderList({
+        page: 1,
+        limit: 20,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      } as any);
+
+      expect(result.orders[0]?.items?.[0]?.productName).toBe('수정된 상품명');
     });
   });
 
