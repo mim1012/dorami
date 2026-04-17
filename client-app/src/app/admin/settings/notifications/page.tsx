@@ -45,22 +45,53 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 
 const PLACEHOLDER_PATTERN = /#\{[^}]+\}|\{\{[^}]+\}\}|\{[^}]+\}/g;
 
-const SOURCE_BADGE_STYLES: Record<NotificationVariableSourceType, string> = {
-  event: 'bg-blue-50 text-blue-700 border-blue-200',
-  system: 'bg-violet-50 text-violet-700 border-violet-200',
-  computed: 'bg-amber-50 text-amber-700 border-amber-200',
-};
-
-const SOURCE_LABELS: Record<NotificationVariableSourceType, string> = {
-  event: '이벤트 데이터',
-  system: '시스템 설정',
-  computed: '계산/가공 값',
-};
-
 const CHANNEL_LABELS = {
   AT: '알림톡',
   FT: '친구톡',
 } as const;
+
+const SOURCE_LABELS: Record<NotificationVariableSourceType, string> = {
+  event: '주문/방송 정보에서 자동 입력',
+  system: '시스템 설정값에서 자동 입력',
+  computed: '시스템이 계산해서 자동 입력',
+};
+
+const TEMPLATE_OPERATOR_GUIDES: Partial<
+  Record<
+    NotificationTemplateType,
+    {
+      summary: string;
+      trigger: string;
+      managerAction: string;
+      caution: string;
+    }
+  >
+> = {
+  LIVE_START: {
+    summary: '라이브 방송이 시작될 때 고객에게 자동 발송되는 알림톡입니다.',
+    trigger: '방송 시작 시점에 자동 발송됩니다.',
+    managerAction: '카카오에서 승인받은 템플릿 코드를 입력하고 저장하면 됩니다.',
+    caution: '쇼핑몰명은 Doremi Market으로 자동 입력됩니다.',
+  },
+  ORDER_CONFIRMATION: {
+    summary: '주문 직후 고객에게 보내는 주문 확인 친구톡입니다.',
+    trigger: '주문이 생성되면 자동 발송됩니다.',
+    managerAction: '템플릿 코드만 관리하면 되고 주문정보/결제안내는 자동 입력됩니다.',
+    caution: '결제 안내 값은 현재 설정된 Venmo, Zelle, 은행 정보 기준으로 자동 선택됩니다.',
+  },
+  PAYMENT_REMINDER: {
+    summary: '입금이 필요한 주문 고객에게 보내는 알림톡입니다.',
+    trigger: '입금 안내가 필요한 주문에 자동 발송됩니다.',
+    managerAction: '템플릿 코드를 등록하고 예시 문구가 자연스러운지만 확인하면 됩니다.',
+    caution: '결제수단명, 결제계정, 수취인명은 시스템 설정값을 기반으로 자동 입력됩니다.',
+  },
+  CART_EXPIRING: {
+    summary: '장바구니 만료 전에 고객에게 보내는 알림톡입니다.',
+    trigger: '장바구니 만료 임박 시 자동 발송됩니다.',
+    managerAction: '카카오 템플릿 코드만 입력하면 됩니다.',
+    caution: '고객명, 상품명, 수량은 장바구니 정보로 자동 입력됩니다.',
+  },
+};
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -71,8 +102,11 @@ function extractTemplatePlaceholders(template: string): string[] {
 }
 
 function getTemplateVariables(type: string, template: string): NotificationVariableDefinition[] {
-  const knownVariables = NOTIFICATION_TEMPLATE_VARIABLES[type as NotificationTemplateType]?.variables ?? [];
-  const variablesByPlaceholder = new Map(knownVariables.map((variable) => [variable.key, variable]));
+  const knownVariables =
+    NOTIFICATION_TEMPLATE_VARIABLES[type as NotificationTemplateType]?.variables ?? [];
+  const variablesByPlaceholder = new Map(
+    knownVariables.map((variable) => [variable.key, variable]),
+  );
   const placeholdersInTemplate = extractTemplatePlaceholders(template);
 
   if (placeholdersInTemplate.length === 0) {
@@ -120,7 +154,9 @@ export default function NotificationSettingsPage() {
     const fetchTemplates = async () => {
       try {
         setIsLoading(true);
-        const response = await apiClient.get<NotificationTemplate[]>('/admin/notification-templates');
+        const response = await apiClient.get<NotificationTemplate[]>(
+          '/admin/notification-templates',
+        );
         setTemplates(response.data);
         if (response.data.length > 0) {
           setActiveTab(response.data[0].type);
@@ -141,7 +177,9 @@ export default function NotificationSettingsPage() {
     field: 'template' | 'kakaoTemplateCode',
     value: string,
   ) => {
-    setTemplates((prev) => prev.map((template) => (template.id === id ? { ...template, [field]: value } : template)));
+    setTemplates((prev) =>
+      prev.map((template) => (template.id === id ? { ...template, [field]: value } : template)),
+    );
   };
 
   const handleSave = async (template: NotificationTemplate) => {
@@ -178,6 +216,20 @@ export default function NotificationSettingsPage() {
     }
 
     return getTemplateVariables(activeTemplate.type, activeTemplate.template);
+  }, [activeTemplate]);
+
+  const usedVariables = useMemo(
+    () =>
+      activeTemplateVariables.filter((variable) => activeTemplate?.template.includes(variable.key)),
+    [activeTemplate?.template, activeTemplateVariables],
+  );
+
+  const operatorGuide = useMemo(() => {
+    if (!activeTemplate) {
+      return undefined;
+    }
+
+    return TEMPLATE_OPERATOR_GUIDES[activeTemplate.type as NotificationTemplateType];
   }, [activeTemplate]);
 
   const samplePreview = useMemo(() => {
@@ -256,7 +308,7 @@ export default function NotificationSettingsPage() {
           {activeTemplate && (
             <div className="space-y-6 p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-bold text-gray-900">
                       {EVENT_TYPE_LABELS[activeTemplate.type] || activeTemplate.name}
@@ -270,9 +322,36 @@ export default function NotificationSettingsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-gray-500">
-                    변수 안내와 샘플 값을 참고해 카카오 심사본과 실제 치환 데이터를 함께 검토하세요.
+                  <p className="text-sm text-gray-600">
+                    {operatorGuide?.summary ?? '이 템플릿은 고객에게 자동 발송되는 메시지입니다.'}
                   </p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-pink-100 bg-pink-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-pink-500">
+                        언제 발송되나요?
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-gray-800">
+                        {operatorGuide?.trigger ?? '해당 이벤트가 발생하면 자동으로 발송됩니다.'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
+                        관리자가 할 일
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-gray-800">
+                        {operatorGuide?.managerAction ??
+                          '카카오 템플릿 코드를 입력하고 저장하면 됩니다.'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                        꼭 알아둘 점
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-gray-800">
+                        {operatorGuide?.caution ?? '자동 입력 항목은 시스템에서 채워집니다.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -300,6 +379,20 @@ export default function NotificationSettingsPage() {
 
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
                 <div className="space-y-5">
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#FF4D8D]" />
+                      <div className="space-y-2 text-sm text-gray-700">
+                        <p className="font-semibold text-gray-900">관리 순서</p>
+                        <ol className="list-decimal space-y-1 pl-5">
+                          <li>카카오에서 승인받은 템플릿 코드를 아래 칸에 입력합니다.</li>
+                          <li>저장하기를 눌러 반영합니다.</li>
+                          <li>오른쪽의 예시 메시지를 보고 문구 흐름이 맞는지 확인합니다.</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       카카오 템플릿 코드
@@ -308,19 +401,25 @@ export default function NotificationSettingsPage() {
                       type="text"
                       value={activeTemplate.kakaoTemplateCode || ''}
                       onChange={(event) =>
-                        handleTemplateChange(activeTemplate.id, 'kakaoTemplateCode', event.target.value)
+                        handleTemplateChange(
+                          activeTemplate.id,
+                          'kakaoTemplateCode',
+                          event.target.value,
+                        )
                       }
                       className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm transition-colors focus:border-[#FF4D8D] focus:outline-none focus:ring-2 focus:ring-pink-100"
                       placeholder="예: KA01TP..."
                     />
-                    <p className="mt-1 text-xs text-gray-400">
-                      카카오 비즈니스 센터에서 심사 승인 후 받은 템플릿 코드를 입력하세요.
+                    <p className="mt-1 text-xs text-gray-500">
+                      카카오 비즈니스 센터에서 심사 승인 후 받은 코드를 그대로 붙여넣으세요.
                     </p>
                   </div>
 
                   <div>
                     <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <label className="block text-sm font-medium text-gray-700">메시지 본문</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        카카오 심사용 메시지 본문
+                      </label>
                       <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600">
                         <Lock className="h-3.5 w-3.5" />
                         읽기 전용
@@ -332,30 +431,20 @@ export default function NotificationSettingsPage() {
                       rows={10}
                       className="w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 font-mono text-sm text-gray-700 focus:outline-none"
                     />
-                    <p className="mt-1 text-xs text-gray-400">
-                      본문은 백엔드 치환 로직 및 카카오 심사본과 동일하게 유지되어야 하므로 이 화면에서는 수정할 수 없습니다.
+                    <p className="mt-1 text-xs text-gray-500">
+                      이 문구는 카카오 심사본과 동일해야 해서 여기서는 수정할 수 없습니다.
                     </p>
-                  </div>
-
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                    <div className="flex items-start gap-2">
-                      <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
-                      <div className="space-y-1 text-sm text-blue-800">
-                        <p className="font-semibold">운영 가이드</p>
-                        <p>
-                          아래 변수는 실제 발송 시 이벤트 데이터, 시스템 설정값, 계산값으로 자동 치환됩니다.
-                          LIVE_START의 쇼핑몰명은 별도 설정 UI 없이 백엔드에서 Doremi Market으로 고정됩니다.
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-5">
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <p className="text-sm font-semibold text-gray-900">샘플 치환 미리보기</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      고객이 받게 될 예시 메시지
+                    </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      공유 메타데이터의 샘플 값으로 치환한 예시입니다. 실제 발송 값은 주문/방송 데이터에 따라 달라질 수 있습니다.
+                      실제 발송 전에 이런 식으로 보인다고 이해하면 됩니다. 아래 값들은 자동으로
+                      채워집니다.
                     </p>
                     <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-gray-200 bg-white p-4 font-sans text-sm leading-6 text-gray-700">
                       {samplePreview || activeTemplate.template}
@@ -364,73 +453,94 @@ export default function NotificationSettingsPage() {
 
                   <div className="rounded-xl border border-gray-200 bg-white">
                     <div className="border-b border-gray-100 px-4 py-3">
-                      <p className="text-sm font-semibold text-gray-900">사용 변수 안내</p>
+                      <p className="text-sm font-semibold text-gray-900">자동으로 들어가는 내용</p>
                       <p className="mt-1 text-xs text-gray-500">
-                        설명, 데이터 출처, 샘플 값, 필수 여부를 함께 제공합니다.
+                        관리자가 직접 입력하지 않아도 시스템이 채워주는 값입니다.
                       </p>
                     </div>
 
                     <div className="space-y-3 p-4">
-                      {activeTemplateVariables.length === 0 ? (
+                      {usedVariables.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                          등록된 변수 메타데이터가 없습니다.
+                          현재 본문에 사용되는 자동 입력 항목이 없습니다.
                         </div>
                       ) : (
-                        activeTemplateVariables.map((variable) => {
-                          const isUsedInTemplate = activeTemplate.template.includes(variable.key);
-
-                          return (
-                            <div
-                              key={`${activeTemplate.type}-${variable.key}`}
-                              className="rounded-xl border border-gray-200 bg-gray-50 p-4"
-                            >
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <code className="rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-gray-800">
-                                      {variable.key}
-                                    </code>
-                                    {variable.required && (
-                                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">
-                                        필수
-                                      </span>
-                                    )}
-                                    {!isUsedInTemplate && (
-                                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                                        현재 본문 미사용
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm font-semibold text-gray-900">{variable.label}</p>
-                                  <p className="text-sm text-gray-700">{variable.description}</p>
-                                </div>
-                                <span
-                                  className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SOURCE_BADGE_STYLES[variable.sourceType]}`}
-                                >
-                                  {SOURCE_LABELS[variable.sourceType]}
+                        usedVariables.map((variable) => (
+                          <div
+                            key={`${activeTemplate.type}-${variable.key}`}
+                            className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-gray-900">
+                                {variable.label}
+                              </p>
+                              <code className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-gray-700">
+                                {variable.key}
+                              </code>
+                              {variable.required && (
+                                <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">
+                                  필수
                                 </span>
-                              </div>
-
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-lg bg-white p-3">
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                                    값 출처
-                                  </p>
-                                  <p className="mt-1 break-all text-sm text-gray-700">{variable.sourcePath}</p>
-                                </div>
-                                <div className="rounded-lg bg-white p-3">
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                                    샘플 값
-                                  </p>
-                                  <p className="mt-1 break-all text-sm text-gray-700">{variable.sample}</p>
-                                </div>
-                              </div>
+                              )}
                             </div>
-                          );
-                        })
+                            <p className="mt-2 text-sm leading-6 text-gray-700">
+                              {variable.description}
+                            </p>
+                            <div className="mt-3 rounded-lg bg-white p-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                                예시 값
+                              </p>
+                              <p className="mt-1 break-all text-sm text-gray-700">
+                                {variable.sample}
+                              </p>
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>
+
+                  <details className="rounded-xl border border-gray-200 bg-white p-4">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-gray-900">
+                      개발/고급 정보 보기
+                    </summary>
+                    <p className="mt-2 text-xs leading-5 text-gray-500">
+                      개발자나 운영 담당자가 데이터 연결을 확인할 때만 참고하세요.
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {activeTemplateVariables.map((variable) => {
+                        const isUsedInTemplate = activeTemplate.template.includes(variable.key);
+
+                        return (
+                          <div
+                            key={`advanced-${activeTemplate.type}-${variable.key}`}
+                            className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <code className="rounded bg-white px-2 py-1 text-[11px] font-semibold text-gray-700">
+                                {variable.key}
+                              </code>
+                              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] text-gray-700">
+                                {SOURCE_LABELS[variable.sourceType]}
+                              </span>
+                              {!isUsedInTemplate && (
+                                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] text-gray-600">
+                                  현재 본문 미사용
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-2 text-sm font-medium text-gray-900">
+                              {variable.label}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600">{variable.description}</p>
+                            <p className="mt-2 text-xs text-gray-500">
+                              값 출처: {variable.sourcePath}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>
