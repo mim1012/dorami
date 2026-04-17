@@ -57,6 +57,32 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       // Redis unavailable — skip blacklist check rather than blocking all requests
     }
 
+    // Enforce per-session revocation immediately for access tokens.
+    // If sid is present, the backing auth session must still exist, belong to the user,
+    // and remain active. This makes "log out this device" take effect immediately
+    // instead of waiting for the revoked session's access token to expire.
+    if (payload.sid) {
+      try {
+        const session = await this.prismaService.authSession.findUnique({
+          where: { id: payload.sid },
+          select: { userId: true, revokedAt: true, expiresAt: true },
+        });
+
+        if (!session || session.userId !== payload.sub) {
+          throw new UnauthorizedException('Token has been revoked');
+        }
+
+        if (session.revokedAt || session.expiresAt.getTime() <= Date.now()) {
+          throw new UnauthorizedException('Token has been revoked');
+        }
+      } catch (error) {
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
+        // DB unavailable — skip session check rather than blocking all requests
+      }
+    }
+
     // Check if user is suspended (blacklisted)
     try {
       const user = await this.prismaService.user.findUnique({

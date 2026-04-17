@@ -24,6 +24,7 @@ function getRedisClient(): Redis {
 export interface JwtPayload {
   userId: string;
   sub?: string;
+  sid?: string;
   email: string;
   name: string;
   role: string;
@@ -89,6 +90,26 @@ export async function authenticateSocket(
         throw err;
       }
       // Graceful degradation if Redis unavailable
+    }
+
+    // Enforce per-session revocation immediately for access-token-backed sockets.
+    // If sid is present, the session must still be active.
+    if (payload.sid) {
+      try {
+        const uid = payload.userId ?? payload.sub;
+        const session = await prismaService.authSession.findUnique({
+          where: { id: payload.sid },
+          select: { userId: true, revokedAt: true, expiresAt: true },
+        });
+        if (!session || session.userId !== uid || session.revokedAt || session.expiresAt.getTime() <= Date.now()) {
+          throw new WsException('Token has been revoked');
+        }
+      } catch (err) {
+        if (err instanceof WsException) {
+          throw err;
+        }
+        // Graceful degradation if DB unavailable
+      }
     }
 
     // Check if user is suspended via Redis blacklist
