@@ -288,14 +288,21 @@ export class AuthController {
       throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }
     const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
+    const host = (request.headers?.host as string | undefined) ?? '';
+    const origin = (request.headers?.origin as string | undefined) ?? '';
     const isLocal =
       clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
-    if (!isLocal) {
+
+    const { email, name } = body;
+    const isStagingAdminException =
+      email === 'admin@doremi.shop' &&
+      (host.includes('staging.doremi-live.com') || origin.includes('staging.doremi-live.com'));
+
+    if (!isLocal && !isStagingAdminException) {
       this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
       throw new ForbiddenException('Dev login only available from localhost');
     }
 
-    const { email, name } = body;
     if (!email) {
       return res.status(400).json({
         success: false,
