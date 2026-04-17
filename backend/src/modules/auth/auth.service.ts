@@ -4,8 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
-import { LoginResponseDto, TokenPayload } from './dto/auth.dto';
-import { UnauthorizedException } from '../../common/exceptions/business.exception';
+import { AuthSessionSummaryDto, LoginResponseDto, TokenPayload } from './dto/auth.dto';
+import {
+  EntityNotFoundException,
+  UnauthorizedException,
+} from '../../common/exceptions/business.exception';
 import { User } from '@prisma/client';
 import { AuthSessionRepository } from './auth-session.repository';
 
@@ -541,16 +544,135 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string): Promise<void> {
-    // Add user to blacklist to prevent token reuse
+  private getAccessTokenBlacklistTtlSeconds(): number {
+    const accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m');
+    return this.parseExpiresInToSeconds(accessExpiresIn);
+  }
+
+  private async blacklistTokenJti(tokenJti?: string): Promise<void> {
+    if (!tokenJti) {
+      return;
+    }
+
+    await this.redisService.set(
+      `blacklist:${tokenJti}`,
+      'true',
+      Math.max(this.getAccessTokenBlacklistTtlSeconds(), 1),
+    );
+  }
+
+  private async blacklistUser(userId: string): Promise<void> {
     const ttl = parseInt(this.configService.get<string>('JWT_EXPIRY_HOURS', '24'), 10) * 60 * 60;
     await this.redisService.set(`blacklist:${userId}`, 'true', ttl);
+  }
 
+  private resolveSessionIdFromRefreshToken(userId: string, refreshToken?: string): string | null {
+    if (!refreshToken) {
+      return null;
+    }
+
+    const decoded = this.jwtService.decode(refreshToken) as TokenPayload | null;
+    if (!decoded?.sid || decoded.sub !== userId) {
+      return null;
+    }
+
+    return decoded.sid;
+  }
+
+  private mapSessionSummary(
+    session: {
+      id: string;
+      familyId?: string | null;
+      deviceName?: string | null;
+      deviceType?: string | null;
+      userAgent?: string | null;
+      ipAddress?: string | null;
+      lastUsedAt?: Date | null;
+      expiresAt: Date;
+      revokedAt?: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    currentSessionId?: string,
+  ): AuthSessionSummaryDto {
+    return {
+      id: session.id,
+      current: session.id === currentSessionId,
+      familyId: session.familyId ?? null,
+      deviceName: session.deviceName ?? null,
+      deviceType: session.deviceType ?? null,
+      userAgent: session.userAgent ?? null,
+      ipAddress: session.ipAddress ?? null,
+      lastUsedAt: session.lastUsedAt?.toISOString() ?? null,
+      expiresAt: session.expiresAt.toISOString(),
+      revokedAt: session.revokedAt?.toISOString() ?? null,
+      createdAt: session.createdAt.toISOString(),
+      updatedAt: session.updatedAt.toISOString(),
+    };
+  }
+
+  async listSessions(userId: string, currentSessionId?: string): Promise<AuthSessionSummaryDto[]> {
+    const sessions = await this.authSessionRepository.listSessionsForUser(userId);
+    return sessions.map((session) => this.mapSessionSummary(session, currentSessionId));
+  }
+
+  async revokeSession(
+    userId: string,
+    sessionId: string,
+    currentSessionId?: string,
+    currentTokenJti?: string,
+  ): Promise<{ revokedCurrentSession: boolean }> {
+    const session = await this.authSessionRepository.getSession(sessionId);
+
+    if (session?.userId !== userId) {
+      throw new EntityNotFoundException('Session', sessionId);
+    }
+
+    if (!session.revokedAt) {
+      await this.authSessionRepository.revokeSession(sessionId);
+    }
+
+    const revokedCurrentSession = sessionId === currentSessionId;
+    if (revokedCurrentSession) {
+      await this.blacklistTokenJti(currentTokenJti);
+    }
+
+    this.logger.log(`[Auth] Session revoked: ${sessionId} for user ${userId}`);
+
+    return { revokedCurrentSession };
+  }
+
+  async logout(
+    userId: string,
+    options?: {
+      sessionId?: string;
+      refreshToken?: string;
+      currentTokenJti?: string;
+    },
+  ): Promise<{ scope: 'current' | 'all'; sessionId?: string }> {
+    const resolvedSessionId =
+      options?.sessionId ?? this.resolveSessionIdFromRefreshToken(userId, options?.refreshToken);
+
+    if (resolvedSessionId) {
+      await this.revokeSession(userId, resolvedSessionId, resolvedSessionId, options?.currentTokenJti);
+      await this.redisService.del(`refresh_token:${userId}`);
+      this.logger.log(`[Auth] Current session logged out: ${userId} (${resolvedSessionId})`);
+      return { scope: 'current', sessionId: resolvedSessionId };
+    }
+
+    await this.logoutAll(userId, options?.currentTokenJti);
+    this.logger.log(`[Auth] Fallback logout-all applied for user without session context: ${userId}`);
+    return { scope: 'all' };
+  }
+
+  async logoutAll(userId: string, currentTokenJti?: string): Promise<void> {
+    await this.blacklistUser(userId);
+    await this.blacklistTokenJti(currentTokenJti);
     await this.authSessionRepository.revokeAllSessionsForUser(userId);
 
     // Delete legacy refresh token cache entry if it still exists
     await this.redisService.del(`refresh_token:${userId}`);
 
-    this.logger.log(`[Auth] User logged out: ${userId}`);
+    this.logger.log(`[Auth] User logged out from all sessions: ${userId}`);
   }
 }

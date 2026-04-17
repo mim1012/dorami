@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
+  Param,
   Body,
   UseGuards,
   Req,
@@ -107,6 +109,18 @@ export class AuthController {
       maxAge: this.refreshTokenMaxAge,
       path: '/',
     };
+  }
+
+  private clearAuthCookies(res: Response): void {
+    const cookieOptions = {
+      httpOnly: true,
+      secure: this.isProduction,
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
   }
 
   private logRefreshEvent(reason: string, details?: Record<string, unknown>): void {
@@ -268,29 +282,93 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 로그아웃합니다.' })
+  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 현재 기기에서 로그아웃합니다.' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async logout(@CurrentUser('userId') userId: string, @Res() res: Response) {
-    await this.authService.logout(userId);
+  async logout(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') sessionId: string | undefined,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.authService.logout(userId, {
+      sessionId,
+      refreshToken: req.cookies?.refreshToken,
+      currentTokenJti: tokenJti,
+    });
 
-    // Clear cookies — options must match what was set so the browser honours the deletion
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: this.isProduction,
-      sameSite: 'lax',
-      path: '/',
-    });
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: this.isProduction,
-      sameSite: 'lax',
-      path: '/',
-    });
+    this.clearAuthCookies(res);
 
     return res.json({
       success: true,
       data: { message: 'Logged out successfully' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '모든 세션 로그아웃', description: '현재 사용자의 모든 세션을 종료합니다.' })
+  @ApiResponse({ status: 200, description: '모든 세션 로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async logoutAll(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Res() res: Response,
+  ) {
+    await this.authService.logoutAll(userId, tokenJti);
+    this.clearAuthCookies(res);
+
+    return res.json({
+      success: true,
+      data: { message: 'Logged out from all sessions successfully' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '세션 목록 조회', description: '현재 사용자의 인증 세션 목록을 조회합니다.' })
+  @ApiResponse({ status: 200, description: '세션 목록 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async listSessions(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') sessionId: string | undefined,
+  ) {
+    const sessions = await this.authService.listSessions(userId, sessionId);
+    return { sessions };
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '특정 세션 해제', description: '현재 사용자의 특정 인증 세션을 종료합니다.' })
+  @ApiResponse({ status: 200, description: '세션 해제 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async revokeSession(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') currentSessionId: string | undefined,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.revokeSession(
+      userId,
+      sessionId,
+      currentSessionId,
+      tokenJti,
+    );
+
+    if (result.revokedCurrentSession) {
+      this.clearAuthCookies(res);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Session revoked successfully',
+        revokedCurrentSession: result.revokedCurrentSession,
+      },
       timestamp: new Date().toISOString(),
     });
   }
@@ -320,10 +398,11 @@ export class AuthController {
   async devLogin(@Body() body: DevLoginDto, @Res() res: Response, @Req() request: any) {
     const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH');
     if (enableDevAuth !== 'true') {
-      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
+      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH must be true)');
     }
     const appEnv = this.configService.get<string>('APP_ENV', 'development');
     const isStaging = appEnv === 'staging';
+
     if (!isStaging) {
       const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
       const isLocal =

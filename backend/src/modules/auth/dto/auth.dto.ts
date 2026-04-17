@@ -13,6 +13,21 @@ export class LoginResponseDto {
   };
 }
 
+export class AuthSessionSummaryDto {
+  id!: string;
+  current!: boolean;
+  familyId?: string | null;
+  deviceName?: string | null;
+  deviceType?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+  lastUsedAt?: string | null;
+  expiresAt!: string;
+  revokedAt?: string | null;
+  createdAt!: string;
+  updatedAt!: string;
+}
+
 export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()

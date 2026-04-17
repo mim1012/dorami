@@ -57,6 +57,7 @@ describe('AuthService', () => {
               .mockReturnValueOnce('mock-access-token')
               .mockReturnValueOnce('mock-refresh-token'),
             verify: jest.fn().mockReturnValue(mockTokenPayload),
+            decode: jest.fn(),
           },
         },
         {
@@ -104,7 +105,9 @@ describe('AuthService', () => {
             createSession: jest.fn(),
             getSession: jest.fn(),
             updateRefreshToken: jest.fn(),
+            revokeSession: jest.fn(),
             revokeAllSessionsForUser: jest.fn(),
+            listSessionsForUser: jest.fn(),
           },
         },
       ],
@@ -378,11 +381,176 @@ describe('AuthService', () => {
     });
   });
 
+  describe('listSessions', () => {
+    it('should return safe session metadata and mark the current session', async () => {
+      jest.spyOn(authSessionRepository, 'listSessionsForUser').mockResolvedValue([
+        {
+          id: 'session-123',
+          userId: mockUser.id,
+          refreshTokenHash: 'hash-a',
+          familyId: 'family-1',
+          deviceName: 'Chrome on Mac',
+          deviceType: 'desktop',
+          userAgent: 'Mozilla/5.0',
+          ipAddress: '127.0.0.1',
+          lastUsedAt: new Date('2026-01-01T00:00:00.000Z'),
+          expiresAt: new Date('2026-01-08T00:00:00.000Z'),
+          revokedAt: null,
+          createdAt: new Date('2025-12-31T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ] as any);
+
+      const result = await service.listSessions(mockUser.id, 'session-123');
+
+      expect(result).toEqual([
+        {
+          id: 'session-123',
+          current: true,
+          familyId: 'family-1',
+          deviceName: 'Chrome on Mac',
+          deviceType: 'desktop',
+          userAgent: 'Mozilla/5.0',
+          ipAddress: '127.0.0.1',
+          lastUsedAt: '2026-01-01T00:00:00.000Z',
+          expiresAt: '2026-01-08T00:00:00.000Z',
+          revokedAt: null,
+          createdAt: '2025-12-31T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+      expect(result[0]).not.toHaveProperty('refreshTokenHash');
+    });
+  });
+
+  describe('revokeSession', () => {
+    it('should revoke another session owned by the user', async () => {
+      jest.spyOn(authSessionRepository, 'getSession').mockResolvedValue({
+        id: 'session-456',
+        userId: mockUser.id,
+        refreshTokenHash: 'hash-a',
+        familyId: null,
+        deviceName: null,
+        deviceType: null,
+        userAgent: null,
+        ipAddress: null,
+        lastUsedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.revokeSession(mockUser.id, 'session-456', 'session-123', 'jti-123');
+
+      expect(result).toEqual({ revokedCurrentSession: false });
+      expect(authSessionRepository.revokeSession).toHaveBeenCalledWith('session-456');
+      expect(redisService.set).not.toHaveBeenCalledWith('blacklist:jti-123', 'true', expect.any(Number));
+    });
+
+    it('should blacklist the current access token when revoking the current session', async () => {
+      jest.spyOn(authSessionRepository, 'getSession').mockResolvedValue({
+        id: 'session-123',
+        userId: mockUser.id,
+        refreshTokenHash: 'hash-a',
+        familyId: null,
+        deviceName: null,
+        deviceType: null,
+        userAgent: null,
+        ipAddress: null,
+        lastUsedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.revokeSession(mockUser.id, 'session-123', 'session-123', 'jti-123');
+
+      expect(result).toEqual({ revokedCurrentSession: true });
+      expect(redisService.set).toHaveBeenCalledWith('blacklist:jti-123', 'true', 900);
+    });
+  });
+
   describe('logout', () => {
-    it('should blacklist the user and revoke all auth sessions', async () => {
-      await service.logout(mockUser.id);
+    it('should revoke only the current session when sid is present', async () => {
+      jest.spyOn(authSessionRepository, 'getSession').mockResolvedValue({
+        id: 'session-123',
+        userId: mockUser.id,
+        refreshTokenHash: 'hash-a',
+        familyId: null,
+        deviceName: null,
+        deviceType: null,
+        userAgent: null,
+        ipAddress: null,
+        lastUsedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.logout(mockUser.id, {
+        sessionId: 'session-123',
+        currentTokenJti: 'jti-123',
+      });
+
+      expect(result).toEqual({ scope: 'current', sessionId: 'session-123' });
+      expect(authSessionRepository.revokeSession).toHaveBeenCalledWith('session-123');
+      expect(authSessionRepository.revokeAllSessionsForUser).not.toHaveBeenCalled();
+      expect(redisService.set).toHaveBeenCalledWith('blacklist:jti-123', 'true', 900);
+      expect(redisService.del).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
+    });
+
+    it('should fall back to cookie-derived sid when access token session id is unavailable', async () => {
+      jest.spyOn(jwtService, 'decode').mockReturnValue({
+        sub: mockUser.id,
+        sid: 'session-789',
+      });
+      jest.spyOn(authSessionRepository, 'getSession').mockResolvedValue({
+        id: 'session-789',
+        userId: mockUser.id,
+        refreshTokenHash: 'hash-a',
+        familyId: null,
+        deviceName: null,
+        deviceType: null,
+        userAgent: null,
+        ipAddress: null,
+        lastUsedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.logout(mockUser.id, {
+        refreshToken: 'refresh-cookie-token',
+      });
+
+      expect(result).toEqual({ scope: 'current', sessionId: 'session-789' });
+      expect(jwtService.decode).toHaveBeenCalledWith('refresh-cookie-token');
+      expect(authSessionRepository.revokeSession).toHaveBeenCalledWith('session-789');
+      expect(authSessionRepository.revokeAllSessionsForUser).not.toHaveBeenCalled();
+    });
+
+    it('should blacklist the user and revoke all auth sessions when no session context is available', async () => {
+      jest.spyOn(jwtService, 'decode').mockReturnValue(null);
+
+      const result = await service.logout(mockUser.id);
+
+      expect(result).toEqual({ scope: 'all' });
+      expect(redisService.set).toHaveBeenCalledWith(`blacklist:${mockUser.id}`, 'true', expect.any(Number));
+      expect(authSessionRepository.revokeAllSessionsForUser).toHaveBeenCalledWith(mockUser.id);
+      expect(redisService.del).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should revoke every session and blacklist the user', async () => {
+      await service.logoutAll(mockUser.id, 'jti-123');
 
       expect(redisService.set).toHaveBeenCalledWith(`blacklist:${mockUser.id}`, 'true', expect.any(Number));
+      expect(redisService.set).toHaveBeenCalledWith('blacklist:jti-123', 'true', 900);
       expect(authSessionRepository.revokeAllSessionsForUser).toHaveBeenCalledWith(mockUser.id);
       expect(redisService.del).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
     });
