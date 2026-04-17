@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { LoginResponseDto, TokenPayload } from './dto/auth.dto';
 import { UnauthorizedException } from '../../common/exceptions/business.exception';
 import { User } from '@prisma/client';
+import { AuthSessionRepository } from './auth-session.repository';
+
+type JwtExpiry = `${number}${'s' | 'm' | 'h' | 'd'}`;
 
 interface KakaoUserProfile {
   kakaoId: string;
@@ -25,11 +28,15 @@ export class AuthService {
   private readonly refreshContentionWaitMs = 4000;
   private readonly refreshContentionPollMs = 250;
 
+  // In-memory dedupe for concurrent refresh requests (same process)
+  private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
+    private authSessionRepository: AuthSessionRepository,
   ) {
     // Cache admin whitelist at startup to avoid parsing on every login
     const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
@@ -101,10 +108,14 @@ export class AuthService {
     return value * (multipliers[match[2]] ?? 86400);
   }
 
-  async login(user: User): Promise<LoginResponseDto> {
+  private hashRefreshToken(refreshToken: string): string {
+    return createHash('sha256').update(refreshToken).digest('hex');
+  }
+
+  private buildTokenPayload(user: User): TokenPayload {
     const profileStatus = this.getProfileCompletionStatus(user);
 
-    const payload: TokenPayload = {
+    return {
       sub: user.id,
       userId: user.id,
       email: user.email ?? '',
@@ -114,29 +125,14 @@ export class AuthService {
       profileComplete: profileStatus.profileComplete,
       shippingAddressComplete: !!user.shippingAddress,
     };
+  }
 
-    const sessionId = randomUUID();
-
-    const accessToken = this.jwtService.sign(
-      { ...payload, sid: sessionId, type: 'access', jti: randomUUID() },
-      { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m' },
-    );
-
-    const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';
-    const refreshToken = this.jwtService.sign(
-      { ...payload, sid: sessionId, type: 'refresh', jti: randomUUID() },
-      { expiresIn: refreshExpiresIn },
-    );
-
-    const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
-    try {
-      await this.redisService.set(`refresh_token:${user.id}`, refreshToken, refreshTokenTTL);
-      // Clear blacklist entry so new tokens are not rejected after a previous logout
-      await this.redisService.del(`blacklist:${user.id}`);
-    } catch (error) {
-      this.logger.warn(`Failed to store refresh token in Redis: ${(error as Error).message}`);
-    }
-
+  private buildLoginResponse(
+    user: User,
+    profileComplete: boolean,
+    accessToken: string,
+    refreshToken: string,
+  ): LoginResponseDto {
     return {
       accessToken,
       refreshToken,
@@ -146,13 +142,73 @@ export class AuthService {
         email: user.email ?? undefined,
         name: user.name,
         role: user.role,
-        profileComplete: profileStatus.profileComplete,
+        profileComplete,
       },
     };
   }
 
-  // In-memory dedupe for concurrent refresh requests (same process)
-  private readonly refreshLocks = new Map<string, Promise<LoginResponseDto>>();
+  private issueTokensForSession(user: User, sessionId: string): {
+    accessToken: string;
+    refreshToken: string;
+    refreshTokenHash: string;
+    refreshTokenTTL: number;
+    refreshExpiresAt: Date;
+    profileComplete: boolean;
+  } {
+    const payload = this.buildTokenPayload(user);
+    const accessExpiresIn =
+      (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m') as JwtExpiry;
+    const accessToken = this.jwtService.sign(
+      { ...payload, sid: sessionId, type: 'access', jti: randomUUID() },
+      { expiresIn: accessExpiresIn },
+    );
+
+    const refreshExpiresIn =
+      (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as JwtExpiry;
+    const refreshToken = this.jwtService.sign(
+      { ...payload, sid: sessionId, type: 'refresh', jti: randomUUID() },
+      { expiresIn: refreshExpiresIn },
+    );
+
+    const refreshTokenTTL = this.parseExpiresInToSeconds(refreshExpiresIn);
+
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenHash: this.hashRefreshToken(refreshToken),
+      refreshTokenTTL,
+      refreshExpiresAt: new Date(Date.now() + refreshTokenTTL * 1000),
+      profileComplete: payload.profileComplete === true,
+    };
+  }
+
+  async login(user: User): Promise<LoginResponseDto> {
+    const sessionId = randomUUID();
+    const issuedTokens = this.issueTokensForSession(user, sessionId);
+
+    await this.authSessionRepository.createSession({
+      id: sessionId,
+      userId: user.id,
+      refreshTokenHash: issuedTokens.refreshTokenHash,
+      lastUsedAt: new Date(),
+      expiresAt: issuedTokens.refreshExpiresAt,
+    });
+
+    try {
+      await this.redisService.del(`refresh_token:${user.id}`);
+      // Clear blacklist entry so new tokens are not rejected after a previous logout
+      await this.redisService.del(`blacklist:${user.id}`);
+    } catch (error) {
+      this.logger.warn(`Failed to clear legacy auth cache state: ${(error as Error).message}`);
+    }
+
+    return this.buildLoginResponse(
+      user,
+      issuedTokens.profileComplete,
+      issuedTokens.accessToken,
+      issuedTokens.refreshToken,
+    );
+  }
 
   private logRefresh(
     level: 'log' | 'warn' | 'error',
@@ -179,8 +235,8 @@ export class AuthService {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async readCachedRefreshResult(userId: string): Promise<LoginResponseDto | null> {
-    const cacheKey = `refresh_result:${userId}`;
+  private async readCachedRefreshResult(sessionId: string, userId: string): Promise<LoginResponseDto | null> {
+    const cacheKey = `refresh_result:${sessionId}`;
     const cached = await this.redisService.get(cacheKey);
 
     if (!cached) {
@@ -191,14 +247,16 @@ export class AuthService {
       return JSON.parse(cached) as LoginResponseDto;
     } catch (error) {
       this.logRefresh('warn', 'INVALID_CACHED_REFRESH_RESULT', userId, {
-        message: (error as Error)?.message ?? 'Failed to parse cached refresh result',
+        sessionId,
+        message: (error as Error).message || 'Failed to parse cached refresh result',
       });
 
       try {
         await this.redisService.del(cacheKey);
       } catch (cleanupError) {
         this.logRefresh('warn', 'CACHED_REFRESH_RESULT_DELETE_FAILED', userId, {
-          message: (cleanupError as Error)?.message ?? 'Failed to delete malformed cache entry',
+          sessionId,
+          message: (cleanupError as Error).message || 'Failed to delete malformed cache entry',
         });
       }
 
@@ -206,7 +264,7 @@ export class AuthService {
     }
   }
 
-  private async waitForCachedRefreshResult(userId: string): Promise<{
+  private async waitForCachedRefreshResult(sessionId: string, userId: string): Promise<{
     attempts: number;
     waitedMs: number;
     result: LoginResponseDto | null;
@@ -217,7 +275,7 @@ export class AuthService {
     while (true) {
       attempts += 1;
 
-      const result = await this.readCachedRefreshResult(userId);
+      const result = await this.readCachedRefreshResult(sessionId, userId);
       if (result) {
         return {
           attempts,
@@ -251,7 +309,7 @@ export class AuthService {
       }
 
       this.logRefresh('warn', 'JWT_VERIFY_FAILED', 'unknown', {
-        message: (error as Error)?.message ?? 'Unknown JWT verification error',
+        message: (error as Error).message || 'Unknown JWT verification error',
       });
 
       throw new UnauthorizedException('Invalid or expired refresh token');
@@ -264,43 +322,53 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token type');
     }
 
-    const userId = payload.sub;
+    if (!payload.sid) {
+      this.logRefresh('warn', 'MISSING_SESSION_ID', payload.sub, {
+        tokenType: payload.type ?? 'unknown',
+      });
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-    // In-memory dedupe: if refresh is already in-flight for this user, return same promise
-    const existing = this.refreshLocks.get(userId);
+    const inFlightKey = payload.sid;
+    const existing = this.refreshLocks.get(inFlightKey);
     if (existing) {
       return existing;
     }
 
-    const promise = this._doRefreshToken(userId, refreshToken);
-    this.refreshLocks.set(userId, promise);
+    const promise = this._doRefreshToken(payload.sub, payload.sid, refreshToken);
+    this.refreshLocks.set(inFlightKey, promise);
 
     try {
       return await promise;
     } finally {
-      this.refreshLocks.delete(userId);
+      this.refreshLocks.delete(inFlightKey);
     }
   }
 
-  private async _doRefreshToken(userId: string, refreshToken: string): Promise<LoginResponseDto> {
-    const lockKey = `refresh_lock:${userId}`;
+  private async _doRefreshToken(
+    userId: string,
+    sessionId: string,
+    refreshToken: string,
+  ): Promise<LoginResponseDto> {
+    const lockKey = `refresh_lock:${sessionId}`;
+    const cacheKey = `refresh_result:${sessionId}`;
     let lockAcquired = false;
     try {
-      // Acquire Redis lock FIRST — prevents race condition where two instances
-      // both read the same stored token before either deletes it
       const acquired = await this.redisService
         .getClient()
         .set(lockKey, '1', 'EX', this.refreshLockTtlSeconds, 'NX');
 
       if (!acquired) {
         this.logRefresh('log', 'LOCK_CONTENTION', userId, {
+          sessionId,
           waitWindowMs: this.refreshContentionWaitMs,
           pollIntervalMs: this.refreshContentionPollMs,
         });
 
-        const waitResult = await this.waitForCachedRefreshResult(userId);
+        const waitResult = await this.waitForCachedRefreshResult(sessionId, userId);
         if (waitResult.result) {
           this.logRefresh('log', 'LOCK_CONTENTION_RECOVERED', userId, {
+            sessionId,
             attempts: waitResult.attempts,
             waitedMs: waitResult.waitedMs,
           });
@@ -308,6 +376,7 @@ export class AuthService {
         }
 
         this.logRefresh('warn', 'LOCK_TIMEOUT', userId, {
+          sessionId,
           attempts: waitResult.attempts,
           waitedMs: waitResult.waitedMs,
         });
@@ -316,16 +385,33 @@ export class AuthService {
 
       lockAcquired = true;
 
-      // Now safely read and compare token inside the lock
-      const storedToken = await this.redisService.get(`refresh_token:${userId}`);
-
-      if (!storedToken) {
-        this.logRefresh('warn', 'NO_STORED_TOKEN', userId);
+      const authSession = await this.authSessionRepository.getSession(sessionId);
+      if (!authSession) {
+        this.logRefresh('warn', 'SESSION_NOT_FOUND', userId, { sessionId });
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      if (storedToken !== refreshToken) {
+      if (authSession.userId !== userId) {
+        this.logRefresh('warn', 'SESSION_USER_MISMATCH', userId, {
+          sessionId,
+          sessionUserId: authSession.userId,
+        });
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      if (authSession.revokedAt) {
+        this.logRefresh('warn', 'SESSION_REVOKED', userId, { sessionId });
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      if (authSession.expiresAt.getTime() <= Date.now()) {
+        this.logRefresh('warn', 'SESSION_EXPIRED', userId, { sessionId });
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      if (authSession.refreshTokenHash !== this.hashRefreshToken(refreshToken)) {
         this.logRefresh('warn', 'TOKEN_MISMATCH', userId, {
+          sessionId,
           possibleCause: 'reuse_or_rotation_race',
         });
         throw new UnauthorizedException('Invalid refresh token');
@@ -336,20 +422,28 @@ export class AuthService {
       });
 
       if (!user) {
-        this.logRefresh('warn', 'USER_NOT_FOUND', userId);
+        this.logRefresh('warn', 'USER_NOT_FOUND', userId, { sessionId });
         throw new UnauthorizedException('User not found');
       }
 
-      await this.redisService.del(`refresh_token:${userId}`);
+      const issuedTokens = this.issueTokensForSession(user, sessionId);
+      const lastUsedAt = new Date();
 
-      const result = await this.login(user);
-
-      // Cache result briefly for concurrent requests across instances
-      await this.redisService.set(
-        `refresh_result:${userId}`,
-        JSON.stringify(result),
-        this.refreshResultTtlSeconds,
+      await this.authSessionRepository.updateRefreshToken(
+        sessionId,
+        issuedTokens.refreshTokenHash,
+        issuedTokens.refreshExpiresAt,
+        lastUsedAt,
       );
+
+      const result = this.buildLoginResponse(
+        user,
+        issuedTokens.profileComplete,
+        issuedTokens.accessToken,
+        issuedTokens.refreshToken,
+      );
+
+      await this.redisService.set(cacheKey, JSON.stringify(result), this.refreshResultTtlSeconds);
 
       return result;
     } catch (error) {
@@ -362,10 +456,11 @@ export class AuthService {
         'UNEXPECTED_INFRA_ERROR',
         userId,
         {
-          message: (error as Error)?.message ?? 'no message',
-          name: (error as Error)?.name ?? 'Error',
+          sessionId,
+          message: (error as Error).message || 'no message',
+          name: (error as Error).name || 'Error',
         },
-        (error as Error)?.stack,
+        (error as Error).stack,
       );
       throw new UnauthorizedException('Invalid or expired refresh token');
     } finally {
@@ -391,7 +486,7 @@ export class AuthService {
       create: {
         kakaoId: `dev_${randomUUID()}`,
         email,
-        name: name || email.split('@')[0],
+        name: name ?? email.split('@')[0],
         role: roleToAssign,
         status: 'ACTIVE',
         lastLoginAt: new Date(),
@@ -451,7 +546,9 @@ export class AuthService {
     const ttl = parseInt(this.configService.get<string>('JWT_EXPIRY_HOURS', '24'), 10) * 60 * 60;
     await this.redisService.set(`blacklist:${userId}`, 'true', ttl);
 
-    // Delete refresh token from Redis
+    await this.authSessionRepository.revokeAllSessionsForUser(userId);
+
+    // Delete legacy refresh token cache entry if it still exists
     await this.redisService.del(`refresh_token:${userId}`);
 
     this.logger.log(`[Auth] User logged out: ${userId}`);

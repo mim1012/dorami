@@ -82,12 +82,18 @@ export class AuthSessionRepository {
     return session ? this.toRecord(session) : null;
   }
 
-  async updateRefreshToken(sessionId: string, refreshTokenHash: string, expiresAt: Date): Promise<void> {
+  async updateRefreshToken(
+    sessionId: string,
+    refreshTokenHash: string,
+    expiresAt: Date,
+    lastUsedAt?: Date,
+  ): Promise<void> {
     await this.prisma.authSession.update({
       where: { id: sessionId },
       data: {
         refreshTokenHash,
         expiresAt,
+        ...(lastUsedAt ? { lastUsedAt } : {}),
       },
     });
   }
