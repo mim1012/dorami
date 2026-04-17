@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { KakaoStrategy } from './strategies/kakao.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AuthSessionRepository } from './auth-session.repository';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, KakaoStrategy, JwtStrategy, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard],
+  providers: [AuthService, AuthSessionRepository, KakaoStrategy, JwtStrategy, JwtAuthGuard],
+  exports: [AuthService, AuthSessionRepository, JwtAuthGuard],
 })
 export class AuthModule {}

@@ -22,6 +22,7 @@ export class RefreshTokenDto {
 export class TokenPayload {
   sub!: string; // userId (for compatibility)
   userId!: string; // User ID (duplicate of sub for clarity)
+  sid?: string; // Session ID for per-device auth session tracking
   email!: string; // User email
   kakaoId!: string;
   name!: string; // User display name

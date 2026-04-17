@@ -30,6 +30,7 @@ describe('AuthService', () => {
   const mockTokenPayload = {
     sub: 'user-123',
     userId: 'user-123',
+    sid: 'session-123',
     email: 'test@example.com',
     kakaoId: 'kakao-123',
     role: 'USER',
@@ -119,6 +120,21 @@ describe('AuthService', () => {
       );
     });
   });
+
+
+    it('should include the same sid in issued access and refresh tokens', async () => {
+      await service.login(mockUser as any);
+
+      expect(jwtService.sign).toHaveBeenCalledTimes(2);
+
+      const accessPayload = (jwtService.sign as jest.Mock).mock.calls[0][0];
+      const refreshPayload = (jwtService.sign as jest.Mock).mock.calls[1][0];
+
+      expect(accessPayload.sid).toBeDefined();
+      expect(refreshPayload.sid).toBe(accessPayload.sid);
+      expect(accessPayload.type).toBe('access');
+      expect(refreshPayload.type).toBe('refresh');
+    });
 
   describe('refreshToken', () => {
     const validRefreshToken = 'valid-refresh-token';

@@ -115,14 +115,16 @@ export class AuthService {
       shippingAddressComplete: !!user.shippingAddress,
     };
 
+    const sessionId = randomUUID();
+
     const accessToken = this.jwtService.sign(
-      { ...payload, type: 'access', jti: randomUUID() },
+      { ...payload, sid: sessionId, type: 'access', jti: randomUUID() },
       { expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m' },
     );
 
     const refreshExpiresIn = this.configService.get('JWT_REFRESH_EXPIRES_IN') ?? '7d';
     const refreshToken = this.jwtService.sign(
-      { ...payload, type: 'refresh', jti: randomUUID() },
+      { ...payload, sid: sessionId, type: 'refresh', jti: randomUUID() },
       { expiresIn: refreshExpiresIn },
     );
 
