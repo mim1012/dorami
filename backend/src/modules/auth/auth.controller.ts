@@ -287,15 +287,33 @@ export class AuthController {
     if (enableDevAuth !== 'true') {
       throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
     }
-    const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
-    const isLocal =
-      clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
-    if (!isLocal) {
-      this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
-      throw new ForbiddenException('Dev login only available from localhost');
+
+    const email = body.email?.trim().toLowerCase();
+    const name = body.name;
+    const appEnv = this.configService.get<string>('APP_ENV', 'development');
+    const hostHeader =
+      request.headers?.['x-forwarded-host'] ?? request.headers?.host ?? request.hostname ?? '';
+    const originHeader = request.headers?.origin ?? '';
+    const isStaging =
+      appEnv === 'staging' ||
+      this.frontendUrl.includes('staging.doremi-live.com') ||
+      String(hostHeader).includes('staging.doremi-live.com') ||
+      String(originHeader).includes('staging.doremi-live.com');
+    const isStagingAdminBypass = isStaging && email === 'admin@dorami.shop';
+
+    if (!isStagingAdminBypass) {
+      const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
+      const isLocal =
+        clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+      if (!isLocal) {
+        this.logger.warn(`Dev login blocked from non-local IP: ${clientIp}`);
+        throw new ForbiddenException('Dev login only available from localhost');
+      }
     }
 
-    const { email, name } = body;
+    if (isStagingAdminBypass) {
+      this.logger.log('Allowing staging dev login for admin@dorami.shop');
+    }
     if (!email) {
       return res.status(400).json({
         success: false,
