@@ -7,36 +7,19 @@ import { useAuth } from '@/lib/hooks/use-auth';
 import { isProfileComplete } from '@/lib/utils/profile';
 import { Display, Body } from '@/components/common/Typography';
 import Image from 'next/image';
-
-const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
-
-function sanitizeReturnPath(raw: string | null): string {
-  if (!raw) return '/';
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded.startsWith('/')) return '/';
-    if (decoded.startsWith('//')) return '/';
-    return decoded;
-  } catch {
-    return '/';
-  }
-}
-
-function getReturnToFromSearchParams(searchParams: URLSearchParams): string {
-  return sanitizeReturnPath(searchParams.get('returnTo') || searchParams.get('redirect'));
-}
-
-function consumeStoredReturnTo(): string | null {
-  if (typeof window === 'undefined') return null;
-  const stored = window.localStorage.getItem(POST_LOGIN_RETURN_KEY);
-  window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
-  return sanitizeReturnPath(stored);
-}
+import {
+  clearStoredPostLoginReturnTo,
+  consumeStoredPostLoginReturnTo,
+  getReturnToFromSearchParams,
+  persistPostLoginReturnTo,
+  resolveAuthenticatedRedirect,
+} from '@/lib/auth/navigation';
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading, refreshProfile, user } = useAuth();
+  const { isAuthenticated, isLoading, isSessionVerified, isVerifying, refreshProfile, user } =
+    useAuth();
 
   const error = searchParams.get('error');
   const reason = searchParams.get('reason');
@@ -50,18 +33,16 @@ function LoginContent() {
 
   useEffect(() => {
     if (hasExplicitReturnTo) {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
-      }
+      clearStoredPostLoginReturnTo();
       setReturnTo(getReturnToFromSearchParams(searchParams));
       return;
     }
 
-    setReturnTo(consumeStoredReturnTo() || '');
+    setReturnTo(consumeStoredPostLoginReturnTo());
   }, [searchParams, hasExplicitReturnTo]);
 
   useEffect(() => {
-    if (!user || !isAuthenticated || isLoading) return;
+    if (!user || !isAuthenticated || isLoading || isVerifying || !isSessionVerified) return;
 
     if (user.role !== 'ADMIN' && !isProfileComplete(user)) {
       router.push('/profile/register');
@@ -70,14 +51,18 @@ function LoginContent() {
 
     // All users can login without profile completion (instagramId/depositorName not required)
     const target = hasExplicitReturnTo ? getReturnToFromSearchParams(searchParams) : returnTo;
-    const safeTarget = user.role === 'USER' && target.startsWith('/admin') ? '/' : target;
-
-    if (safeTarget) {
-      router.push(safeTarget);
-    } else {
-      router.push('/');
-    }
-  }, [hasExplicitReturnTo, isAuthenticated, isLoading, returnTo, router, searchParams, user]);
+    router.push(resolveAuthenticatedRedirect(user.role, target, '/'));
+  }, [
+    hasExplicitReturnTo,
+    isAuthenticated,
+    isLoading,
+    isSessionVerified,
+    isVerifying,
+    returnTo,
+    router,
+    searchParams,
+    user,
+  ]);
 
   useEffect(() => {
     // In local dev always show dev login
@@ -86,9 +71,7 @@ function LoginContent() {
   }, []);
 
   const handleKakaoLogin = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(POST_LOGIN_RETURN_KEY, returnTo);
-    }
+    persistPostLoginReturnTo(returnTo);
     const callback = `/api/auth/kakao`;
     window.location.href = callback;
   };
@@ -163,109 +146,65 @@ function LoginContent() {
         {error && (
           <div className="bg-error-bg border border-error/30 rounded-lg p-4">
             <Body className="text-error text-sm">
-              {error === 'auth_failed'
-                ? '인증에 실패했습니다. 다시 시도해주세요.'
-                : '오류가 발생했습니다. 다시 시도해주세요.'}
+              로그인 중 오류가 발생했습니다. 다시 시도해주세요.
             </Body>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="bg-content-bg rounded-3xl p-8 border border-border-color space-y-6">
           <button
             onClick={handleKakaoLogin}
-            className="w-full flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] py-4 rounded-lg font-bold text-base hover:bg-[#FEE500]/90 transition-all active:scale-[0.98]"
+            className="w-full h-14 rounded-2xl bg-[#FEE500] text-[#191919] font-semibold text-base transition-transform active:scale-[0.99]"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#191919">
-              <path d="M12 3C6.48 3 2 6.48 2 10.5c0 2.55 1.69 4.8 4.24 6.12-.18.67-.67 2.42-.77 2.8-.12.47.17.46.36.34.15-.1 2.37-1.6 3.34-2.25.6.09 1.21.13 1.83.13 5.52 0 10-3.48 10-7.64C22 6.48 17.52 3 12 3z" />
-            </svg>
-            카카오로 로그인
+            카카오로 시작하기
           </button>
 
-          <Body className="text-center text-secondary-text text-xs">
-            로그인 시 이용약관 및 개인정보 처리방침에 동의합니다
-          </Body>
-        </div>
-
-        {/* Dev Login Section — only rendered when NEXT_PUBLIC_ENABLE_DEV_AUTH=true */}
-        {isDevAuthEnabled && (
-          <div className="pt-4 border-t border-border-color">
-            <div className="p-4 bg-content-bg rounded-lg border border-border-color space-y-3">
-              <p className="text-xs text-secondary-text">스테이징 테스트 전용</p>
-
+          {isDevAuthEnabled && (
+            <div className="border-t border-border-color pt-6 space-y-3">
+              <div className="text-xs text-secondary-text">개발용 로그인</div>
               <input
                 type="email"
                 value={devEmail}
                 onChange={(e) => setDevEmail(e.target.value)}
-                placeholder="이메일 (예: admin@doremi.shop)"
-                className="w-full px-3 py-2.5 bg-primary-black border border-border-color rounded-lg text-sm text-primary-text placeholder:text-secondary-text/50 focus:border-hot-pink focus:outline-none"
+                placeholder="you@example.com"
+                className="w-full h-11 rounded-xl bg-primary-black border border-border-color px-4 outline-none focus:border-hot-pink"
               />
-
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setDevRole('USER')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`flex-1 h-10 rounded-xl border ${
                     devRole === 'USER'
-                      ? 'bg-hot-pink text-white'
-                      : 'bg-primary-black text-secondary-text border border-border-color'
+                      ? 'border-hot-pink text-hot-pink'
+                      : 'border-border-color text-secondary-text'
                   }`}
                 >
-                  일반 사용자
+                  USER
                 </button>
                 <button
+                  type="button"
                   onClick={() => setDevRole('ADMIN')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`flex-1 h-10 rounded-xl border ${
                     devRole === 'ADMIN'
-                      ? 'bg-hot-pink text-white'
-                      : 'bg-primary-black text-secondary-text border border-border-color'
+                      ? 'border-hot-pink text-hot-pink'
+                      : 'border-border-color text-secondary-text'
                   }`}
                 >
-                  관리자
+                  ADMIN
                 </button>
               </div>
-
-              {/* Quick login buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setDevEmail('buyer@test.com');
-                    setDevRole('USER');
-                  }}
-                  className="flex-1 py-1.5 text-xs rounded bg-info/10 text-info border border-info/20 hover:bg-info/20 transition-colors"
-                >
-                  구매자 계정
-                </button>
-                <button
-                  onClick={() => {
-                    setDevEmail('admin@dorami.shop');
-                    setDevRole('ADMIN');
-                  }}
-                  className="flex-1 py-1.5 text-xs rounded bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
-                >
-                  관리자 계정
-                </button>
-                <button
-                  onClick={() => {
-                    setDevEmail('incomplete@test.com');
-                    setDevRole('USER');
-                  }}
-                  className="flex-1 py-1.5 text-xs rounded bg-secondary-text/10 text-secondary-text border border-secondary-text/20 hover:bg-secondary-text/20 transition-colors"
-                >
-                  미완성 프로필
-                </button>
-              </div>
-
-              {devError && <p className="text-xs text-error">{devError}</p>}
-
               <button
+                type="button"
                 onClick={handleDevLogin}
                 disabled={devLoading || !devEmail}
-                className="w-full py-3.5 bg-hot-pink text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-40 active:scale-[0.98]"
+                className="w-full h-11 rounded-xl bg-hot-pink text-white disabled:opacity-50"
               >
-                {devLoading ? '로그인 중...' : '테스트 로그인'}
+                {devLoading ? '로그인 중...' : '개발 로그인'}
               </button>
+              {devError && <Body className="text-error text-sm">{devError}</Body>}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -275,8 +214,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-primary-black flex items-center justify-center">
-          <div className="w-10 h-10 border-3 border-hot-pink/20 border-t-hot-pink rounded-full animate-spin" />
+        <div className="min-h-screen bg-primary-black flex items-center justify-center text-secondary-text">
+          로딩 중...
         </div>
       }
     >

@@ -3,13 +3,10 @@
 import { useEffect } from 'react';
 import { refreshAuthToken, forceLogout } from './token-manager';
 
-const FALLBACK_REFRESH_INTERVAL_MS = 45 * 60 * 1000; // 45분 (마지막 갱신 이후 목표 주기)
-const JITTER_MAX_MS = 3 * 60 * 1000; // 0~3분 랜덤
-const MIN_REFRESH_DELAY_MS = 30_000; // 최소 30초 (너무 빨리 재시도 방지)
+const FALLBACK_REFRESH_INTERVAL_MS = 8 * 60 * 1000; // 8분 (15분 access 만료 전에 선제 갱신)
+const JITTER_MAX_MS = 2 * 60 * 1000; // 0~2분 랜덤
 const RETRY_DELAYS = [5_000, 15_000, 30_000]; // 3회 retry (jitter 추가됨)
 const DEFAULT_MAX_CONSECUTIVE_REFRESH_FAILURES = 4;
-const BROADCAST_SLOW_RETRY_MS = 10 * 60 * 1000; // 방송 모드 suspend 후 10분마다 재시도
-const LAST_REFRESH_LS_KEY = 'dorami-last-token-refresh';
 
 type AutoRefreshOptions = {
   /**
@@ -22,32 +19,19 @@ type AutoRefreshOptions = {
    * 기본값은 4회.
    */
   maxConsecutiveFailures?: number;
+  /**
+   * 인증된 세션일 때만 자동 갱신 루프를 실행한다.
+   */
+  enabled?: boolean;
 };
 
 /**
- * 다음 refresh 시점을 계산한다.
- *
- * localStorage에 저장된 마지막 갱신 시각을 읽어 남은 시간을 계산한다.
- * 예) 마지막 갱신 40분 전 → 5분 후 refresh
- *     마지막 갱신 50분 전 → 30초 후 refresh (stale token 즉시 처리)
- *     기록 없음 → 45분 후 (기존 동작)
- *
- * httpOnly 쿠키라 exp claim을 직접 읽을 수 없으므로 갱신 시각을 추적한다.
- * client.ts refreshAccessToken()이 성공 시 LAST_REFRESH_LS_KEY를 기록한다.
+ * 서버 exp claim을 직접 읽을 수 없으므로 access 만료(15분)보다 충분히 이른 시점에
+ * fallback refresh를 실행한다. 각 탭이 동시에 refresh하지 않도록 작은 jitter를 더한다.
  */
 function getNextRefreshDelay(): number {
-  try {
-    const lastRefreshRaw = localStorage.getItem(LAST_REFRESH_LS_KEY);
-    if (lastRefreshRaw) {
-      const elapsed = Date.now() - parseInt(lastRefreshRaw, 10);
-      const remaining = FALLBACK_REFRESH_INTERVAL_MS - elapsed;
-      const delay = remaining + Math.random() * JITTER_MAX_MS;
-      return Math.max(MIN_REFRESH_DELAY_MS, delay);
-    }
-  } catch {
-    // localStorage 비활성화(시크릿 모드 등) — fallback
-  }
-  return FALLBACK_REFRESH_INTERVAL_MS + Math.random() * JITTER_MAX_MS;
+  const jitter = Math.random() * JITTER_MAX_MS;
+  return FALLBACK_REFRESH_INTERVAL_MS + jitter;
 }
 
 /**
@@ -62,22 +46,20 @@ function getRetryDelay(attempt: number): number {
 /**
  * useTokenAutoRefresh
  *
- * 라이브 스트림 페이지에서 장기 방송(3시간+) 지원을 위해
- * token.exp 기준 + jitter로 JWT accessToken을 자동 갱신한다.
+ * 인증된 세션에 대해 setTimeout 기반으로 access token을 선제 갱신한다.
  *
  * - setTimeout 기반 (setInterval 대신) — 매 refresh 후 다음 시점 재계산
  * - 실패 시 3회 retry with exponential backoff + jitter
  * - 연속 실패 임계값(4회) 초과 시 forceLogout (broadcast mode 제외)
- *
- * @param streamKey - 스트림 키 (의존성 배열용, 스트림 변경 시 타이머 재시작)
  */
 export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptions = {}): void {
   const maxConsecutiveFailures =
     options.maxConsecutiveFailures ?? DEFAULT_MAX_CONSECUTIVE_REFRESH_FAILURES;
   const suspendForBroadcast = options.suspendForBroadcast ?? false;
+  const enabled = options.enabled ?? true;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !enabled) return;
 
     let consecutiveRefreshFailures = 0;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -120,22 +102,14 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
           consecutiveRefreshFailures += 1;
 
           if (consecutiveRefreshFailures >= maxConsecutiveFailures) {
+            console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
             if (!suspendForBroadcast) {
-              console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
               forceLogout();
               return;
             } else {
-              // 방송 모드: 강제 로그아웃 대신 10분마다 조용히 재시도한다.
-              // 일시적 네트워크 장애 후 복구되면 정상 주기로 복귀한다.
-              console.warn('[TokenAutoRefresh] Broadcast mode: slow retry in 10min');
-              consecutiveRefreshFailures = 0;
-              if (!cancelled) {
-                timeoutId = setTimeout(
-                  refreshCycle,
-                  BROADCAST_SLOW_RETRY_MS + Math.random() * JITTER_MAX_MS,
-                );
-              }
-              return;
+              console.warn(
+                '[TokenAutoRefresh] Broadcast mode: skipping logout to avoid interruption.',
+              );
             }
           }
         }
@@ -161,5 +135,5 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [streamKey, maxConsecutiveFailures, suspendForBroadcast]);
+  }, [enabled, streamKey, maxConsecutiveFailures, suspendForBroadcast]);
 }

@@ -6,3 +6,4 @@ export { PointsBalanceCard } from './PointsBalanceCard';
 export { AddressEditModal, type AddressFormData } from './AddressEditModal';
 export { LoginRequiredModal } from './LoginRequiredModal';
 export { ProfileCompletionBanner } from './ProfileCompletionBanner';
+export { AuthSessionsCard } from './AuthSessionsCard';

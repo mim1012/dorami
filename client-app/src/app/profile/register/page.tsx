@@ -18,6 +18,10 @@ import {
 import { isProfileComplete } from '@/lib/utils/profile';
 import { US_STATES } from '@/lib/constants/us-states';
 import { apiClient, ApiError } from '@/lib/api/client';
+import {
+  consumeStoredPostLoginReturnTo,
+  sanitizeReturnPath,
+} from '@/lib/auth/navigation';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
@@ -63,28 +67,7 @@ interface ProfileResponse {
   };
 }
 
-const POST_LOGIN_RETURN_KEY = 'doremi_post_login_return_to';
 const ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
-
-const sanitizeReturnPath = (raw: string | null): string | null => {
-  if (!raw) return null;
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (!decoded.startsWith('/')) return null;
-    if (decoded.startsWith('//')) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
-};
-
-const consumeStoredReturnTo = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  const stored = window.localStorage.getItem(POST_LOGIN_RETURN_KEY);
-  if (!stored) return null;
-  window.localStorage.removeItem(POST_LOGIN_RETURN_KEY);
-  return sanitizeReturnPath(stored);
-};
 
 const mapProfileToFormData = (profile: ProfileResponse, fallbackEmail?: string): FormData => {
   const shipping = profile.shippingAddress;
@@ -428,7 +411,7 @@ function ProfileRegisterContent() {
 
         await apiClient.post('/auth/refresh');
         await refreshProfile();
-        const storedReturnTo = consumeStoredReturnTo();
+        const storedReturnTo = consumeStoredPostLoginReturnTo();
         const redirectPath = storedReturnTo || queryReturnTo || '/my-page';
         router.push(redirectPath);
         return;
@@ -443,7 +426,7 @@ function ProfileRegisterContent() {
         return;
       }
 
-      const storedReturnTo = consumeStoredReturnTo();
+      const storedReturnTo = consumeStoredPostLoginReturnTo();
       const isAdmin = updatedUser?.role === 'ADMIN';
       // USER는 /admin/* 경로로 리디렉트하지 않음 (이전 세션에서 admin으로 방문한 경로 방지)
       const safeReturnTo =

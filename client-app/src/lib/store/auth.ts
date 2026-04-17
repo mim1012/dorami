@@ -49,12 +49,19 @@ const safeLocalStorage: Storage = {
   },
 };
 
+export type AuthStatus = 'verifying' | 'verified' | 'anonymous';
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authStatus: AuthStatus;
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
+  startVerification: () => void;
+  markVerified: (user: User | null) => void;
+  markAnonymous: () => void;
+  deferVerification: () => void;
   logout: () => void;
 }
 
@@ -64,18 +71,45 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      authStatus: 'verifying',
       setUser: (user) =>
         set({
           user,
           isAuthenticated: !!user,
           isLoading: false,
+          authStatus: user ? 'verified' : 'anonymous',
         }),
       setLoading: (loading) => set({ isLoading: loading }),
+      startVerification: () =>
+        set({
+          isLoading: true,
+          authStatus: 'verifying',
+        }),
+      markVerified: (user) =>
+        set({
+          user,
+          isAuthenticated: !!user,
+          isLoading: false,
+          authStatus: user ? 'verified' : 'anonymous',
+        }),
+      markAnonymous: () =>
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          authStatus: 'anonymous',
+        }),
+      deferVerification: () =>
+        set({
+          isLoading: false,
+          authStatus: 'verifying',
+        }),
       logout: () =>
         set({
           user: null,
           isAuthenticated: false,
           isLoading: false,
+          authStatus: 'anonymous',
         }),
     }),
     {
@@ -86,11 +120,8 @@ export const useAuthStore = create<AuthState>()(
       }),
       storage: createJSONStorage(() => safeLocalStorage),
       onRehydrateStorage: () => (state) => {
-        // Reset loading state after rehydration to prevent infinite loading.
-        // Must call setLoading (Zustand setState) instead of direct mutation,
-        // otherwise React subscribers are not notified and the spinner persists.
         if (state) {
-          state.setLoading(false);
+          state.startVerification();
         }
       },
     },

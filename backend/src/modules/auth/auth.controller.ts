@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
+  Param,
   Body,
   UseGuards,
   Req,
@@ -109,6 +111,73 @@ export class AuthController {
     };
   }
 
+  private clearAuthCookies(res: Response): void {
+    const cookieOptions = {
+      httpOnly: true,
+      secure: this.isProduction,
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
+  }
+
+  private logRefreshEvent(reason: string, details?: Record<string, unknown>): void {
+    this.logger.warn(
+      `[Refresh] ${JSON.stringify({
+        reason,
+        ...details,
+      })}`,
+    );
+  }
+
+  private sendRefreshError(res: Response, errorCode: string, message: string): Response {
+    return res.status(401).json({
+      success: false,
+      error: errorCode,
+      errorCode,
+      statusCode: 401,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private getRefreshFailureReason(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (error instanceof UnauthorizedException) {
+      switch (message) {
+        case 'Invalid token type':
+          return 'INVALID_TOKEN_TYPE';
+        case 'User not found':
+          return 'USER_NOT_FOUND';
+        case 'Invalid refresh token':
+          return 'INVALID_REFRESH_TOKEN';
+        case 'Invalid or expired refresh token':
+          return 'INVALID_OR_EXPIRED_REFRESH_TOKEN';
+        default:
+          return 'UNAUTHORIZED';
+      }
+    }
+
+    if (
+      (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED' ||
+      message.toLowerCase().includes('redis')
+    ) {
+      return 'REDIS_ERROR';
+    }
+
+    if (
+      (error as NodeJS.ErrnoException)?.code === 'P2025' ||
+      message.toLowerCase().includes('prisma')
+    ) {
+      return 'DB_ERROR';
+    }
+
+    return 'UNKNOWN';
+  }
+
   @Public()
   @Get('kakao')
   @UseGuards(KakaoAuthGuard)
@@ -181,14 +250,8 @@ export class AuthController {
       const refreshToken = req.cookies?.refreshToken;
 
       if (!refreshToken) {
-        return res.status(401).json({
-          success: false,
-          error: 'NO_REFRESH_TOKEN',
-          errorCode: 'NO_REFRESH_TOKEN',
-          statusCode: 401,
-          message: 'Refresh token not found',
-          timestamp: new Date().toISOString(),
-        });
+        this.logRefreshEvent('NO_REFRESH_TOKEN', { source: 'cookie' });
+        return this.sendRefreshError(res, 'NO_REFRESH_TOKEN', 'Refresh token not found');
       }
 
       const loginResponse = await this.authService.refreshToken(refreshToken);
@@ -198,7 +261,9 @@ export class AuthController {
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
       res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
 
-      this.logger.log(`[Refresh] Success: userId=${loginResponse.user.id}`);
+      this.logger.log(
+        `[Refresh] ${JSON.stringify({ reason: 'SUCCESS', userId: loginResponse.user.id })}`,
+      );
 
       return res.json({
         success: true,
@@ -206,56 +271,104 @@ export class AuthController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      const reason =
-        error instanceof UnauthorizedException
-          ? error.message
-          : (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED' ||
-              (error as Error)?.message?.includes('Redis')
-            ? 'REDIS_ERROR'
-            : (error as NodeJS.ErrnoException)?.code === 'P2025' ||
-                (error as Error)?.message?.toLowerCase().includes('prisma')
-              ? 'DB_ERROR'
-              : 'UNKNOWN';
-      this.logger.warn(
-        `[Refresh] Failed: ${reason} | ${(error as Error)?.message || 'no message'}`,
-      );
+      const message = error instanceof Error ? error.message : 'no message';
+      const reason = this.getRefreshFailureReason(error);
+      this.logRefreshEvent(reason, { message });
+
       // Never leak internal error details from token refresh — always return generic 401
-      return res.status(401).json({
-        success: false,
-        error: 'TOKEN_REFRESH_FAILED',
-        errorCode: 'TOKEN_REFRESH_FAILED',
-        statusCode: 401,
-        message: 'Token refresh failed',
-        timestamp: new Date().toISOString(),
-      });
+      return this.sendRefreshError(res, 'TOKEN_REFRESH_FAILED', 'Token refresh failed');
     }
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 로그아웃합니다.' })
+  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 현재 기기에서 로그아웃합니다.' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
-  async logout(@CurrentUser('userId') userId: string, @Res() res: Response) {
-    await this.authService.logout(userId);
+  async logout(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') sessionId: string | undefined,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.authService.logout(userId, {
+      sessionId,
+      refreshToken: req.cookies?.refreshToken,
+      currentTokenJti: tokenJti,
+    });
 
-    // Clear cookies — options must match what was set so the browser honours the deletion
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: this.isProduction,
-      sameSite: 'lax',
-      path: '/',
-    });
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: this.isProduction,
-      sameSite: 'lax',
-      path: '/',
-    });
+    this.clearAuthCookies(res);
 
     return res.json({
       success: true,
       data: { message: 'Logged out successfully' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '모든 세션 로그아웃', description: '현재 사용자의 모든 세션을 종료합니다.' })
+  @ApiResponse({ status: 200, description: '모든 세션 로그아웃 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async logoutAll(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Res() res: Response,
+  ) {
+    await this.authService.logoutAll(userId, tokenJti);
+    this.clearAuthCookies(res);
+
+    return res.json({
+      success: true,
+      data: { message: 'Logged out from all sessions successfully' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '세션 목록 조회', description: '현재 사용자의 인증 세션 목록을 조회합니다.' })
+  @ApiResponse({ status: 200, description: '세션 목록 조회 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async listSessions(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') sessionId: string | undefined,
+  ) {
+    const sessions = await this.authService.listSessions(userId, sessionId);
+    return { sessions };
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '특정 세션 해제', description: '현재 사용자의 특정 인증 세션을 종료합니다.' })
+  @ApiResponse({ status: 200, description: '세션 해제 성공' })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async revokeSession(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('sessionId') currentSessionId: string | undefined,
+    @CurrentUser('tokenJti') tokenJti: string | undefined,
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.revokeSession(
+      userId,
+      sessionId,
+      currentSessionId,
+      tokenJti,
+    );
+
+    if (result.revokedCurrentSession) {
+      this.clearAuthCookies(res);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Session revoked successfully',
+        revokedCurrentSession: result.revokedCurrentSession,
+      },
       timestamp: new Date().toISOString(),
     });
   }
@@ -285,10 +398,11 @@ export class AuthController {
   async devLogin(@Body() body: DevLoginDto, @Res() res: Response, @Req() request: any) {
     const enableDevAuth = this.configService.get<string>('ENABLE_DEV_AUTH');
     if (enableDevAuth !== 'true') {
-      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH=false)');
+      throw new ForbiddenException('Dev login is disabled (ENABLE_DEV_AUTH must be true)');
     }
     const appEnv = this.configService.get<string>('APP_ENV', 'development');
     const isStaging = appEnv === 'staging';
+
     if (!isStaging) {
       const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
       const isLocal =

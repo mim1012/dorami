@@ -11,7 +11,7 @@ import { isProfileComplete } from '../utils/profile';
 export function useProfileGuard() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isSessionVerified, isVerifying } = useAuth();
 
   const normalizedPath = pathname && pathname.startsWith('/') ? pathname : '/';
   const shouldSkipGuard = (() => {
@@ -21,14 +21,15 @@ export function useProfileGuard() {
       (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
     );
   })();
+  const guardPending = isLoading || isVerifying;
 
   useEffect(() => {
-    if (isLoading) return;
+    if (guardPending) return;
     if (shouldSkipGuard) return;
 
     // Step 1: Authentication check
-    const isAuthenticated = !!(user?.kakaoId || user?.email);
-    if (!isAuthenticated) {
+    const hasIdentity = !!(user?.kakaoId || user?.email);
+    if (!isSessionVerified || !hasIdentity) {
       const safeReturnTo = normalizedPath.startsWith('/') ? normalizedPath : '/';
       router.replace(`/login?reason=session_expired&returnTo=${encodeURIComponent(safeReturnTo)}`);
       return;
@@ -44,10 +45,10 @@ export function useProfileGuard() {
         normalizedPath !== '/' ? `?returnTo=${encodeURIComponent(normalizedPath)}` : '';
       router.replace(`/profile/register${returnTo}`);
     }
-  }, [user, isLoading, router, normalizedPath, shouldSkipGuard]);
+  }, [user, guardPending, isSessionVerified, router, normalizedPath, shouldSkipGuard]);
 
   return {
-    isLoading,
+    isLoading: guardPending,
     isProfileComplete: isProfileComplete(user),
   };
 }
