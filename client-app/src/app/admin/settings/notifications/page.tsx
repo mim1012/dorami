@@ -56,17 +56,21 @@ const SOURCE_LABELS: Record<NotificationVariableSourceType, string> = {
   computed: '시스템이 계산해서 자동 입력',
 };
 
-const TEMPLATE_OPERATOR_GUIDES: Partial<
-  Record<
-    NotificationTemplateType,
-    {
-      summary: string;
-      trigger: string;
-      managerAction: string;
-      caution: string;
-    }
-  >
-> = {
+type TemplateOperatorGuide = {
+  summary: string;
+  trigger: string;
+  managerAction: string;
+  caution: string;
+};
+
+type VariableEditGuide = {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  href: string;
+};
+
+const TEMPLATE_OPERATOR_GUIDES: Partial<Record<NotificationTemplateType, TemplateOperatorGuide>> = {
   LIVE_START: {
     summary: '라이브 방송이 시작될 때 고객에게 자동 발송되는 알림톡입니다.',
     trigger: '방송 시작 시점에 자동 발송됩니다.',
@@ -91,6 +95,53 @@ const TEMPLATE_OPERATOR_GUIDES: Partial<
     managerAction: '카카오 템플릿 코드만 입력하면 됩니다.',
     caution: '고객명, 상품명, 수량은 장바구니 정보로 자동 입력됩니다.',
   },
+};
+
+const VARIABLE_EDIT_GUIDES: Partial<Record<NotificationTemplateType, VariableEditGuide[]>> = {
+  LIVE_START: [
+    {
+      title: '라이브주제 / 상세내용 수정',
+      description: '방송 제목과 설명을 바꾸면 #{라이브주제}, #{상세내용}이 함께 바뀝니다.',
+      ctaLabel: '라이브 관리로 이동',
+      href: '/admin/broadcasts',
+    },
+  ],
+  ORDER_CONFIRMATION: [
+    {
+      title: '결제 안내 값 수정',
+      description: 'Zelle, Venmo, 은행명, 계좌번호, 예금주는 설정 페이지에서 바꿉니다.',
+      ctaLabel: '설정으로 이동',
+      href: '/admin/settings',
+    },
+    {
+      title: '고객명 / 상품명 / 금액 확인',
+      description: '이 값들은 실제 주문 데이터에서 자동 치환됩니다. 주문 내용이 그대로 들어갑니다.',
+      ctaLabel: '주문 관리로 이동',
+      href: '/admin/orders',
+    },
+  ],
+  PAYMENT_REMINDER: [
+    {
+      title: '결제수단명 / 결제계정 / 수취인명 수정',
+      description: 'Venmo, Zelle, 은행 정보는 설정 페이지 값이 그대로 들어갑니다.',
+      ctaLabel: '설정으로 이동',
+      href: '/admin/settings',
+    },
+    {
+      title: '주문번호 / 금액 확인',
+      description: '이 값들은 선택된 주문 데이터에서 자동 치환됩니다.',
+      ctaLabel: '주문 관리로 이동',
+      href: '/admin/orders',
+    },
+  ],
+  CART_EXPIRING: [
+    {
+      title: '고객명 / 상품명 / 수량 확인',
+      description: '장바구니에 담긴 실제 상품 정보가 자동으로 들어갑니다.',
+      ctaLabel: '주문 관리로 이동',
+      href: '/admin/orders',
+    },
+  ],
 };
 
 function escapeRegExp(value: string): string {
@@ -239,6 +290,14 @@ export default function NotificationSettingsPage() {
 
     return buildSamplePreview(activeTemplate.template, activeTemplateVariables);
   }, [activeTemplate, activeTemplateVariables]);
+
+  const variableEditGuides = useMemo(() => {
+    if (!activeTemplate) {
+      return [];
+    }
+
+    return VARIABLE_EDIT_GUIDES[activeTemplate.type as NotificationTemplateType] ?? [];
+  }, [activeTemplate]);
 
   if (isLoading) {
     return (
@@ -390,6 +449,35 @@ export default function NotificationSettingsPage() {
                           <li>오른쪽의 예시 메시지를 보고 문구 흐름이 맞는지 확인합니다.</li>
                         </ol>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                    <p className="text-sm font-semibold text-red-700">
+                      변수값은 여기서 직접 입력하는 게 아닙니다.
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-gray-700">
+                      아래 안내된 화면에서 값을 수정하면, 메시지 발송 시 자동으로 치환됩니다.
+                    </p>
+                    <div className="mt-4 space-y-3">
+                      {variableEditGuides.map((guide) => (
+                        <div
+                          key={guide.title}
+                          className="rounded-lg border border-red-100 bg-white p-4"
+                        >
+                          <p className="text-sm font-semibold text-gray-900">{guide.title}</p>
+                          <p className="mt-1 text-sm leading-6 text-gray-600">
+                            {guide.description}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => router.push(guide.href)}
+                            className="mt-3 inline-flex items-center rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-800"
+                          >
+                            {guide.ctaLabel}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
