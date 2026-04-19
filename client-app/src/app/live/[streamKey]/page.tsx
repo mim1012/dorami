@@ -372,15 +372,11 @@ export default function LiveStreamPage() {
 
     const handleProductSoldOut = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) =>
-        prev.map((p) =>
-          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
-        ),
-      );
+      setAllProducts((prev) => prev.filter((p) => p.id !== data.data.productId));
       setFeaturedProductIfActive((prev) => {
         if (prev && prev.id === data.data.productId) {
-          showToast('이 상품이 품절되었습니다.', 'error');
-          return { ...prev, status: ProductStatus.SOLD_OUT };
+          showToast('이 상품이 품절되어 목록에서 숨겨졌습니다.', 'error');
+          return null;
         }
         return prev;
       });
