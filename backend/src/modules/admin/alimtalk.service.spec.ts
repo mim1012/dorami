@@ -133,4 +133,44 @@ describe('AlimtalkService', () => {
       reason: 'template_code_missing',
     });
   });
+
+  it('fills generic payment placeholders with Zelle and Venmo only', async () => {
+    const replaced = (service as any).replacePaymentTemplateVariables(
+      '수단 #{결제수단} / 계정 #{송금계정} / 수취인 #{수취인명}',
+      (service as any).buildPaymentInfo({
+        zelleEmail: 'zelle@example.com',
+        zelleRecipientName: 'Zelle Kim',
+        venmoEmail: '@venmo',
+        venmoRecipientName: 'Venmo Kim',
+        bankName: '',
+        bankAccountNumber: '',
+        bankAccountHolder: '',
+      }),
+    );
+
+    expect(replaced).toContain('Zelle / Venmo');
+    expect(replaced).toContain('zelle@example.com / @venmo');
+    expect(replaced).toContain('Zelle Kim / Venmo Kim');
+    expect(replaced).not.toContain('국민은행');
+  });
+
+  it('keeps legacy bank placeholders working for old approved templates', async () => {
+    const replaced = (service as any).replacePaymentTemplateVariables(
+      '수단 #{은행명} / 계정 #{계좌번호} / 수취인 #{예금주}',
+      (service as any).buildPaymentInfo({
+        zelleEmail: 'zelle@example.com',
+        zelleRecipientName: 'Zelle Kim',
+        venmoEmail: '@venmo',
+        venmoRecipientName: 'Venmo Kim',
+        bankName: '',
+        bankAccountNumber: '',
+        bankAccountHolder: '',
+      }),
+    );
+
+    expect(replaced).toContain('Zelle / Venmo');
+    expect(replaced).toContain('zelle@example.com / @venmo');
+    expect(replaced).toContain('Zelle Kim / Venmo Kim');
+    expect(replaced).not.toContain('국민은행');
+  });
 });

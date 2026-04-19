@@ -79,6 +79,7 @@ describe('CartService', () => {
                 caShippingFee: 8,
                 freeShippingEnabled: false,
                 freeShippingThreshold: 150,
+                abandonedCartReminderHours: 24,
               }),
             },
           },
@@ -516,6 +517,35 @@ describe('CartService', () => {
       const result = await service.getCart('user-1');
 
       expect(result.items[0].subtotal).toBe('999.00');
+    });
+  });
+
+  describe('sendCartReminders', () => {
+    it('should target long-idle active carts based on createdAt rather than timer expiry', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-04-16T12:00:00.000Z'));
+      jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue([] as any);
+
+      await service.sendCartReminders();
+
+      expect(prismaService.cart.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'ACTIVE',
+            reminderSent: false,
+            createdAt: {
+              gte: new Date('2026-04-15T11:59:00.000Z'),
+              lte: new Date('2026-04-15T12:01:00.000Z'),
+            },
+          }),
+        }),
+      );
+      expect(prismaService.cart.findMany).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          where: expect.objectContaining({ timerEnabled: true, expiresAt: expect.anything() }),
+        }),
+      );
+
+      jest.useRealTimers();
     });
   });
 

@@ -487,6 +487,12 @@ export class UpdateSystemSettingsDto {
   defaultCartTimerMinutes?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(168)
+  abandonedCartReminderHours?: number;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   defaultShippingFee?: number;
@@ -569,6 +575,10 @@ export class UpdateNotificationTemplateDto {
   @MaxLength(50)
   @Matches(/^[A-Z0-9_]*$/)
   kakaoTemplateCode?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
 
 export class SendTestAlimtalkDto {

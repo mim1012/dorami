@@ -26,6 +26,7 @@ export const dynamic = 'force-dynamic';
 
 interface SystemSettings {
   defaultCartTimerMinutes: number;
+  abandonedCartReminderHours: number;
   defaultShippingFee: number;
   caShippingFee: number;
   bankName: string;
@@ -159,6 +160,7 @@ export default function AdminSettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<SystemSettings>({
     defaultCartTimerMinutes: 60,
+    abandonedCartReminderHours: 24,
     defaultShippingFee: 10,
     caShippingFee: 8,
     bankName: '',
@@ -285,14 +287,14 @@ export default function AdminSettingsPage() {
       {/* Payment Settings */}
       <SectionCard
         icon={DollarSign}
-        title="입금 정보 (은행 / Zelle / Venmo)"
+        title="입금 정보 (Zelle / Venmo / 선택 은행)"
         sectionId="payment"
         isOpen={expandedSections.payment}
         onToggle={() => handleToggleSection('payment')}
       >
         <div className="space-y-4">
           <div className="rounded-xl border border-gray-100 p-4 space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900">기본 은행 계좌</h4>
+            <h4 className="text-sm font-semibold text-gray-900">선택 은행 계좌 (비워둬도 됨)</h4>
             <Input
               label="은행명 / 결제수단명"
               value={settings.bankName}
@@ -356,9 +358,11 @@ export default function AdminSettingsPage() {
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 leading-relaxed">
-              인보이스 알림의 <code>#{'{은행명}'}</code>, <code>#{'{계좌번호}'}</code>,{' '}
-              <code>#{'{예금주}'}</code> 는 Zelle → Venmo → 기본 은행 계좌 순서로 채워집니다.
-              Zelle/Venmo 값을 비워두면 아래 은행 계좌 정보가 사용됩니다.
+              알림 템플릿에서는 <code>#{'{결제수단}'}</code>, <code>#{'{송금계정}'}</code>,{' '}
+              <code>#{'{수취인명}'}</code> 을 쓰면 됩니다. 지금처럼 Zelle/Venmo만 쓰면 그 값만
+              들어가고, 은행 계좌를 비워두면 은행명은 아예 끼어들지 않습니다. 기존 심사본이 있다면{' '}
+              <code>#{'{은행명}'}</code>, <code>#{'{계좌번호}'}</code>, <code>#{'{예금주}'}</code>{' '}
+              도 계속 호환됩니다.
             </p>
           </div>
         </div>
@@ -398,6 +402,33 @@ export default function AdminSettingsPage() {
               fullWidth
             />
             <p className="text-xs text-gray-400 mt-2">1시간~120시간(최대 5일) 범위</p>
+          </div>
+
+          <div className="border border-gray-100 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 리마인드 설정</h4>
+            <div className="space-y-4 mb-4">
+              <Input
+                label="장기 미구매 장바구니 알림 기준 (시간)"
+                type="number"
+                min={1}
+                max={168}
+                value={settings.abandonedCartReminderHours}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    abandonedCartReminderHours: Math.min(
+                      168,
+                      Math.max(1, parseInt(e.target.value || '24', 10) || 24),
+                    ),
+                  })
+                }
+                fullWidth
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                타이머 만료 기준이 아니라 장바구니에 담은 뒤 이 시간이 지나도 주문하지 않은 고객에게
+                1회 알림을 보냅니다.
+              </p>
+            </div>
           </div>
 
           <div className="border border-gray-100 rounded-xl p-4">

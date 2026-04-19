@@ -349,7 +349,7 @@ export class AdminController {
     @Param('id') id: string,
     @Body() dto: UpdateNotificationTemplateDto,
   ) {
-    return this.adminService.updateNotificationTemplate(id, dto.kakaoTemplateCode);
+    return this.adminService.updateNotificationTemplate(id, dto.kakaoTemplateCode, dto.enabled);
   }
 
   @Post('orders/bulk-notify')

@@ -46,6 +46,7 @@ interface PaymentConfig {
 interface OrderTemplate {
   template: string;
   kakaoTemplateCode?: string | null;
+  enabled?: boolean | null;
 }
 
 const SEND_CONCURRENCY = 10;
@@ -362,15 +363,15 @@ export class AlimtalkService {
 
     const paymentInfo = this.buildPaymentInfo(config);
 
-    const text = template.template
-      .replace('#{고객명}', customerName)
-      .replace('#{주문번호}', orderId)
-      .replace('#{상품명}', firstItem)
-      .replace('#{수량}', String(itemCount))
-      .replace('#{금액}', total.toLocaleString())
-      .replace('#{은행명}', paymentInfo.label)
-      .replace('#{계좌번호}', paymentInfo.account)
-      .replace('#{예금주}', paymentInfo.holder);
+    const text = this.replacePaymentTemplateVariables(
+      template.template
+        .replace('#{고객명}', customerName)
+        .replace('#{주문번호}', orderId)
+        .replace('#{상품명}', firstItem)
+        .replace('#{수량}', String(itemCount))
+        .replace('#{금액}', total.toLocaleString()),
+      paymentInfo,
+    );
 
     return {
       to: phone,
@@ -435,6 +436,23 @@ export class AlimtalkService {
     };
   }
 
+  private replacePaymentTemplateVariables(
+    template: string,
+    paymentInfo: { label: string; account: string; holder: string },
+  ): string {
+    return template
+      .replace(/#\{은행명\}/g, paymentInfo.label)
+      .replace(/#\{계좌번호\}/g, paymentInfo.account)
+      .replace(/#\{예금주\}/g, paymentInfo.holder)
+      .replace(/#\{결제수단\}/g, paymentInfo.label)
+      .replace(/#\{송금계정\}/g, paymentInfo.account)
+      .replace(/#\{수취인명\}/g, paymentInfo.holder);
+  }
+
+  private isTemplateEnabled(template: { enabled?: boolean | null } | null | undefined): boolean {
+    return template?.enabled !== false;
+  }
+
   async sendOrderAlimtalk(
     phone: string,
     orderId: string,
@@ -460,6 +478,11 @@ export class AlimtalkService {
     if (!template?.template) {
       this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping');
       return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_missing')]);
+    }
+
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('ORDER_CONFIRMATION template disabled, skipping');
+      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_disabled')]);
     }
 
     const msg = this.buildOrderMessage(phone, orderId, total, order, config, template);
@@ -497,6 +520,16 @@ export class AlimtalkService {
       );
     }
 
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('ORDER_CONFIRMATION template disabled, skipping batch send');
+      return this.buildBatchResult(
+        orders
+          .map((order) => order.user?.kakaoPhone)
+          .filter((phone): phone is string => !!phone)
+          .map((phone) => this.buildSkippedResult('FT', phone, 'template_disabled')),
+      );
+    }
+
     const messages = orders
       .filter((o) => o.user?.kakaoPhone)
       .map((o) =>
@@ -528,13 +561,16 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('PAYMENT_REMINDER template disabled, skipping');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
+    }
+
     const paymentInfo = this.buildPaymentInfo(config);
-    const text = template.template
-      .replace('#{주문번호}', orderId)
-      .replace('#{금액}', total.toLocaleString())
-      .replace('#{은행명}', paymentInfo.label)
-      .replace('#{계좌번호}', paymentInfo.account)
-      .replace('#{예금주}', paymentInfo.holder);
+    const text = this.replacePaymentTemplateVariables(
+      template.template.replace('#{주문번호}', orderId).replace('#{금액}', total.toLocaleString()),
+      paymentInfo,
+    );
 
     return this._sendAlimtalk([
       {
@@ -572,6 +608,11 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('CART_EXPIRING template disabled, skipping');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
+    }
+
     const text = template.template
       .replace('#{고객명}', customerName)
       .replace('#{상품명}', productName)
@@ -589,7 +630,7 @@ export class AlimtalkService {
   async sendCartReminderFriendtalk(
     phone: string,
     productName: string,
-    minutesLeft: number,
+    hoursSinceAdded: number,
     streamKey?: string,
   ): Promise<KakaoDeliveryBatchResult> {
     if (!(await this.isEnabled())) {
@@ -602,11 +643,21 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'provider_unavailable')]);
     }
 
+    const cartTemplate = await this.prisma.notificationTemplate.findFirst({
+      where: { type: 'CART_EXPIRING' },
+      select: { enabled: true },
+    });
+
+    if (!this.isTemplateEnabled(cartTemplate)) {
+      this.logger.warn('CART_EXPIRING template disabled, skipping reminder friendtalk');
+      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_disabled')]);
+    }
+
     const cartUrl = streamKey
       ? `${this.frontendUrl}/live/${streamKey}`
       : `${this.frontendUrl}/cart`;
 
-    const text = `장바구니에 담긴 "${productName}" 구매를 잊지 마세요!\n\n⏰ 장바구니 만료까지 약 ${minutesLeft}분 남았습니다.\n지금 바로 결제를 완료해보세요.`;
+    const text = `장바구니에 담아두신 "${productName}" 상품이 아직 남아 있어요!\n\n담은 지 약 ${hoursSinceAdded}시간 지났지만 아직 주문이 완료되지 않았습니다.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.\n아래 버튼을 눌러 바로 이어서 진행해 주세요.`;
 
     try {
       const button = new KakaoButtonBuilder()
@@ -681,6 +732,13 @@ export class AlimtalkService {
       this.logger.warn('LIVE_START template code not configured');
       return this.buildBatchResult(
         phoneNumbers.map((phone) => this.buildSkippedResult('AT', phone, 'template_code_missing')),
+      );
+    }
+
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('LIVE_START template disabled, skipping');
+      return this.buildBatchResult(
+        phoneNumbers.map((phone) => this.buildSkippedResult('AT', phone, 'template_disabled')),
       );
     }
 

@@ -480,22 +480,24 @@ export class CartService {
   }
 
   /**
-   * Cron job: Send cart reminder friendtalk when ~5 minutes remain
-   * Runs every minute, targets carts expiring in 4–6 minutes that haven't been notified yet
+   * Cron job: Send abandoned-cart reminder for long-idle active carts.
+   * Runs every minute and targets carts created around N hours ago that have not been reminded yet.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async sendCartReminders() {
     try {
       const now = new Date();
-      const windowStart = new Date(now.getTime() + 4 * 60 * 1000);
-      const windowEnd = new Date(now.getTime() + 6 * 60 * 1000);
+      const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+      const reminderHours = Math.max(1, config?.abandonedCartReminderHours ?? 24);
+      const reminderMs = reminderHours * 60 * 60 * 1000;
+      const windowStart = new Date(now.getTime() - reminderMs - 60 * 1000);
+      const windowEnd = new Date(now.getTime() - reminderMs + 60 * 1000);
 
       const remindableCarts = await this.prisma.cart.findMany({
         where: {
           status: SharedCartStatus.ACTIVE,
-          timerEnabled: true,
           reminderSent: false,
-          expiresAt: {
+          createdAt: {
             gte: windowStart,
             lte: windowEnd,
           },
@@ -530,11 +532,13 @@ export class CartService {
           productIds: items.map((i) => i.productId),
           productNames: items.map((i) => i.productName),
           streamKey: items[0]?.product?.streamKey ?? null,
-          minutesLeft: 5,
+          hoursSinceAdded: reminderHours,
         });
       }
 
-      this.logger.log(`Cart reminder emitted for ${remindableCarts.length} carts`);
+      this.logger.log(
+        `Abandoned cart reminder emitted for ${remindableCarts.length} carts at ${reminderHours}h`,
+      );
     } catch (error) {
       this.logger.error('Failed to send cart reminders', (error as Error).stack);
     }

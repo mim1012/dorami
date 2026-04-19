@@ -26,29 +26,29 @@ describe('notification presentation copy', () => {
     });
   });
 
-  it('ORDER_CONFIRMATION explains automatic payment source priority in plain language', () => {
+  it('ORDER_CONFIRMATION explains Zelle/Venmo-first payment copy without forcing bank labels', () => {
     const presentation = getNotificationPresentation('ORDER_CONFIRMATION');
 
-    expect(presentation.valueIntro).toContain('주문 정보와 결제 안내는 자동으로 채워집니다');
+    expect(presentation.valueIntro).toContain('주문 정보와 결제 안내는 자동으로 채워지며');
+    expect(presentation.valueIntro).toContain('#{결제수단}');
+    expect(presentation.valueIntro).toContain('은행명은 끼어들지 않습니다');
     expect(presentation.sourceGroups).toContainEqual({
       heading: '관리자 설정에서 가져오는 항목',
       items: [
         {
           title: '입금 안내',
           description:
-            'Zelle → Venmo → 은행계좌 순서로, 설정된 값이 있는 수단을 자동으로 사용합니다.',
+            'Zelle/Venmo만 설정하면 그 값만 자동으로 사용합니다. 은행 계좌는 선택 사항이라 비워두면 메시지에 들어가지 않습니다.',
         },
       ],
     });
   });
 
-  it('CART_EXPIRING explains cart data is automatic without internal variable names', () => {
+  it('CART_EXPIRING explains long-idle cart reminders without internal variable names', () => {
     const presentation = getNotificationPresentation('CART_EXPIRING');
 
-    expect(presentation.sendTiming).toContain('장바구니 만료 전에');
-    expect(presentation.valueIntro).toContain(
-      '상품 정보는 장바구니 데이터에서 자동으로 채워집니다',
-    );
+    expect(presentation.sendTiming).toContain('일정 시간 동안 주문하지 않은 고객');
+    expect(presentation.valueIntro).toContain('장기 미구매 시간 기준');
     expect(JSON.stringify(presentation)).not.toContain('streamTitle');
     expect(JSON.stringify(presentation)).not.toContain('streamDescription');
   });

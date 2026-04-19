@@ -24,6 +24,7 @@ interface NotificationTemplate {
   type: string;
   template: string;
   kakaoTemplateCode: string;
+  enabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,6 +98,8 @@ function formatDeliveryReason(reason?: string) {
       return '템플릿 본문이 설정되지 않았습니다.';
     case 'template_code_missing':
       return '카카오 템플릿 코드가 설정되지 않았습니다.';
+    case 'template_disabled':
+      return '이 알림은 템플릿 스위치가 꺼져 있어 발송되지 않습니다.';
     case 'provider_rejected':
       return '카카오 발송이 공급자 정책에 의해 거부되었습니다.';
     case 'provider_error':
@@ -180,12 +183,19 @@ export default function NotificationSettingsPage() {
     );
   };
 
+  const handleEnabledChange = (id: string, enabled: boolean) => {
+    setTemplates((prev) =>
+      prev.map((template) => (template.id === id ? { ...template, enabled } : template)),
+    );
+  };
+
   const handleSave = async (template: NotificationTemplate) => {
     setSavingId(template.id);
     setError(null);
     try {
       await apiClient.patch(`/admin/notification-templates/${template.id}`, {
         kakaoTemplateCode: template.kakaoTemplateCode,
+        enabled: template.enabled,
       });
       setSuccessId(template.id);
       setTimeout(() => setSuccessId(null), 2500);
@@ -337,7 +347,37 @@ export default function NotificationSettingsPage() {
                           {presentation.sendTiming}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap justify-end">
+                        <label className="inline-flex items-center gap-3 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2">
+                          <span
+                            className={`text-xs font-semibold ${
+                              activeTemplate.enabled
+                                ? 'text-emerald-600 dark:text-emerald-300'
+                                : 'text-gray-500 dark:text-zinc-400'
+                            }`}
+                          >
+                            {activeTemplate.enabled ? '발송 ON' : '발송 OFF'}
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={activeTemplate.enabled}
+                            onClick={() =>
+                              handleEnabledChange(activeTemplate.id, !activeTemplate.enabled)
+                            }
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              activeTemplate.enabled
+                                ? 'bg-[#FF4D8D]'
+                                : 'bg-gray-300 dark:bg-zinc-700'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                activeTemplate.enabled ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </label>
                         {successId === activeTemplate.id && (
                           <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-300">
                             <CheckCircle className="w-4 h-4" />

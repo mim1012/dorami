@@ -130,7 +130,10 @@ export class AdminService {
     private readonly configService: ConfigService,
   ) {}
 
-  private getDisplayProductName(item: { productName: string; Product?: { name?: string | null } | null }) {
+  private getDisplayProductName(item: {
+    productName: string;
+    Product?: { name?: string | null } | null;
+  }) {
     return item.Product?.name?.trim() || item.productName;
   }
 
@@ -1208,6 +1211,7 @@ export class AdminService {
     });
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      abandonedCartReminderHours: config.abandonedCartReminderHours,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
       caShippingFee:
         config.caShippingFee !== null && config.caShippingFee !== undefined
@@ -1234,6 +1238,9 @@ export class AdminService {
     const updateData: Record<string, unknown> = {};
     if (dto.defaultCartTimerMinutes !== undefined) {
       updateData.defaultCartTimerMinutes = dto.defaultCartTimerMinutes;
+    }
+    if (dto.abandonedCartReminderHours !== undefined) {
+      updateData.abandonedCartReminderHours = dto.abandonedCartReminderHours;
     }
     if (dto.defaultShippingFee !== undefined) {
       updateData.defaultShippingFee = dto.defaultShippingFee;
@@ -1286,6 +1293,7 @@ export class AdminService {
 
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      abandonedCartReminderHours: config.abandonedCartReminderHours,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
       caShippingFee:
         config.caShippingFee !== null && config.caShippingFee !== undefined
@@ -2038,7 +2046,7 @@ export class AdminService {
   /**
    * Update notification template
    */
-  async updateNotificationTemplate(id: string, kakaoTemplateCode?: string) {
+  async updateNotificationTemplate(id: string, kakaoTemplateCode?: string, enabled?: boolean) {
     const existingTemplate = await this.prisma.notificationTemplate.findUnique({
       where: { id },
     });
@@ -2047,9 +2055,12 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
-    const updateData: { kakaoTemplateCode?: string } = {};
+    const updateData: { kakaoTemplateCode?: string; enabled?: boolean } = {};
     if (kakaoTemplateCode !== undefined) {
       updateData.kakaoTemplateCode = kakaoTemplateCode;
+    }
+    if (enabled !== undefined) {
+      updateData.enabled = enabled;
     }
 
     const updated = await this.prisma.notificationTemplate.update({
