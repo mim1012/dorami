@@ -151,6 +151,13 @@ function handleNonKakaoInAppRedirect(request: NextRequest): NextResponse | null 
     return null;
   }
 
+  if (
+    request.nextUrl.pathname === '/open-in-browser' ||
+    request.nextUrl.searchParams.get(KAKAO_OPEN_EXTERNAL_QUERY) === KAKAO_OPEN_EXTERNAL_VALUE
+  ) {
+    return null;
+  }
+
   const targetUrl = getPublicUrl(request);
 
   if (isAndroidUserAgent(userAgent)) {

@@ -34,6 +34,7 @@ export class AuthController {
   private readonly accessTokenMaxAge: number;
   private readonly refreshTokenMaxAge: number;
   private readonly isProduction: boolean;
+  private readonly authCookieDomain?: string;
 
   constructor(
     private authService: AuthService,
@@ -47,6 +48,8 @@ export class AuthController {
       cookieSecureOverride !== undefined
         ? cookieSecureOverride === 'true'
         : this.configService.get<string>('NODE_ENV') === 'production';
+    this.authCookieDomain =
+      this.configService.get<string>('AUTH_COOKIE_DOMAIN')?.trim() || undefined;
 
     // Parse JWT expiration times from environment (e.g., "15m" -> 900000ms)
     this.accessTokenMaxAge = this.parseJwtExpiration(
@@ -95,6 +98,7 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: this.accessTokenMaxAge,
       path: '/',
+      ...(this.authCookieDomain ? { domain: this.authCookieDomain } : {}),
     };
   }
 
@@ -108,6 +112,7 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: this.refreshTokenMaxAge,
       path: '/',
+      ...(this.authCookieDomain ? { domain: this.authCookieDomain } : {}),
     };
   }
 
@@ -117,6 +122,7 @@ export class AuthController {
       secure: this.isProduction,
       sameSite: 'lax' as const,
       path: '/',
+      ...(this.authCookieDomain ? { domain: this.authCookieDomain } : {}),
     };
 
     res.clearCookie('accessToken', cookieOptions);
@@ -256,10 +262,12 @@ export class AuthController {
 
       const loginResponse = await this.authService.refreshToken(refreshToken);
 
-      // Set new tokens in cookies — refreshToken must also be rotated so the
-      // browser cookie matches the newly-stored Redis token on the next refresh.
+      // Always refresh the short-lived access token. Only rewrite refreshToken when it
+      // actually changes (e.g. legacy-session migration) to reduce cookie churn in webviews.
       res.cookie('accessToken', loginResponse.accessToken, this.getAccessTokenCookieOptions());
-      res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
+      if (loginResponse.refreshToken !== refreshToken) {
+        res.cookie('refreshToken', loginResponse.refreshToken, this.getRefreshTokenCookieOptions());
+      }
 
       this.logger.log(
         `[Refresh] ${JSON.stringify({ reason: 'SUCCESS', userId: loginResponse.user.id })}`,
@@ -282,7 +290,10 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '로그아웃', description: 'JWT 쿠키를 삭제하고 현재 기기에서 로그아웃합니다.' })
+  @ApiOperation({
+    summary: '로그아웃',
+    description: 'JWT 쿠키를 삭제하고 현재 기기에서 로그아웃합니다.',
+  })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async logout(
@@ -309,7 +320,10 @@ export class AuthController {
 
   @Post('logout-all')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '모든 세션 로그아웃', description: '현재 사용자의 모든 세션을 종료합니다.' })
+  @ApiOperation({
+    summary: '모든 세션 로그아웃',
+    description: '현재 사용자의 모든 세션을 종료합니다.',
+  })
   @ApiResponse({ status: 200, description: '모든 세션 로그아웃 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async logoutAll(
@@ -329,7 +343,10 @@ export class AuthController {
 
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '세션 목록 조회', description: '현재 사용자의 인증 세션 목록을 조회합니다.' })
+  @ApiOperation({
+    summary: '세션 목록 조회',
+    description: '현재 사용자의 인증 세션 목록을 조회합니다.',
+  })
   @ApiResponse({ status: 200, description: '세션 목록 조회 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async listSessions(
@@ -342,7 +359,10 @@ export class AuthController {
 
   @Delete('sessions/:sessionId')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: '특정 세션 해제', description: '현재 사용자의 특정 인증 세션을 종료합니다.' })
+  @ApiOperation({
+    summary: '특정 세션 해제',
+    description: '현재 사용자의 특정 인증 세션을 종료합니다.',
+  })
   @ApiResponse({ status: 200, description: '세션 해제 성공' })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async revokeSession(

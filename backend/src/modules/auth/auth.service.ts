@@ -150,7 +150,21 @@ export class AuthService {
     };
   }
 
-  private issueTokensForSession(user: User, sessionId: string): {
+  private issueAccessToken(user: User, sessionId: string): string {
+    const payload = this.buildTokenPayload(user);
+    const accessExpiresIn = (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ??
+      '15m') as JwtExpiry;
+
+    return this.jwtService.sign(
+      { ...payload, sid: sessionId, type: 'access', jti: randomUUID() },
+      { expiresIn: accessExpiresIn },
+    );
+  }
+
+  private issueTokensForSession(
+    user: User,
+    sessionId: string,
+  ): {
     accessToken: string;
     refreshToken: string;
     refreshTokenHash: string;
@@ -159,15 +173,10 @@ export class AuthService {
     profileComplete: boolean;
   } {
     const payload = this.buildTokenPayload(user);
-    const accessExpiresIn =
-      (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m') as JwtExpiry;
-    const accessToken = this.jwtService.sign(
-      { ...payload, sid: sessionId, type: 'access', jti: randomUUID() },
-      { expiresIn: accessExpiresIn },
-    );
+    const accessToken = this.issueAccessToken(user, sessionId);
 
-    const refreshExpiresIn =
-      (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as JwtExpiry;
+    const refreshExpiresIn = (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ??
+      '7d') as JwtExpiry;
     const refreshToken = this.jwtService.sign(
       { ...payload, sid: sessionId, type: 'refresh', jti: randomUUID() },
       { expiresIn: refreshExpiresIn },
@@ -238,7 +247,10 @@ export class AuthService {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async readCachedRefreshResult(sessionId: string, userId: string): Promise<LoginResponseDto | null> {
+  private async readCachedRefreshResult(
+    sessionId: string,
+    userId: string,
+  ): Promise<LoginResponseDto | null> {
     const cacheKey = `refresh_result:${sessionId}`;
     const cached = await this.redisService.get(cacheKey);
 
@@ -267,7 +279,10 @@ export class AuthService {
     }
   }
 
-  private async waitForCachedRefreshResult(sessionId: string, userId: string): Promise<{
+  private async waitForCachedRefreshResult(
+    sessionId: string,
+    userId: string,
+  ): Promise<{
     attempts: number;
     waitedMs: number;
     result: LoginResponseDto | null;
@@ -329,7 +344,7 @@ export class AuthService {
       this.logRefresh('warn', 'MISSING_SESSION_ID', payload.sub, {
         tokenType: payload.type ?? 'unknown',
       });
-      throw new UnauthorizedException('Invalid refresh token');
+      return this.migrateLegacyRefreshToken(payload);
     }
 
     const inFlightKey = payload.sid;
@@ -346,6 +361,37 @@ export class AuthService {
     } finally {
       this.refreshLocks.delete(inFlightKey);
     }
+  }
+
+  private async migrateLegacyRefreshToken(payload: TokenPayload): Promise<LoginResponseDto> {
+    const userId = payload.sub;
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      this.logRefresh('warn', 'LEGACY_USER_NOT_FOUND', userId);
+      throw new UnauthorizedException('User not found');
+    }
+
+    const sessionId = randomUUID();
+    const issuedTokens = this.issueTokensForSession(user, sessionId);
+    const lastUsedAt = new Date();
+
+    await this.authSessionRepository.createSession({
+      id: sessionId,
+      userId: user.id,
+      refreshTokenHash: issuedTokens.refreshTokenHash,
+      lastUsedAt,
+      expiresAt: issuedTokens.refreshExpiresAt,
+    });
+
+    this.logRefresh('log', 'LEGACY_REFRESH_MIGRATED', userId, { sessionId });
+
+    return this.buildLoginResponse(
+      user,
+      issuedTokens.profileComplete,
+      issuedTokens.accessToken,
+      issuedTokens.refreshToken,
+    );
   }
 
   private async _doRefreshToken(
@@ -429,21 +475,17 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
-      const issuedTokens = this.issueTokensForSession(user, sessionId);
+      const accessToken = this.issueAccessToken(user, sessionId);
+      const profileStatus = this.getProfileCompletionStatus(user);
       const lastUsedAt = new Date();
 
-      await this.authSessionRepository.updateRefreshToken(
-        sessionId,
-        issuedTokens.refreshTokenHash,
-        issuedTokens.refreshExpiresAt,
-        lastUsedAt,
-      );
+      await this.authSessionRepository.touchSession(sessionId, lastUsedAt);
 
       const result = this.buildLoginResponse(
         user,
-        issuedTokens.profileComplete,
-        issuedTokens.accessToken,
-        issuedTokens.refreshToken,
+        profileStatus.profileComplete,
+        accessToken,
+        refreshToken,
       );
 
       await this.redisService.set(cacheKey, JSON.stringify(result), this.refreshResultTtlSeconds);
@@ -654,14 +696,21 @@ export class AuthService {
       options?.sessionId ?? this.resolveSessionIdFromRefreshToken(userId, options?.refreshToken);
 
     if (resolvedSessionId) {
-      await this.revokeSession(userId, resolvedSessionId, resolvedSessionId, options?.currentTokenJti);
+      await this.revokeSession(
+        userId,
+        resolvedSessionId,
+        resolvedSessionId,
+        options?.currentTokenJti,
+      );
       await this.redisService.del(`refresh_token:${userId}`);
       this.logger.log(`[Auth] Current session logged out: ${userId} (${resolvedSessionId})`);
       return { scope: 'current', sessionId: resolvedSessionId };
     }
 
     await this.logoutAll(userId, options?.currentTokenJti);
-    this.logger.log(`[Auth] Fallback logout-all applied for user without session context: ${userId}`);
+    this.logger.log(
+      `[Auth] Fallback logout-all applied for user without session context: ${userId}`,
+    );
     return { scope: 'all' };
   }
 

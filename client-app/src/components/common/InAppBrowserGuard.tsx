@@ -52,6 +52,8 @@ function handleKakaoRedirect(url: URL): void {
 
 function handleInstagramIosRedirect(url: URL): void {
   // iOS Instagram doesn't support intent URLs — redirect to interstitial page
+  if (url.pathname === '/open-in-browser' || url.searchParams.get('openExternal') === '1') return;
+
   const marker = `instagram-inapp-redirected:${url.pathname}`;
   if (sessionStorage.getItem(marker) === '1') return;
   sessionStorage.setItem(marker, '1');
@@ -71,6 +73,9 @@ export function InAppBrowserGuard() {
     if (typeof sessionStorage === 'undefined') return;
 
     const url = new URL(window.location.href);
+    if (url.pathname === '/open-in-browser' || url.searchParams.get('openExternal') === '1') {
+      return;
+    }
 
     if (browserName === 'KakaoTalk') {
       handleKakaoRedirect(url);

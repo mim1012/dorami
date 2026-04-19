@@ -27,12 +27,15 @@ export async function GET(request: NextRequest) {
   const proto = request.headers.get('x-forwarded-proto') ?? '';
   const isHttps = proto === 'https' || request.url.startsWith('https://');
 
+  const cookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
+
   response.cookies.set('csrf-token', token, {
     httpOnly: false, // Must be readable by JavaScript (getCsrfToken in client.ts)
     secure: isHttps,
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60, // 24 hours in seconds
     path: '/',
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
   });
 
   return response;

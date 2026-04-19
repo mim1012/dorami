@@ -22,12 +22,14 @@ export class SessionIdMiddleware implements NestMiddleware {
 
     // Always set/refresh the cookie so it persists
     if (!isValid || !fromCookie) {
+      const cookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
       res.cookie(SESSION_COOKIE_NAME, sessionId, {
         path: '/',
         httpOnly: true,
         sameSite: 'lax', // lax works for same-domain and is Safari ITP-safe
         secure: process.env.NODE_ENV === 'production',
         maxAge: SESSION_MAX_AGE_MS,
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
       });
     }
 
