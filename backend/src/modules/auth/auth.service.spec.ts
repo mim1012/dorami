@@ -105,6 +105,7 @@ describe('AuthService', () => {
             createSession: jest.fn(),
             getSession: jest.fn(),
             updateRefreshToken: jest.fn(),
+            touchSession: jest.fn(),
             revokeSession: jest.fn(),
             revokeAllSessionsForUser: jest.fn(),
             listSessionsForUser: jest.fn(),
@@ -182,10 +183,7 @@ describe('AuthService', () => {
     const refreshedRefreshToken = 'rotated-refresh-token';
 
     beforeEach(() => {
-      (jwtService.sign as jest.Mock)
-        .mockReset()
-        .mockReturnValueOnce(refreshedAccessToken)
-        .mockReturnValueOnce(refreshedRefreshToken);
+      (jwtService.sign as jest.Mock).mockReset().mockReturnValue(refreshedAccessToken);
       jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
       jest.spyOn(authSessionRepository, 'getSession').mockResolvedValue({
         id: 'session-123',
@@ -204,21 +202,55 @@ describe('AuthService', () => {
       });
     });
 
-    it('should rotate tokens by session id and keep the response shape stable', async () => {
+    it('should keep the refresh token stable by session id and update last-used metadata', async () => {
       const result = await service.refreshToken(validRefreshToken);
 
       expect(authSessionRepository.getSession).toHaveBeenCalledWith('session-123');
-      expect(authSessionRepository.updateRefreshToken).toHaveBeenCalledWith(
+      expect(authSessionRepository.touchSession).toHaveBeenCalledWith(
         'session-123',
-        hashToken(refreshedRefreshToken),
-        expect.any(Date),
         expect.any(Date),
       );
+      expect(authSessionRepository.updateRefreshToken).not.toHaveBeenCalled();
       expect(redisService.set).toHaveBeenCalledWith(
         'refresh_result:session-123',
         JSON.stringify(result),
         30,
       );
+      expect(result).toEqual({
+        accessToken: refreshedAccessToken,
+        refreshToken: validRefreshToken,
+        user: expect.objectContaining({
+          id: mockUser.id,
+          kakaoId: mockUser.kakaoId,
+          email: mockUser.email,
+          name: mockUser.name,
+          role: mockUser.role,
+          profileComplete: false,
+        }),
+      });
+    });
+
+    it('should migrate refresh tokens without a session id claim into a new session', async () => {
+      jest.spyOn(jwtService, 'verify').mockReturnValue({
+        ...mockTokenPayload,
+        sid: undefined,
+      });
+      (jwtService.sign as jest.Mock)
+        .mockReset()
+        .mockReturnValueOnce(refreshedAccessToken)
+        .mockReturnValueOnce(refreshedRefreshToken);
+
+      const result = await service.refreshToken(validRefreshToken);
+
+      expect(authSessionRepository.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: mockUser.id,
+          refreshTokenHash: hashToken(refreshedRefreshToken),
+          lastUsedAt: expect.any(Date),
+          expiresAt: expect.any(Date),
+        }),
+      );
+      expect(authSessionRepository.getSession).not.toHaveBeenCalled();
       expect(result).toEqual({
         accessToken: refreshedAccessToken,
         refreshToken: refreshedRefreshToken,
@@ -231,17 +263,6 @@ describe('AuthService', () => {
           profileComplete: false,
         }),
       });
-    });
-
-    it('should reject refresh tokens without a session id claim', async () => {
-      jest.spyOn(jwtService, 'verify').mockReturnValue({
-        ...mockTokenPayload,
-        sid: undefined,
-      });
-
-      const refreshPromise = service.refreshToken(validRefreshToken);
-      await expect(refreshPromise).rejects.toBeInstanceOf(UnauthorizedException);
-      await expect(refreshPromise).rejects.toThrow('Invalid refresh token');
     });
 
     it('should reject refresh tokens whose hash does not match the stored session hash', async () => {
@@ -441,11 +462,20 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.revokeSession(mockUser.id, 'session-456', 'session-123', 'jti-123');
+      const result = await service.revokeSession(
+        mockUser.id,
+        'session-456',
+        'session-123',
+        'jti-123',
+      );
 
       expect(result).toEqual({ revokedCurrentSession: false });
       expect(authSessionRepository.revokeSession).toHaveBeenCalledWith('session-456');
-      expect(redisService.set).not.toHaveBeenCalledWith('blacklist:jti-123', 'true', expect.any(Number));
+      expect(redisService.set).not.toHaveBeenCalledWith(
+        'blacklist:jti-123',
+        'true',
+        expect.any(Number),
+      );
     });
 
     it('should blacklist the current access token when revoking the current session', async () => {
@@ -465,7 +495,12 @@ describe('AuthService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.revokeSession(mockUser.id, 'session-123', 'session-123', 'jti-123');
+      const result = await service.revokeSession(
+        mockUser.id,
+        'session-123',
+        'session-123',
+        'jti-123',
+      );
 
       expect(result).toEqual({ revokedCurrentSession: true });
       expect(redisService.set).toHaveBeenCalledWith('blacklist:jti-123', 'true', 900);
@@ -539,7 +574,11 @@ describe('AuthService', () => {
       const result = await service.logout(mockUser.id);
 
       expect(result).toEqual({ scope: 'all' });
-      expect(redisService.set).toHaveBeenCalledWith(`blacklist:${mockUser.id}`, 'true', expect.any(Number));
+      expect(redisService.set).toHaveBeenCalledWith(
+        `blacklist:${mockUser.id}`,
+        'true',
+        expect.any(Number),
+      );
       expect(authSessionRepository.revokeAllSessionsForUser).toHaveBeenCalledWith(mockUser.id);
       expect(redisService.del).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
     });
@@ -549,7 +588,11 @@ describe('AuthService', () => {
     it('should revoke every session and blacklist the user', async () => {
       await service.logoutAll(mockUser.id, 'jti-123');
 
-      expect(redisService.set).toHaveBeenCalledWith(`blacklist:${mockUser.id}`, 'true', expect.any(Number));
+      expect(redisService.set).toHaveBeenCalledWith(
+        `blacklist:${mockUser.id}`,
+        'true',
+        expect.any(Number),
+      );
       expect(redisService.set).toHaveBeenCalledWith('blacklist:jti-123', 'true', 900);
       expect(authSessionRepository.revokeAllSessionsForUser).toHaveBeenCalledWith(mockUser.id);
       expect(redisService.del).toHaveBeenCalledWith(`refresh_token:${mockUser.id}`);
