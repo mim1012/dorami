@@ -390,26 +390,48 @@ export class AlimtalkService {
     account: string;
     holder: string;
   } {
-    if (config?.zelleEmail) {
-      return {
-        label: 'Zelle',
-        account: config.zelleEmail,
-        holder: config.zelleRecipientName ?? '',
-      };
-    }
+    const methods = [
+      config?.zelleEmail
+        ? {
+            label: 'Zelle',
+            account: config.zelleEmail,
+            holder: config.zelleRecipientName ?? '',
+          }
+        : null,
+      config?.venmoEmail
+        ? {
+            label: 'Venmo',
+            account: config.venmoEmail,
+            holder: config.venmoRecipientName ?? '',
+          }
+        : null,
+      config?.bankAccountNumber || config?.bankName || config?.bankAccountHolder
+        ? {
+            label: config?.bankName ?? 'Bank',
+            account: config?.bankAccountNumber ?? '',
+            holder: config?.bankAccountHolder ?? '',
+          }
+        : null,
+    ].filter((method): method is { label: string; account: string; holder: string } => !!method);
 
-    if (config?.venmoEmail) {
+    if (methods.length === 0) {
       return {
-        label: 'Venmo',
-        account: config.venmoEmail,
-        holder: config.venmoRecipientName ?? '',
+        label: '',
+        account: '',
+        holder: '',
       };
     }
 
     return {
-      label: config?.bankName ?? '',
-      account: config?.bankAccountNumber ?? '',
-      holder: config?.bankAccountHolder ?? '',
+      label: methods.map((method) => method.label).join(' / '),
+      account: methods
+        .map((method) => method.account)
+        .filter(Boolean)
+        .join(' / '),
+      holder: methods
+        .map((method) => method.holder)
+        .filter(Boolean)
+        .join(' / '),
     };
   }
 
