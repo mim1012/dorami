@@ -332,22 +332,26 @@ async function main() {
       {
         name: 'ORDER_CONFIRMATION',
         type: 'ORDER_CONFIRMATION',
-        template: '주문이 완료되었습니다. 주문번호: {{orderNumber}}',
+        template:
+          '[도레미마켓]\n#{고객명}님, 주문이 완료되었습니다.\n주문번호: #{주문번호}\n주문상품: #{상품명}\n수량: #{수량}\n결제금액: #{금액}\n결제수단: #{결제수단}\n송금계정: #{송금계정}\n수취인명: #{수취인명}',
       },
       {
         name: 'PAYMENT_REMINDER',
         type: 'PAYMENT_REMINDER',
-        template: '입금 확인 요청: {{depositorName}}님, 주문번호 {{orderNumber}}',
+        template:
+          '[도레미마켓]\n주문번호 #{주문번호}\n결제금액: #{금액}\n결제수단: #{결제수단}\n송금계정: #{송금계정}\n수취인명: #{수취인명}',
       },
       {
-        name: 'PAYMENT_CONFIRMED',
-        type: 'PAYMENT_CONFIRMED',
-        template: '입금이 확인되었습니다. 곧 배송됩니다.',
+        name: 'CART_EXPIRING',
+        type: 'CART_EXPIRING',
+        template:
+          '[도레미마켓]\n#{고객명}님, 장바구니에 담아둔 #{상품명} 외 #{수량}건이 아직 남아 있어요.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.',
       },
       {
-        name: 'RESERVATION_PROMOTED',
-        type: 'RESERVATION_PROMOTED',
-        template: '대기번호 {{reservationNumber}}번이 승격되었습니다. 5분 내 결제해주세요.',
+        name: 'LIVE_START',
+        type: 'LIVE_START',
+        template:
+          '[#{쇼핑몰명}] 라이브가 시작되었습니다.\n제목: #{라이브주제}\n#{상세내용}\n바로가기: #{방송URL}',
       },
     ],
     skipDuplicates: true,

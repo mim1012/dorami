@@ -36,6 +36,7 @@ import {
 } from './dto/admin.dto';
 
 import { Prisma, UserStatus, OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
 
 // Type definitions for admin service
 interface WhereClause {
@@ -114,6 +115,32 @@ const CONFIG_DEFAULTS: Record<ConfigSection, AdminConfigItem> = {
     currency: 'USD',
     status: 'active',
     note: '',
+  },
+};
+
+const MANAGED_NOTIFICATION_DEFAULTS: Record<
+  NotificationEventType,
+  { name: string; template: string }
+> = {
+  ORDER_CONFIRMATION: {
+    name: 'ORDER_CONFIRMATION',
+    template:
+      '[도레미마켓]\n#{고객명}님, 주문이 완료되었습니다.\n주문번호: #{주문번호}\n주문상품: #{상품명}\n수량: #{수량}\n결제금액: #{금액}\n결제수단: #{결제수단}\n송금계정: #{송금계정}\n수취인명: #{수취인명}',
+  },
+  PAYMENT_REMINDER: {
+    name: 'PAYMENT_REMINDER',
+    template:
+      '[도레미마켓]\n주문번호 #{주문번호}\n결제금액: #{금액}\n결제수단: #{결제수단}\n송금계정: #{송금계정}\n수취인명: #{수취인명}',
+  },
+  CART_EXPIRING: {
+    name: 'CART_EXPIRING',
+    template:
+      '[도레미마켓]\n#{고객명}님, 장바구니에 담아둔 #{상품명} 외 #{수량}건이 아직 남아 있어요.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.',
+  },
+  LIVE_START: {
+    name: 'LIVE_START',
+    template:
+      '[#{쇼핑몰명}] 라이브가 시작되었습니다.\n제목: #{라이브주제}\n#{상세내용}\n바로가기: #{방송URL}',
   },
 };
 
@@ -2036,8 +2063,25 @@ export class AdminService {
    * Get all notification templates
    */
   async getNotificationTemplates() {
+    await Promise.all(
+      (Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType[]).map((type) => {
+        const defaults = MANAGED_NOTIFICATION_DEFAULTS[type];
+        return this.prisma.notificationTemplate.upsert({
+          where: { name: defaults.name },
+          update: {},
+          create: {
+            name: defaults.name,
+            type,
+            template: defaults.template,
+            kakaoTemplateCode: '',
+            enabled: true,
+          },
+        });
+      }),
+    );
+
     const templates = await this.prisma.notificationTemplate.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { name: 'asc' }],
     });
 
     return templates;
