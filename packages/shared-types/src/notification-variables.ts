@@ -30,7 +30,7 @@ export const NOTIFICATION_VARIABLES = {
     legacyVariables: ['#{은행명}', '#{계좌번호}', '#{예금주}'],
   },
   CART_EXPIRING: {
-    label: '장바구니 만료 (알림톡)',
+    label: '장바구니 리마인드 (알림톡)',
     channel: 'AT' as const,
     variables: ['#{고객명}', '#{상품명}', '#{수량}'],
   },

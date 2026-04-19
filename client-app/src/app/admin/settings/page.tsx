@@ -287,37 +287,12 @@ export default function AdminSettingsPage() {
       {/* Payment Settings */}
       <SectionCard
         icon={DollarSign}
-        title="입금 정보 (Zelle / Venmo / 선택 은행)"
+        title="입금 정보 (Zelle / Venmo)"
         sectionId="payment"
         isOpen={expandedSections.payment}
         onToggle={() => handleToggleSection('payment')}
       >
         <div className="space-y-4">
-          <div className="rounded-xl border border-gray-100 p-4 space-y-4">
-            <h4 className="text-sm font-semibold text-gray-900">선택 은행 계좌 (비워둬도 됨)</h4>
-            <Input
-              label="은행명 / 결제수단명"
-              value={settings.bankName}
-              onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
-              placeholder="예: KB국민은행"
-              fullWidth
-            />
-            <Input
-              label="계좌번호 / 송금 계정"
-              value={settings.bankAccountNumber}
-              onChange={(e) => setSettings({ ...settings, bankAccountNumber: e.target.value })}
-              placeholder="예: 123-456-789"
-              fullWidth
-            />
-            <Input
-              label="예금주 / 수취인명"
-              value={settings.bankAccountHolder}
-              onChange={(e) => setSettings({ ...settings, bankAccountHolder: e.target.value })}
-              placeholder="예: 도레미마켓"
-              fullWidth
-            />
-          </div>
-
           <div className="rounded-xl border border-gray-100 p-4 space-y-4">
             <h4 className="text-sm font-semibold text-gray-900">Zelle</h4>
             <Input
@@ -360,9 +335,9 @@ export default function AdminSettingsPage() {
             <p className="text-xs text-amber-700 leading-relaxed">
               알림 템플릿에서는 <code>#{'{결제수단}'}</code>, <code>#{'{송금계정}'}</code>,{' '}
               <code>#{'{수취인명}'}</code> 을 쓰면 됩니다. 지금처럼 Zelle/Venmo만 쓰면 그 값만
-              들어가고, 은행 계좌를 비워두면 은행명은 아예 끼어들지 않습니다. 기존 심사본이 있다면{' '}
-              <code>#{'{은행명}'}</code>, <code>#{'{계좌번호}'}</code>, <code>#{'{예금주}'}</code>{' '}
-              도 계속 호환됩니다.
+              들어갑니다. 기존 심사본이 있다면 <code>#{'{은행명}'}</code>,{' '}
+              <code>#{'{계좌번호}'}</code>, <code>#{'{예금주}'}</code> 도 계속 호환되지만, 운영
+              입력은 Zelle/Venmo 기준으로만 관리하면 됩니다.
             </p>
           </div>
         </div>

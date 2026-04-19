@@ -253,9 +253,7 @@ export default function NotificationSettingsPage() {
       <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-[#FF4D8D] animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-zinc-400">
-            템플릿 목록을 불러오는 중입니다.
-          </p>
+          <p className="text-sm text-gray-500">템플릿 목록을 불러오는 중입니다.</p>
         </div>
       </div>
     );
@@ -266,63 +264,69 @@ export default function NotificationSettingsPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.push('/admin/settings')}
-          className="p-2 hover:bg-white dark:hover:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 transition-colors"
+          className="rounded-lg border border-gray-200 p-2 transition-colors hover:bg-white"
         >
-          <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-zinc-300" />
+          <ChevronLeft className="h-5 w-5 text-gray-600" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
-            <Bell className="w-7 h-7 text-[#FF4D8D]" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Bell className="h-7 w-7 text-[#FF4D8D]" />
             알림톡 템플릿 관리
           </h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             알림 문구는 본문 편집이 비활성화되어 읽기 전용으로 운영됩니다.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-4">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-300 flex-shrink-0" />
-          <p className="text-sm font-medium text-red-700 dark:text-red-200">{error}</p>
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+          <p className="text-sm font-medium text-red-700">{error}</p>
         </div>
       )}
 
       {templates.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-16 text-center">
-          <MessageSquare className="w-12 h-12 text-gray-300 dark:text-zinc-500 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-zinc-400">
+        <div className="rounded-xl border border-gray-200 bg-white p-16 text-center shadow-sm">
+          <MessageSquare className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+          <p className="text-gray-600">
             등록된 알림 템플릿이 없습니다. 운영 반영 상태를 확인해 주세요.
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-          <div className="border-b border-gray-100 dark:border-zinc-800 overflow-x-auto">
-            <div className="flex">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {visibleTemplates.map((template) => {
                 const config = NOTIFICATION_VARIABLES[template.type as NotificationEventType];
+                const isActive = activeType === template.type;
                 return (
                   <button
                     key={template.id}
                     onClick={() => setActiveType(template.type as NotificationEventType)}
-                    className={`px-5 py-4 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
-                      activeType === template.type
-                        ? 'border-[#FF4D8D] text-[#FF4D8D] bg-pink-50/50 dark:bg-pink-950/20'
-                        : 'border-transparent text-gray-500 dark:text-zinc-300 hover:text-gray-700 dark:hover:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    className={`rounded-xl border px-4 py-3 text-left transition-all ${
+                      isActive
+                        ? 'border-[#FF4D8D] bg-pink-50 text-[#C62F74] shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-pink-200 hover:bg-pink-50/40'
                     }`}
                   >
-                    <span className="inline-flex items-center gap-2">
-                      {template.name}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold leading-5">{config.label}</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {template.enabled ? '발송 가능' : '발송 중지'}
+                        </p>
+                      </div>
                       <span
-                        className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           config.channel === 'AT'
-                            ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-200'
-                            : 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-violet-100 text-violet-700'
                         }`}
                       >
                         {config.channel}
                       </span>
-                    </span>
+                    </div>
                   </button>
                 );
               })}
@@ -340,20 +344,19 @@ export default function NotificationSettingsPage() {
                   <>
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100">
-                          {activeTemplate.name}
+                        <h3 className="text-base font-bold text-gray-900">
+                          {
+                            NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
+                              .label
+                          }
                         </h3>
-                        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
-                          {presentation.sendTiming}
-                        </p>
+                        <p className="mt-1 text-sm text-gray-500">{presentation.sendTiming}</p>
                       </div>
                       <div className="flex items-center gap-3 flex-wrap justify-end">
-                        <label className="inline-flex items-center gap-3 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2">
+                        <label className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm">
                           <span
                             className={`text-xs font-semibold ${
-                              activeTemplate.enabled
-                                ? 'text-emerald-600 dark:text-emerald-300'
-                                : 'text-gray-500 dark:text-zinc-400'
+                              activeTemplate.enabled ? 'text-emerald-600' : 'text-gray-500'
                             }`}
                           >
                             {activeTemplate.enabled ? '발송 ON' : '발송 OFF'}
@@ -366,9 +369,7 @@ export default function NotificationSettingsPage() {
                               handleEnabledChange(activeTemplate.id, !activeTemplate.enabled)
                             }
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              activeTemplate.enabled
-                                ? 'bg-[#FF4D8D]'
-                                : 'bg-gray-300 dark:bg-zinc-700'
+                              activeTemplate.enabled ? 'bg-[#FF4D8D]' : 'bg-gray-300'
                             }`}
                           >
                             <span
@@ -379,8 +380,8 @@ export default function NotificationSettingsPage() {
                           </button>
                         </label>
                         {successId === activeTemplate.id && (
-                          <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-300">
-                            <CheckCircle className="w-4 h-4" />
+                          <span className="flex items-center gap-1.5 text-sm text-green-600">
+                            <CheckCircle className="h-4 w-4" />
                             저장 완료
                           </span>
                         )}
@@ -410,13 +411,9 @@ export default function NotificationSettingsPage() {
                     </div>
 
                     <div className="space-y-5">
-                      <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4 dark:border-pink-900/40 dark:bg-pink-950/20">
-                        <p className="text-sm font-semibold text-pink-700 dark:text-pink-200">
-                          값 입력 방식
-                        </p>
-                        <p className="mt-1 text-sm text-pink-700/90 dark:text-pink-100/90">
-                          {presentation.valueIntro}
-                        </p>
+                      <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4">
+                        <p className="text-sm font-semibold text-pink-700">값 입력 방식</p>
+                        <p className="mt-1 text-sm text-pink-700/90">{presentation.valueIntro}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {presentation.primaryAction && (
                             <Button
@@ -443,20 +440,14 @@ export default function NotificationSettingsPage() {
                         {presentation.sourceGroups.map((group) => (
                           <div
                             key={group.heading}
-                            className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/70"
+                            className="rounded-xl border border-gray-200 bg-gray-50/70 p-4"
                           >
-                            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
-                              {group.heading}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-900">{group.heading}</p>
                             <div className="mt-3 space-y-3">
                               {group.items.map((item) => (
                                 <div key={item.title}>
-                                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-100">
-                                    {item.title}
-                                  </p>
-                                  <p className="mt-1 text-sm text-gray-600 dark:text-zinc-300">
-                                    {item.description}
-                                  </p>
+                                  <p className="text-sm font-medium text-gray-800">{item.title}</p>
+                                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                                 </div>
                               ))}
                             </div>
@@ -465,7 +456,7 @@ export default function NotificationSettingsPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">
                           카카오템플릿 코드
                         </label>
                         <div className="flex items-center gap-2">
@@ -475,34 +466,34 @@ export default function NotificationSettingsPage() {
                             onChange={(event) =>
                               handleTemplateCodeChange(activeTemplate.id, event.target.value)
                             }
-                            className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-100 dark:focus:ring-pink-700/30 focus:border-[#FF4D8D] transition-colors"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm transition-colors focus:border-[#FF4D8D] focus:outline-none focus:ring-2 focus:ring-pink-100"
                             placeholder="예: KA01TP..."
                           />
                           {NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
                             .channel === 'AT' &&
                             !activeTemplate.kakaoTemplateCode?.trim() && (
-                              <span className="shrink-0 px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
+                              <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
                                 미설정
                               </span>
                             )}
                         </div>
-                        <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                        <p className="mt-1 text-xs text-gray-500">
                           카카오 심사 완료된 템플릿 코드를 입력하면 됩니다.
                         </p>
                       </div>
 
                       <div>
-                        <div className="mb-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
+                        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                           본문은 운영 심사본 기준으로 읽기 전용이며 수정할 수 없습니다.
                         </div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">
                           템플릿 본문
                         </label>
                         <textarea
                           value={activeTemplate.template}
                           readOnly
                           rows={8}
-                          className="w-full px-4 py-3 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono focus:outline-none resize-none transition-colors"
+                          className="w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm font-mono text-gray-800 transition-colors focus:outline-none"
                           placeholder="알림톡 본문을 불러올 수 없습니다."
                         />
                       </div>
@@ -524,40 +515,33 @@ export default function NotificationSettingsPage() {
 
       {isTestModalOpen && testTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100">
-                테스트 발송
-              </h3>
-              <button
-                onClick={closeTestModal}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800"
-              >
-                <X className="w-4 h-4 text-gray-500 dark:text-zinc-300" />
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">테스트 발송</h3>
+              <button onClick={closeTestModal} className="rounded-lg p-1.5 hover:bg-gray-100">
+                <X className="h-4 w-4 text-gray-500" />
               </button>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-zinc-300 mb-4">
+            <p className="mb-4 text-sm text-gray-600">
               {NOTIFICATION_VARIABLES[testTarget].label} 템플릿으로 테스트 발송합니다.
             </p>
 
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
               수신자 전화번호
             </label>
             <input
               type="text"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              className="w-full px-4 py-2.5 mb-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+              className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900"
               placeholder="01012345678"
             />
 
             {testMessage && (
               <p
-                className={`text-sm mb-3 ${
-                  testMessageTone === 'success'
-                    ? 'text-green-600 dark:text-green-300'
-                    : 'text-red-600 dark:text-red-300'
+                className={`mb-3 text-sm ${
+                  testMessageTone === 'success' ? 'text-green-600' : 'text-red-600'
                 }`}
               >
                 {testMessage}
