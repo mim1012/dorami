@@ -135,6 +135,8 @@ export interface PaginatedResponse<T> {
   pagination: Pagination;
 }
 
+export * from './notification-variables';
+
 // ============================================================================
 // ENTITY TYPES
 // ============================================================================
