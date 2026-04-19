@@ -584,6 +584,9 @@ export class StreamingService implements OnModuleInit {
       if (dto.title && dto.title !== existingStream.title) {
         pendingUpdates.title = dto.title;
       }
+      if (dto.description !== undefined) {
+        pendingUpdates.description = dto.description?.trim() || null;
+      }
       if (dto.scheduledAt !== undefined) {
         pendingUpdates.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
       }
@@ -619,6 +622,7 @@ export class StreamingService implements OnModuleInit {
         userId,
         streamKey,
         title: dto.title ?? 'Live Stream',
+        description: dto.description?.trim() || null,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
         thumbnailUrl: dto.thumbnailUrl ?? null,
         freeShippingMode: dto.freeShippingMode ?? 'DISABLED',
