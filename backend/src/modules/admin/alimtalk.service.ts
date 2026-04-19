@@ -198,7 +198,9 @@ export class AlimtalkService {
     if (!this.bizgo?.send) {
       this.logger.warn('Bizgo SDK not available, skipping send');
       return this.buildBatchResult(
-        messages.map((message) => this.buildSkippedResult('AT', message.to, 'provider_unavailable')),
+        messages.map((message) =>
+          this.buildSkippedResult('AT', message.to, 'provider_unavailable'),
+        ),
       );
     }
 
@@ -216,13 +218,17 @@ export class AlimtalkService {
     if (!this.bizgo?.send) {
       this.logger.warn('Bizgo SDK not available, skipping send');
       return this.buildBatchResult(
-        messages.map((message) => this.buildSkippedResult('FT', message.to, 'provider_unavailable')),
+        messages.map((message) =>
+          this.buildSkippedResult('FT', message.to, 'provider_unavailable'),
+        ),
       );
     }
     const results: KakaoDeliveryResult[] = [];
     for (let i = 0; i < messages.length; i += SEND_CONCURRENCY) {
       const chunk = messages.slice(i, i + SEND_CONCURRENCY);
-      results.push(...(await Promise.all(chunk.map((msg) => this._sendSingleOrderFriendtalk(msg)))));
+      results.push(
+        ...(await Promise.all(chunk.map((msg) => this._sendSingleOrderFriendtalk(msg)))),
+      );
     }
     return this.buildBatchResult(results);
   }
@@ -276,13 +282,7 @@ export class AlimtalkService {
         this.logger.warn(`Order friendtalk returned code ${dest?.code}: ${dest?.result}`, {
           to: msg.to,
         });
-        return this.buildFailureResult(
-          'FT',
-          msg.to,
-          'provider_rejected',
-          dest?.code,
-          dest?.result,
-        );
+        return this.buildFailureResult('FT', msg.to, 'provider_rejected', dest?.code, dest?.result);
       }
     } catch (error: unknown) {
       this.logSendError('send order friendtalk', error);
@@ -337,13 +337,7 @@ export class AlimtalkService {
         this.logger.warn(`Alimtalk send returned code ${dest?.code}: ${dest?.result}`, {
           to: msg.to,
         });
-        return this.buildFailureResult(
-          'AT',
-          msg.to,
-          'provider_rejected',
-          dest?.code,
-          dest?.result,
-        );
+        return this.buildFailureResult('AT', msg.to, 'provider_rejected', dest?.code, dest?.result);
       }
     } catch (error: unknown) {
       this.logSendError('send alimtalk', error);
@@ -366,22 +360,7 @@ export class AlimtalkService {
     const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
     const itemCount = order?.orderItems?.length ?? 1;
 
-    let paymentLabel: string;
-    let paymentAccount: string;
-    let paymentHolder: string;
-    if (config?.zelleEmail) {
-      paymentLabel = 'Zelle';
-      paymentAccount = config.zelleEmail;
-      paymentHolder = config.zelleRecipientName ?? '';
-    } else if (config?.venmoEmail) {
-      paymentLabel = 'Venmo';
-      paymentAccount = config.venmoEmail;
-      paymentHolder = config.venmoRecipientName ?? '';
-    } else {
-      paymentLabel = config?.bankName ?? '';
-      paymentAccount = config?.bankAccountNumber ?? '';
-      paymentHolder = config?.bankAccountHolder ?? '';
-    }
+    const paymentInfo = this.buildPaymentInfo(config);
 
     const text = template.template
       .replace('#{고객명}', customerName)
@@ -389,9 +368,9 @@ export class AlimtalkService {
       .replace('#{상품명}', firstItem)
       .replace('#{수량}', String(itemCount))
       .replace('#{금액}', total.toLocaleString())
-      .replace('#{은행명}', paymentLabel)
-      .replace('#{계좌번호}', paymentAccount)
-      .replace('#{예금주}', paymentHolder);
+      .replace('#{은행명}', paymentInfo.label)
+      .replace('#{계좌번호}', paymentInfo.account)
+      .replace('#{예금주}', paymentInfo.holder);
 
     return {
       to: phone,
@@ -403,6 +382,34 @@ export class AlimtalkService {
           linkMo: `${this.frontendUrl}/orders/${orderId}`,
         },
       ],
+    };
+  }
+
+  private buildPaymentInfo(config: PaymentConfig | null): {
+    label: string;
+    account: string;
+    holder: string;
+  } {
+    if (config?.zelleEmail) {
+      return {
+        label: 'Zelle',
+        account: config.zelleEmail,
+        holder: config.zelleRecipientName ?? '',
+      };
+    }
+
+    if (config?.venmoEmail) {
+      return {
+        label: 'Venmo',
+        account: config.venmoEmail,
+        holder: config.venmoRecipientName ?? '',
+      };
+    }
+
+    return {
+      label: config?.bankName ?? '',
+      account: config?.bankAccountNumber ?? '',
+      holder: config?.bankAccountHolder ?? '',
     };
   }
 
@@ -487,18 +494,25 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'disabled')]);
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'PAYMENT_REMINDER' },
-    });
+    const [template, config] = await Promise.all([
+      this.prisma.notificationTemplate.findFirst({
+        where: { type: 'PAYMENT_REMINDER' },
+      }),
+      this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
+    ]);
 
     if (!template?.kakaoTemplateCode) {
       this.logger.warn('PAYMENT_REMINDER template code not configured, skipping');
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
+    const paymentInfo = this.buildPaymentInfo(config);
     const text = template.template
       .replace('#{주문번호}', orderId)
-      .replace('#{금액}', total.toLocaleString());
+      .replace('#{금액}', total.toLocaleString())
+      .replace('#{은행명}', paymentInfo.label)
+      .replace('#{계좌번호}', paymentInfo.account)
+      .replace('#{예금주}', paymentInfo.holder);
 
     return this._sendAlimtalk([
       {

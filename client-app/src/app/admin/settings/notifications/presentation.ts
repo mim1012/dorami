@@ -99,7 +99,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   PAYMENT_REMINDER: {
     sendTiming: '입금 대기 주문이 있을 때 고객에게 알림톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워집니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워지며, #{은행명} · #{계좌번호} · #{예금주}는 Zelle → Venmo → 은행계좌 순서로 채워집니다.',
     primaryAction: {
       label: '주문 관리로 이동',
       path: '/admin/orders',
@@ -122,7 +122,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
         heading: '관리자 설정에서 가져오는 항목',
         items: [
           {
-            title: '결제 수단 안내',
+            title: '결제 수단 안내 (#{은행명} · #{계좌번호} · #{예금주})',
             description:
               'Zelle → Venmo → 은행계좌 순서로, 설정된 값이 있는 수단을 자동으로 사용합니다.',
           },

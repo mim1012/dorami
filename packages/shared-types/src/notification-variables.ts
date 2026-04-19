@@ -25,7 +25,7 @@ export const NOTIFICATION_VARIABLES = {
   PAYMENT_REMINDER: {
     label: '입금 안내 (알림톡)',
     channel: 'AT' as const,
-    variables: ['#{주문번호}', '#{금액}'],
+    variables: ['#{주문번호}', '#{금액}', '#{은행명}', '#{계좌번호}', '#{예금주}'],
   },
   CART_EXPIRING: {
     label: '장바구니 만료 (알림톡)',
