@@ -43,6 +43,15 @@ function getRetryDelay(attempt: number): number {
   return baseDelay + jitter;
 }
 
+function shouldPreserveSessionUi(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const pathname = window.location.pathname || '/';
+  return pathname === '/' || pathname.startsWith('/live');
+}
+
 /**
  * useTokenAutoRefresh
  *
@@ -102,14 +111,15 @@ export function useTokenAutoRefresh(streamKey: string, options: AutoRefreshOptio
           consecutiveRefreshFailures += 1;
 
           if (consecutiveRefreshFailures >= maxConsecutiveFailures) {
-            console.error('[TokenAutoRefresh] Token refresh failed - forcing logout');
-            if (!suspendForBroadcast) {
+            const preserveSessionUi = suspendForBroadcast || shouldPreserveSessionUi();
+            console.error('[TokenAutoRefresh] Token refresh failed repeatedly');
+            if (preserveSessionUi) {
+              console.warn(
+                '[TokenAutoRefresh] Preserving current UI instead of forcing logout on live/home.',
+              );
+            } else {
               forceLogout();
               return;
-            } else {
-              console.warn(
-                '[TokenAutoRefresh] Broadcast mode: skipping logout to avoid interruption.',
-              );
             }
           }
         }

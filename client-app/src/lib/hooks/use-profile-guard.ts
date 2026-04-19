@@ -15,7 +15,15 @@ export function useProfileGuard() {
 
   const normalizedPath = pathname && pathname.startsWith('/') ? pathname : '/';
   const shouldSkipGuard = (() => {
-    const prefixSkips = ['/login', '/auth', '/profile/register', '/terms', '/privacy', '/403'];
+    const prefixSkips = [
+      '/login',
+      '/auth',
+      '/profile/register',
+      '/terms',
+      '/privacy',
+      '/403',
+      '/live',
+    ];
     if (normalizedPath === '/') return true;
     return prefixSkips.some(
       (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),

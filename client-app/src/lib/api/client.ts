@@ -122,13 +122,18 @@ function handleSessionExpiry(endpoint: string): void {
     return;
   }
 
-  useAuthStore.getState().markAnonymous();
-
   const currentPath = window.location.pathname || '/';
   const currentSearch = window.location.search || '';
   const currentDestination = sanitizeReturnPath(`${currentPath}${currentSearch}`, '/');
-  const isLivePath = currentPath.startsWith('/live');
+  const shouldPreserveSessionUi = currentPath === '/' || currentPath.startsWith('/live');
   const isAuthEndpoint = endpoint.startsWith('/auth/') || endpoint === '/users/me';
+
+  if (shouldPreserveSessionUi) {
+    window.dispatchEvent(new CustomEvent(LIVE_SESSION_EXPIRED_EVENT));
+    return;
+  }
+
+  useAuthStore.getState().markAnonymous();
 
   try {
     localStorage.removeItem('auth-storage');
@@ -140,16 +145,11 @@ function handleSessionExpiry(endpoint: string): void {
     return;
   }
 
-  if (!isLivePath) {
-    const params = new URLSearchParams({ reason: 'session_expired' });
-    if (currentDestination !== '/') {
-      params.set('returnTo', currentDestination);
-    }
-    window.location.href = `/login?${params.toString()}`;
-    return;
+  const params = new URLSearchParams({ reason: 'session_expired' });
+  if (currentDestination !== '/') {
+    params.set('returnTo', currentDestination);
   }
-
-  window.dispatchEvent(new CustomEvent(LIVE_SESSION_EXPIRED_EVENT));
+  window.location.href = `/login?${params.toString()}`;
 }
 
 /**

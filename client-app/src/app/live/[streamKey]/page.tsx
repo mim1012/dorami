@@ -127,13 +127,17 @@ export default function LiveStreamPage() {
     const onSessionExpired = () => {
       if (!hasShownSessionExpiredToast.current) {
         hasShownSessionExpiredToast.current = true;
-        showToast('로그인이 만료되었어요. 다시 로그인하면 방송을 이어서 볼 수 있어요.', 'error', {
-          label: '로그인',
-          onClick: () => {
-            const returnTo = window.location.pathname;
-            window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+        showToast(
+          '세션 갱신이 잠시 불안정해요. 방송은 유지되고, 필요할 때만 다시 로그인하시면 됩니다.',
+          'error',
+          {
+            label: '로그인',
+            onClick: () => {
+              const returnTo = window.location.pathname;
+              window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+            },
           },
-        });
+        );
       }
     };
 

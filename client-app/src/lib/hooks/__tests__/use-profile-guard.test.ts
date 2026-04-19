@@ -16,12 +16,14 @@ describe('useProfileGuard', () => {
 
     mockReplace = jest.fn();
     (useRouter as jest.Mock).mockReturnValue({ replace: mockReplace });
-    (usePathname as jest.Mock).mockReturnValue('/live');
+    (usePathname as jest.Mock).mockReturnValue('/mypage');
 
     mockUseAuth = useAuth as jest.Mock;
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: true,
+      isSessionVerified: false,
+      isVerifying: true,
     });
   });
 
@@ -46,6 +48,20 @@ describe('useProfileGuard', () => {
       mockUseAuth.mockReturnValue({
         user: null,
         isLoading: false,
+      });
+
+      renderHook(() => useProfileGuard());
+
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('does not redirect on live paths even when session verification is missing', () => {
+      (usePathname as jest.Mock).mockReturnValue('/live/abc123');
+      mockUseAuth.mockReturnValue({
+        user: { id: '1' },
+        isLoading: false,
+        isSessionVerified: false,
+        isVerifying: false,
       });
 
       renderHook(() => useProfileGuard());
