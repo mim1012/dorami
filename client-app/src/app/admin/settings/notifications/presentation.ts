@@ -65,7 +65,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   ORDER_CONFIRMATION: {
     sendTiming: '주문이 생성되는 순간 고객에게 친구톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 정보와 결제 안내는 자동으로 채워집니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 정보와 결제 안내는 자동으로 채워지며, #{은행명} · #{계좌번호} · #{예금주}는 Zelle → Venmo → 은행계좌 순서로 채워집니다.',
     primaryAction: {
       label: '주문 관리로 이동',
       path: '/admin/orders',
