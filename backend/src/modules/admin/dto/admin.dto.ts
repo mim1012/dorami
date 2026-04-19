@@ -487,6 +487,12 @@ export class UpdateSystemSettingsDto {
   defaultCartTimerMinutes?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(168)
+  abandonedCartReminderHours?: number;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   defaultShippingFee?: number;
@@ -499,6 +505,18 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   alimtalkEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountHolder?: string;
 
   @IsOptional()
   @IsString()
@@ -554,14 +572,21 @@ export class UpdatePaymentProvidersDto {
 export class UpdateNotificationTemplateDto {
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(2000)
-  template?: string;
+  @MaxLength(50)
+  @Matches(/^[A-Z0-9_]*$/)
+  kakaoTemplateCode?: string;
 
   @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
+export class SendTestAlimtalkDto {
   @IsString()
-  @MaxLength(100)
-  kakaoTemplateCode?: string;
+  @Matches(PHONE_PAYLOAD_PATTERN, {
+    message: KAKAO_PHONE_MESSAGE,
+  })
+  phone!: string;
 }
 
 export class UpdateOrderStatusDto {

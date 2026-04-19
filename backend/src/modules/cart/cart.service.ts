@@ -49,6 +49,27 @@ export class CartService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  private async withSerializableRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: unknown) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < maxRetries - 1
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+          lastError = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError;
+  }
+
   /**
    * Epic 6: Add product to cart with timer
    * Optimized: Single query to fetch product, reserved quantity, and existing cart item
@@ -76,6 +97,15 @@ export class CartService {
       throw new NotFoundException(`Product ${productId} not found`);
     }
 
+    // Auto-fix stale SOLD_OUT status when stock exists (data inconsistency guard)
+    if (product.status === ProductStatus.SOLD_OUT && product.quantity > 0) {
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { status: ProductStatus.AVAILABLE },
+      });
+      product.status = ProductStatus.AVAILABLE;
+    }
+
     if (product.status !== ProductStatus.AVAILABLE) {
       throw new BadRequestException('Product is not available for purchase');
     }
@@ -86,39 +116,48 @@ export class CartService {
     // 3. If user already has this product in cart (same color/size), update quantity
     if (existingCartItem) {
       // Update existing cart item quantity with transaction to prevent race condition
-      const updatedItem = await this.prisma.$transaction(
-        async (tx) => {
-          // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
-          const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-          if (freshProduct.status !== ProductStatus.AVAILABLE) {
-            throw new BadRequestException('Product is not available for purchase');
-          }
-          // Re-check available stock within transaction
-          const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
-          const currentAvailableStock = freshProduct.quantity - currentReserved;
-          const newQuantity = existingCartItem.quantity + quantity;
+      const updatedItem = await this.withSerializableRetry(() =>
+        this.prisma.$transaction(
+          async (tx) => {
+            // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
+            const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+            if (freshProduct.status === ProductStatus.SOLD_OUT && freshProduct.quantity > 0) {
+              await tx.product.update({
+                where: { id: productId },
+                data: { status: ProductStatus.AVAILABLE },
+              });
+              freshProduct.status = ProductStatus.AVAILABLE;
+            }
+            if (freshProduct.status !== ProductStatus.AVAILABLE) {
+              throw new BadRequestException('Product is not available for purchase');
+            }
+            // Re-check available stock within transaction
+            const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
+            const currentAvailableStock = freshProduct.quantity - currentReserved;
+            const newQuantity = existingCartItem.quantity + quantity;
 
-          if (currentAvailableStock < newQuantity) {
-            throw new BadRequestException(
-              `Cannot add ${quantity} more. Available: ${currentAvailableStock - existingCartItem.quantity}`,
-            );
-          }
+            if (currentAvailableStock < newQuantity) {
+              throw new BadRequestException(
+                `Cannot add ${quantity} more. Available: ${currentAvailableStock - existingCartItem.quantity}`,
+              );
+            }
 
-          // Also sync timer settings from product in case they changed after item was first added
-          const newExpiresAt = freshProduct.timerEnabled
-            ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
-            : null;
+            // Also sync timer settings from product in case they changed after item was first added
+            const newExpiresAt = freshProduct.timerEnabled
+              ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
+              : null;
 
-          return await tx.cart.update({
-            where: { id: existingCartItem.id },
-            data: {
-              quantity: newQuantity,
-              timerEnabled: freshProduct.timerEnabled,
-              expiresAt: newExpiresAt,
-            },
-          });
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+            return await tx.cart.update({
+              where: { id: existingCartItem.id },
+              data: {
+                quantity: newQuantity,
+                timerEnabled: freshProduct.timerEnabled,
+                expiresAt: newExpiresAt,
+              },
+            });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        ),
       );
 
       this.logger.log(`Updated cart item ${updatedItem.id} quantity to ${updatedItem.quantity}`);
@@ -127,42 +166,51 @@ export class CartService {
     }
 
     // 4. Create new cart item with timer (wrapped in transaction to prevent race condition)
-    const cartItem = await this.prisma.$transaction(
-      async (tx) => {
-        // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
-        const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
-        if (freshProduct.status !== ProductStatus.AVAILABLE) {
-          throw new BadRequestException('Product is not available for purchase');
-        }
-        // Re-check available stock within transaction to prevent TOCTOU race condition
-        const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
-        const currentAvailableStock = freshProduct.quantity - currentReserved;
+    const cartItem = await this.withSerializableRetry(() =>
+      this.prisma.$transaction(
+        async (tx) => {
+          // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
+          const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+          if (freshProduct.status === ProductStatus.SOLD_OUT && freshProduct.quantity > 0) {
+            await tx.product.update({
+              where: { id: productId },
+              data: { status: ProductStatus.AVAILABLE },
+            });
+            freshProduct.status = ProductStatus.AVAILABLE;
+          }
+          if (freshProduct.status !== ProductStatus.AVAILABLE) {
+            throw new BadRequestException('Product is not available for purchase');
+          }
+          // Re-check available stock within transaction to prevent TOCTOU race condition
+          const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
+          const currentAvailableStock = freshProduct.quantity - currentReserved;
 
-        if (currentAvailableStock < quantity) {
-          throw new InsufficientStockException(productId, currentAvailableStock, quantity);
-        }
+          if (currentAvailableStock < quantity) {
+            throw new InsufficientStockException(productId, currentAvailableStock, quantity);
+          }
 
-        const expiresAt = freshProduct.timerEnabled
-          ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
-          : null;
+          const expiresAt = freshProduct.timerEnabled
+            ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
+            : null;
 
-        return await tx.cart.create({
-          data: {
-            userId,
-            productId,
-            productName: product.name,
-            price: product.price,
-            quantity,
-            color,
-            size,
-            shippingFee: new Decimal(0),
-            timerEnabled: freshProduct.timerEnabled,
-            expiresAt,
-            status: SharedCartStatus.ACTIVE,
-          },
-        });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+          return await tx.cart.create({
+            data: {
+              userId,
+              productId,
+              productName: product.name,
+              price: product.price,
+              quantity,
+              color,
+              size,
+              shippingFee: new Decimal(0),
+              timerEnabled: freshProduct.timerEnabled,
+              expiresAt,
+              status: SharedCartStatus.ACTIVE,
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      ),
     );
 
     this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${cartItem.expiresAt}`);
@@ -428,6 +476,71 @@ export class CartService {
       }
     } catch (error) {
       this.logger.error('Failed to expire timed-out carts', (error as Error).stack);
+    }
+  }
+
+  /**
+   * Cron job: Send abandoned-cart reminder for long-idle active carts.
+   * Runs every minute and targets carts created around N hours ago that have not been reminded yet.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async sendCartReminders() {
+    try {
+      const now = new Date();
+      const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+      const reminderHours = Math.max(1, config?.abandonedCartReminderHours ?? 24);
+      const reminderMs = reminderHours * 60 * 60 * 1000;
+      const windowStart = new Date(now.getTime() - reminderMs - 60 * 1000);
+      const windowEnd = new Date(now.getTime() - reminderMs + 60 * 1000);
+
+      const remindableCarts = await this.prisma.cart.findMany({
+        where: {
+          status: SharedCartStatus.ACTIVE,
+          reminderSent: false,
+          createdAt: {
+            gte: windowStart,
+            lte: windowEnd,
+          },
+        },
+        include: {
+          product: { select: { streamKey: true } },
+        },
+      });
+
+      if (remindableCarts.length === 0) {
+        return;
+      }
+
+      // Mark reminder as sent before emitting to prevent double-send on retry
+      await this.prisma.cart.updateMany({
+        where: { id: { in: remindableCarts.map((c) => c.id) } },
+        data: { reminderSent: true },
+      });
+
+      const userCartMap = new Map<string, typeof remindableCarts>();
+      for (const cart of remindableCarts) {
+        if (!cart.userId) {
+          continue;
+        }
+        const existing = userCartMap.get(cart.userId) ?? [];
+        userCartMap.set(cart.userId, [...existing, cart]);
+      }
+
+      for (const [userId, items] of userCartMap) {
+        this.eventEmitter.emit('cart:reminder', {
+          userId,
+          productIds: items.map((i) => i.productId),
+          productNames: items.map((i) => i.productName),
+          streamKey: items[0]?.product?.streamKey ?? null,
+          hoursSinceAdded: reminderHours,
+        });
+      }
+
+      this.logger.log(
+        `Abandoned cart reminder emitted for ${remindableCarts.length} carts at ${reminderHours}h`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to send cart reminders', (error as Error).stack);
     }
   }
 

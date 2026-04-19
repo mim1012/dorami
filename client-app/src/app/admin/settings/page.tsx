@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -20,24 +21,17 @@ import {
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
-import { ShippingMessages } from '@/components/admin/settings/ShippingMessages';
-
-interface NotificationTemplate {
-  id: string;
-  name: string;
-  type: string;
-  template: string;
-  kakaoTemplateCode: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export const dynamic = 'force-dynamic';
 
 interface SystemSettings {
   defaultCartTimerMinutes: number;
+  abandonedCartReminderHours: number;
   defaultShippingFee: number;
   caShippingFee: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
   zelleEmail: string;
   zelleRecipientName: string;
   venmoEmail: string;
@@ -52,70 +46,10 @@ const MIN_CART_TIMER_HOURS = 1;
 const MAX_CART_TIMER_HOURS = 120;
 const MINUTES_PER_HOUR = 60;
 
-type NotificationEventType = 'ORDER_CONFIRMATION' | 'CART_EXPIRING' | 'LIVE_START';
-
-const NOTIFICATION_EVENT_GROUPS: Array<{
-  type: NotificationEventType;
-  label: string;
-  description: string;
-}> = [
-  {
-    type: 'LIVE_START',
-    label: '라이브 시작 알림',
-    description: '방송 시작 시 전체 유저에게 발송',
-  },
-  {
-    type: 'CART_EXPIRING',
-    label: '장바구니 리마인더 (친구톡)',
-    description: '장바구니 만료 3분 전 발송 — 친구톡이므로 카카오 템플릿 심사 불필요',
-  },
-  {
-    type: 'ORDER_CONFIRMATION',
-    label: '인보이스 알림',
-    description: '결제 완료 시 발송 (방송 중엔 방송 종료 후 일괄 발송)',
-  },
-];
-
-const EVENT_PREVIEW_VARIABLES: Record<string, Record<string, string>> = {
-  LIVE_START: {
-    streamTitle: '오늘의 라이브 쇼핑',
-  },
-  CART_EXPIRING: {
-    customerName: '김민수',
-    productName: '니트 가디건',
-    itemCount: '2',
-  },
-  ORDER_CONFIRMATION: {
-    customerName: '김민수',
-    orderId: 'ORD-20260308-10001',
-    amount: '$12.00',
-  },
-};
-
-const FALLBACK_VARIABLES: Record<string, string> = {
-  customerName: '고객님',
-  orderId: 'ORD-20260308-00001',
-  amount: '$0',
-  depositorName: '입금자명',
-  trackingNumber: 'TRK-000000',
-  reservationNumber: 'RES-0000',
-  productName: '상품명',
-};
-
-function buildTemplatePreview(type: string, template: string): string {
-  const variables = EVENT_PREVIEW_VARIABLES[type] || FALLBACK_VARIABLES;
-  let text = template;
-  for (const [key, value] of Object.entries(variables)) {
-    text = text.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-  }
-  return text;
-}
-
 type SectionKey =
   | 'payment'
   | 'commerce'
   | 'notification'
-  | 'shippingMessages'
   | 'points'
   | 'noticeManagement'
   | 'noticeList'
@@ -125,7 +59,6 @@ const DEFAULT_SECTION_STATE: Record<SectionKey, boolean> = {
   payment: true,
   commerce: true,
   notification: true,
-  shippingMessages: false,
   points: false,
   noticeManagement: false,
   noticeList: false,
@@ -136,7 +69,6 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'payment', label: '입금', icon: DollarSign },
   { key: 'commerce', label: '장바구니/배송', icon: ShoppingCart },
   { key: 'notification', label: '알림', icon: Bell },
-  { key: 'shippingMessages', label: '배송안내', icon: Package },
   { key: 'points', label: '포인트', icon: Package },
   { key: 'noticeManagement', label: '공지관리', icon: SettingsIcon },
   { key: 'noticeList', label: '공지목록', icon: SettingsIcon },
@@ -225,10 +157,15 @@ function QuickNav({
 }
 
 export default function AdminSettingsPage() {
+  const router = useRouter();
   const [settings, setSettings] = useState<SystemSettings>({
     defaultCartTimerMinutes: 60,
+    abandonedCartReminderHours: 24,
     defaultShippingFee: 10,
     caShippingFee: 8,
+    bankName: '',
+    bankAccountNumber: '',
+    bankAccountHolder: '',
     zelleEmail: '',
     zelleRecipientName: '',
     venmoEmail: '',
@@ -245,48 +182,23 @@ export default function AdminSettingsPage() {
   const [expandedSections, setExpandedSections] =
     useState<Record<SectionKey, boolean>>(DEFAULT_SECTION_STATE);
   const [activeSection, setActiveSection] = useState<SectionKey>('payment');
-  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([]);
-  const [notificationTemplateByType, setNotificationTemplateByType] = useState<
-    Record<string, string>
-  >({});
-  const [isTemplateEnabled, setIsTemplateEnabled] = useState<Record<string, boolean>>({});
-  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         setIsLoading(true);
-        const [settingsResponse, templatesResponse] = await Promise.all([
-          apiClient.get<SystemSettings>('/admin/config/settings'),
-          apiClient.get<NotificationTemplate[]>('/admin/notification-templates'),
-        ]);
-        const templates = templatesResponse.data || [];
-        const nextByType: Record<string, string> = {};
-        const nextTemplateEnabled: Record<string, boolean> = {};
-
-        NOTIFICATION_EVENT_GROUPS.forEach((event) => {
-          nextByType[event.type] = '';
-          nextTemplateEnabled[event.type] = false;
-        });
-
-        for (const template of templates) {
-          if (!NOTIFICATION_EVENT_GROUPS.some((event) => event.type === template.type)) {
-            continue;
-          }
-          if (!nextByType[template.type]) {
-            nextByType[template.type] = template.id;
-          }
-          nextTemplateEnabled[template.type] = true;
-        }
+        const settingsResponse = await apiClient.get<SystemSettings>('/admin/config/settings');
 
         setSettings({
           ...settingsResponse.data,
+          bankName: settingsResponse.data.bankName ?? '',
+          bankAccountNumber: settingsResponse.data.bankAccountNumber ?? '',
+          bankAccountHolder: settingsResponse.data.bankAccountHolder ?? '',
+          zelleEmail: settingsResponse.data.zelleEmail ?? '',
+          zelleRecipientName: settingsResponse.data.zelleRecipientName ?? '',
           venmoEmail: settingsResponse.data.venmoEmail ?? '',
           venmoRecipientName: settingsResponse.data.venmoRecipientName ?? '',
         });
-        setNotificationTemplates(templates);
-        setNotificationTemplateByType(nextByType);
-        setIsTemplateEnabled(nextTemplateEnabled);
       } catch (err: any) {
         console.error('Failed to load settings:', err);
         setError('설정을 불러오는데 실패했습니다');
@@ -296,57 +208,6 @@ export default function AdminSettingsPage() {
     };
     fetchSettings();
   }, []);
-
-  const handleTemplateFieldChange = (
-    id: string,
-    field: keyof NotificationTemplate,
-    value: string,
-  ) => {
-    setNotificationTemplates((prev) =>
-      prev.map((template) => (template.id === id ? { ...template, [field]: value } : template)),
-    );
-  };
-
-  const handleTemplateSelect = (type: string, templateId: string) => {
-    setNotificationTemplateByType((prev) => ({
-      ...prev,
-      [type]: templateId,
-    }));
-  };
-
-  const getTemplatesByType = (type: string) =>
-    notificationTemplates.filter((template) => template.type === type);
-
-  const getActiveTemplate = (type: string): NotificationTemplate | undefined => {
-    const selected = notificationTemplateByType[type];
-    const list = getTemplatesByType(type);
-    return list.find((template) => template.id === selected) ?? list[0];
-  };
-
-  const handleTemplateSave = async (template: NotificationTemplate) => {
-    setSavingTemplateId(template.id);
-    setError(null);
-    setSuccessMessage(null);
-    try {
-      await apiClient.patch(`/admin/notification-templates/${template.id}`, {
-        template: template.template,
-        kakaoTemplateCode: template.kakaoTemplateCode,
-      });
-      setSuccessMessage('알림 템플릿이 저장되었습니다');
-      setTimeout(() => setSuccessMessage(null), 2500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || '알림 템플릿 저장에 실패했습니다');
-    } finally {
-      setSavingTemplateId(null);
-    }
-  };
-
-  const handleTemplateToggle = (type: string, enabled: boolean) => {
-    setIsTemplateEnabled((prev) => ({
-      ...prev,
-      [type]: enabled,
-    }));
-  };
 
   const handleSave = async () => {
     try {
@@ -426,46 +287,82 @@ export default function AdminSettingsPage() {
       {/* Payment Settings */}
       <SectionCard
         icon={DollarSign}
-        title="입금 정보 (Zelle / Venmo)"
+        title="입금 정보 (Zelle / Venmo / 선택 은행)"
         sectionId="payment"
         isOpen={expandedSections.payment}
         onToggle={() => handleToggleSection('payment')}
       >
         <div className="space-y-4">
-          <Input
-            label="Zelle 이메일"
-            type="email"
-            value={settings.zelleEmail}
-            onChange={(e) => setSettings({ ...settings, zelleEmail: e.target.value })}
-            placeholder="zelle@example.com"
-            fullWidth
-          />
-          <Input
-            label="수신인 이름"
-            value={settings.zelleRecipientName}
-            onChange={(e) => setSettings({ ...settings, zelleRecipientName: e.target.value })}
-            placeholder="수신인 이름"
-            fullWidth
-          />
-          <Input
-            label="Venmo 이메일 / 사용자명"
-            type="text"
-            value={settings.venmoEmail}
-            onChange={(e) => setSettings({ ...settings, venmoEmail: e.target.value })}
-            placeholder="@username 또는 venmo@example.com"
-            fullWidth
-          />
-          <Input
-            label="Venmo 수신인 이름"
-            value={settings.venmoRecipientName}
-            onChange={(e) => setSettings({ ...settings, venmoRecipientName: e.target.value })}
-            placeholder="수신인 이름"
-            fullWidth
-          />
+          <div className="rounded-xl border border-gray-100 p-4 space-y-4">
+            <h4 className="text-sm font-semibold text-gray-900">선택 은행 계좌 (비워둬도 됨)</h4>
+            <Input
+              label="은행명 / 결제수단명"
+              value={settings.bankName}
+              onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
+              placeholder="예: KB국민은행"
+              fullWidth
+            />
+            <Input
+              label="계좌번호 / 송금 계정"
+              value={settings.bankAccountNumber}
+              onChange={(e) => setSettings({ ...settings, bankAccountNumber: e.target.value })}
+              placeholder="예: 123-456-789"
+              fullWidth
+            />
+            <Input
+              label="예금주 / 수취인명"
+              value={settings.bankAccountHolder}
+              onChange={(e) => setSettings({ ...settings, bankAccountHolder: e.target.value })}
+              placeholder="예: 도레미마켓"
+              fullWidth
+            />
+          </div>
+
+          <div className="rounded-xl border border-gray-100 p-4 space-y-4">
+            <h4 className="text-sm font-semibold text-gray-900">Zelle</h4>
+            <Input
+              label="Zelle 이메일"
+              type="email"
+              value={settings.zelleEmail}
+              onChange={(e) => setSettings({ ...settings, zelleEmail: e.target.value })}
+              placeholder="zelle@example.com"
+              fullWidth
+            />
+            <Input
+              label="Zelle 수신인 이름"
+              value={settings.zelleRecipientName}
+              onChange={(e) => setSettings({ ...settings, zelleRecipientName: e.target.value })}
+              placeholder="수신인 이름"
+              fullWidth
+            />
+          </div>
+
+          <div className="rounded-xl border border-gray-100 p-4 space-y-4">
+            <h4 className="text-sm font-semibold text-gray-900">Venmo</h4>
+            <Input
+              label="Venmo 이메일 / 사용자명"
+              type="text"
+              value={settings.venmoEmail}
+              onChange={(e) => setSettings({ ...settings, venmoEmail: e.target.value })}
+              placeholder="@username 또는 venmo@example.com"
+              fullWidth
+            />
+            <Input
+              label="Venmo 수신인 이름"
+              value={settings.venmoRecipientName}
+              onChange={(e) => setSettings({ ...settings, venmoRecipientName: e.target.value })}
+              placeholder="수신인 이름"
+              fullWidth
+            />
+          </div>
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">
-              입금 후 스크린샷 DM 또는 카톡 채널 전송 필수 (미확인 시 누락)
+            <p className="text-xs text-amber-700 leading-relaxed">
+              알림 템플릿에서는 <code>#{'{결제수단}'}</code>, <code>#{'{송금계정}'}</code>,{' '}
+              <code>#{'{수취인명}'}</code> 을 쓰면 됩니다. 지금처럼 Zelle/Venmo만 쓰면 그 값만
+              들어가고, 은행 계좌를 비워두면 은행명은 아예 끼어들지 않습니다. 기존 심사본이 있다면{' '}
+              <code>#{'{은행명}'}</code>, <code>#{'{계좌번호}'}</code>, <code>#{'{예금주}'}</code>{' '}
+              도 계속 호환됩니다.
             </p>
           </div>
         </div>
@@ -505,6 +402,33 @@ export default function AdminSettingsPage() {
               fullWidth
             />
             <p className="text-xs text-gray-400 mt-2">1시간~120시간(최대 5일) 범위</p>
+          </div>
+
+          <div className="border border-gray-100 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 리마인드 설정</h4>
+            <div className="space-y-4 mb-4">
+              <Input
+                label="장기 미구매 장바구니 알림 기준 (시간)"
+                type="number"
+                min={1}
+                max={168}
+                value={settings.abandonedCartReminderHours}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    abandonedCartReminderHours: Math.min(
+                      168,
+                      Math.max(1, parseInt(e.target.value || '24', 10) || 24),
+                    ),
+                  })
+                }
+                fullWidth
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                타이머 만료 기준이 아니라 장바구니에 담은 뒤 이 시간이 지나도 주문하지 않은 고객에게
+                1회 알림을 보냅니다.
+              </p>
+            </div>
           </div>
 
           <div className="border border-gray-100 rounded-xl p-4">
@@ -572,7 +496,8 @@ export default function AdminSettingsPage() {
             </div>
 
             <p className="text-xs text-gray-500">
-              알림 설정은 아래 이벤트 단위로 관리하며, ON/OFF를 끈 이벤트는 자동 발송되지 않습니다.
+              이 화면에서는 알림 전체 사용 여부만 관리합니다. 템플릿 코드는 전용 화면에서
+              수정합니다.
             </p>
 
             {settings.alimtalkEnabled && (
@@ -583,137 +508,33 @@ export default function AdminSettingsPage() {
             )}
           </div>
 
-          <div className="space-y-3">
-            {NOTIFICATION_EVENT_GROUPS.map((event) => {
-              const templates = getTemplatesByType(event.type);
-              const activeTemplate = getActiveTemplate(event.type);
-              const isEnabled = !!isTemplateEnabled[event.type];
-              const isEditable = settings.alimtalkEnabled && isEnabled;
-
-              return (
-                <div key={event.type} className="border border-gray-200 rounded-xl bg-white">
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900">{event.label}</h4>
-                      <p className="text-xs text-gray-500 mt-1">{event.description}</p>
-                    </div>
-                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        id={`template-${event.type}`}
-                        checked={isEnabled}
-                        onChange={(e) => handleTemplateToggle(event.type, e.target.checked)}
-                        className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-                        disabled={!settings.alimtalkEnabled}
-                      />
-                      ON/OFF
-                    </label>
-                  </div>
-
-                  <div className="p-4 space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        템플릿 선택
-                      </label>
-                      <select
-                        value={activeTemplate?.id ?? ''}
-                        onChange={(e) => handleTemplateSelect(event.type, e.target.value)}
-                        disabled={!isEditable}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400"
-                      >
-                        {templates.length === 0 ? (
-                          <option value="">템플릿이 없습니다</option>
-                        ) : (
-                          templates.map((template) => (
-                            <option key={template.id} value={template.id}>
-                              {template.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div>
-
-                    {activeTemplate ? (
-                      <>
-                        <Input
-                          label="카카오 템플릿 코드"
-                          type="text"
-                          value={activeTemplate.kakaoTemplateCode || ''}
-                          onChange={(e) =>
-                            handleTemplateFieldChange(
-                              activeTemplate.id,
-                              'kakaoTemplateCode',
-                              e.target.value,
-                            )
-                          }
-                          fullWidth
-                          disabled={!isEditable}
-                        />
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            메시지 본문
-                          </label>
-                          <textarea
-                            value={activeTemplate.template}
-                            onChange={(e) =>
-                              handleTemplateFieldChange(
-                                activeTemplate.id,
-                                'template',
-                                e.target.value,
-                              )
-                            }
-                            rows={4}
-                            disabled={!isEditable}
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-[#FF4D8D] disabled:bg-gray-100 disabled:text-gray-400 resize-none transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            미리보기
-                          </label>
-                          <textarea
-                            value={buildTemplatePreview(event.type, activeTemplate.template)}
-                            rows={3}
-                            readOnly
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700"
-                          />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <p className="text-xs text-gray-500">
-                            사용중 템플릿: {activeTemplate.name}
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTemplateSave(activeTemplate)}
-                            disabled={savingTemplateId === activeTemplate.id || !isEditable}
-                          >
-                            {savingTemplateId === activeTemplate.id ? '저장 중...' : '저장'}
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-xs text-gray-500">
-                        해당 이벤트에 연결된 템플릿이 없습니다. 템플릿을 먼저 등록해 주세요.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-900">
+                템플릿 관리는 전용 화면에서만 수정
+              </h4>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                카카오 심사 완료된 본문은 이 화면에서 수정하지 않습니다. 관리자 설정에서는
+                결제/운영값만 저장하고, 템플릿 코드는 전용 알림 페이지에서 관리합니다.
+              </p>
+            </div>
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600 space-y-1">
+              <p>인보이스 알림: 결제 정보 변수 치환만 반영</p>
+              <p>장바구니 리마인더: 상품/수량/고객명 자동 치환</p>
+              <p>라이브 시작 알림: 방송 제목/설명/URL 자동 치환</p>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/settings/notifications')}
+              >
+                템플릿 코드 관리로 이동
+              </Button>
+            </div>
           </div>
         </div>
       </SectionCard>
       {/* Extended Sections */}
-      <SectionCard
-        icon={Package}
-        title="배송 안내 메시지"
-        sectionId="shippingMessages"
-        isOpen={expandedSections.shippingMessages}
-        onToggle={() => handleToggleSection('shippingMessages')}
-      >
-        <ShippingMessages />
-      </SectionCard>
       <SectionCard
         icon={Package}
         title="포인트 설정"

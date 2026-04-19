@@ -65,7 +65,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   ORDER_CONFIRMATION: {
     sendTiming: '주문이 생성되는 순간 고객에게 친구톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 정보와 결제 안내는 자동으로 채워지며, #{은행명} · #{계좌번호} · #{예금주}는 Zelle → Venmo → 은행계좌 순서로 채워집니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 정보와 결제 안내는 자동으로 채워지며, 새 템플릿은 #{결제수단} · #{송금계정} · #{수취인명}을 쓰면 됩니다. Zelle/Venmo만 설정하면 그 값만 들어가고 은행명은 끼어들지 않습니다.',
     primaryAction: {
       label: '주문 관리로 이동',
       path: '/admin/orders',
@@ -90,7 +90,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
           {
             title: '입금 안내',
             description:
-              'Zelle → Venmo → 은행계좌 순서로, 설정된 값이 있는 수단을 자동으로 사용합니다.',
+              'Zelle/Venmo만 설정하면 그 값만 자동으로 사용합니다. 은행 계좌는 선택 사항이라 비워두면 메시지에 들어가지 않습니다.',
           },
         ],
       },
@@ -99,7 +99,7 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   PAYMENT_REMINDER: {
     sendTiming: '입금 대기 주문이 있을 때 고객에게 알림톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워지며, #{은행명} · #{계좌번호} · #{예금주}는 Zelle → Venmo → 은행계좌 순서로 채워집니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워지며, 새 템플릿은 #{결제수단} · #{송금계정} · #{수취인명}을 쓰면 됩니다. Zelle/Venmo만 설정하면 그 값만 들어가고 은행명은 끼어들지 않습니다.',
     primaryAction: {
       label: '주문 관리로 이동',
       path: '/admin/orders',
@@ -122,18 +122,18 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
         heading: '관리자 설정에서 가져오는 항목',
         items: [
           {
-            title: '결제 수단 안내 (#{은행명} · #{계좌번호} · #{예금주})',
+            title: '결제 수단 안내 (#{결제수단} · #{송금계정} · #{수취인명})',
             description:
-              'Zelle → Venmo → 은행계좌 순서로, 설정된 값이 있는 수단을 자동으로 사용합니다.',
+              'Zelle/Venmo만 설정하면 그 값만 자동으로 사용합니다. 기존 심사본이 있다면 #{은행명} · #{계좌번호} · #{예금주}도 계속 호환됩니다.',
           },
         ],
       },
     ],
   },
   CART_EXPIRING: {
-    sendTiming: '장바구니 만료 전에 고객에게 알림톡으로 자동 발송됩니다.',
+    sendTiming: '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 고객 정보와 상품 정보는 장바구니 데이터에서 자동으로 채워집니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 고객 정보와 상품 정보는 장바구니 데이터에서 자동으로 채워지며, 발송 시점은 관리자 설정의 장기 미구매 시간 기준을 따릅니다.',
     primaryAction: {
       label: '상품 관리로 이동',
       path: '/admin/products',

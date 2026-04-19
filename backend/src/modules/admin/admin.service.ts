@@ -5,6 +5,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -126,9 +127,13 @@ export class AdminService {
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private redisService: RedisService,
+    private readonly configService: ConfigService,
   ) {}
 
-  private getDisplayProductName(item: { productName: string; Product?: { name?: string | null } | null }) {
+  private getDisplayProductName(item: {
+    productName: string;
+    Product?: { name?: string | null } | null;
+  }) {
     return item.Product?.name?.trim() || item.productName;
   }
 
@@ -1206,11 +1211,15 @@ export class AdminService {
     });
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      abandonedCartReminderHours: config.abandonedCartReminderHours,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
       caShippingFee:
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,
@@ -1230,6 +1239,9 @@ export class AdminService {
     if (dto.defaultCartTimerMinutes !== undefined) {
       updateData.defaultCartTimerMinutes = dto.defaultCartTimerMinutes;
     }
+    if (dto.abandonedCartReminderHours !== undefined) {
+      updateData.abandonedCartReminderHours = dto.abandonedCartReminderHours;
+    }
     if (dto.defaultShippingFee !== undefined) {
       updateData.defaultShippingFee = dto.defaultShippingFee;
     }
@@ -1238,6 +1250,15 @@ export class AdminService {
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
+    }
+    if (dto.bankName !== undefined) {
+      updateData.bankName = dto.bankName;
+    }
+    if (dto.bankAccountNumber !== undefined) {
+      updateData.bankAccountNumber = dto.bankAccountNumber;
+    }
+    if (dto.bankAccountHolder !== undefined) {
+      updateData.bankAccountHolder = dto.bankAccountHolder;
     }
     if (dto.zelleEmail !== undefined) {
       updateData.zelleEmail = dto.zelleEmail;
@@ -1272,11 +1293,15 @@ export class AdminService {
 
     return {
       defaultCartTimerMinutes: config.defaultCartTimerMinutes,
+      abandonedCartReminderHours: config.abandonedCartReminderHours,
       defaultShippingFee: parseFloat(config.defaultShippingFee.toString()),
       caShippingFee:
         config.caShippingFee !== null && config.caShippingFee !== undefined
           ? parseFloat(config.caShippingFee.toString())
           : 8,
+      bankName: config.bankName,
+      bankAccountNumber: config.bankAccountNumber,
+      bankAccountHolder: config.bankAccountHolder,
       zelleEmail: config.zelleEmail,
       zelleRecipientName: config.zelleRecipientName,
       venmoEmail: config.venmoEmail,
@@ -2021,7 +2046,7 @@ export class AdminService {
   /**
    * Update notification template
    */
-  async updateNotificationTemplate(id: string, template?: string, kakaoTemplateCode?: string) {
+  async updateNotificationTemplate(id: string, kakaoTemplateCode?: string, enabled?: boolean) {
     const existingTemplate = await this.prisma.notificationTemplate.findUnique({
       where: { id },
     });
@@ -2030,12 +2055,12 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
-    const updateData: { template?: string; kakaoTemplateCode?: string } = {};
-    if (template !== undefined) {
-      updateData.template = template;
-    }
+    const updateData: { kakaoTemplateCode?: string; enabled?: boolean } = {};
     if (kakaoTemplateCode !== undefined) {
       updateData.kakaoTemplateCode = kakaoTemplateCode;
+    }
+    if (enabled !== undefined) {
+      updateData.enabled = enabled;
     }
 
     const updated = await this.prisma.notificationTemplate.update({
@@ -2267,6 +2292,41 @@ export class AdminService {
       updatedShippingFee: updatedShippingFee.toFixed(2),
       updatedTotal: updatedTotal.toFixed(2),
       remainingItemCount: remainingItems.length,
+    };
+  }
+
+  async testLiveAlimtalk(phone: string) {
+    return this.alimtalkService.sendLiveStartAlimtalk(
+      [phone],
+      '테스트 방송',
+      `${this.configService.get<string>('FRONTEND_URL', 'https://www.doremi-live.com')}/live/test`,
+      '알림톡 발송 테스트',
+    );
+  }
+
+  async sendTestOrderFriendtalk(phone: string) {
+    return this.alimtalkService.sendTestOrderFriendtalk(phone);
+  }
+
+  async sendTestPaymentReminder(phone: string) {
+    return this.alimtalkService.sendTestPaymentReminder(phone);
+  }
+
+  async sendTestCartExpiring(phone: string) {
+    return this.alimtalkService.sendTestCartExpiring(phone);
+  }
+
+  async testAllAlimtalk(phone: string) {
+    const results = await Promise.allSettled([
+      this.testLiveAlimtalk(phone),
+      this.sendTestOrderFriendtalk(phone),
+      this.sendTestPaymentReminder(phone),
+      this.sendTestCartExpiring(phone),
+    ]);
+
+    return {
+      phone,
+      results,
     };
   }
 }
