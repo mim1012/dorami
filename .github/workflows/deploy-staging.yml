@@ -200,7 +200,9 @@ jobs:
           echo "  IMAGE_TAG=${IMAGE_TAG}"
           echo "  GITHUB_REF_NAME=${GITHUB_REF_NAME}"
           echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
-          echo "  GHCR_TOKEN=***set***"
+          echo "  GHCR_TOKEN=***"
+          BIZGO_API_KEY_B64=$(printf '%s' "$BIZGO_API_KEY" | base64 | tr -d '\n')
+          BIZGO_SENDER_KEY_B64=$(printf '%s' "$BIZGO_SENDER_KEY" | base64 | tr -d '\n')
 
           ssh $USER@$HOST << ENDSSH
             set -e
@@ -220,8 +222,8 @@ jobs:
             export STAGING_POSTGRES_PASSWORD="${STAG...ORD}"
             export STAGING_REDIS_PASSWORD="${STAG...ORD}"
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
-            export BIZGO_API_KEY="${BIZGO_API_KEY}"
-            export BIZGO_SENDER_KEY="${BIZGO_SENDER_KEY}"
+            export BIZGO_API_KEY="$(printf '%s' '${BIZGO_API_KEY_B64}' | base64 -d)"
+            export BIZGO_SENDER_KEY="$(printf '%s' '${BIZGO_SENDER_KEY_B64}' | base64 -d)"
 
             echo "SSH connection successful"
             cd /opt/dorami
