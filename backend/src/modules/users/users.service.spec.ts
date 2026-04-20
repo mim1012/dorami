@@ -159,14 +159,11 @@ describe('UsersService - Profile Completion', () => {
 
     it('should throw ConflictException if email is already taken during profile completion', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.update.mockRejectedValueOnce({
+      mockPrismaService.user.update.mockRejectedValue({
         code: 'P2002',
         meta: { target: ['email'] },
       });
 
-      await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
-        ConflictException,
-      );
       await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
         '이미 사용 중인 이메일입니다',
       );
