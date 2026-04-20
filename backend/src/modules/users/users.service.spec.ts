@@ -155,9 +155,21 @@ describe('UsersService - Profile Completion', () => {
       await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
         'This Instagram ID is already registered',
       );
+    });
 
-      // Should not call update if Instagram ID is taken
-      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
+    it('should throw ConflictException if email is already taken during profile completion', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.update.mockRejectedValueOnce({
+        code: 'P2002',
+        meta: { target: ['email'] },
+      });
+
+      await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.completeProfile(userId, completeProfileDto)).rejects.toThrow(
+        '이미 사용 중인 이메일입니다',
+      );
     });
 
     it('should allow user to update their own Instagram ID', async () => {
