@@ -2352,6 +2352,10 @@ export class AdminService {
     return this.alimtalkService.sendTestOrderAlimtalk(phone);
   }
 
+  async sendTestOrderFriendtalk(phone: string) {
+    return this.sendTestOrderAlimtalk(phone);
+  }
+
   async sendTestPaymentReminder(phone: string) {
     return this.alimtalkService.sendTestPaymentReminder(phone);
   }

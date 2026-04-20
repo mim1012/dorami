@@ -131,7 +131,8 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
     ],
   },
   CART_EXPIRING: {
-    sendTiming: '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 자동 발송됩니다.',
+    sendTiming:
+      '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 친구톡으로 자동 발송됩니다.',
     valueIntro:
       '여기서는 템플릿 코드만 관리하면 됩니다. 고객 정보와 상품 정보는 장바구니 데이터에서 자동으로 채워지며, 발송 시점은 관리자 설정의 장기 미구매 시간 기준을 따릅니다.',
     primaryAction: {

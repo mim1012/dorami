@@ -9,8 +9,8 @@
  */
 export const NOTIFICATION_VARIABLES = {
   ORDER_CONFIRMATION: {
-    label: '주문 확인 (친구톡)',
-    channel: 'FT' as const,
+    label: '주문 확인 (알림톡)',
+    channel: 'AT' as const,
     variables: [
       '#{고객명}',
       '#{주문번호}',
@@ -30,8 +30,8 @@ export const NOTIFICATION_VARIABLES = {
     legacyVariables: ['#{은행명}', '#{계좌번호}', '#{예금주}'],
   },
   CART_EXPIRING: {
-    label: '장바구니 리마인드 (알림톡)',
-    channel: 'AT' as const,
+    label: '장바구니 리마인드 (친구톡)',
+    channel: 'FT' as const,
     variables: ['#{고객명}', '#{상품명}', '#{수량}'],
   },
   LIVE_START: {
