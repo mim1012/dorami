@@ -188,6 +188,22 @@ export class StreamingService implements OnModuleInit {
     this.logger.log(`Cancelled pending stream-offline timer for ${streamKey} (${reason})`);
   }
 
+  private async markLiveStartAlertSent(streamId: string): Promise<boolean> {
+    const key = `stream:${streamId}:live-start-alert-sent`;
+    const ttlSeconds = 60 * 60 * 72;
+
+    try {
+      const result = await this.redisService.getClient().set(key, '1', 'EX', ttlSeconds, 'NX');
+      return result === 'OK';
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark live-start alert dedupe key for streamId=${streamId}`,
+        (error as Error).stack,
+      );
+      return false;
+    }
+  }
+
   /**
    * Get upcoming live streams for homepage
    * Returns streams with PENDING status ordered by scheduled time
@@ -465,8 +481,6 @@ export class StreamingService implements OnModuleInit {
       }),
       3600 * 24,
     );
-
-    this.eventEmitter.emit('stream:started', { streamId: session.id });
 
     return this.mapToResponseDto(updatedSession);
   }
@@ -948,7 +962,15 @@ export class StreamingService implements OnModuleInit {
     );
 
     this.logger.log(`RTMP auth successful: Stream ${streamKey} is now LIVE`);
-    this.eventEmitter.emit('stream:started', { streamId: session.id, streamKey });
+
+    const shouldSendLiveStartAlert = await this.markLiveStartAlertSent(session.id);
+    if (shouldSendLiveStartAlert) {
+      this.eventEmitter.emit('stream:started', { streamId: session.id, streamKey });
+    } else {
+      this.logger.log(
+        `Skipping duplicate live-start alert event for streamId=${session.id}, streamKey=${streamKey}`,
+      );
+    }
 
     return true;
   }
