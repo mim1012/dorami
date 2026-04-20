@@ -238,6 +238,84 @@ describe('AlimtalkService', () => {
     expect(replaced).not.toContain('국민은행');
   });
 
+  it('omits extra item suffix for single-item order confirmation messages', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-1',
+      12500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '무료배송이야' }],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n■ 입금계좌: #{은행명} #{계좌번호} (#{예금주})',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('■ 주문상품: 무료배송이야');
+    expect(message.text).not.toContain('외 0건');
+  });
+
+  it('uses extra item count for multi-item order confirmation messages', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-2',
+      22500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '상품A' }, { productName: '상품B' }],
+      },
+      {
+        bankName: 'KB국민은행',
+        bankAccountNumber: '123-456',
+        bankAccountHolder: '홍길동',
+      },
+      {
+        template: '주문상품: #{상품명} 외 #{수량}건',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('주문상품: 상품A 외 1건');
+  });
+
+  it('uses the approved CRDER_CONFIRMATION body without payment account lines', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-3',
+      12500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '무료배송이야' }],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.\n\n■ 입금계좌: #{은행명} #{계좌번호} (#{예금주})',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toBe(
+      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
+    );
+    expect(message.text).not.toContain('입금계좌');
+    expect(message.text).not.toContain('Zelle');
+  });
+
   it('uses friendtalk path for cart reminder test sends', async () => {
     prisma.notificationTemplate.findMany.mockResolvedValue([
       {

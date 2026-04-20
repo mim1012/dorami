@@ -50,6 +50,16 @@ interface OrderTemplate {
 }
 
 const SEND_CONCURRENCY = 10;
+const CRDER_CONFIRMATION_APPROVED_TEMPLATE = `[도레미 마켓] 주문이 접수되었습니다
+
+#{고객명}님, 주문이 완료되었습니다.
+
+■ 주문번호: #{주문번호}
+■ 주문상품: #{상품명} 외 #{수량}건
+■ 결제금액: #{금액}원
+
+현재 입금대기 상태입니다.
+아래 계좌로 입금해주시면 확인 후 처리됩니다.`;
 
 export type KakaoMessageChannel = 'AT' | 'FT';
 export type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
@@ -282,18 +292,23 @@ export class AlimtalkService {
     const customerName = order?.user?.name ?? '고객';
     const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
     const itemCount = order?.orderItems?.length ?? 1;
+    const extraItemCount = Math.max(itemCount - 1, 0);
 
     const paymentInfo = this.buildPaymentInfo(config);
+    const sourceTemplate =
+      template.kakaoTemplateCode === 'CRDER_CONFIRMATION'
+        ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
+        : template.template;
 
     const text = this.replacePaymentTemplateVariables(
-      template.template
+      sourceTemplate
         .replace('#{고객명}', customerName)
         .replace('#{주문번호}', orderId)
         .replace('#{상품명}', firstItem)
-        .replace('#{수량}', String(itemCount))
+        .replace('#{수량}', String(extraItemCount))
         .replace('#{금액}', total.toLocaleString()),
       paymentInfo,
-    );
+    ).replace(/\s외 0건/g, '');
 
     return {
       to: phone,
