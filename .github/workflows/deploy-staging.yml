@@ -125,6 +125,8 @@ jobs:
           KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
+          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
+          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
         run: |
           echo "=== Validating required environment variables ==="
           MISSING_VARS=()
@@ -147,6 +149,18 @@ jobs:
             echo "✓ STAGING_KAKAO_CALLBACK_URL is set"
           fi
 
+          if [ -z "$BIZGO_API_KEY" ]; then
+            MISSING_VARS+=("BIZGO_API_KEY")
+          else
+            echo "✓ BIZGO_API_KEY is set"
+          fi
+
+          if [ -z "$BIZGO_SENDER_KEY" ]; then
+            MISSING_VARS+=("BIZGO_SENDER_KEY")
+          else
+            echo "✓ BIZGO_SENDER_KEY is set"
+          fi
+
           if [ ${#MISSING_VARS[@]} -gt 0 ]; then
             echo "❌ ERROR: Missing required GitHub Actions secrets:"
             for var in "${MISSING_VARS[@]}"; do
@@ -155,7 +169,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All required Kakao OAuth environment variables are set"
+          echo "✅ Required staging + Bizgo environment variables are set"
 
       - name: Deploy via SSH
         env:
@@ -175,6 +189,8 @@ jobs:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_POSTGRES_PASSWORD }}
           STAGING_REDIS_PASSWORD: ${{ secrets.STAGING_REDIS_PASSWORD }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
+          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -201,9 +217,11 @@ jobs:
             export ADMIN_EMAILS="${ADMIN_EMAILS}"
             export STAGING_JWT_SECRET="${STAGING_JWT_SECRET}"
             export STAGING_PROFILE_ENCRYPTION_KEY="${STAGING_PROFILE_ENCRYPTION_KEY}"
-            export STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
-            export STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
+            export STAGING_POSTGRES_PASSWORD="${STAG...ORD}"
+            export STAGING_REDIS_PASSWORD="${STAG...ORD}"
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
+            export BIZGO_API_KEY="${BIZGO_API_KEY}"
+            export BIZGO_SENDER_KEY="${BIZGO_SENDER_KEY}"
 
             echo "SSH connection successful"
             cd /opt/dorami
@@ -253,6 +271,9 @@ jobs:
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
               echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
+              echo "BIZGO_API_KEY=\"${BIZGO_API_KEY}\""
+              echo "BIZGO_SENDER_KEY=\"${BIZGO_SENDER_KEY}\""
+              echo "BIZGO_API_URL=\"https://mars.ibapi.kr/api/comm\""
               echo "TELEGRAM_BOT_TOKEN=\"${TELEGRAM_BOT_TOKEN}\""
               echo "TELEGRAM_CHAT_ID=\"${TELEGRAM_CHAT_ID}\""
             } > /opt/dorami/.env.staging
