@@ -739,8 +739,8 @@ export class AlimtalkService {
   }
 
   async sendTestOrderAlimtalk(phone: string): Promise<KakaoDeliveryBatchResult> {
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'ORDER_CONFIRMATION' },
+    const template = await this.getPreferredTemplate('ORDER_CONFIRMATION', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.template) {
