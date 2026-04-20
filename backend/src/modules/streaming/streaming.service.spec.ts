@@ -180,7 +180,9 @@ describe('StreamingService', () => {
           startedAt: expect.any(Date),
         },
       });
-      expect(eventEmitter.emit).toHaveBeenCalledWith('stream:started', { streamId: 'stream-1' });
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith('stream:started', {
+        streamId: 'stream-1',
+      });
     });
 
     it('should throw STREAM_NOT_FOUND when stream not found', async () => {
@@ -326,10 +328,13 @@ describe('StreamingService', () => {
   });
 
   describe('authenticateStream', () => {
-    it('should return true for valid PENDING stream', async () => {
+    it('should return true for valid PENDING stream and emit live start once', async () => {
       jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
       jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockLiveStream as any);
       jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
+      jest.spyOn(redisService, 'getClient').mockReturnValue({
+        set: jest.fn().mockResolvedValue('OK'),
+      } as any);
 
       const result = await service.authenticateStream('abc123', '127.0.0.1');
 
@@ -343,6 +348,23 @@ describe('StreamingService', () => {
         },
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith('stream:started', {
+        streamId: 'stream-1',
+        streamKey: 'abc123',
+      });
+    });
+
+    it('should not emit duplicate live-start alert when RTMP reconnects after first send', async () => {
+      jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(mockLiveStream as any);
+      jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockLiveStream as any);
+      jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
+      jest.spyOn(redisService, 'getClient').mockReturnValue({
+        set: jest.fn().mockResolvedValue(null),
+      } as any);
+
+      const result = await service.authenticateStream('abc123', '127.0.0.1');
+
+      expect(result).toBe(true);
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith('stream:started', {
         streamId: 'stream-1',
         streamKey: 'abc123',
       });
@@ -385,6 +407,9 @@ describe('StreamingService', () => {
       jest.spyOn(prismaService.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
       jest.spyOn(prismaService.liveStream, 'update').mockResolvedValue(mockLiveStream as any);
       jest.spyOn(redisService, 'set').mockResolvedValue(undefined);
+      jest.spyOn(redisService, 'getClient').mockReturnValue({
+        set: jest.fn().mockResolvedValue('OK'),
+      } as any);
 
       await service.authenticateStream('abc123', '127.0.0.1');
 
