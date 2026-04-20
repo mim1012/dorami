@@ -61,7 +61,7 @@ const EVENT_TYPES = Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType
 type TestEndpointMap = Record<NotificationEventType, string>;
 
 const TEST_ENDPOINTS: TestEndpointMap = {
-  ORDER_CONFIRMATION: '/admin/alimtalk/test-order-friendtalk',
+  ORDER_CONFIRMATION: '/admin/alimtalk/test-order',
   PAYMENT_REMINDER: '/admin/alimtalk/test-payment-reminder',
   CART_EXPIRING: '/admin/alimtalk/test-cart-expiring',
   LIVE_START: '/admin/alimtalk/test-live',
@@ -271,10 +271,11 @@ export default function NotificationSettingsPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Bell className="h-7 w-7 text-[#FF4D8D]" />
-            알림톡 템플릿 관리
+            카카오 알림 설정
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            알림 문구는 본문 편집이 비활성화되어 읽기 전용으로 운영됩니다.
+            알림톡/친구톡 본문은 심사본 기준으로 읽기 전용이며, 이 화면에서는 템플릿 코드와 이벤트별
+            ON/OFF만 관리합니다.
           </p>
         </div>
       </div>
