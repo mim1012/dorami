@@ -2348,8 +2348,8 @@ export class AdminService {
     );
   }
 
-  async sendTestOrderFriendtalk(phone: string) {
-    return this.alimtalkService.sendTestOrderFriendtalk(phone);
+  async sendTestOrderAlimtalk(phone: string) {
+    return this.alimtalkService.sendTestOrderAlimtalk(phone);
   }
 
   async sendTestPaymentReminder(phone: string) {
@@ -2363,7 +2363,7 @@ export class AdminService {
   async testAllAlimtalk(phone: string) {
     const results = await Promise.allSettled([
       this.testLiveAlimtalk(phone),
-      this.sendTestOrderFriendtalk(phone),
+      this.sendTestOrderAlimtalk(phone),
       this.sendTestPaymentReminder(phone),
       this.sendTestCartExpiring(phone),
     ]);

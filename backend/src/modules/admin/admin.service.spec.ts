@@ -100,7 +100,7 @@ describe('AdminService', () => {
             sendOrderAlimtalk: jest.fn(),
             sendPaymentReminderAlimtalk: jest.fn(),
             sendLiveStartAlimtalk: jest.fn(),
-            sendTestOrderFriendtalk: jest.fn(),
+            sendTestOrderAlimtalk: jest.fn(),
             sendTestPaymentReminder: jest.fn(),
             sendTestCartExpiring: jest.fn(),
           },
@@ -1004,16 +1004,14 @@ describe('AdminService', () => {
       expect(result).toEqual(deliveryResult);
     });
 
-    it('returns order friendtalk test delivery result', async () => {
+    it('returns order alimtalk test delivery result', async () => {
       const deliveryResult = {
-        results: [{ status: 'sent', channel: 'FT', recipient: '01012345678' }],
+        results: [{ status: 'sent', channel: 'AT', recipient: '01012345678' }],
         totals: { sent: 1, failed: 0, skipped: 0 },
       };
-      jest
-        .spyOn(alimtalkService, 'sendTestOrderFriendtalk')
-        .mockResolvedValue(deliveryResult as any);
+      jest.spyOn(alimtalkService, 'sendTestOrderAlimtalk').mockResolvedValue(deliveryResult as any);
 
-      const result = await service.sendTestOrderFriendtalk('01012345678');
+      const result = await service.sendTestOrderAlimtalk('01012345678');
 
       expect(result).toEqual(deliveryResult);
     });
@@ -1023,8 +1021,8 @@ describe('AdminService', () => {
         results: [{ status: 'sent', channel: 'AT', recipient: '01012345678' }],
         totals: { sent: 1, failed: 0, skipped: 0 },
       } as any);
-      jest.spyOn(service, 'sendTestOrderFriendtalk').mockResolvedValue({
-        results: [{ status: 'failed', channel: 'FT', recipient: '01012345678' }],
+      jest.spyOn(service, 'sendTestOrderAlimtalk').mockResolvedValue({
+        results: [{ status: 'failed', channel: 'AT', recipient: '01012345678' }],
         totals: { sent: 0, failed: 1, skipped: 0 },
       } as any);
       jest.spyOn(service, 'sendTestPaymentReminder').mockResolvedValue({

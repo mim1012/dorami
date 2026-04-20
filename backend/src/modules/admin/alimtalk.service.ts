@@ -213,84 +213,6 @@ export class AlimtalkService {
     return this.buildBatchResult(results);
   }
 
-  private async _sendOrderFriendtalks(
-    messages: AlimtalkMessage[],
-  ): Promise<KakaoDeliveryBatchResult> {
-    if (!this.bizgo?.send) {
-      this.logger.warn('Bizgo SDK not available, skipping send');
-      return this.buildBatchResult(
-        messages.map((message) =>
-          this.buildSkippedResult('FT', message.to, 'provider_unavailable'),
-        ),
-      );
-    }
-    const results: KakaoDeliveryResult[] = [];
-    for (let i = 0; i < messages.length; i += SEND_CONCURRENCY) {
-      const chunk = messages.slice(i, i + SEND_CONCURRENCY);
-      results.push(
-        ...(await Promise.all(chunk.map((msg) => this._sendSingleOrderFriendtalk(msg)))),
-      );
-    }
-    return this.buildBatchResult(results);
-  }
-
-  private async _sendSingleOrderFriendtalk(msg: AlimtalkMessage): Promise<KakaoDeliveryResult> {
-    try {
-      const friendtalkBuilder = new BrandMessageBuilder()
-        .setSenderKey(this.senderKey)
-        .setSendType('free')
-        .setMsgType('FT')
-        .setText(msg.text)
-        .setAdFlag('N');
-
-      if (msg.buttons?.length) {
-        const buttons = msg.buttons.map((btn) =>
-          new KakaoButtonBuilder()
-            .setType(btn.buttonType)
-            .setName(btn.buttonName)
-            .setUrlMobile(btn.linkMo)
-            .setUrlPc(btn.linkPc ?? btn.linkMo)
-            .build(),
-        );
-        friendtalkBuilder.setAttachment(
-          new BrandMessageAttachmentBuilder().setButton(buttons).build(),
-        );
-      }
-
-      const friendtalk = friendtalkBuilder.build();
-      const destination = new DestinationBuilder().setTo(msg.to).build();
-
-      const request = new OMNIRequestBodyBuilder()
-        .setDestinations([destination])
-        .setMessageFlow([{ brandmessage: friendtalk }])
-        .build();
-
-      const result = await this.bizgo!.send!.OMNI(request);
-      this.logger.log(`Bizgo raw response: ${JSON.stringify(result?.data)}`);
-      const dest = this.extractDestinationResult(result);
-
-      if (dest?.code === 'A000') {
-        this.logger.log(`Order friendtalk sent to ${msg.to}`, { msgKey: dest.msgKey });
-        return {
-          status: 'sent',
-          channel: 'FT',
-          recipient: msg.to,
-          providerCode: dest.code,
-          providerMessage: dest.result,
-          providerMessageKey: dest.msgKey,
-        };
-      } else {
-        this.logger.warn(`Order friendtalk returned code ${dest?.code}: ${dest?.result}`, {
-          to: msg.to,
-        });
-        return this.buildFailureResult('FT', msg.to, 'provider_rejected', dest?.code, dest?.result);
-      }
-    } catch (error: unknown) {
-      this.logSendError('send order friendtalk', error);
-      return this.buildFailureResult('FT', msg.to, 'provider_error');
-    }
-  }
-
   private async _sendSingle(msg: AlimtalkMessage): Promise<KakaoDeliveryResult> {
     try {
       const alimtalkBuilder = new AlimtalkBuilder()
@@ -375,6 +297,7 @@ export class AlimtalkService {
 
     return {
       to: phone,
+      templateCode: template.kakaoTemplateCode ?? '',
       text,
       buttons: [
         {
@@ -406,10 +329,10 @@ export class AlimtalkService {
             holder: config.venmoRecipientName ?? '',
           }
         : null,
-      config?.bankAccountNumber || config?.bankName || config?.bankAccountHolder
+      config?.bankAccountNumber
         ? {
             label: config?.bankName ?? 'Bank',
-            account: config?.bankAccountNumber ?? '',
+            account: config.bankAccountNumber,
             holder: config?.bankAccountHolder ?? '',
           }
         : null,
@@ -460,7 +383,7 @@ export class AlimtalkService {
   ): Promise<KakaoDeliveryBatchResult> {
     if (!(await this.isEnabled())) {
       this.logger.debug('Alimtalk disabled, skipping send');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'disabled')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'disabled')]);
     }
 
     const [template, order, config] = await Promise.all([
@@ -477,16 +400,21 @@ export class AlimtalkService {
 
     if (!template?.template) {
       this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_missing')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_missing')]);
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
     if (!this.isTemplateEnabled(template)) {
       this.logger.warn('ORDER_CONFIRMATION template disabled, skipping');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_disabled')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
     }
 
     const msg = this.buildOrderMessage(phone, orderId, total, order, config, template);
-    return this._sendOrderFriendtalks([msg]);
+    return this._sendAlimtalk([msg]);
   }
 
   /** Batch send for multiple orders — fetches template + config once instead of N times */
@@ -501,7 +429,7 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'disabled')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'disabled')),
       );
     }
 
@@ -516,7 +444,17 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'template_missing')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_missing')),
+      );
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping batch send');
+      return this.buildBatchResult(
+        orders
+          .map((order) => order.user?.kakaoPhone)
+          .filter((phone): phone is string => !!phone)
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_code_missing')),
       );
     }
 
@@ -526,7 +464,7 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'template_disabled')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_disabled')),
       );
     }
 
@@ -536,7 +474,7 @@ export class AlimtalkService {
         this.buildOrderMessage(o.user!.kakaoPhone!, o.id, Number(o.total), o, config, template),
       );
 
-    return this._sendOrderFriendtalks(messages);
+    return this._sendAlimtalk(messages);
   }
 
   async sendPaymentReminderAlimtalk(
@@ -757,14 +695,19 @@ export class AlimtalkService {
     return this.sendAlimtalk(messages);
   }
 
-  async sendTestOrderFriendtalk(phone: string): Promise<KakaoDeliveryBatchResult> {
+  async sendTestOrderAlimtalk(phone: string): Promise<KakaoDeliveryBatchResult> {
     const template = await this.prisma.notificationTemplate.findFirst({
       where: { type: 'ORDER_CONFIRMATION' },
     });
 
     if (!template?.template) {
       this.logger.warn('ORDER_CONFIRMATION template not configured, skipping test');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_missing')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_missing')]);
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping test');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
     const testOrderId = generateOrderId(1);
@@ -780,7 +723,7 @@ export class AlimtalkService {
       } as PaymentConfig,
       template,
     );
-    return this._sendOrderFriendtalks([msg]);
+    return this._sendAlimtalk([msg]);
   }
 
   async sendTestPaymentReminder(phone: string): Promise<KakaoDeliveryBatchResult> {

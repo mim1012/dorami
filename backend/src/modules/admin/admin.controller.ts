@@ -283,10 +283,17 @@ export class AdminController {
     return this.adminService.testAllAlimtalk(dto.phone);
   }
 
+  @Post('alimtalk/test-order')
+  @ApiOperation({ summary: '주문 확인 알림톡 테스트 발송 (관리자)' })
+  async testOrderAlimtalk(@Body() dto: SendTestAlimtalkDto) {
+    const result = await this.adminService.sendTestOrderAlimtalk(dto.phone);
+    return { phone: dto.phone, result };
+  }
+
   @Post('alimtalk/test-order-friendtalk')
-  @ApiOperation({ summary: '주문 확인 친구톡 테스트 발송 (관리자)' })
-  async testOrderFriendtalk(@Body() dto: SendTestAlimtalkDto) {
-    const result = await this.adminService.sendTestOrderFriendtalk(dto.phone);
+  @ApiOperation({ summary: '주문 확인 알림톡 테스트 발송 (관리자, 구 경로 호환)' })
+  async testOrderFriendtalkAlias(@Body() dto: SendTestAlimtalkDto) {
+    const result = await this.adminService.sendTestOrderAlimtalk(dto.phone);
     return { phone: dto.phone, result };
   }
 

@@ -29,6 +29,7 @@ describe('notification presentation copy', () => {
   it('ORDER_CONFIRMATION explains Zelle/Venmo-first payment copy without forcing bank labels', () => {
     const presentation = getNotificationPresentation('ORDER_CONFIRMATION');
 
+    expect(presentation.sendTiming).toContain('알림톡으로 자동 발송됩니다');
     expect(presentation.valueIntro).toContain('주문 정보와 결제 안내는 자동으로 채워지며');
     expect(presentation.valueIntro).toContain('#{결제수단}');
     expect(presentation.valueIntro).toContain('은행명은 끼어들지 않습니다');

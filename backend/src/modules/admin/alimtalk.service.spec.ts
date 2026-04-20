@@ -134,6 +134,79 @@ describe('AlimtalkService', () => {
     });
   });
 
+  it('sends ORDER_CONFIRMATION through alimtalk channel when template code exists', async () => {
+    prisma.notificationTemplate.findFirst.mockResolvedValue({
+      template: '주문 #{주문번호} / #{금액} / #{결제수단}',
+      kakaoTemplateCode: 'ORD_TPL',
+      enabled: true,
+    });
+    prisma.systemConfig.findFirst.mockResolvedValue({
+      alimtalkEnabled: true,
+      zelleEmail: 'zelle@example.com',
+      zelleRecipientName: 'Zelle Kim',
+      venmoEmail: '@venmo',
+      venmoRecipientName: 'Venmo Kim',
+      bankName: 'KB국민은행',
+      bankAccountNumber: '',
+      bankAccountHolder: '',
+    });
+    prisma.order.findUnique.mockResolvedValue({
+      user: { name: '테스트 고객' },
+      orderItems: [{ productName: '테스트 상품' }],
+    });
+    setBizgoOmniResult({
+      data: { data: { destinations: [{ code: 'A000', result: 'OK', msgKey: 'ord-1' }] } },
+    });
+
+    const result = await service.sendOrderAlimtalk('01012345678', 'ORD-1', 50000);
+
+    expect(result.results[0]).toMatchObject({
+      status: 'sent',
+      channel: 'AT',
+      recipient: '01012345678',
+      providerMessageKey: 'ord-1',
+    });
+  });
+
+  it('skips ORDER_CONFIRMATION when alimtalk template code is missing', async () => {
+    prisma.notificationTemplate.findFirst.mockResolvedValue({
+      template: '주문 #{주문번호}',
+      kakaoTemplateCode: '',
+      enabled: true,
+    });
+    prisma.order.findUnique.mockResolvedValue({
+      user: { name: '테스트 고객' },
+      orderItems: [{ productName: '테스트 상품' }],
+    });
+
+    const result = await service.sendOrderAlimtalk('01012345678', 'ORD-1', 50000);
+
+    expect(result.results[0]).toMatchObject({
+      status: 'skipped',
+      channel: 'AT',
+      recipient: '01012345678',
+      reason: 'template_code_missing',
+    });
+  });
+
+  it('ignores leftover bank name when bank account number is empty', async () => {
+    const replaced = (service as any).replacePaymentTemplateVariables(
+      '수단 #{결제수단} / 계정 #{송금계정} / 수취인 #{수취인명}',
+      (service as any).buildPaymentInfo({
+        zelleEmail: 'zelle@example.com',
+        zelleRecipientName: 'Zelle Kim',
+        venmoEmail: '@venmo',
+        venmoRecipientName: 'Venmo Kim',
+        bankName: 'KB국민은행',
+        bankAccountNumber: '',
+        bankAccountHolder: '',
+      }),
+    );
+
+    expect(replaced).toContain('Zelle / Venmo');
+    expect(replaced).not.toContain('KB국민은행');
+  });
+
   it('fills generic payment placeholders with Zelle and Venmo only', async () => {
     const replaced = (service as any).replacePaymentTemplateVariables(
       '수단 #{결제수단} / 계정 #{송금계정} / 수취인 #{수취인명}',
