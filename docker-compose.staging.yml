@@ -74,6 +74,7 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@live-commerce.com}
       BIZGO_API_KEY: ${BIZGO_API_KEY:-}
       BIZGO_SENDER_KEY: ${BIZGO_SENDER_KEY:-}
+      BIZGO_API_URL: ${BIZGO_API_URL:-https://mars.ibapi.kr/api/comm}
     expose:
       - 3001
     volumes:

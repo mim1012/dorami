@@ -125,6 +125,8 @@ jobs:
           KAKAO_CLIENT_ID: ${{ secrets.STAGING_KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.STAGING_KAKAO_CLIENT_SECRET }}
           KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
+          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
+          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
         run: |
           echo "=== Validating required environment variables ==="
           MISSING_VARS=()
@@ -147,6 +149,18 @@ jobs:
             echo "✓ STAGING_KAKAO_CALLBACK_URL is set"
           fi
 
+          if [ -z "$BIZGO_API_KEY" ]; then
+            MISSING_VARS+=("BIZGO_API_KEY")
+          else
+            echo "✓ BIZGO_API_KEY is set"
+          fi
+
+          if [ -z "$BIZGO_SENDER_KEY" ]; then
+            MISSING_VARS+=("BIZGO_SENDER_KEY")
+          else
+            echo "✓ BIZGO_SENDER_KEY is set"
+          fi
+
           if [ ${#MISSING_VARS[@]} -gt 0 ]; then
             echo "❌ ERROR: Missing required GitHub Actions secrets:"
             for var in "${MISSING_VARS[@]}"; do
@@ -155,7 +169,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All required Kakao OAuth environment variables are set"
+          echo "✅ Required staging + Bizgo environment variables are set"
 
       - name: Deploy via SSH
         env:
@@ -210,6 +224,8 @@ jobs:
             export STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
             export STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
+            export BIZGO_API_KEY="${BIZGO_API_KEY}"
+            export BIZGO_SENDER_KEY="${BIZGO_SENDER_KEY}"
             export STAGING_SENTRY_DSN_BACKEND="${STAGING_SENTRY_DSN_BACKEND}"
             export STAGING_SENTRY_DSN_FRONTEND="${STAGING_SENTRY_DSN_FRONTEND}"
             export SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
@@ -269,6 +285,7 @@ jobs:
               echo "TELEGRAM_CHAT_ID=\"${TELEGRAM_CHAT_ID}\""
               echo "BIZGO_API_KEY=\"${BIZGO_API_KEY}\""
               echo "BIZGO_SENDER_KEY=\"${BIZGO_SENDER_KEY}\""
+              echo "BIZGO_API_URL=\"https://mars.ibapi.kr/api/comm\""
               echo "SENTRY_DSN=\"${STAGING_SENTRY_DSN_BACKEND}\""
               echo "NEXT_PUBLIC_SENTRY_DSN=\"${STAGING_SENTRY_DSN_FRONTEND}\""
               echo "SENTRY_AUTH_TOKEN=\"${SENTRY_AUTH_TOKEN}\""

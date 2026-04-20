@@ -431,6 +431,8 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
+          BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
+          BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
@@ -474,6 +476,9 @@ jobs:
 
           KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
           KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}
+          BIZGO_API_KEY=${BIZGO_API_KEY}
+          BIZGO_SENDER_KEY=${BIZGO_SENDER_KEY}
+          BIZGO_API_URL=https://mars.ibapi.kr/api/comm
           NEXT_PUBLIC_KAKAO_JS_KEY=${KAKAO_JS_KEY}
           KAKAO_CALLBACK_URL=https://www.doremi-live.com/api/auth/kakao/callback
 
