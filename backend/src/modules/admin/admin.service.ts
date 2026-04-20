@@ -125,7 +125,7 @@ const MANAGED_NOTIFICATION_DEFAULTS: Record<
   ORDER_CONFIRMATION: {
     name: 'ORDER_CONFIRMATION',
     template:
-      '[도레미마켓]\n#{고객명}님, 주문이 완료되었습니다.\n주문번호: #{주문번호}\n주문상품: #{상품명}\n수량: #{수량}\n결제금액: #{금액}\n결제수단: #{결제수단}\n송금계정: #{송금계정}\n수취인명: #{수취인명}',
+      '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
   },
   PAYMENT_REMINDER: {
     name: 'PAYMENT_REMINDER',
@@ -2081,10 +2081,33 @@ export class AdminService {
     );
 
     const templates = await this.prisma.notificationTemplate.findMany({
-      orderBy: [{ createdAt: 'asc' }, { name: 'asc' }],
+      orderBy: [{ type: 'asc' }, { updatedAt: 'desc' }, { createdAt: 'desc' }, { name: 'asc' }],
     });
 
-    return templates;
+    const deduped = Array.from(
+      templates
+        .reduce((map, template) => {
+          const current = map.get(template.type);
+          const currentScore = current
+            ? (current.kakaoTemplateCode?.trim() ? 100 : 0) +
+              (current.enabled !== false ? 10 : 0) +
+              (current.template?.trim() ? 1 : 0)
+            : -1;
+          const nextScore =
+            (template.kakaoTemplateCode?.trim() ? 100 : 0) +
+            (template.enabled !== false ? 10 : 0) +
+            (template.template?.trim() ? 1 : 0);
+
+          if (!current || nextScore > currentScore) {
+            map.set(template.type, template);
+          }
+
+          return map;
+        }, new Map<string, (typeof templates)[number]>())
+        .values(),
+    );
+
+    return deduped;
   }
 
   /**
@@ -2348,8 +2371,12 @@ export class AdminService {
     );
   }
 
+  async sendTestOrderAlimtalk(phone: string) {
+    return this.alimtalkService.sendTestOrderAlimtalk(phone);
+  }
+
   async sendTestOrderFriendtalk(phone: string) {
-    return this.alimtalkService.sendTestOrderFriendtalk(phone);
+    return this.sendTestOrderAlimtalk(phone);
   }
 
   async sendTestPaymentReminder(phone: string) {
@@ -2363,7 +2390,7 @@ export class AdminService {
   async testAllAlimtalk(phone: string) {
     const results = await Promise.allSettled([
       this.testLiveAlimtalk(phone),
-      this.sendTestOrderFriendtalk(phone),
+      this.sendTestOrderAlimtalk(phone),
       this.sendTestPaymentReminder(phone),
       this.sendTestCartExpiring(phone),
     ]);

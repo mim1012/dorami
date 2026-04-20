@@ -1,26 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-
-jest.mock(
-  '@bizgo/bizgo-sdk-comm-js',
-  () => ({
-    Bizgo: jest.fn(),
-    BizgoOptionsBuilder: jest.fn().mockImplementation(() => ({
-      setBaseURL: jest.fn().mockReturnThis(),
-      setApiKey: jest.fn().mockReturnThis(),
-      build: jest.fn().mockReturnValue({}),
-    })),
-    AlimtalkBuilder: jest.fn(),
-    AlimtalkAttachmentBuilder: jest.fn(),
-    BrandMessageBuilder: jest.fn(),
-    BrandMessageAttachmentBuilder: jest.fn(),
-    DestinationBuilder: jest.fn(),
-    OMNIRequestBodyBuilder: jest.fn(),
-    KakaoButtonBuilder: jest.fn(),
-  }),
-  { virtual: true },
-);
-
 import { AdminService } from './admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -121,6 +100,9 @@ describe('AdminService', () => {
             sendOrderAlimtalk: jest.fn(),
             sendPaymentReminderAlimtalk: jest.fn(),
             sendLiveStartAlimtalk: jest.fn(),
+            sendTestOrderAlimtalk: jest.fn(),
+            sendTestPaymentReminder: jest.fn(),
+            sendTestCartExpiring: jest.fn(),
           },
         },
         {
@@ -133,14 +115,12 @@ describe('AdminService', () => {
           },
         },
         {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn(),
-          },
-        },
-        {
           provide: 'WEBSOCKET_GATEWAY',
           useValue: mockWebsocketGateway,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
         },
       ],
     }).compile();
@@ -1007,6 +987,58 @@ describe('AdminService', () => {
         75000,
         mockOrder.depositorName,
       );
+    });
+  });
+
+  describe('alimtalk test actions', () => {
+    it('returns live test delivery result', async () => {
+      const deliveryResult = {
+        results: [{ status: 'sent', channel: 'AT', recipient: '01012345678' }],
+        totals: { sent: 1, failed: 0, skipped: 0 },
+      };
+      jest.spyOn(alimtalkService, 'sendLiveStartAlimtalk').mockResolvedValue(deliveryResult as any);
+
+      const result = await service.testLiveAlimtalk('01012345678');
+
+      expect(alimtalkService.sendLiveStartAlimtalk).toHaveBeenCalled();
+      expect(result).toEqual(deliveryResult);
+    });
+
+    it('returns order alimtalk test delivery result', async () => {
+      const deliveryResult = {
+        results: [{ status: 'sent', channel: 'AT', recipient: '01012345678' }],
+        totals: { sent: 1, failed: 0, skipped: 0 },
+      };
+      jest.spyOn(alimtalkService, 'sendTestOrderAlimtalk').mockResolvedValue(deliveryResult as any);
+
+      const result = await service.sendTestOrderAlimtalk('01012345678');
+
+      expect(result).toEqual(deliveryResult);
+    });
+
+    it('returns all settled results for batch test send', async () => {
+      jest.spyOn(service, 'testLiveAlimtalk').mockResolvedValue({
+        results: [{ status: 'sent', channel: 'AT', recipient: '01012345678' }],
+        totals: { sent: 1, failed: 0, skipped: 0 },
+      } as any);
+      jest.spyOn(service, 'sendTestOrderAlimtalk').mockResolvedValue({
+        results: [{ status: 'failed', channel: 'AT', recipient: '01012345678' }],
+        totals: { sent: 0, failed: 1, skipped: 0 },
+      } as any);
+      jest.spyOn(service, 'sendTestPaymentReminder').mockResolvedValue({
+        results: [{ status: 'skipped', channel: 'AT', recipient: '01012345678' }],
+        totals: { sent: 0, failed: 0, skipped: 1 },
+      } as any);
+      jest.spyOn(service, 'sendTestCartExpiring').mockRejectedValue(new Error('provider_error'));
+
+      const result = await service.testAllAlimtalk('01012345678');
+
+      expect(result.phone).toBe('01012345678');
+      expect(result.results).toHaveLength(4);
+      expect(result.results[0].status).toBe('fulfilled');
+      expect(result.results[1].status).toBe('fulfilled');
+      expect(result.results[2].status).toBe('fulfilled');
+      expect(result.results[3].status).toBe('rejected');
     });
   });
 

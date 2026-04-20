@@ -50,6 +50,16 @@ interface OrderTemplate {
 }
 
 const SEND_CONCURRENCY = 10;
+const CRDER_CONFIRMATION_APPROVED_TEMPLATE = `[도레미 마켓] 주문이 접수되었습니다
+
+#{고객명}님, 주문이 완료되었습니다.
+
+■ 주문번호: #{주문번호}
+■ 주문상품: #{상품명} 외 #{수량}건
+■ 결제금액: #{금액}원
+
+현재 입금대기 상태입니다.
+아래 계좌로 입금해주시면 확인 후 처리됩니다.`;
 
 export type KakaoMessageChannel = 'AT' | 'FT';
 export type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
@@ -213,84 +223,6 @@ export class AlimtalkService {
     return this.buildBatchResult(results);
   }
 
-  private async _sendOrderFriendtalks(
-    messages: AlimtalkMessage[],
-  ): Promise<KakaoDeliveryBatchResult> {
-    if (!this.bizgo?.send) {
-      this.logger.warn('Bizgo SDK not available, skipping send');
-      return this.buildBatchResult(
-        messages.map((message) =>
-          this.buildSkippedResult('FT', message.to, 'provider_unavailable'),
-        ),
-      );
-    }
-    const results: KakaoDeliveryResult[] = [];
-    for (let i = 0; i < messages.length; i += SEND_CONCURRENCY) {
-      const chunk = messages.slice(i, i + SEND_CONCURRENCY);
-      results.push(
-        ...(await Promise.all(chunk.map((msg) => this._sendSingleOrderFriendtalk(msg)))),
-      );
-    }
-    return this.buildBatchResult(results);
-  }
-
-  private async _sendSingleOrderFriendtalk(msg: AlimtalkMessage): Promise<KakaoDeliveryResult> {
-    try {
-      const friendtalkBuilder = new BrandMessageBuilder()
-        .setSenderKey(this.senderKey)
-        .setSendType('free')
-        .setMsgType('FT')
-        .setText(msg.text)
-        .setAdFlag('N');
-
-      if (msg.buttons?.length) {
-        const buttons = msg.buttons.map((btn) =>
-          new KakaoButtonBuilder()
-            .setType(btn.buttonType)
-            .setName(btn.buttonName)
-            .setUrlMobile(btn.linkMo)
-            .setUrlPc(btn.linkPc ?? btn.linkMo)
-            .build(),
-        );
-        friendtalkBuilder.setAttachment(
-          new BrandMessageAttachmentBuilder().setButton(buttons).build(),
-        );
-      }
-
-      const friendtalk = friendtalkBuilder.build();
-      const destination = new DestinationBuilder().setTo(msg.to).build();
-
-      const request = new OMNIRequestBodyBuilder()
-        .setDestinations([destination])
-        .setMessageFlow([{ brandmessage: friendtalk }])
-        .build();
-
-      const result = await this.bizgo!.send!.OMNI(request);
-      this.logger.log(`Bizgo raw response: ${JSON.stringify(result?.data)}`);
-      const dest = this.extractDestinationResult(result);
-
-      if (dest?.code === 'A000') {
-        this.logger.log(`Order friendtalk sent to ${msg.to}`, { msgKey: dest.msgKey });
-        return {
-          status: 'sent',
-          channel: 'FT',
-          recipient: msg.to,
-          providerCode: dest.code,
-          providerMessage: dest.result,
-          providerMessageKey: dest.msgKey,
-        };
-      } else {
-        this.logger.warn(`Order friendtalk returned code ${dest?.code}: ${dest?.result}`, {
-          to: msg.to,
-        });
-        return this.buildFailureResult('FT', msg.to, 'provider_rejected', dest?.code, dest?.result);
-      }
-    } catch (error: unknown) {
-      this.logSendError('send order friendtalk', error);
-      return this.buildFailureResult('FT', msg.to, 'provider_error');
-    }
-  }
-
   private async _sendSingle(msg: AlimtalkMessage): Promise<KakaoDeliveryResult> {
     try {
       const alimtalkBuilder = new AlimtalkBuilder()
@@ -360,21 +292,27 @@ export class AlimtalkService {
     const customerName = order?.user?.name ?? '고객';
     const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
     const itemCount = order?.orderItems?.length ?? 1;
+    const extraItemCount = Math.max(itemCount - 1, 0);
 
     const paymentInfo = this.buildPaymentInfo(config);
+    const sourceTemplate =
+      template.kakaoTemplateCode === 'CRDER_CONFIRMATION'
+        ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
+        : template.template;
 
     const text = this.replacePaymentTemplateVariables(
-      template.template
+      sourceTemplate
         .replace('#{고객명}', customerName)
         .replace('#{주문번호}', orderId)
         .replace('#{상품명}', firstItem)
-        .replace('#{수량}', String(itemCount))
+        .replace('#{수량}', String(extraItemCount))
         .replace('#{금액}', total.toLocaleString()),
       paymentInfo,
     );
 
     return {
       to: phone,
+      templateCode: template.kakaoTemplateCode ?? '',
       text,
       buttons: [
         {
@@ -406,10 +344,10 @@ export class AlimtalkService {
             holder: config.venmoRecipientName ?? '',
           }
         : null,
-      config?.bankAccountNumber || config?.bankName || config?.bankAccountHolder
+      config?.bankAccountNumber
         ? {
             label: config?.bankName ?? 'Bank',
-            account: config?.bankAccountNumber ?? '',
+            account: config.bankAccountNumber,
             holder: config?.bankAccountHolder ?? '',
           }
         : null,
@@ -453,6 +391,54 @@ export class AlimtalkService {
     return template?.enabled !== false;
   }
 
+  private async getPreferredTemplate(
+    type: string,
+    options?: { requireKakaoTemplateCode?: boolean },
+  ) {
+    const templates = await this.prisma.notificationTemplate.findMany({
+      where: { type },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    if (templates.length === 0) {
+      return null;
+    }
+
+    const requireCode = options?.requireKakaoTemplateCode ?? false;
+
+    const scored = templates
+      .map((template: (typeof templates)[number], index: number) => ({
+        template,
+        index,
+        score:
+          (template.kakaoTemplateCode?.trim() ? 100 : 0) +
+          (template.enabled !== false ? 10 : 0) +
+          (template.template?.trim() ? 1 : 0),
+      }))
+      .sort(
+        (
+          a: { template: (typeof templates)[number]; index: number; score: number },
+          b: { template: (typeof templates)[number]; index: number; score: number },
+        ) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          return a.index - b.index;
+        },
+      );
+
+    if (requireCode) {
+      const withCode = scored.find((entry: { template: (typeof templates)[number] }) =>
+        entry.template.kakaoTemplateCode?.trim(),
+      );
+      if (withCode) {
+        return withCode.template;
+      }
+    }
+
+    return scored[0].template;
+  }
+
   async sendOrderAlimtalk(
     phone: string,
     orderId: string,
@@ -460,11 +446,11 @@ export class AlimtalkService {
   ): Promise<KakaoDeliveryBatchResult> {
     if (!(await this.isEnabled())) {
       this.logger.debug('Alimtalk disabled, skipping send');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'disabled')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'disabled')]);
     }
 
     const [template, order, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.getPreferredTemplate('ORDER_CONFIRMATION', { requireKakaoTemplateCode: true }),
       this.prisma.order.findUnique({
         where: { id: orderId },
         include: {
@@ -477,16 +463,21 @@ export class AlimtalkService {
 
     if (!template?.template) {
       this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_missing')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_missing')]);
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
     if (!this.isTemplateEnabled(template)) {
       this.logger.warn('ORDER_CONFIRMATION template disabled, skipping');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_disabled')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
     }
 
     const msg = this.buildOrderMessage(phone, orderId, total, order, config, template);
-    return this._sendOrderFriendtalks([msg]);
+    return this._sendAlimtalk([msg]);
   }
 
   /** Batch send for multiple orders — fetches template + config once instead of N times */
@@ -501,12 +492,12 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'disabled')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'disabled')),
       );
     }
 
     const [template, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.getPreferredTemplate('ORDER_CONFIRMATION', { requireKakaoTemplateCode: true }),
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
@@ -516,7 +507,17 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'template_missing')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_missing')),
+      );
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping batch send');
+      return this.buildBatchResult(
+        orders
+          .map((order) => order.user?.kakaoPhone)
+          .filter((phone): phone is string => !!phone)
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_code_missing')),
       );
     }
 
@@ -526,7 +527,7 @@ export class AlimtalkService {
         orders
           .map((order) => order.user?.kakaoPhone)
           .filter((phone): phone is string => !!phone)
-          .map((phone) => this.buildSkippedResult('FT', phone, 'template_disabled')),
+          .map((phone) => this.buildSkippedResult('AT', phone, 'template_disabled')),
       );
     }
 
@@ -536,7 +537,7 @@ export class AlimtalkService {
         this.buildOrderMessage(o.user!.kakaoPhone!, o.id, Number(o.total), o, config, template),
       );
 
-    return this._sendOrderFriendtalks(messages);
+    return this._sendAlimtalk(messages);
   }
 
   async sendPaymentReminderAlimtalk(
@@ -550,9 +551,7 @@ export class AlimtalkService {
     }
 
     const [template, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({
-        where: { type: 'PAYMENT_REMINDER' },
-      }),
+      this.getPreferredTemplate('PAYMENT_REMINDER', { requireKakaoTemplateCode: true }),
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
@@ -599,8 +598,8 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'disabled')]);
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'CART_EXPIRING' },
+    const template = await this.getPreferredTemplate('CART_EXPIRING', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.kakaoTemplateCode) {
@@ -643,10 +642,7 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'provider_unavailable')]);
     }
 
-    const cartTemplate = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'CART_EXPIRING' },
-      select: { enabled: true },
-    });
+    const cartTemplate = await this.getPreferredTemplate('CART_EXPIRING');
 
     if (!this.isTemplateEnabled(cartTemplate)) {
       this.logger.warn('CART_EXPIRING template disabled, skipping reminder friendtalk');
@@ -724,8 +720,8 @@ export class AlimtalkService {
       return this.buildBatchResult([]);
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'LIVE_START' },
+    const template = await this.getPreferredTemplate('LIVE_START', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.kakaoTemplateCode) {
@@ -757,14 +753,24 @@ export class AlimtalkService {
     return this.sendAlimtalk(messages);
   }
 
-  async sendTestOrderFriendtalk(phone: string): Promise<KakaoDeliveryBatchResult> {
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'ORDER_CONFIRMATION' },
+  async sendTestOrderAlimtalk(phone: string): Promise<KakaoDeliveryBatchResult> {
+    const template = await this.getPreferredTemplate('ORDER_CONFIRMATION', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.template) {
       this.logger.warn('ORDER_CONFIRMATION template not configured, skipping test');
-      return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'template_missing')]);
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_missing')]);
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping test');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
+    }
+
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('ORDER_CONFIRMATION template disabled, skipping test');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
     }
 
     const testOrderId = generateOrderId(1);
@@ -780,7 +786,7 @@ export class AlimtalkService {
       } as PaymentConfig,
       template,
     );
-    return this._sendOrderFriendtalks([msg]);
+    return this._sendAlimtalk([msg]);
   }
 
   async sendTestPaymentReminder(phone: string): Promise<KakaoDeliveryBatchResult> {
@@ -788,6 +794,6 @@ export class AlimtalkService {
   }
 
   async sendTestCartExpiring(phone: string): Promise<KakaoDeliveryBatchResult> {
-    return this.sendCartExpiringAlimtalk(phone, '테스트 고객', '테스트 상품', 1);
+    return this.sendCartReminderFriendtalk(phone, '테스트 상품', 24);
   }
 }

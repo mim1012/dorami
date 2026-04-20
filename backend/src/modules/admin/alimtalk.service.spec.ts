@@ -6,7 +6,7 @@ describe('AlimtalkService', () => {
   let service: AlimtalkService;
   let prisma: {
     systemConfig: { findFirst: jest.Mock };
-    notificationTemplate: { findFirst: jest.Mock };
+    notificationTemplate: { findFirst: jest.Mock; findMany: jest.Mock };
     order: { findUnique: jest.Mock };
   };
   let configService: { get: jest.Mock };
@@ -14,7 +14,7 @@ describe('AlimtalkService', () => {
   beforeEach(() => {
     prisma = {
       systemConfig: { findFirst: jest.fn().mockResolvedValue({ alimtalkEnabled: true }) },
-      notificationTemplate: { findFirst: jest.fn() },
+      notificationTemplate: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       order: { findUnique: jest.fn() },
     };
 
@@ -118,10 +118,12 @@ describe('AlimtalkService', () => {
   });
 
   it('returns skipped result when payment reminder template code is missing', async () => {
-    prisma.notificationTemplate.findFirst.mockResolvedValue({
-      template: '주문 #{주문번호} / #{금액}',
-      kakaoTemplateCode: '',
-    });
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호} / #{금액}',
+        kakaoTemplateCode: '',
+      },
+    ]);
 
     const result = await service.sendPaymentReminderAlimtalk('01012345678', 'ORD-1', 50000);
 
@@ -132,6 +134,88 @@ describe('AlimtalkService', () => {
       recipient: '01012345678',
       reason: 'template_code_missing',
     });
+  });
+
+  it('sends ORDER_CONFIRMATION through alimtalk channel when template code exists', async () => {
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호} / #{금액}',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+      {
+        template: '주문 #{주문번호} / #{금액} / #{결제수단}',
+        kakaoTemplateCode: 'ORD_TPL',
+        enabled: true,
+      },
+    ]);
+    prisma.systemConfig.findFirst.mockResolvedValue({
+      alimtalkEnabled: true,
+      zelleEmail: 'zelle@example.com',
+      zelleRecipientName: 'Zelle Kim',
+      venmoEmail: '@venmo',
+      venmoRecipientName: 'Venmo Kim',
+      bankName: 'KB국민은행',
+      bankAccountNumber: '',
+      bankAccountHolder: '',
+    });
+    prisma.order.findUnique.mockResolvedValue({
+      user: { name: '테스트 고객' },
+      orderItems: [{ productName: '테스트 상품' }],
+    });
+    setBizgoOmniResult({
+      data: { data: { destinations: [{ code: 'A000', result: 'OK', msgKey: 'ord-1' }] } },
+    });
+
+    const result = await service.sendOrderAlimtalk('01012345678', 'ORD-1', 50000);
+
+    expect(result.results[0]).toMatchObject({
+      status: 'sent',
+      channel: 'AT',
+      recipient: '01012345678',
+      providerMessageKey: 'ord-1',
+    });
+  });
+
+  it('skips ORDER_CONFIRMATION when alimtalk template code is missing', async () => {
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호}',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+    ]);
+    prisma.order.findUnique.mockResolvedValue({
+      user: { name: '테스트 고객' },
+      orderItems: [{ productName: '테스트 상품' }],
+    });
+
+    const result = await service.sendOrderAlimtalk('01012345678', 'ORD-1', 50000);
+
+    expect(result.results[0]).toMatchObject({
+      status: 'skipped',
+      channel: 'AT',
+      recipient: '01012345678',
+      reason: 'template_code_missing',
+    });
+  });
+
+  it('ignores leftover bank name when bank account number is empty', async () => {
+    const replaced = (service as any).replacePaymentTemplateVariables(
+      '수단 #{결제수단} / 계정 #{송금계정} / 수취인 #{수취인명}',
+      (service as any).buildPaymentInfo({
+        zelleEmail: 'zelle@example.com',
+        zelleRecipientName: 'Zelle Kim',
+        venmoEmail: '@venmo',
+        venmoRecipientName: 'Venmo Kim',
+        bankName: 'KB국민은행',
+        bankAccountNumber: '',
+        bankAccountHolder: '',
+      }),
+    );
+
+    expect(replaced).toContain('Zelle / Venmo');
+    expect(replaced).not.toContain('KB국민은행');
   });
 
   it('fills generic payment placeholders with Zelle and Venmo only', async () => {
@@ -152,6 +236,105 @@ describe('AlimtalkService', () => {
     expect(replaced).toContain('zelle@example.com / @venmo');
     expect(replaced).toContain('Zelle Kim / Venmo Kim');
     expect(replaced).not.toContain('국민은행');
+  });
+
+  it('keeps extra item suffix shape for single-item order confirmation messages', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-1',
+      12500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '무료배송이야' }],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n■ 입금계좌: #{은행명} #{계좌번호} (#{예금주})',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('■ 주문상품: 무료배송이야 외 0건');
+  });
+
+  it('uses extra item count for multi-item order confirmation messages', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-2',
+      22500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '상품A' }, { productName: '상품B' }],
+      },
+      {
+        bankName: 'KB국민은행',
+        bankAccountNumber: '123-456',
+        bankAccountHolder: '홍길동',
+      },
+      {
+        template: '주문상품: #{상품명} 외 #{수량}건',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('주문상품: 상품A 외 1건');
+  });
+
+  it('uses the approved CRDER_CONFIRMATION body without payment account lines', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-3',
+      12500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '무료배송이야' }],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.\n\n■ 입금계좌: #{은행명} #{계좌번호} (#{예금주})',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toBe(
+      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야 외 0건\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
+    );
+    expect(message.text).not.toContain('입금계좌');
+    expect(message.text).not.toContain('Zelle');
+  });
+
+  it('uses friendtalk path for cart reminder test sends', async () => {
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '[도레미마켓] 장바구니 리마인드',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+    ]);
+    setBizgoOmniResult({
+      data: { data: { destinations: [{ code: 'A000', result: 'OK', msgKey: 'cart-ft-1' }] } },
+    });
+
+    const result = await service.sendTestCartExpiring('01012345678');
+
+    expect(result.results[0]).toMatchObject({
+      status: 'sent',
+      channel: 'FT',
+      recipient: '01012345678',
+      providerMessageKey: 'cart-ft-1',
+    });
   });
 
   it('keeps legacy bank placeholders working for old approved templates', async () => {
