@@ -238,7 +238,7 @@ describe('AlimtalkService', () => {
     expect(replaced).not.toContain('국민은행');
   });
 
-  it('omits extra item suffix for single-item order confirmation messages', () => {
+  it('keeps extra item suffix shape for single-item order confirmation messages', () => {
     const message = (service as any).buildOrderMessage(
       '01012345678',
       'ORD-1',
@@ -260,8 +260,7 @@ describe('AlimtalkService', () => {
       },
     );
 
-    expect(message.text).toContain('■ 주문상품: 무료배송이야');
-    expect(message.text).not.toContain('외 0건');
+    expect(message.text).toContain('■ 주문상품: 무료배송이야 외 0건');
   });
 
   it('uses extra item count for multi-item order confirmation messages', () => {
@@ -310,7 +309,7 @@ describe('AlimtalkService', () => {
     );
 
     expect(message.text).toBe(
-      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
+      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야 외 0건\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
     );
     expect(message.text).not.toContain('입금계좌');
     expect(message.text).not.toContain('Zelle');

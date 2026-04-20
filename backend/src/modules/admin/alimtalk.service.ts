@@ -308,7 +308,7 @@ export class AlimtalkService {
         .replace('#{수량}', String(extraItemCount))
         .replace('#{금액}', total.toLocaleString()),
       paymentInfo,
-    ).replace(/\s외 0건/g, '');
+    );
 
     return {
       to: phone,
