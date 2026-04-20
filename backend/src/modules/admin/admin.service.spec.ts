@@ -1,4 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+
+jest.mock(
+  '@bizgo/bizgo-sdk-comm-js',
+  () => ({
+    Bizgo: jest.fn(),
+    BizgoOptionsBuilder: jest.fn().mockImplementation(() => ({
+      setBaseURL: jest.fn().mockReturnThis(),
+      setApiKey: jest.fn().mockReturnThis(),
+      build: jest.fn().mockReturnValue({}),
+    })),
+    AlimtalkBuilder: jest.fn(),
+    AlimtalkAttachmentBuilder: jest.fn(),
+    BrandMessageBuilder: jest.fn(),
+    BrandMessageAttachmentBuilder: jest.fn(),
+    DestinationBuilder: jest.fn(),
+    OMNIRequestBodyBuilder: jest.fn(),
+    KakaoButtonBuilder: jest.fn(),
+  }),
+  { virtual: true },
+);
+
 import { AdminService } from './admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -108,6 +130,12 @@ describe('AdminService', () => {
             del: jest.fn(),
             get: jest.fn(),
             exists: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
           },
         },
         {
