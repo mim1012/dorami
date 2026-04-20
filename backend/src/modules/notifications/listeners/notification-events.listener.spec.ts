@@ -42,7 +42,6 @@ describe('NotificationEventsListener', () => {
         {
           provide: NotificationsService,
           useValue: {
-            sendOrderCreatedNotification: jest.fn(),
             sendPaymentConfirmedNotification: jest.fn(),
             sendReservationPromotedNotification: jest.fn(),
             sendCartExpiredNotification: jest.fn(),
@@ -67,8 +66,8 @@ describe('NotificationEventsListener', () => {
 
   describe('EventEmitter2 통합 - order:created 이벤트', () => {
     let integrationModule: TestingModule;
-    let _integrationListener: NotificationEventsListener;
     let eventEmitter: EventEmitter2;
+    let integrationAlimtalkService: AlimtalkService;
 
     const payload = { orderId: 'ORD-20260309-00001', userId: 'user-1' };
 
@@ -81,7 +80,9 @@ describe('NotificationEventsListener', () => {
             provide: PrismaService,
             useValue: {
               order: { findUnique: jest.fn().mockResolvedValue(mockOrder) },
-              user: { findUnique: jest.fn().mockResolvedValue({ kakaoPhone: null }) },
+              user: { findUnique: jest.fn().mockResolvedValue({ kakaoPhone: '010-9999-0000' }) },
+              liveStream: { findFirst: jest.fn(), findUnique: jest.fn() },
+              product: { findUnique: jest.fn() },
             },
           },
           {
@@ -91,7 +92,6 @@ describe('NotificationEventsListener', () => {
           {
             provide: NotificationsService,
             useValue: {
-              sendOrderCreatedNotification: jest.fn().mockResolvedValue(undefined),
               sendPaymentConfirmedNotification: jest.fn(),
               sendReservationPromotedNotification: jest.fn(),
               sendCartExpiredNotification: jest.fn(),
@@ -104,29 +104,22 @@ describe('NotificationEventsListener', () => {
         ],
       }).compile();
 
-      // onModuleInit 수명주기를 실행해야 @OnEvent 핸들러가 EventEmitter2에 등록된다
       await integrationModule.init();
-
-      _integrationListener = integrationModule.get<NotificationEventsListener>(
-        NotificationEventsListener,
-      );
       eventEmitter = integrationModule.get<EventEmitter2>(EventEmitter2);
+      integrationAlimtalkService = integrationModule.get<AlimtalkService>(AlimtalkService);
     });
 
     afterEach(async () => {
       await integrationModule.close();
     });
 
-    it('emitAsync("order:created") 호출 시 handleOrderCreated가 실행된다', async () => {
-      // @OnEvent 데코레이터는 모듈 초기화 시점에 메서드 참조를 등록하므로
-      // spy로 교체 후 재등록이 필요하다. 대신 내부 의존성 호출로 실행을 검증한다.
-      const notifService = integrationModule.get<NotificationsService>(NotificationsService);
-      const sendSpy = jest.spyOn(notifService, 'sendOrderCreatedNotification');
+    it('emitAsync("order:created") 호출 시 주문 알림톡 발송 로직이 실행된다', async () => {
+      const sendSpy = jest.spyOn(integrationAlimtalkService, 'sendOrderAlimtalk');
 
       await eventEmitter.emitAsync('order:created', payload);
 
       expect(sendSpy).toHaveBeenCalledTimes(1);
-      expect(sendSpy).toHaveBeenCalledWith(payload.userId, payload.orderId);
+      expect(sendSpy).toHaveBeenCalledWith('010-9999-0000', payload.orderId, 50000);
     });
   });
 
