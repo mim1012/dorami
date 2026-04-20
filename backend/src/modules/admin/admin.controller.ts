@@ -305,7 +305,7 @@ export class AdminController {
   }
 
   @Post('alimtalk/test-cart-expiring')
-  @ApiOperation({ summary: '장바구니 만료 알림톡 테스트 발송 (관리자)' })
+  @ApiOperation({ summary: '장바구니 리마인드 친구톡 테스트 발송 (관리자)' })
   async testCartExpiring(@Body() dto: SendTestAlimtalkDto) {
     const result = await this.adminService.sendTestCartExpiring(dto.phone);
     return { phone: dto.phone, result };

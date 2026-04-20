@@ -2081,10 +2081,33 @@ export class AdminService {
     );
 
     const templates = await this.prisma.notificationTemplate.findMany({
-      orderBy: [{ createdAt: 'asc' }, { name: 'asc' }],
+      orderBy: [{ type: 'asc' }, { updatedAt: 'desc' }, { createdAt: 'desc' }, { name: 'asc' }],
     });
 
-    return templates;
+    const deduped = Array.from(
+      templates
+        .reduce((map, template) => {
+          const current = map.get(template.type);
+          const currentScore = current
+            ? (current.kakaoTemplateCode?.trim() ? 100 : 0) +
+              (current.enabled !== false ? 10 : 0) +
+              (current.template?.trim() ? 1 : 0)
+            : -1;
+          const nextScore =
+            (template.kakaoTemplateCode?.trim() ? 100 : 0) +
+            (template.enabled !== false ? 10 : 0) +
+            (template.template?.trim() ? 1 : 0);
+
+          if (!current || nextScore > currentScore) {
+            map.set(template.type, template);
+          }
+
+          return map;
+        }, new Map<string, (typeof templates)[number]>())
+        .values(),
+    );
+
+    return deduped;
   }
 
   /**

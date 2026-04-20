@@ -376,6 +376,54 @@ export class AlimtalkService {
     return template?.enabled !== false;
   }
 
+  private async getPreferredTemplate(
+    type: string,
+    options?: { requireKakaoTemplateCode?: boolean },
+  ) {
+    const templates = await this.prisma.notificationTemplate.findMany({
+      where: { type },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    if (templates.length === 0) {
+      return null;
+    }
+
+    const requireCode = options?.requireKakaoTemplateCode ?? false;
+
+    const scored = templates
+      .map((template: (typeof templates)[number], index: number) => ({
+        template,
+        index,
+        score:
+          (template.kakaoTemplateCode?.trim() ? 100 : 0) +
+          (template.enabled !== false ? 10 : 0) +
+          (template.template?.trim() ? 1 : 0),
+      }))
+      .sort(
+        (
+          a: { template: (typeof templates)[number]; index: number; score: number },
+          b: { template: (typeof templates)[number]; index: number; score: number },
+        ) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          return a.index - b.index;
+        },
+      );
+
+    if (requireCode) {
+      const withCode = scored.find((entry: { template: (typeof templates)[number] }) =>
+        entry.template.kakaoTemplateCode?.trim(),
+      );
+      if (withCode) {
+        return withCode.template;
+      }
+    }
+
+    return scored[0].template;
+  }
+
   async sendOrderAlimtalk(
     phone: string,
     orderId: string,
@@ -387,7 +435,7 @@ export class AlimtalkService {
     }
 
     const [template, order, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.getPreferredTemplate('ORDER_CONFIRMATION', { requireKakaoTemplateCode: true }),
       this.prisma.order.findUnique({
         where: { id: orderId },
         include: {
@@ -434,7 +482,7 @@ export class AlimtalkService {
     }
 
     const [template, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({ where: { type: 'ORDER_CONFIRMATION' } }),
+      this.getPreferredTemplate('ORDER_CONFIRMATION', { requireKakaoTemplateCode: true }),
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
@@ -488,9 +536,7 @@ export class AlimtalkService {
     }
 
     const [template, config] = await Promise.all([
-      this.prisma.notificationTemplate.findFirst({
-        where: { type: 'PAYMENT_REMINDER' },
-      }),
+      this.getPreferredTemplate('PAYMENT_REMINDER', { requireKakaoTemplateCode: true }),
       this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
     ]);
 
@@ -537,8 +583,8 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'disabled')]);
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'CART_EXPIRING' },
+    const template = await this.getPreferredTemplate('CART_EXPIRING', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.kakaoTemplateCode) {
@@ -581,10 +627,7 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('FT', phone, 'provider_unavailable')]);
     }
 
-    const cartTemplate = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'CART_EXPIRING' },
-      select: { enabled: true },
-    });
+    const cartTemplate = await this.getPreferredTemplate('CART_EXPIRING');
 
     if (!this.isTemplateEnabled(cartTemplate)) {
       this.logger.warn('CART_EXPIRING template disabled, skipping reminder friendtalk');
@@ -662,8 +705,8 @@ export class AlimtalkService {
       return this.buildBatchResult([]);
     }
 
-    const template = await this.prisma.notificationTemplate.findFirst({
-      where: { type: 'LIVE_START' },
+    const template = await this.getPreferredTemplate('LIVE_START', {
+      requireKakaoTemplateCode: true,
     });
 
     if (!template?.kakaoTemplateCode) {
@@ -731,6 +774,6 @@ export class AlimtalkService {
   }
 
   async sendTestCartExpiring(phone: string): Promise<KakaoDeliveryBatchResult> {
-    return this.sendCartExpiringAlimtalk(phone, '테스트 고객', '테스트 상품', 1);
+    return this.sendCartReminderFriendtalk(phone, '테스트 상품', 24);
   }
 }

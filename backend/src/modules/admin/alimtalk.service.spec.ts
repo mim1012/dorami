@@ -6,7 +6,7 @@ describe('AlimtalkService', () => {
   let service: AlimtalkService;
   let prisma: {
     systemConfig: { findFirst: jest.Mock };
-    notificationTemplate: { findFirst: jest.Mock };
+    notificationTemplate: { findFirst: jest.Mock; findMany: jest.Mock };
     order: { findUnique: jest.Mock };
   };
   let configService: { get: jest.Mock };
@@ -14,7 +14,7 @@ describe('AlimtalkService', () => {
   beforeEach(() => {
     prisma = {
       systemConfig: { findFirst: jest.fn().mockResolvedValue({ alimtalkEnabled: true }) },
-      notificationTemplate: { findFirst: jest.fn() },
+      notificationTemplate: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       order: { findUnique: jest.fn() },
     };
 
@@ -118,10 +118,12 @@ describe('AlimtalkService', () => {
   });
 
   it('returns skipped result when payment reminder template code is missing', async () => {
-    prisma.notificationTemplate.findFirst.mockResolvedValue({
-      template: '주문 #{주문번호} / #{금액}',
-      kakaoTemplateCode: '',
-    });
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호} / #{금액}',
+        kakaoTemplateCode: '',
+      },
+    ]);
 
     const result = await service.sendPaymentReminderAlimtalk('01012345678', 'ORD-1', 50000);
 
@@ -135,11 +137,18 @@ describe('AlimtalkService', () => {
   });
 
   it('sends ORDER_CONFIRMATION through alimtalk channel when template code exists', async () => {
-    prisma.notificationTemplate.findFirst.mockResolvedValue({
-      template: '주문 #{주문번호} / #{금액} / #{결제수단}',
-      kakaoTemplateCode: 'ORD_TPL',
-      enabled: true,
-    });
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호} / #{금액}',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+      {
+        template: '주문 #{주문번호} / #{금액} / #{결제수단}',
+        kakaoTemplateCode: 'ORD_TPL',
+        enabled: true,
+      },
+    ]);
     prisma.systemConfig.findFirst.mockResolvedValue({
       alimtalkEnabled: true,
       zelleEmail: 'zelle@example.com',
@@ -169,11 +178,13 @@ describe('AlimtalkService', () => {
   });
 
   it('skips ORDER_CONFIRMATION when alimtalk template code is missing', async () => {
-    prisma.notificationTemplate.findFirst.mockResolvedValue({
-      template: '주문 #{주문번호}',
-      kakaoTemplateCode: '',
-      enabled: true,
-    });
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '주문 #{주문번호}',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+    ]);
     prisma.order.findUnique.mockResolvedValue({
       user: { name: '테스트 고객' },
       orderItems: [{ productName: '테스트 상품' }],
@@ -225,6 +236,28 @@ describe('AlimtalkService', () => {
     expect(replaced).toContain('zelle@example.com / @venmo');
     expect(replaced).toContain('Zelle Kim / Venmo Kim');
     expect(replaced).not.toContain('국민은행');
+  });
+
+  it('uses friendtalk path for cart reminder test sends', async () => {
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '[도레미마켓] 장바구니 리마인드',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+    ]);
+    setBizgoOmniResult({
+      data: { data: { destinations: [{ code: 'A000', result: 'OK', msgKey: 'cart-ft-1' }] } },
+    });
+
+    const result = await service.sendTestCartExpiring('01012345678');
+
+    expect(result.results[0]).toMatchObject({
+      status: 'sent',
+      channel: 'FT',
+      recipient: '01012345678',
+      providerMessageKey: 'cart-ft-1',
+    });
   });
 
   it('keeps legacy bank placeholders working for old approved templates', async () => {
