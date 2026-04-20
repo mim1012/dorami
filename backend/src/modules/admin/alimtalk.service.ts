@@ -753,6 +753,11 @@ export class AlimtalkService {
       return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_code_missing')]);
     }
 
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('ORDER_CONFIRMATION template disabled, skipping test');
+      return this.buildBatchResult([this.buildSkippedResult('AT', phone, 'template_disabled')]);
+    }
+
     const testOrderId = generateOrderId(1);
     const msg = this.buildOrderMessage(
       phone,
