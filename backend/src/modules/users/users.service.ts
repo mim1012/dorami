@@ -107,18 +107,34 @@ export class UsersService {
       zip: dto.zip,
     };
 
-    // Update user with profile data
-    let user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        email: dto.email,
-        depositorName: dto.depositorName,
-        instagramId: dto.instagramId,
-        ...(dto.kakaoPhone !== undefined && { kakaoPhone: dto.kakaoPhone }),
-        shippingAddress: shippingAddress as unknown as Prisma.InputJsonValue,
-        profileCompletedAt: new Date(),
-      },
-    });
+    let user;
+    try {
+      // Update user with profile data
+      user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: dto.email,
+          depositorName: dto.depositorName,
+          instagramId: dto.instagramId,
+          ...(dto.kakaoPhone !== undefined && { kakaoPhone: dto.kakaoPhone }),
+          shippingAddress: shippingAddress as unknown as Prisma.InputJsonValue,
+          profileCompletedAt: new Date(),
+        },
+      });
+    } catch (err: unknown) {
+      const prismaErr = err as { code?: string; meta?: { target?: string[] } };
+      if (prismaErr.code === 'P2002') {
+        const target = prismaErr.meta?.target ?? [];
+        if (target.includes('email')) {
+          throw new ConflictException('이미 사용 중인 이메일입니다');
+        }
+        if (target.includes('instagramId') || target.includes('instagram_id')) {
+          throw new ConflictException('이미 사용 중인 인스타그램 ID입니다');
+        }
+        throw new ConflictException('중복된 정보가 있습니다');
+      }
+      throw err;
+    }
 
     // Auto-promote to ADMIN if email matches ADMIN_EMAILS env var
     const adminEmails = this.configService.get<string>('ADMIN_EMAILS', '');
