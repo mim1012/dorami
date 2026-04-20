@@ -46,8 +46,6 @@ export class NotificationEventsListener {
           Number(order.total),
         );
       }
-
-      await this.notificationsService.sendOrderCreatedNotification(payload.userId, payload.orderId);
     } catch (error) {
       this.logger.error('Failed to send order created notification', (error as Error).message);
     }
@@ -299,7 +297,9 @@ export class NotificationEventsListener {
         select: { kakaoPhone: true },
       });
 
-      const phoneNumbers = users.map((u) => u.kakaoPhone).filter((p): p is string => p !== null);
+      const phoneNumbers = users
+        .map((u: { kakaoPhone: string | null }) => u.kakaoPhone)
+        .filter((p: string | null): p is string => p !== null);
 
       if (phoneNumbers.length === 0) {
         return;
