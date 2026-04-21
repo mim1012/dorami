@@ -190,7 +190,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Required staging + Bizgo environment variables are set"
+          echo "✅ Required staging + Bizgo + VAPID environment variables are set"
 
       - name: Deploy via SSH
         env:
@@ -225,8 +225,7 @@ jobs:
           echo "  IMAGE_TAG=${IMAGE_TAG}"
           echo "  GITHUB_REF_NAME=${GITHUB_REF_NAME}"
           echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
-          echo "  GHCR_TOKEN=***"
-
+          echo '  GHCR_TOKEN is set'
           BIZGO_API_KEY_B64=$(printf '%s' "$BIZGO_API_KEY" | base64 | tr -d '\n')
           BIZGO_SENDER_KEY_B64=$(printf '%s' "$BIZGO_SENDER_KEY" | base64 | tr -d '\n')
 
@@ -257,7 +256,7 @@ jobs:
               bash -se <<'ENDSSH'
             set -e
 
-            export BIZGO_API_KEY="$(printf '%s' "$BIZGO_API_KEY_B64" | base64 -d)"
+            export BIZGO_API_KEY=$(printf '%s' "$BIZGO_API_KEY_B64" | base64 -d)
             export BIZGO_SENDER_KEY="$(printf '%s' "$BIZGO_SENDER_KEY_B64" | base64 -d)"
 
             echo "SSH connection successful"
