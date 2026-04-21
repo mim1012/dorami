@@ -223,40 +223,50 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         run: |
-          # Validate variables are available before SSH
+          set -euo pipefail
+
           echo "Pre-SSH validation:"
           echo "  IMAGE_TAG=${IMAGE_TAG}"
           echo "  GITHUB_REF_NAME=${GITHUB_REF_NAME}"
           echo "  GITHUB_REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER}"
-          echo "  GHCR_TOKEN=***set***"
+          echo "  GHCR_TOKEN=***"
 
-          ssh $USER@$HOST << ENDSSH
+          BIZGO_API_KEY_B64=$(printf '%s' "$BIZGO_API_KEY" | base64 | tr -d '\n')
+          BIZGO_SENDER_KEY_B64=$(printf '%s' "$BIZGO_SENDER_KEY" | base64 | tr -d '\n')
+
+          ssh "$USER@$HOST" \
+            env \
+              IMAGE_TAG="${IMAGE_TAG}" \
+              GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+              GITHUB_REPOSITORY_OWNER="${GITHUB_REPOSITORY_OWNER}" \
+              STAGING_URL_VAR="${STAGING_URL_VAR}" \
+              GHCR_TOKEN="${GHCR_TOKEN}" \
+              KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}" \
+              KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}" \
+              KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}" \
+              ADMIN_EMAILS="${ADMIN_EMAILS}" \
+              STAGING_JWT_SECRET="${STAGING_JWT_SECRET}" \
+              STAGING_PROFILE_ENCRYPTION_KEY="${STAGING_PROFILE_ENCRYPTION_KEY}" \
+              STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}" \
+              STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}" \
+              KAKAO_JS_KEY="${KAKAO_JS_KEY}" \
+              BIZGO_API_KEY_B64="${BIZGO_API_KEY_B64}" \
+              BIZGO_SENDER_KEY_B64="${BIZGO_SENDER_KEY_B64}" \
+              VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}" \
+              VAPID_PRIVATE_KEY="${VAPID_PRIVATE_KEY}" \
+              VAPID_SUBJECT="${VAPID_SUBJECT}" \
+              SRS_WEBHOOK_SECRET="${SRS_WEBHOOK_SECRET}" \
+              TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}" \
+              TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID}" \
+              bash -se <<'ENDSSH'
             set -e
 
-            # Variables expanded by runner before SSH transmission (unquoted heredoc)
-            export IMAGE_TAG="${IMAGE_TAG}"
-            export GITHUB_REF_NAME="${GITHUB_REF_NAME}"
-            export GITHUB_REPOSITORY_OWNER="${GITHUB_REPOSITORY_OWNER}"
-            export STAGING_URL_VAR="${STAGING_URL_VAR}"
-            export GHCR_TOKEN="${GHCR_TOKEN}"
-            export KAKAO_CLIENT_ID="${KAKAO_CLIENT_ID}"
-            export KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET}"
-            export KAKAO_CALLBACK_URL="${KAKAO_CALLBACK_URL}"
-            export ADMIN_EMAILS="${ADMIN_EMAILS}"
-            export STAGING_JWT_SECRET="${STAGING_JWT_SECRET}"
-            export STAGING_PROFILE_ENCRYPTION_KEY="${STAGING_PROFILE_ENCRYPTION_KEY}"
-            export STAGING_POSTGRES_PASSWORD="${STAGING_POSTGRES_PASSWORD}"
-            export STAGING_REDIS_PASSWORD="${STAGING_REDIS_PASSWORD}"
-            export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
-            export BIZGO_API_KEY="${BIZGO_API_KEY}"
-            export BIZGO_SENDER_KEY="${BIZGO_SENDER_KEY}"
-            export STAGING_SENTRY_DSN_BACKEND="${STAGING_SENTRY_DSN_BACKEND}"
-            export STAGING_SENTRY_DSN_FRONTEND="${STAGING_SENTRY_DSN_FRONTEND}"
-            export SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}"
-            export SENTRY_ORG="${SENTRY_ORG}"
+            export BIZGO_API_KEY="$(printf '%s' "$BIZGO_API_KEY_B64" | base64 -d)"
+            export BIZGO_SENDER_KEY="$(printf '%s' "$BIZGO_SENDER_KEY_B64" | base64 -d)"
             export VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}"
             export VAPID_PRIVATE_KEY="${VAPID_PRIVATE_KEY}"
             export VAPID_SUBJECT="${VAPID_SUBJECT}"
+
 
             echo "SSH connection successful"
             cd /opt/dorami
@@ -268,7 +278,7 @@ jobs:
             echo ""
             echo "=== PHASE 1: Code Update ==="
             git fetch origin "${GITHUB_REF_NAME}"
-            git reset --hard origin/${GITHUB_REF_NAME}
+            git reset --hard "origin/${GITHUB_REF_NAME}"
 
             echo "=== Creating .env.staging from GitHub Secrets ==="
             # Security: disable shell trace to prevent secrets leaking via ACTIONS_STEP_DEBUG
