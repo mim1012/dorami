@@ -127,6 +127,9 @@ jobs:
           KAKAO_CALLBACK_URL: ${{ secrets.STAGING_KAKAO_CALLBACK_URL }}
           BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
           BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: |
           echo "=== Validating required environment variables ==="
           MISSING_VARS=()
@@ -161,6 +164,24 @@ jobs:
             echo "✓ BIZGO_SENDER_KEY is set"
           fi
 
+          if [ -z "$VAPID_PUBLIC_KEY" ]; then
+            MISSING_VARS+=("VAPID_PUBLIC_KEY")
+          else
+            echo "✓ VAPID_PUBLIC_KEY is set"
+          fi
+
+          if [ -z "$VAPID_PRIVATE_KEY" ]; then
+            MISSING_VARS+=("VAPID_PRIVATE_KEY")
+          else
+            echo "✓ VAPID_PRIVATE_KEY is set"
+          fi
+
+          if [ -z "$VAPID_SUBJECT" ]; then
+            MISSING_VARS+=("VAPID_SUBJECT")
+          else
+            echo "✓ VAPID_SUBJECT is set"
+          fi
+
           if [ ${#MISSING_VARS[@]} -gt 0 ]; then
             echo "❌ ERROR: Missing required GitHub Actions secrets:"
             for var in "${MISSING_VARS[@]}"; do
@@ -191,6 +212,9 @@ jobs:
           KAKAO_JS_KEY: ${{ secrets.KAKAO_JS_KEY }}
           BIZGO_API_KEY: ${{ secrets.BIZGO_API_KEY }}
           BIZGO_SENDER_KEY: ${{ secrets.BIZGO_SENDER_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           SRS_WEBHOOK_SECRET: ${{ secrets.SRS_WEBHOOK_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -224,6 +248,9 @@ jobs:
             export KAKAO_JS_KEY="${KAKAO_JS_KEY}"
             export BIZGO_API_KEY="$(printf '%s' '${BIZGO_API_KEY_B64}' | base64 -d)"
             export BIZGO_SENDER_KEY="$(printf '%s' '${BIZGO_SENDER_KEY_B64}' | base64 -d)"
+            export VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY}"
+            export VAPID_PRIVATE_KEY="${VAPID_PRIVATE_KEY}"
+            export VAPID_SUBJECT="${VAPID_SUBJECT}"
 
             echo "SSH connection successful"
             cd /opt/dorami
@@ -272,6 +299,9 @@ jobs:
               echo "KAKAO_EXTERNAL_ORIGIN=\"https://staging.doremi-live.com\""
               echo "LOG_LEVEL=\"debug\""
               echo "FRONTEND_URL=\"https://staging.doremi-live.com\""
+              echo "VAPID_PUBLIC_KEY=\"${VAPID_PUBLIC_KEY}\""
+              echo "VAPID_PRIVATE_KEY=\"${VAPID_PRIVATE_KEY}\""
+              echo "VAPID_SUBJECT=\"${VAPID_SUBJECT}\""
               echo "SRS_WEBHOOK_SECRET=\"${SRS_WEBHOOK_SECRET}\""
               echo "BIZGO_API_KEY=\"${BIZGO_API_KEY}\""
               echo "BIZGO_SENDER_KEY=\"${BIZGO_SENDER_KEY}\""
