@@ -348,36 +348,36 @@ jobs:
             # Parallel pull: backend & frontend simultaneously
             echo "Pulling backend image in background..."
             docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG} &
-            BACKEND_PID=\$!
+            BACKEND_PID=$!
 
             echo "Pulling frontend image in background..."
             docker pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} &
-            FRONTEND_PID=\$!
+            FRONTEND_PID=$!
 
             # Wait for both with 60s timeout (timeout can't wrap shell built-ins)
             echo "Waiting for images to pull (max 60s)..."
             ELAPSED=0
-            while kill -0 \${BACKEND_PID} 2>/dev/null; do
-              if [ \${ELAPSED} -ge 60 ]; then
-                kill \${BACKEND_PID} 2>/dev/null || true
+            while kill -0 ${BACKEND_PID} 2>/dev/null; do
+              if [ ${ELAPSED} -ge 60 ]; then
+                kill ${BACKEND_PID} 2>/dev/null || true
                 echo "❌ Backend image pull timeout"
                 exit 1
               fi
-              sleep 2; ELAPSED=\$((ELAPSED+2))
+              sleep 2; ELAPSED=$((ELAPSED+2))
             done
-            wait \${BACKEND_PID} || { echo "❌ Backend image pull failed"; exit 1; }
+            wait ${BACKEND_PID} || { echo "❌ Backend image pull failed"; exit 1; }
             echo "✓ Backend image pulled"
 
             ELAPSED=0
-            while kill -0 \${FRONTEND_PID} 2>/dev/null; do
-              if [ \${ELAPSED} -ge 60 ]; then
-                kill \${FRONTEND_PID} 2>/dev/null || true
+            while kill -0 ${FRONTEND_PID} 2>/dev/null; do
+              if [ ${ELAPSED} -ge 60 ]; then
+                kill ${FRONTEND_PID} 2>/dev/null || true
                 echo "❌ Frontend image pull timeout"
                 exit 1
               fi
-              sleep 2; ELAPSED=\$((ELAPSED+2))
+              sleep 2; ELAPSED=$((ELAPSED+2))
             done
-            wait \${FRONTEND_PID} || { echo "❌ Frontend image pull failed"; exit 1; }
+            wait ${FRONTEND_PID} || { echo "❌ Frontend image pull failed"; exit 1; }
             echo "✓ Frontend image pulled"
 
             # ============================================================
@@ -414,10 +414,10 @@ jobs:
             echo "=== PHASE 4: PostgreSQL Ready Check (max 10s) ==="
             for i in 1 2 3 4 5 6 7 8 9 10; do
               if docker exec dorami-postgres-1 pg_isready -U postgres > /dev/null 2>&1; then
-                echo "✓ PostgreSQL ready (attempt \$i/10)"
+                echo "✓ PostgreSQL ready (attempt $i/10)"
                 break
               fi
-              if [ "\$i" = "10" ]; then
+              if [ "$i" = "10" ]; then
                 echo "❌ PostgreSQL NOT ready after 10 attempts (10s)"
                 docker logs dorami-postgres-1 --tail=20
                 exit 1
@@ -431,26 +431,26 @@ jobs:
             echo ""
             echo "=== PHASE 5: Backend Healthcheck (max 60s) ==="
             for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              CONTAINER_STATE=\$(docker inspect --format='{{.State.Status}}' dorami-backend-1 2>/dev/null || echo "missing")
+              CONTAINER_STATE=$(docker inspect --format='{{.State.Status}}' dorami-backend-1 2>/dev/null || echo "missing")
 
-              if [ "\$CONTAINER_STATE" = "exited" ] || [ "\$CONTAINER_STATE" = "dead" ]; then
-                echo "❌ Backend container stopped (state: \$CONTAINER_STATE)"
+              if [ "$CONTAINER_STATE" = "exited" ] || [ "$CONTAINER_STATE" = "dead" ]; then
+                echo "❌ Backend container stopped (state: $CONTAINER_STATE)"
                 docker logs dorami-backend-1 --tail=30
                 exit 1
               fi
 
               if docker exec dorami-backend-1 wget -qO- http://localhost:3001/api/health/live > /dev/null 2>&1; then
-                echo "✓ Backend healthy (attempt \$i/12)"
+                echo "✓ Backend healthy (attempt $i/12)"
                 break
               fi
 
-              if [ "\$i" = "12" ]; then
+              if [ "$i" = "12" ]; then
                 echo "❌ Backend NOT healthy after 60s"
                 docker logs dorami-backend-1 --tail=30
                 exit 1
               fi
 
-              echo "  Waiting for backend... (attempt \$i/12, state=\$CONTAINER_STATE)"
+              echo "  Waiting for backend... (attempt $i/12, state=$CONTAINER_STATE)"
               sleep 5
             done
 
@@ -474,23 +474,23 @@ jobs:
             echo "=== PHASE 6: Image Digest Verification ==="
 
             # Get container image digests
-            BACKEND_DIGEST=\$(docker inspect dorami-backend-1 | jq -r '.[0].Image')
-            FRONTEND_DIGEST=\$(docker inspect dorami-frontend-1 | jq -r '.[0].Image')
+            BACKEND_DIGEST=$(docker inspect dorami-backend-1 | jq -r '.[0].Image')
+            FRONTEND_DIGEST=$(docker inspect dorami-frontend-1 | jq -r '.[0].Image')
 
-            echo "Backend container digest: \${BACKEND_DIGEST}"
-            echo "Frontend container digest: \${FRONTEND_DIGEST}"
+            echo "Backend container digest: ${BACKEND_DIGEST}"
+            echo "Frontend container digest: ${FRONTEND_DIGEST}"
 
             # Get built image digests
-            BUILT_BACKEND=\$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG} | jq -r '.[0].Id')
-            BUILT_FRONTEND=\$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} | jq -r '.[0].Id')
+            BUILT_BACKEND=$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-backend:${IMAGE_TAG} | jq -r '.[0].Id')
+            BUILT_FRONTEND=$(docker image inspect ghcr.io/${GITHUB_REPOSITORY_OWNER}/dorami-frontend:${IMAGE_TAG} | jq -r '.[0].Id')
 
-            if [ "\${BACKEND_DIGEST}" = "\${BUILT_BACKEND}" ]; then
+            if [ "${BACKEND_DIGEST}" = "${BUILT_BACKEND}" ]; then
               echo "✓ Backend image digest matches"
             else
               echo "⚠️  Backend digest mismatch (using built image)"
             fi
 
-            if [ "\${FRONTEND_DIGEST}" = "\${BUILT_FRONTEND}" ]; then
+            if [ "${FRONTEND_DIGEST}" = "${BUILT_FRONTEND}" ]; then
               echo "✓ Frontend image digest matches"
             else
               echo "⚠️  Frontend digest mismatch (using built image)"
