@@ -16,6 +16,7 @@ export interface ShippingCalcItem {
 }
 
 export interface ShippingCalcCart {
+  shippingWaived?: boolean;
   freeShippingMode?: string;
   freeShippingThreshold?: number | null;
   cumulativePreviousSubtotal?: string;
@@ -40,6 +41,7 @@ export function calculateDynamicShipping(
   const cumulativePrevious = parseFloat(cart.cumulativePreviousSubtotal ?? '0');
   const defaultFee = parseFloat(cart.defaultShippingFee ?? '10');
 
+  if (cart.shippingWaived) return 0;
   if (freeShippingMode === 'UNCONDITIONAL') return 0;
 
   if (freeShippingMode === 'THRESHOLD' && freeShippingThreshold !== null) {

@@ -311,7 +311,9 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
           <span>배송비</span>
           <span>
             {dynamicShipping === 0 ? (
-              <span className="text-green-400">무료배송</span>
+              <span className="text-green-400">
+                {cartData?.shippingWaived ? '무료 (동일 방송 추가 주문)' : '무료배송'}
+              </span>
             ) : (
               formatPrice(dynamicShipping)
             )}

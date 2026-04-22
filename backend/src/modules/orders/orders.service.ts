@@ -476,6 +476,28 @@ export class OrdersService {
     return `ORD-${dateStr}-${sequenceStr}`;
   }
 
+  private async hasPriorOrderForStream(userId: string, streamKeys: string[]): Promise<boolean> {
+    if (!userId || streamKeys.length === 0) {
+      return false;
+    }
+
+    const existingOrder = await this.prisma.orderItem.findFirst({
+      where: {
+        order: {
+          userId,
+          status: { not: 'CANCELLED' },
+          deletedAt: null,
+        },
+        Product: {
+          streamKey: { in: streamKeys },
+        },
+      },
+      select: { id: true },
+    });
+
+    return existingOrder !== null;
+  }
+
   /**
    * Calculate order totals from items (DRY - used by createOrderFromCart and createOrder)
    * Shipping is per-broadcast based on LiveStream.freeShippingMode:
@@ -507,14 +529,13 @@ export class OrdersService {
 
       // Check per-broadcast free shipping mode
       let freeShippingApplied = false;
+      let streamKeys: string[] = [];
       if (productIds && productIds.length > 0) {
         const products = await this.prisma.product.findMany({
           where: { id: { in: productIds } },
           select: { streamKey: true },
         });
-        const streamKeys = [
-          ...new Set(products.map((p) => p.streamKey).filter(Boolean)),
-        ] as string[];
+        streamKeys = [...new Set(products.map((p) => p.streamKey).filter(Boolean))] as string[];
         if (streamKeys.length > 0) {
           const streams = await this.prisma.liveStream.findMany({
             where: { streamKey: { in: streamKeys } },
@@ -555,6 +576,10 @@ export class OrdersService {
             }
           }
         }
+      }
+
+      if (!freeShippingApplied && userId && streamKeys.length > 0) {
+        freeShippingApplied = await this.hasPriorOrderForStream(userId, streamKeys);
       }
 
       if (freeShippingApplied) {

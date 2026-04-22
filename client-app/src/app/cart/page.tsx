@@ -349,6 +349,7 @@ function CartPageContent() {
                   subtotal={selectedSubtotal}
                   totalShippingFee={selectedShipping}
                   grandTotal={selectedTotal}
+                  shippingWaived={cart.shippingWaived}
                 />
 
                 {/* Secondary actions */}
