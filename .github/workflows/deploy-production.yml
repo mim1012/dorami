@@ -838,23 +838,33 @@ jobs:
           HOST: ${{ secrets.PRODUCTION_HOST }}
           USER: ${{ secrets.PRODUCTION_USER }}
         run: |
-          ssh $USER@$HOST 'bash -s' << 'ENDSSH'
+          set +e
+          ssh \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=6 \
+            -o TCPKeepAlive=yes \
+            $USER@$HOST 'bash -s' << 'ENDSSH'
             nginx_ok=false
             for i in $(seq 1 12); do
-              status=$(docker compose -f /opt/dorami/docker-compose.base.yml -f /opt/dorami/docker-compose.prod.yml ps nginx 2>/dev/null | grep -E 'healthy|running' | head -1 || echo "")
-              if echo "$status" | grep -q 'healthy'; then
-                echo "nginx container healthy!"
+              status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' dorami-nginx-prod 2>/dev/null || echo "unknown")
+              if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                echo "nginx container ready: $status"
                 nginx_ok=true
                 break
               fi
-              echo "Waiting for nginx container... (${i}/12)"
+              echo "Waiting for nginx container... (${i}/12) status=${status}"
               sleep 5
             done
             if ! ${nginx_ok}; then
               echo "WARNING: nginx container did not reach healthy state (may be starting up)"
-              docker ps --filter name=nginx 2>/dev/null || true
+              docker ps --filter name=dorami-nginx-prod 2>/dev/null || true
             fi
           ENDSSH
+          ssh_status=$?
+          set -e
+          if [ "$ssh_status" -ne 0 ]; then
+            echo "WARNING: nginx health-check SSH session exited with code $ssh_status; continuing because later validation/smoke tests are authoritative"
+          fi
 
       - name: Validate nginx config
         env:
