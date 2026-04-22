@@ -20,9 +20,9 @@ export async function getFeaturedProducts(limit: number = 6): Promise<Product[]>
 }
 
 export async function getProductsByStreamKey(streamKey: string): Promise<Product[]> {
-  const response = await apiClient.get<Product[]>(
-    `/products?streamKey=${streamKey}&status=AVAILABLE`,
-  );
+  const response = await apiClient.get<Product[]>('/products', {
+    params: { streamKey, status: 'AVAILABLE', take: 100 },
+  });
   return response.data;
 }
 

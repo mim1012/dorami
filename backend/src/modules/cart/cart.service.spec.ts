@@ -188,6 +188,23 @@ describe('CartService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('should still block purchase when product is SOLD_OUT even if quantity remains', async () => {
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue({
+        ...mockProduct,
+        status: 'SOLD_OUT',
+        quantity: 5,
+      } as any);
+      jest
+        .spyOn(prismaService.cart, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        service.addToCart('user-1', { productId: 'product-1', quantity: 1 }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.product.update).not.toHaveBeenCalled();
+    });
+
     it('should throw InsufficientStockException when insufficient stock', async () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest

@@ -16,7 +16,7 @@ export interface FeaturedProduct {
  */
 export async function getFeaturedProduct(streamKey: string): Promise<FeaturedProduct | null> {
   const response = await apiClient.get<{ product: FeaturedProduct | null }>(
-    `/streaming/key/${streamKey}/featured-product`
+    `/streaming/key/${streamKey}/featured-product`,
   );
   return response.data.product;
 }
@@ -26,11 +26,11 @@ export async function getFeaturedProduct(streamKey: string): Promise<FeaturedPro
  */
 export async function setFeaturedProduct(
   streamKey: string,
-  productId: string
+  productId: string,
 ): Promise<FeaturedProduct> {
   const response = await apiClient.post<{ success: boolean; product: FeaturedProduct }>(
     `/streaming/${streamKey}/featured-product`,
-    { productId }
+    { productId },
   );
   return response.data.product;
 }
@@ -47,7 +47,7 @@ export async function clearFeaturedProduct(streamKey: string): Promise<void> {
  */
 export async function getStreamProducts(streamKey: string): Promise<FeaturedProduct[]> {
   const response = await apiClient.get<FeaturedProduct[]>('/products', {
-    params: { streamKey }
+    params: { streamKey, take: 100 },
   });
   return response.data;
 }

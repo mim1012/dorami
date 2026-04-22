@@ -127,7 +127,7 @@ export class ProductsService {
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-      take: options?.take ?? 50,
+      take: options?.take ?? 100,
       skip: options?.skip ?? 0,
     });
 

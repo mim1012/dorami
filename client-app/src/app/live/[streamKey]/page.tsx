@@ -315,7 +315,7 @@ export default function LiveStreamPage() {
     const safeFetchAllProducts = async () => {
       try {
         const products = await apiClient.get<Product[]>('/products', {
-          params: { streamKey: streamKey ?? '', status: 'AVAILABLE' },
+          params: { streamKey: streamKey ?? '', status: 'AVAILABLE', take: '100' },
         });
         if (!isCancelled) {
           setAllProducts(products.data ?? []);

@@ -236,14 +236,14 @@ describe('ProductsService', () => {
       updatedAt: new Date(),
     };
 
-    it('should use default take=50 and skip=0 when no options provided', async () => {
+    it('should use default take=100 and skip=0 when no options provided', async () => {
       jest.spyOn(prisma.product, 'findMany').mockResolvedValue([mockProduct] as any);
 
       await service.findByStreamKey('stream-abc');
 
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          take: 50,
+          take: 100,
           skip: 0,
         }),
       );
