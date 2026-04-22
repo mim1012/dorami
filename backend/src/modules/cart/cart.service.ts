@@ -579,6 +579,7 @@ export class CartService {
     let freeShippingThreshold: number | null = null;
     let cumulativePreviousSubtotal = 0;
     let appliedShippingFee = 0;
+    let shippingWaived = false;
 
     if (items.length > 0) {
       // Fetch system config for shipping settings
@@ -658,6 +659,27 @@ export class CartService {
         }
       }
 
+      if (!freeShippingApplied && userId && streamKeys.length > 0) {
+        const existingOrder = await this.prisma.orderItem.findFirst({
+          where: {
+            order: {
+              userId,
+              status: { not: 'CANCELLED' },
+              deletedAt: null,
+            },
+            Product: {
+              streamKey: { in: streamKeys },
+            },
+          },
+          select: { id: true },
+        });
+
+        if (existingOrder) {
+          freeShippingApplied = true;
+          shippingWaived = true;
+        }
+      }
+
       if (freeShippingApplied) {
         totalShippingFee = 0;
       } else {
@@ -681,6 +703,7 @@ export class CartService {
       totalShippingFee: String(totalShippingFee),
       grandTotal: String(subtotal + totalShippingFee),
       earliestExpiration,
+      shippingWaived,
       freeShippingMode,
       freeShippingThreshold,
       cumulativePreviousSubtotal: String(cumulativePreviousSubtotal),

@@ -153,6 +153,9 @@ describe('OrdersService - createOrderFromCart', () => {
             liveStream: {
               findMany: jest.fn().mockResolvedValue([]),
             },
+            orderItem: {
+              findFirst: jest.fn().mockResolvedValue(null),
+            },
             systemConfig: {
               findFirst: jest.fn().mockResolvedValue({
                 defaultShippingFee: 10,
@@ -278,6 +281,25 @@ describe('OrdersService - createOrderFromCart', () => {
       expect(result.subtotal).toBe('250'); // (100*2) + (50*1)
       expect(result.shippingFee).toBe('15'); // 10 + 5
       expect(result.total).toBe('265'); // 250 + 15
+    });
+
+    it('should waive shipping for repeat orders in the same stream', async () => {
+      jest
+        .spyOn(prismaService.product, 'findMany')
+        .mockResolvedValue([{ streamKey: 'stream-key-1' }] as any);
+      jest
+        .spyOn(prismaService.orderItem, 'findFirst')
+        .mockResolvedValue({ id: 'prior-order-item' } as any);
+
+      const totals = await (service as any).calculateOrderTotals(
+        [{ price: 100, quantity: 2 }],
+        'user-123',
+        ['product-1'],
+      );
+
+      expect(totals.subtotal).toBe(200);
+      expect(totals.totalShippingFee).toBe(0);
+      expect(totals.total).toBe(200);
     });
 
     it('should update cart items status to COMPLETED', async () => {
