@@ -55,11 +55,14 @@ const CRDER_CONFIRMATION_APPROVED_TEMPLATE = `[도레미 마켓] 주문이 접�
 #{고객명}님, 주문이 완료되었습니다.
 
 ■ 주문번호: #{주문번호}
-■ 주문상품: #{상품명} 외 #{수량}건
+■ 주문상품: #{상품표시명}
 ■ 결제금액: #{금액}원
 
 현재 입금대기 상태입니다.
-아래 계좌로 입금해주시면 확인 후 처리됩니다.`;
+아래 계정으로 입금해주시면 확인 후 처리됩니다.
+
+■ Zelle: #{젤계정} (#{젤예금주})
+■ Venmo: #{벤모계정} (#{벤모예금주})`;
 
 export type KakaoMessageChannel = 'AT' | 'FT';
 export type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
@@ -293,10 +296,13 @@ export class AlimtalkService {
     const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
     const itemCount = order?.orderItems?.length ?? 1;
     const extraItemCount = Math.max(itemCount - 1, 0);
+    const productDisplayName =
+      extraItemCount > 0 ? `${firstItem} 외 ${extraItemCount}건` : firstItem;
 
     const paymentInfo = this.buildPaymentInfo(config);
     const sourceTemplate =
-      template.kakaoTemplateCode === 'CRDER_CONFIRMATION'
+      template.kakaoTemplateCode === 'CRDER_CONFIRMATION' ||
+      template.kakaoTemplateCode === 'ORDER_CONFIRMATION'
         ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
         : template.template;
 
@@ -304,6 +310,7 @@ export class AlimtalkService {
       sourceTemplate
         .replace('#{고객명}', customerName)
         .replace('#{주문번호}', orderId)
+        .replace('#{상품표시명}', productDisplayName)
         .replace('#{상품명}', firstItem)
         .replace('#{수량}', String(extraItemCount))
         .replace('#{금액}', total.toLocaleString()),
@@ -328,20 +335,28 @@ export class AlimtalkService {
     label: string;
     account: string;
     holder: string;
+    zelleAccount: string;
+    zelleHolder: string;
+    venmoAccount: string;
+    venmoHolder: string;
   } {
+    const zelleAccount = config?.zelleEmail ?? '';
+    const zelleHolder = config?.zelleRecipientName ?? '';
+    const venmoAccount = config?.venmoEmail ?? '';
+    const venmoHolder = config?.venmoRecipientName ?? '';
     const methods = [
-      config?.zelleEmail
+      zelleAccount
         ? {
             label: 'Zelle',
-            account: config.zelleEmail,
-            holder: config.zelleRecipientName ?? '',
+            account: zelleAccount,
+            holder: zelleHolder,
           }
         : null,
-      config?.venmoEmail
+      venmoAccount
         ? {
             label: 'Venmo',
-            account: config.venmoEmail,
-            holder: config.venmoRecipientName ?? '',
+            account: venmoAccount,
+            holder: venmoHolder,
           }
         : null,
       config?.bankAccountNumber
@@ -358,6 +373,10 @@ export class AlimtalkService {
         label: '',
         account: '',
         holder: '',
+        zelleAccount,
+        zelleHolder,
+        venmoAccount,
+        venmoHolder,
       };
     }
 
@@ -371,17 +390,33 @@ export class AlimtalkService {
         .map((method) => method.holder)
         .filter(Boolean)
         .join(' / '),
+      zelleAccount,
+      zelleHolder,
+      venmoAccount,
+      venmoHolder,
     };
   }
 
   private replacePaymentTemplateVariables(
     template: string,
-    paymentInfo: { label: string; account: string; holder: string },
+    paymentInfo: {
+      label: string;
+      account: string;
+      holder: string;
+      zelleAccount: string;
+      zelleHolder: string;
+      venmoAccount: string;
+      venmoHolder: string;
+    },
   ): string {
     return template
       .replace(/#\{은행명\}/g, paymentInfo.label)
       .replace(/#\{계좌번호\}/g, paymentInfo.account)
       .replace(/#\{예금주\}/g, paymentInfo.holder)
+      .replace(/#\{젤계정\}/g, paymentInfo.zelleAccount)
+      .replace(/#\{젤예금주\}/g, paymentInfo.zelleHolder)
+      .replace(/#\{벤모계정\}/g, paymentInfo.venmoAccount)
+      .replace(/#\{벤모예금주\}/g, paymentInfo.venmoHolder)
       .replace(/#\{결제수단\}/g, paymentInfo.label)
       .replace(/#\{송금계정\}/g, paymentInfo.account)
       .replace(/#\{수취인명\}/g, paymentInfo.holder);
@@ -412,7 +447,7 @@ export class AlimtalkService {
         index,
         score:
           (template.kakaoTemplateCode?.trim() ? 100 : 0) +
-          (template.enabled !== false ? 10 : 0) +
+          (template.enabled ? 10 : 0) +
           (template.template?.trim() ? 1 : 0),
       }))
       .sort(

@@ -238,7 +238,7 @@ describe('AlimtalkService', () => {
     expect(replaced).not.toContain('국민은행');
   });
 
-  it('keeps extra item suffix shape for single-item order confirmation messages', () => {
+  it('uses display-name placeholder without extra suffix for single-item order confirmation messages', () => {
     const message = (service as any).buildOrderMessage(
       '01012345678',
       'ORD-1',
@@ -260,7 +260,7 @@ describe('AlimtalkService', () => {
       },
     );
 
-    expect(message.text).toContain('■ 주문상품: 무료배송이야 외 0건');
+    expect(message.text).toContain('■ 주문상품: 무료배송이야');
   });
 
   it('uses extra item count for multi-item order confirmation messages', () => {
@@ -309,10 +309,36 @@ describe('AlimtalkService', () => {
     );
 
     expect(message.text).toBe(
-      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야 외 0건\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
+      '[도레미 마켓] 주문이 접수되었습니다\n\n김지훈님, 주문이 완료되었습니다.\n\n■ 주문번호: ORD-3\n■ 주문상품: 무료배송이야\n■ 결제금액: 12,500원\n\n현재 입금대기 상태입니다.\n아래 계정으로 입금해주시면 확인 후 처리됩니다.\n\n■ Zelle: 422sss@live.com (MIN KIM)\n■ Venmo: @doremi03 (@doremi03)',
     );
     expect(message.text).not.toContain('입금계좌');
-    expect(message.text).not.toContain('Zelle');
+  });
+
+  it('replaces newly approved ORDER_CONFIRMATION placeholders', () => {
+    const message = (service as any).buildOrderMessage(
+      '01012345678',
+      'ORD-4',
+      22500,
+      {
+        user: { name: '김지훈' },
+        orderItems: [{ productName: '상품A' }, { productName: '상품B' }],
+      },
+      {
+        zelleEmail: 'zelle@example.com',
+        zelleRecipientName: 'Zelle Kim',
+        venmoEmail: '@venmo',
+        venmoRecipientName: 'Venmo Kim',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액}원\n\n■ Zelle: #{젤계정} (#{젤예금주})\n■ Venmo: #{벤모계정} (#{벤모예금주})',
+        kakaoTemplateCode: 'ORDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('■ 주문상품: 상품A 외 1건');
+    expect(message.text).toContain('■ Zelle: zelle@example.com (Zelle Kim)');
+    expect(message.text).toContain('■ Venmo: @venmo (Venmo Kim)');
   });
 
   it('uses friendtalk path for cart reminder test sends', async () => {

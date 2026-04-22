@@ -118,6 +118,10 @@ const CONFIG_DEFAULTS: Record<ConfigSection, AdminConfigItem> = {
   },
 };
 
+function isManagedNotificationType(type: string): type is NotificationEventType {
+  return Object.prototype.hasOwnProperty.call(NOTIFICATION_VARIABLES, type);
+}
+
 const MANAGED_NOTIFICATION_DEFAULTS: Record<
   NotificationEventType,
   { name: string; template: string }
@@ -125,7 +129,7 @@ const MANAGED_NOTIFICATION_DEFAULTS: Record<
   ORDER_CONFIRMATION: {
     name: 'ORDER_CONFIRMATION',
     template:
-      '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품명} 외 #{수량}건\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계좌로 입금해주시면 확인 후 처리됩니다.',
+      '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계정으로 입금해주시면 확인 후 처리됩니다.\n\n■ Zelle: #{젤계정} (#{젤예금주})\n■ Venmo: #{벤모계정} (#{벤모예금주})',
   },
   PAYMENT_REMINDER: {
     name: 'PAYMENT_REMINDER',
@@ -2068,7 +2072,9 @@ export class AdminService {
         const defaults = MANAGED_NOTIFICATION_DEFAULTS[type];
         return this.prisma.notificationTemplate.upsert({
           where: { name: defaults.name },
-          update: {},
+          update: {
+            template: defaults.template,
+          },
           create: {
             name: defaults.name,
             type,
@@ -2090,12 +2096,12 @@ export class AdminService {
           const current = map.get(template.type);
           const currentScore = current
             ? (current.kakaoTemplateCode?.trim() ? 100 : 0) +
-              (current.enabled !== false ? 10 : 0) +
+              (current.enabled ? 10 : 0) +
               (current.template?.trim() ? 1 : 0)
             : -1;
           const nextScore =
             (template.kakaoTemplateCode?.trim() ? 100 : 0) +
-            (template.enabled !== false ? 10 : 0) +
+            (template.enabled ? 10 : 0) +
             (template.template?.trim() ? 1 : 0);
 
           if (!current || nextScore > currentScore) {
@@ -2122,7 +2128,14 @@ export class AdminService {
       throw new NotFoundException('Notification template not found');
     }
 
-    const updateData: { kakaoTemplateCode?: string; enabled?: boolean } = {};
+    const updateData: { kakaoTemplateCode?: string; enabled?: boolean; template?: string } = {};
+    const defaults = isManagedNotificationType(existingTemplate.type)
+      ? MANAGED_NOTIFICATION_DEFAULTS[existingTemplate.type]
+      : null;
+
+    if (defaults) {
+      updateData.template = defaults.template;
+    }
     if (kakaoTemplateCode !== undefined) {
       updateData.kakaoTemplateCode = kakaoTemplateCode;
     }
