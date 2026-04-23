@@ -112,6 +112,7 @@ export class UserListItemDto {
   name!: string;
   depositorName!: string | null;
   kakaoPhone!: string | null;
+  liveStartNotificationEnabled!: boolean;
   instagramId!: string | null;
   shippingAddressSummary?: string | null;
   profileCompletedAt!: string | null;
@@ -444,6 +445,10 @@ export class UpdateAdminUserDto {
   kakaoPhone?: string;
 
   @IsOptional()
+  @IsBoolean()
+  liveStartNotificationEnabled?: boolean;
+
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => UpdateAdminUserAddressDto)
@@ -455,6 +460,7 @@ export class UserDetailDto {
   email!: string;
   name!: string;
   kakaoPhone?: string;
+  liveStartNotificationEnabled!: boolean;
   instagramId!: string | null;
   depositorName!: string | null;
   shippingAddress!: ShippingAddressDto | null;
@@ -505,6 +511,12 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   alimtalkEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(168)
+  orderConfirmationDelayHours?: number;
 
   @IsOptional()
   @IsString()

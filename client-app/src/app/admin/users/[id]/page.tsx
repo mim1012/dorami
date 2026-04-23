@@ -52,6 +52,7 @@ interface UserDetail {
   email: string;
   name: string;
   kakaoPhone: string | null;
+  liveStartNotificationEnabled: boolean;
   instagramId: string | null;
   depositorName: string | null;
   shippingAddress: ShippingAddress | null;
@@ -76,6 +77,7 @@ interface EditableUserForm {
   name: string;
   email: string;
   kakaoPhone: string;
+  liveStartNotificationEnabled: boolean;
   instagramId: string;
   depositorName: string;
   shippingAddress: ShippingAddressForm;
@@ -196,6 +198,7 @@ export default function AdminUserDetailPage() {
     name: nextUser.name || '',
     email: nextUser.email || '',
     kakaoPhone: nextUser.kakaoPhone || '',
+    liveStartNotificationEnabled: nextUser.liveStartNotificationEnabled,
     instagramId: nextUser.instagramId || '',
     depositorName: nextUser.depositorName || '',
     shippingAddress: {
@@ -216,6 +219,17 @@ export default function AdminUserDetailPage() {
         ...prev,
         [field]: value,
       } as EditableUserForm;
+    });
+  };
+
+  const handleLiveStartNotificationChange = (value: boolean) => {
+    setProfileForm((prev) => {
+      if (!prev) return null;
+
+      return {
+        ...prev,
+        liveStartNotificationEnabled: value,
+      };
     });
   };
 
@@ -263,13 +277,15 @@ export default function AdminUserDetailPage() {
       const kakaoPhone = normalizeText(profileForm.kakaoPhone);
       const instagramId = normalizeText(profileForm.instagramId);
       const depositorName = normalizeText(profileForm.depositorName);
+      const liveStartNotificationEnabled = profileForm.liveStartNotificationEnabled;
 
       const profileChanged =
         name !== normalizeText(baseProfile.name) ||
         email !== normalizeText(baseProfile.email) ||
         kakaoPhone !== normalizeText(baseProfile.kakaoPhone) ||
         instagramId !== normalizeText(baseProfile.instagramId) ||
-        depositorName !== normalizeText(baseProfile.depositorName);
+        depositorName !== normalizeText(baseProfile.depositorName) ||
+        liveStartNotificationEnabled !== baseProfile.liveStartNotificationEnabled;
 
       if (name !== normalizeText(baseProfile.name)) {
         if (!name) {
@@ -309,6 +325,10 @@ export default function AdminUserDetailPage() {
           return;
         }
         payload.depositorName = depositorName;
+      }
+
+      if (liveStartNotificationEnabled !== baseProfile.liveStartNotificationEnabled) {
+        payload.liveStartNotificationEnabled = liveStartNotificationEnabled;
       }
 
       const shippingChanged =
@@ -522,6 +542,20 @@ export default function AdminUserDetailPage() {
                 fullWidth
                 required
               />
+              <label className="flex items-center gap-3 rounded-button border border-border-color px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={profileForm.liveStartNotificationEnabled}
+                  onChange={(e) => handleLiveStartNotificationChange(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
+                />
+                <div>
+                  <Body className="font-medium">라이브 시작 알림</Body>
+                  <Caption className="text-secondary-text">
+                    활성 회원이면서 카카오 연락처가 있는 경우에만 실제 발송됩니다.
+                  </Caption>
+                </div>
+              </label>
               <Input
                 label="인스타그램 ID"
                 value={profileForm.instagramId}
@@ -611,6 +645,11 @@ export default function AdminUserDetailPage() {
               <div>
                 <Body className="text-secondary-text text-caption">카카오 연락처</Body>
                 <Body>{user.kakaoPhone || '-'}</Body>
+              </div>
+
+              <div>
+                <Body className="text-secondary-text text-caption">라이브 시작 알림</Body>
+                <Body>{user.liveStartNotificationEnabled ? '수신' : '미수신'}</Body>
               </div>
 
               <div>

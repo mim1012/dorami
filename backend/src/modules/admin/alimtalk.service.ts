@@ -33,6 +33,14 @@ interface OrderAlimtalkData {
   orderItems: Array<{ productName: string }>;
 }
 
+interface GroupedOrderAlimtalkData {
+  phone: string;
+  customerName: string;
+  orderIds: string[];
+  totalAmount: number;
+  items: Array<{ productName: string; quantity: number }>;
+}
+
 interface PaymentConfig {
   zelleEmail?: string | null;
   zelleRecipientName?: string | null;
@@ -292,9 +300,57 @@ export class AlimtalkService {
     config: PaymentConfig | null,
     template: OrderTemplate,
   ): AlimtalkMessage {
-    const customerName = order?.user?.name ?? '고객';
-    const firstItem = order?.orderItems?.[0]?.productName ?? '상품';
-    const itemCount = order?.orderItems?.length ?? 1;
+    return this.buildOrderMessagePayload(
+      phone,
+      order?.user?.name ?? '고객',
+      orderId,
+      total,
+      order?.orderItems?.map((item) => item.productName) ?? [],
+      `${this.frontendUrl}/orders/${orderId}`,
+      '주문 상세 보기',
+      config,
+      template,
+    );
+  }
+
+  private buildGroupedOrderMessage(
+    payload: GroupedOrderAlimtalkData,
+    config: PaymentConfig | null,
+    template: OrderTemplate,
+  ): AlimtalkMessage {
+    const orderLabel =
+      payload.orderIds.length > 1
+        ? `${payload.orderIds[0]} 외 ${payload.orderIds.length - 1}건`
+        : (payload.orderIds[0] ?? '주문');
+
+    const productNames = payload.items.map((item) => item.productName);
+
+    return this.buildOrderMessagePayload(
+      payload.phone,
+      payload.customerName,
+      orderLabel,
+      payload.totalAmount,
+      productNames,
+      `${this.frontendUrl}/orders`,
+      '주문 내역 보기',
+      config,
+      template,
+    );
+  }
+
+  private buildOrderMessagePayload(
+    phone: string,
+    customerName: string,
+    orderLabel: string,
+    total: number,
+    productNames: string[],
+    linkMo: string,
+    buttonName: string,
+    config: PaymentConfig | null,
+    template: OrderTemplate,
+  ): AlimtalkMessage {
+    const firstItem = productNames[0] ?? '상품';
+    const itemCount = productNames.length || 1;
     const extraItemCount = Math.max(itemCount - 1, 0);
     const productDisplayName =
       extraItemCount > 0 ? `${firstItem} 외 ${extraItemCount}건` : firstItem;
@@ -309,7 +365,7 @@ export class AlimtalkService {
     const text = this.replacePaymentTemplateVariables(
       sourceTemplate
         .replace('#{고객명}', customerName)
-        .replace('#{주문번호}', orderId)
+        .replace('#{주문번호}', orderLabel)
         .replace('#{상품표시명}', productDisplayName)
         .replace('#{상품명}', firstItem)
         .replace('#{수량}', String(extraItemCount))
@@ -324,8 +380,8 @@ export class AlimtalkService {
       buttons: [
         {
           buttonType: 'WL',
-          buttonName: '주문 상세 보기',
-          linkMo: `${this.frontendUrl}/orders/${orderId}`,
+          buttonName,
+          linkMo,
         },
       ],
     };
@@ -573,6 +629,44 @@ export class AlimtalkService {
       );
 
     return this._sendAlimtalk(messages);
+  }
+
+  async sendGroupedOrderAlimtalk(
+    payload: GroupedOrderAlimtalkData,
+  ): Promise<KakaoDeliveryBatchResult> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug('Alimtalk disabled, skipping grouped send');
+      return this.buildBatchResult([this.buildSkippedResult('AT', payload.phone, 'disabled')]);
+    }
+
+    const [template, config] = await Promise.all([
+      this.getPreferredTemplate('ORDER_CONFIRMATION', { requireKakaoTemplateCode: true }),
+      this.prisma.systemConfig.findFirst({ where: { id: 'system' } }),
+    ]);
+
+    if (!template?.template) {
+      this.logger.warn('ORDER_CONFIRMATION template text not configured, skipping grouped send');
+      return this.buildBatchResult([
+        this.buildSkippedResult('AT', payload.phone, 'template_missing'),
+      ]);
+    }
+
+    if (!template?.kakaoTemplateCode) {
+      this.logger.warn('ORDER_CONFIRMATION template code not configured, skipping grouped send');
+      return this.buildBatchResult([
+        this.buildSkippedResult('AT', payload.phone, 'template_code_missing'),
+      ]);
+    }
+
+    if (!this.isTemplateEnabled(template)) {
+      this.logger.warn('ORDER_CONFIRMATION template disabled, skipping grouped send');
+      return this.buildBatchResult([
+        this.buildSkippedResult('AT', payload.phone, 'template_disabled'),
+      ]);
+    }
+
+    const msg = this.buildGroupedOrderMessage(payload, config, template);
+    return this._sendAlimtalk([msg]);
   }
 
   async sendPaymentReminderAlimtalk(

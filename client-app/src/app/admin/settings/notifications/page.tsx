@@ -29,6 +29,10 @@ interface NotificationTemplate {
   updatedAt: string;
 }
 
+interface NotificationSettingsConfig {
+  orderConfirmationDelayHours: number;
+}
+
 type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
 type KakaoMessageChannel = 'AT' | 'FT';
 
@@ -131,9 +135,13 @@ function buildTestMessage(result: KakaoDeliveryBatchResult) {
 export default function NotificationSettingsPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [settingsConfig, setSettingsConfig] = useState<NotificationSettingsConfig>({
+    orderConfirmationDelayHours: 0,
+  });
   const [activeType, setActiveType] = useState<NotificationEventType>('ORDER_CONFIRMATION');
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [isSavingOrderDelay, setIsSavingOrderDelay] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [testTarget, setTestTarget] = useState<NotificationEventType | null>(null);
@@ -153,14 +161,18 @@ export default function NotificationSettingsPage() {
     const fetchTemplates = async () => {
       try {
         setIsLoading(true);
-        const response = await apiClient.get<NotificationTemplate[]>(
-          '/admin/notification-templates',
-        );
-        const managed = response.data.filter((template) =>
+        const [templateResponse, settingsResponse] = await Promise.all([
+          apiClient.get<NotificationTemplate[]>('/admin/notification-templates'),
+          apiClient.get<NotificationSettingsConfig>('/admin/config/settings'),
+        ]);
+        const managed = templateResponse.data.filter((template) =>
           isManagedNotificationType(template.type),
         );
         const filtered = getVisibleTemplates(managed);
         setTemplates(filtered);
+        setSettingsConfig({
+          orderConfirmationDelayHours: settingsResponse.data.orderConfirmationDelayHours ?? 0,
+        });
 
         if (filtered.length > 0) {
           setActiveType(filtered[0].type as NotificationEventType);
@@ -203,6 +215,22 @@ export default function NotificationSettingsPage() {
       setError(getUserMessage(err));
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const handleSaveOrderDelay = async () => {
+    setIsSavingOrderDelay(true);
+    setError(null);
+    try {
+      await apiClient.put('/admin/config/settings', {
+        orderConfirmationDelayHours: settingsConfig.orderConfirmationDelayHours,
+      });
+      setSuccessId('order-confirmation-delay');
+      setTimeout(() => setSuccessId(null), 2500);
+    } catch (err: unknown) {
+      setError(getUserMessage(err));
+    } finally {
+      setIsSavingOrderDelay(false);
     }
   };
 
@@ -455,6 +483,68 @@ export default function NotificationSettingsPage() {
                           </div>
                         ))}
                       </div>
+
+                      {activeTemplate.type === 'ORDER_CONFIRMATION' && (
+                        <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                방송 종료 후 N시간 뒤 발송
+                              </p>
+                              <p className="mt-1 text-sm text-gray-600">
+                                라이브 방송 주문은 같은 고객 + 같은 streamKey 기준으로 한 번만
+                                묶어서 보냅니다.
+                              </p>
+                            </div>
+                            {successId === 'order-confirmation-delay' && (
+                              <span className="flex items-center gap-1.5 text-sm text-green-600">
+                                <CheckCircle className="h-4 w-4" />
+                                저장 완료
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="w-full sm:max-w-xs">
+                              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                                지연 시간 (0~168)
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={168}
+                                step={1}
+                                value={settingsConfig.orderConfirmationDelayHours}
+                                onChange={(event) =>
+                                  setSettingsConfig({
+                                    orderConfirmationDelayHours: Math.min(
+                                      168,
+                                      Math.max(0, parseInt(event.target.value || '0', 10) || 0),
+                                    ),
+                                  })
+                                }
+                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm transition-colors focus:border-[#FF4D8D] focus:outline-none focus:ring-2 focus:ring-pink-100"
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleSaveOrderDelay}
+                              disabled={isSavingOrderDelay}
+                            >
+                              {isSavingOrderDelay ? (
+                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                              ) : (
+                                <Save className="w-4 h-4 mr-1.5" />
+                              )}
+                              {isSavingOrderDelay ? '저장 중...' : '지연 저장'}
+                            </Button>
+                          </div>
+                          <p className="mt-3 text-xs text-gray-500">
+                            0이면 방송 종료 직후 스케줄러가 바로 처리할 수 있습니다. 비라이브 주문은
+                            계속 즉시 발송됩니다.
+                          </p>
+                        </div>
+                      )}
 
                       <div>
                         <label className="mb-1.5 block text-sm font-medium text-gray-700">

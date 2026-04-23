@@ -14,6 +14,7 @@ export interface User {
   profileImage?: string;
   role: Role | string;
   kakaoPhone?: string;
+  liveStartNotificationEnabled?: boolean;
   depositorName?: string;
   instagramId?: string;
   shippingAddress?: ShippingAddress | object;

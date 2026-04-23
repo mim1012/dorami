@@ -4,6 +4,8 @@ import { NotificationsService } from '../notifications.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
 import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
+import { OrderConfirmationBatchService } from '../order-confirmation-batch.service';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class NotificationEventsListener {
@@ -13,17 +15,22 @@ export class NotificationEventsListener {
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private prisma: PrismaService,
+    private orderConfirmationBatchService: OrderConfirmationBatchService,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('NotificationEventsListener');
   }
 
   @OnEvent('order:created')
-  async handleOrderCreated(payload: { orderId: string; userId: string }) {
+  async handleOrderCreated(payload: { orderId: string; userId: string; streamKeys?: string[] }) {
     this.logger.log(`Sending order created notification to user ${payload.userId}`);
 
     try {
-      // Fetch order to check for pointsUsed
+      if (await this.orderConfirmationBatchService.shouldUseGroupedFlow(payload.streamKeys)) {
+        this.logger.log(`Skipping immediate ORDER_CONFIRMATION for live order ${payload.orderId}`);
+        return;
+      }
+
       const order = await this.prisma.order.findUnique({
         where: { id: payload.orderId },
       });
@@ -55,24 +62,37 @@ export class NotificationEventsListener {
   async handleOrderPaid(payload: { orderId: string; userId: string }) {
     this.logger.log(`Sending payment confirmed notification to user ${payload.userId}`);
 
-    const [user, order, activeLiveStream] = await Promise.all([
+    const [user, order, liveOrderLinkExists] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: payload.userId },
         select: { kakaoPhone: true },
       }),
       this.prisma.order.findUnique({
         where: { id: payload.orderId },
+        include: {
+          orderItems: {
+            select: {
+              Product: { select: { streamKey: true } },
+            },
+          },
+        },
       }),
-      this.prisma.liveStream.findFirst({
-        where: { status: 'LIVE' },
-        select: { id: true },
-      }),
+      this.orderConfirmationBatchService.hasPendingOrSentBatchForOrder(payload.orderId),
     ]);
 
     const effectivePhone = user?.kakaoPhone ?? null;
+    const streamKeys = [
+      ...new Set(
+        (order?.orderItems ?? [])
+          .map((item) => item.Product?.streamKey)
+          .filter((streamKey): streamKey is string => Boolean(streamKey)),
+      ),
+    ];
+    const useGroupedFlow =
+      liveOrderLinkExists ||
+      (await this.orderConfirmationBatchService.shouldUseGroupedFlow(streamKeys));
 
-    // 방송 중이 아닐 때만 즉시 알림톡 발송 (방송 중이면 stream:ended 에서 일괄 발송)
-    if (effectivePhone && order && !activeLiveStream) {
+    if (effectivePhone && order && !useGroupedFlow) {
       try {
         await this.alimtalkService.sendOrderAlimtalk(
           effectivePhone,
@@ -82,11 +102,12 @@ export class NotificationEventsListener {
       } catch (error) {
         this.logger.error('Failed to send payment alimtalk', (error as Error).message);
       }
-    } else if (activeLiveStream) {
-      this.logger.log(`Deferring invoice alimtalk for order ${payload.orderId} until stream ends`);
+    } else if (useGroupedFlow) {
+      this.logger.log(
+        `Skipping immediate invoice alimtalk for grouped live order ${payload.orderId}`,
+      );
     }
 
-    // Web Push는 항상 즉시 발송
     try {
       await this.notificationsService.sendPaymentConfirmedNotification(
         payload.userId,
@@ -99,50 +120,15 @@ export class NotificationEventsListener {
 
   @OnEvent('stream:ended')
   async handleStreamEnded(payload: { streamId: string; streamKey?: string }) {
-    this.logger.log(`Stream ended: ${payload.streamId}, sending deferred invoice alimtalks`);
+    this.logger.log(
+      `Stream ended: ${payload.streamId}, scheduling grouped ORDER_CONFIRMATION batches`,
+    );
 
     try {
-      // 방송 시간 조회
-      const stream = await this.prisma.liveStream.findUnique({
-        where: { id: payload.streamId },
-        select: { startedAt: true, endedAt: true },
-      });
-
-      if (!stream?.startedAt) {
-        this.logger.warn(`Stream ${payload.streamId} has no startedAt, skipping invoice alimtalk`);
-        return;
-      }
-
-      const streamStart = stream.startedAt;
-      const streamEnd = stream.endedAt ?? new Date();
-
-      // 방송 중 결제 확인된 주문 조회 (template + config는 sendOrderAlimtalkBatch에서 한 번만 fetch)
-      const paidOrders = await this.prisma.order.findMany({
-        where: {
-          paymentStatus: 'CONFIRMED',
-          paidAt: {
-            gte: streamStart,
-            lte: streamEnd,
-          },
-        },
-        include: {
-          user: {
-            select: { kakaoPhone: true, name: true },
-          },
-          orderItems: { select: { productName: true }, orderBy: { productName: 'asc' } },
-        },
-      });
-
-      if (paidOrders.length === 0) {
-        this.logger.log('No paid orders during stream, skipping invoice alimtalk');
-        return;
-      }
-
-      this.logger.log(`Sending ${paidOrders.length} deferred invoice alimtalks`);
-      await this.alimtalkService.sendOrderAlimtalkBatch(paidOrders);
+      await this.orderConfirmationBatchService.scheduleBatchesForStreamEnd(payload);
     } catch (error) {
       this.logger.error(
-        'Failed to process stream ended invoice alimtalks',
+        'Failed to schedule stream ended order confirmation batches',
         (error as Error).message,
       );
     }
@@ -293,7 +279,11 @@ export class NotificationEventsListener {
       }
 
       const users = await this.prisma.user.findMany({
-        where: { kakaoPhone: { not: null } },
+        where: {
+          kakaoPhone: { not: null },
+          status: UserStatus.ACTIVE,
+          liveStartNotificationEnabled: true,
+        },
         select: { kakaoPhone: true },
       });
 

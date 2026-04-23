@@ -13,35 +13,37 @@ datasource db {
 
 // Epic 2: User Authentication & Profile Management
 model User {
-  id                  String     @id @default(uuid())
-  email               String?    @unique
-  kakaoId             String     @unique
-  name                String
-  role                Role       @default(USER)
-  status              UserStatus @default(ACTIVE)
-  depositorName       String? // for bank transfer identification
-  kakaoPhone          String?    @map("kakao_phone") // Korean phone number (+82), collected from Kakao login or user-editable, used for Alimtalk
-  instagramId         String?    @unique
-  shippingAddress     Json? // US-format address
-  profileCompletedAt  DateTime?  @map("profile_completed_at") // timestamp when profile was completed
-  suspendedAt         DateTime?  @map("suspended_at") // timestamp when user was suspended
-  suspensionReason    String?    @map("suspension_reason") // reason for suspension
-  createdAt           DateTime   @default(now()) @map("created_at")
-  lastLoginAt         DateTime?  @map("last_login_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
+  id                           String     @id @default(uuid())
+  email                        String?    @unique
+  kakaoId                      String     @unique
+  name                         String
+  role                         Role       @default(USER)
+  status                       UserStatus @default(ACTIVE)
+  depositorName                String? // for bank transfer identification
+  kakaoPhone                   String?    @map("kakao_phone") // Korean phone number (+82), collected from Kakao login or user-editable, used for Alimtalk
+  liveStartNotificationEnabled Boolean    @default(false) @map("live_start_notification_enabled")
+  instagramId                  String?    @unique
+  shippingAddress              Json? // US-format address
+  profileCompletedAt           DateTime?  @map("profile_completed_at") // timestamp when profile was completed
+  suspendedAt                  DateTime?  @map("suspended_at") // timestamp when user was suspended
+  suspensionReason             String?    @map("suspension_reason") // reason for suspension
+  createdAt                    DateTime   @default(now()) @map("created_at")
+  lastLoginAt                  DateTime?  @map("last_login_at")
+  updatedAt                    DateTime   @updatedAt @map("updated_at")
 
   // Relations
-  liveStreams              LiveStream[]
-  chatMessages             ChatMessage[]
-  carts                    Cart[]
-  reservations             Reservation[]
-  orders                   Order[]
-  moderationLogs           ModerationLog[]
-  auditLogs                AuditLog[]                 @relation("AdminAuditLogs")
+  liveStreams               LiveStream[]
+  chatMessages              ChatMessage[]
+  carts                     Cart[]
+  reservations              Reservation[]
+  orders                    Order[]
+  orderConfirmationBatches  OrderConfirmationBatch[]
+  moderationLogs            ModerationLog[]
+  auditLogs                 AuditLog[]                 @relation("AdminAuditLogs")
   notificationSubscriptions NotificationSubscription[]
-  pointBalance             PointBalance?
-  settlements              Settlement[]               @relation("UserSettlements")
-  restreamTargets          ReStreamTarget[]
+  pointBalance              PointBalance?
+  settlements               Settlement[]               @relation("UserSettlements")
+  restreamTargets           ReStreamTarget[]
 
   @@index([email])
   @@index([kakaoId])
@@ -68,28 +70,29 @@ enum FreeShippingMode {
 
 // Epic 3: Live Streaming Foundation
 model LiveStream {
-  id            String       @id @default(uuid())
-  streamKey     String       @unique @map("stream_key")
-  userId        String       @map("user_id")
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title         String       @default("Live Stream")
-  description   String?      @db.Text
-  status        StreamStatus @default(PENDING)
-  startedAt     DateTime?    @map("started_at")
-  endedAt       DateTime?    @map("ended_at")
-  totalDuration Int?         @map("total_duration") // seconds
-  peakViewers   Int          @default(0) @map("peak_viewers")
+  id                    String           @id @default(uuid())
+  streamKey             String           @unique @map("stream_key")
+  userId                String           @map("user_id")
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                 String           @default("Live Stream")
+  description           String?          @db.Text
+  status                StreamStatus     @default(PENDING)
+  startedAt             DateTime?        @map("started_at")
+  endedAt               DateTime?        @map("ended_at")
+  totalDuration         Int?             @map("total_duration") // seconds
+  peakViewers           Int              @default(0) @map("peak_viewers")
   freeShippingMode      FreeShippingMode @default(DISABLED) @map("free_shipping_mode")
   freeShippingThreshold Decimal?         @map("free_shipping_threshold") @db.Decimal(10, 2)
-  scheduledAt   DateTime?    @map("scheduled_at")
-  thumbnailUrl  String?      @map("thumbnail_url")
-  expiresAt     DateTime     @map("expires_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
+  scheduledAt           DateTime?        @map("scheduled_at")
+  thumbnailUrl          String?          @map("thumbnail_url")
+  expiresAt             DateTime         @map("expires_at")
+  createdAt             DateTime         @default(now()) @map("created_at")
 
   // Relations
   chatMessages              ChatMessage[]
   products                  Product[]
   notificationSubscriptions NotificationSubscription[]
+  orderConfirmationBatches  OrderConfirmationBatch[]
   restreamLogs              ReStreamLog[]
 
   @@index([streamKey])
@@ -171,9 +174,9 @@ model Product {
   orderItems   OrderItem[]
 
   @@index([streamKey])
-  @@index([streamKey, status])  // For stream products filtering
+  @@index([streamKey, status]) // For stream products filtering
   @@index([status])
-  @@index([status, createdAt])  // For store products listing
+  @@index([status, createdAt]) // For store products listing
   @@index([expiresAt])
   @@map("products")
 }
@@ -204,10 +207,10 @@ model Cart {
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   @@index([userId, status])
-  @@index([productId, status])  // For reserved quantity calculation (N+1 fix)
+  @@index([productId, status]) // For reserved quantity calculation (N+1 fix)
   @@index([expiresAt])
-  @@index([status, timerEnabled, expiresAt])  // For cron job: expireTimedOutCarts
-  @@index([status, timerEnabled, reminderSent, expiresAt])  // For cron: sendCartReminders
+  @@index([status, timerEnabled, expiresAt]) // For cron job: expireTimedOutCarts
+  @@index([status, timerEnabled, reminderSent, expiresAt]) // For cron: sendCartReminders
   @@map("carts")
 }
 
@@ -274,14 +277,15 @@ model Order {
   deletedAt       DateTime?      @map("deleted_at")
 
   // Relations
-  orderItems OrderItem[]
+  orderItems                   OrderItem[]
+  orderConfirmationBatchOrders OrderConfirmationBatchOrder[]
 
   @@index([userId])
   @@index([userId, paymentStatus])
-  @@index([userId, createdAt])  // For user order history
+  @@index([userId, createdAt]) // For user order history
   @@index([paymentStatus])
   @@index([status])
-  @@index([status, createdAt])  // For cron job: cancelExpiredOrders
+  @@index([status, createdAt]) // For cron job: cancelExpiredOrders
   @@index([status, paymentStatus, createdAt])
   @@index([paymentStatus, createdAt])
   @@index([paymentStatus, paidAt])
@@ -291,16 +295,16 @@ model Order {
 }
 
 model OrderItem {
-  id          String  @id @default(uuid())
-  orderId     String  @map("order_id")
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  orderId     String   @map("order_id")
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId   String?  @map("product_id")
-  productName String  @map("product_name") // Denormalized
-  price       Decimal @db.Decimal(10, 2)
+  productName String   @map("product_name") // Denormalized
+  price       Decimal  @db.Decimal(10, 2)
   quantity    Int
   color       String?
   size        String?
-  shippingFee Decimal @map("shipping_fee") @db.Decimal(10, 2)
+  shippingFee Decimal  @map("shipping_fee") @db.Decimal(10, 2)
   Product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
@@ -333,68 +337,111 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderConfirmationBatchStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model OrderConfirmationBatch {
+  id          String                       @id @default(uuid())
+  userId      String                       @map("user_id")
+  user        User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  streamKey   String                       @map("stream_key")
+  streamId    String?                      @map("stream_id")
+  stream      LiveStream?                  @relation(fields: [streamId], references: [id], onDelete: SetNull)
+  status      OrderConfirmationBatchStatus @default(PENDING)
+  scheduledAt DateTime                     @map("scheduled_at")
+  sentAt      DateTime?                    @map("sent_at")
+  lastError   String?                      @map("last_error") @db.Text
+  createdAt   DateTime                     @default(now()) @map("created_at")
+  updatedAt   DateTime                     @updatedAt @map("updated_at")
+
+  orders OrderConfirmationBatchOrder[]
+
+  @@unique([userId, streamKey])
+  @@index([status, scheduledAt])
+  @@index([streamKey])
+  @@map("order_confirmation_batches")
+}
+
+model OrderConfirmationBatchOrder {
+  id        String                 @id @default(uuid())
+  batchId   String                 @map("batch_id")
+  batch     OrderConfirmationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  orderId   String                 @map("order_id")
+  order     Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime               @default(now()) @map("created_at")
+
+  @@unique([batchId, orderId])
+  @@index([orderId])
+  @@map("order_confirmation_batch_orders")
+}
+
 // Epic 9: Automated Notification System
 model NotificationTemplate {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  type      String // ORDER_CONFIRMATION, PAYMENT_REMINDER, etc.
-  template  String   @db.Text
-  kakaoTemplateCode  String  @default("") @map("kakao_template_code")
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  name              String   @unique
+  type              String // ORDER_CONFIRMATION, PAYMENT_REMINDER, etc.
+  template          String   @db.Text
+  kakaoTemplateCode String   @default("") @map("kakao_template_code")
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("notification_templates")
 }
 
 // Epic 12: System Configuration & Administration
 model SystemConfig {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // Notice Configuration (Simple Text Box)
-  noticeText       String?  @db.Text @map("notice_text")
-  noticeFontSize   Int      @default(14) @map("notice_font_size") // Range: 10-24px
-  noticeFontFamily String   @default("Pretendard") @map("notice_font_family")
+  noticeText       String? @map("notice_text") @db.Text
+  noticeFontSize   Int     @default(14) @map("notice_font_size") // Range: 10-24px
+  noticeFontFamily String  @default("Pretendard") @map("notice_font_family")
 
   // Shipping Messages Configuration
   shippingMessages Json? @map("shipping_messages") // JSON: {preparing, shipped, inTransit, delivered}
 
   // Marketing, featured products, and payment provider configuration (Admin CMS-like)
   homeFeaturedProducts Json? @map("home_featured_products")
-  marketingCampaigns Json? @map("marketing_campaigns")
-  paymentProviders Json? @map("payment_providers")
+  marketingCampaigns   Json? @map("marketing_campaigns")
+  paymentProviders     Json? @map("payment_providers")
 
   // General Settings
-  defaultCartTimerMinutes  Int     @default(10) @map("default_cart_timer_minutes")
-  abandonedCartReminderHours Int   @default(24) @map("abandoned_cart_reminder_hours")
-  defaultShippingFee       Decimal @default(10) @db.Decimal(10, 2) @map("default_shipping_fee")
-  caShippingFee            Decimal @default(8) @db.Decimal(10, 2) @map("ca_shipping_fee")
-  freeShippingThreshold    Decimal @default(150) @db.Decimal(10, 2) @map("free_shipping_threshold")
+  defaultCartTimerMinutes    Int     @default(10) @map("default_cart_timer_minutes")
+  abandonedCartReminderHours Int     @default(24) @map("abandoned_cart_reminder_hours")
+  defaultShippingFee         Decimal @default(10) @map("default_shipping_fee") @db.Decimal(10, 2)
+  caShippingFee              Decimal @default(8) @map("ca_shipping_fee") @db.Decimal(10, 2)
+  freeShippingThreshold      Decimal @default(150) @map("free_shipping_threshold") @db.Decimal(10, 2)
 
   // Bank Account Settings
-  bankName           String  @default("KB국민은행") @map("bank_name")
-  bankAccountNumber  String  @default("") @map("bank_account_number")
-  bankAccountHolder  String  @default("") @map("bank_account_holder")
+  bankName          String @default("KB국민은행") @map("bank_name")
+  bankAccountNumber String @default("") @map("bank_account_number")
+  bankAccountHolder String @default("") @map("bank_account_holder")
 
   // Zelle Payment Settings
-  zelleEmail         String  @default("") @map("zelle_email")
-  zelleRecipientName String  @default("") @map("zelle_recipient_name")
+  zelleEmail         String @default("") @map("zelle_email")
+  zelleRecipientName String @default("") @map("zelle_recipient_name")
 
   // Venmo Payment Settings
-  venmoEmail         String  @default("") @map("venmo_email")
-  venmoRecipientName String  @default("") @map("venmo_recipient_name")
+  venmoEmail         String @default("") @map("venmo_email")
+  venmoRecipientName String @default("") @map("venmo_recipient_name")
 
   // Footer / Business Info
-  businessRegistrationNumber     String  @default("") @map("business_registration_number")
-  businessAddress                String  @default("") @map("business_address")
-  onlineSalesRegistrationNumber  String  @default("") @map("online_sales_registration_number")
+  businessRegistrationNumber    String @default("") @map("business_registration_number")
+  businessAddress               String @default("") @map("business_address")
+  onlineSalesRegistrationNumber String @default("") @map("online_sales_registration_number")
 
   // Free Shipping Toggle
   freeShippingEnabled Boolean @default(false) @map("free_shipping_enabled")
 
   // Alimtalk (카카오 알림톡) Settings
   // API credentials moved to env vars: BIZGO_API_KEY, BIZGO_PF_ID
-  alimtalkEnabled      Boolean @default(false) @map("alimtalk_enabled")
+  alimtalkEnabled             Boolean @default(false) @map("alimtalk_enabled")
+  orderConfirmationDelayHours Int     @default(0) @map("order_confirmation_delay_hours")
 
   // Points Configuration (Epic 13)
   pointsEnabled          Boolean @default(false) @map("points_enabled")

@@ -40,6 +40,7 @@ interface SystemSettings {
   venmoEmail: string;
   venmoRecipientName: string;
   alimtalkEnabled: boolean;
+  orderConfirmationDelayHours: number;
   businessRegistrationNumber: string;
   businessAddress: string;
   onlineSalesRegistrationNumber: string;
@@ -197,6 +198,7 @@ export default function AdminSettingsPage() {
     venmoEmail: '',
     venmoRecipientName: '',
     alimtalkEnabled: false,
+    orderConfirmationDelayHours: 0,
     businessRegistrationNumber: '',
     businessAddress: '',
     onlineSalesRegistrationNumber: '',
@@ -547,6 +549,40 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4 space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900">
+                  주문 확인 알림 묶음 발송 지연
+                </h4>
+                <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+                  라이브 방송 상품 주문은 방송 종료 후 같은 고객 + 같은 streamKey 기준으로 1번만
+                  묶어서 ORDER_CONFIRMATION 알림톡을 보냅니다.
+                </p>
+              </div>
+              <Input
+                label="방송 종료 후 N시간 뒤 발송"
+                type="number"
+                min={0}
+                max={168}
+                step="1"
+                value={settings.orderConfirmationDelayHours}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    orderConfirmationDelayHours: Math.min(
+                      168,
+                      Math.max(0, parseInt(e.target.value || '0', 10) || 0),
+                    ),
+                  })
+                }
+                fullWidth
+              />
+              <p className="text-xs text-gray-500">
+                0이면 방송 종료 직후 다음 스케줄 실행 시점부터 발송 대상이 됩니다. 일반 비라이브
+                주문의 즉시 ORDER_CONFIRMATION에는 영향을 주지 않습니다.
+              </p>
+            </div>
+
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-gray-900">이벤트별 발송 토글</h4>

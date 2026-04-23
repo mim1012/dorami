@@ -383,6 +383,7 @@ export class AdminService {
           name: true,
           depositorName: true,
           kakaoPhone: true,
+          liveStartNotificationEnabled: true,
           instagramId: true,
           shippingAddress: true,
           profileCompletedAt: true,
@@ -414,6 +415,7 @@ export class AdminService {
         name: user.name,
         depositorName: user.depositorName ?? null,
         kakaoPhone: user.kakaoPhone,
+        liveStartNotificationEnabled: user.liveStartNotificationEnabled,
         instagramId: user.instagramId,
         shippingAddressSummary: shippingSummary,
         profileCompletedAt: user.profileCompletedAt?.toISOString() ?? null,
@@ -1259,6 +1261,7 @@ export class AdminService {
       businessAddress: config.businessAddress,
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       alimtalkEnabled: config.alimtalkEnabled,
+      orderConfirmationDelayHours: config.orderConfirmationDelayHours,
     };
   }
 
@@ -1281,6 +1284,9 @@ export class AdminService {
     }
     if (dto.alimtalkEnabled !== undefined) {
       updateData.alimtalkEnabled = dto.alimtalkEnabled;
+    }
+    if (dto.orderConfirmationDelayHours !== undefined) {
+      updateData.orderConfirmationDelayHours = dto.orderConfirmationDelayHours;
     }
     if (dto.bankName !== undefined) {
       updateData.bankName = dto.bankName;
@@ -1341,6 +1347,7 @@ export class AdminService {
       businessAddress: config.businessAddress,
       onlineSalesRegistrationNumber: config.onlineSalesRegistrationNumber,
       alimtalkEnabled: config.alimtalkEnabled,
+      orderConfirmationDelayHours: config.orderConfirmationDelayHours,
     };
   }
 
@@ -1888,6 +1895,7 @@ export class AdminService {
         email: true,
         name: true,
         kakaoPhone: true,
+        liveStartNotificationEnabled: true,
         instagramId: true,
         depositorName: true,
         shippingAddress: true,
@@ -1929,6 +1937,7 @@ export class AdminService {
       email: user.email ?? '',
       name: user.name,
       kakaoPhone: user.kakaoPhone ?? undefined,
+      liveStartNotificationEnabled: user.liveStartNotificationEnabled,
       instagramId: user.instagramId,
       depositorName: user.depositorName,
       shippingAddress,
@@ -1977,6 +1986,9 @@ export class AdminService {
     }
     if (dto.kakaoPhone !== undefined) {
       updateData.kakaoPhone = dto.kakaoPhone;
+    }
+    if (dto.liveStartNotificationEnabled !== undefined) {
+      updateData.liveStartNotificationEnabled = dto.liveStartNotificationEnabled;
     }
     if (dto.instagramId !== undefined) {
       updateData.instagramId = dto.instagramId;

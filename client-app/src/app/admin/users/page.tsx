@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, type ChangeEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { apiClient } from '@/lib/api/client';
@@ -10,6 +10,7 @@ import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Display, Body } from '@/components/common/Typography';
 import { formatPrice } from '@/lib/utils/price';
+import { useToast } from '@/components/common/Toast';
 
 interface UserListItem {
   id: string;
@@ -17,6 +18,7 @@ interface UserListItem {
   name: string;
   depositorName: string | null;
   kakaoPhone: string | null;
+  liveStartNotificationEnabled: boolean;
   instagramId: string | null;
   shippingAddressSummary?: string | null;
   profileCompletedAt: string | null;
@@ -36,12 +38,14 @@ interface UserListResponse {
 function AdminUsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingUserIds, setUpdatingUserIds] = useState<string[]>([]);
 
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get('limit') || '20', 10));
@@ -141,6 +145,43 @@ function AdminUsersContent() {
 
   const formatCurrency = (amount: number) => formatPrice(amount);
 
+  const handleLiveStartNotificationToggle = async (
+    event: ChangeEvent<HTMLInputElement>,
+    user: UserListItem,
+  ) => {
+    event.stopPropagation();
+
+    const nextEnabled = event.target.checked;
+    setUpdatingUserIds((prev) => [...prev, user.id]);
+    setUsers((prev) =>
+      prev.map((item) =>
+        item.id === user.id ? { ...item, liveStartNotificationEnabled: nextEnabled } : item,
+      ),
+    );
+
+    try {
+      await apiClient.patch(`/admin/users/${user.id}`, {
+        liveStartNotificationEnabled: nextEnabled,
+      });
+      showToast('라이브 시작 알림 설정이 저장되었습니다.', 'success');
+    } catch (err: any) {
+      console.error('Failed to update live start notification preference:', err);
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === user.id
+            ? { ...item, liveStartNotificationEnabled: user.liveStartNotificationEnabled }
+            : item,
+        ),
+      );
+      showToast(
+        err.response?.data?.message || '라이브 시작 알림 설정 저장에 실패했습니다',
+        'error',
+      );
+    } finally {
+      setUpdatingUserIds((prev) => prev.filter((id) => id !== user.id));
+    }
+  };
+
   const columns: Column<UserListItem>[] = [
     {
       key: 'instagramId',
@@ -166,6 +207,34 @@ function AdminUsersContent() {
       sortable: false,
       render: (user) =>
         user.kakaoPhone || <span className="text-secondary-text text-xs">미설정</span>,
+    },
+    {
+      key: 'liveStartNotificationEnabled',
+      label: '라이브 시작 알림',
+      sortable: false,
+      render: (user) => {
+        const isUpdating = updatingUserIds.includes(user.id);
+
+        return (
+          <label
+            className={`inline-flex items-center gap-2 text-sm ${
+              isUpdating ? 'cursor-wait opacity-70' : 'cursor-pointer'
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={user.liveStartNotificationEnabled}
+              disabled={isUpdating}
+              onChange={(event) => handleLiveStartNotificationToggle(event, user)}
+              className="h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
+            />
+            <span className="text-primary-text">
+              {user.liveStartNotificationEnabled ? '수신' : '미수신'}
+            </span>
+          </label>
+        );
+      },
     },
     {
       key: 'shippingAddress',
