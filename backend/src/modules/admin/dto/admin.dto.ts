@@ -532,18 +532,6 @@ export class UpdateSystemSettingsDto {
 
   @IsOptional()
   @IsString()
-  bankName?: string;
-
-  @IsOptional()
-  @IsString()
-  bankAccountNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  bankAccountHolder?: string;
-
-  @IsOptional()
-  @IsString()
   zelleEmail?: string;
 
   @IsOptional()
