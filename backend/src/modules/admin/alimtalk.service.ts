@@ -362,11 +362,12 @@ export class AlimtalkService {
       extraItemCount > 0 ? `${firstItem} 외 ${extraItemCount}건` : firstItem;
 
     const paymentInfo = this.buildPaymentInfo(config);
-    const sourceTemplate =
+    const isApprovedOrderConfirmationTemplate =
       template.kakaoTemplateCode === 'CRDER_CONFIRMATION' ||
-      template.kakaoTemplateCode === 'ORDER_CONFIRMATION'
-        ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
-        : template.template;
+      template.kakaoTemplateCode === 'ORDER_CONFIRMATION';
+    const sourceTemplate = isApprovedOrderConfirmationTemplate
+      ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
+      : template.template;
 
     const text = this.replacePaymentTemplateVariables(
       sourceTemplate
@@ -383,13 +384,15 @@ export class AlimtalkService {
       to: phone,
       templateCode: template.kakaoTemplateCode ?? '',
       text,
-      buttons: [
-        {
-          buttonType: 'WL',
-          buttonName,
-          linkMo,
-        },
-      ],
+      buttons: isApprovedOrderConfirmationTemplate
+        ? undefined
+        : [
+            {
+              buttonType: 'WL',
+              buttonName,
+              linkMo,
+            },
+          ],
     };
   }
 

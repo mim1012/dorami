@@ -341,7 +341,7 @@ describe('AlimtalkService', () => {
     expect(message.text).toContain('■ Venmo: @venmo (Venmo Kim)');
   });
 
-  it('uses single-order button metadata for grouped CRDER_CONFIRMATION messages', () => {
+  it('does not attach buttons to grouped ORDER_CONFIRMATION messages when the approved template has no buttons', () => {
     const message = (service as any).buildGroupedOrderMessage(
       {
         phone: '01012345678',
@@ -362,17 +362,11 @@ describe('AlimtalkService', () => {
       {
         template:
           '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액}원',
-        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+        kakaoTemplateCode: 'ORDER_CONFIRMATION',
       },
     );
 
-    expect(message.buttons).toEqual([
-      {
-        buttonType: 'WL',
-        buttonName: '주문 상세 보기',
-        linkMo: 'https://www.doremi-live.com/orders/ORD-20260425-00001',
-      },
-    ]);
+    expect(message.buttons).toBeUndefined();
   });
 
   it('uses friendtalk path for cart reminder test sends', async () => {
