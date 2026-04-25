@@ -63,7 +63,8 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
     ],
   },
   ORDER_CONFIRMATION: {
-    sendTiming: '주문이 생성되는 순간 고객에게 알림톡으로 자동 발송됩니다.',
+    sendTiming:
+      '일반 주문은 주문 생성 직후 발송되고, 라이브 방송 주문은 방송 종료 후 설정한 시간 뒤 같은 고객 + 같은 streamKey 기준으로 묶어서 1회 발송됩니다.',
     valueIntro:
       '여기서는 템플릿 코드만 관리하면 됩니다. 주문 정보와 결제 안내는 자동으로 채워지며, 새 템플릿은 #{결제수단} · #{송금계정} · #{수취인명}을 쓰면 됩니다. Zelle/Venmo만 설정하면 그 값만 들어가고 은행명은 끼어들지 않습니다.',
     primaryAction: {

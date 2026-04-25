@@ -1,3 +1,65 @@
+jest.mock(
+  '@bizgo/bizgo-sdk-comm-js',
+  () => {
+    class ChainableBuilder {
+      setSenderKey() {
+        return this;
+      }
+      setMsgType() {
+        return this;
+      }
+      setTemplateCode() {
+        return this;
+      }
+      setText() {
+        return this;
+      }
+      setAttachment() {
+        return this;
+      }
+      setType() {
+        return this;
+      }
+      setName() {
+        return this;
+      }
+      setUrlMobile() {
+        return this;
+      }
+      setUrlPc() {
+        return this;
+      }
+      setTo() {
+        return this;
+      }
+      setDestinations() {
+        return this;
+      }
+      setMessageFlow() {
+        return this;
+      }
+      build() {
+        return {};
+      }
+    }
+
+    return {
+      Bizgo: class {
+        send = { OMNI: jest.fn() };
+      },
+      BizgoOptionsBuilder: ChainableBuilder,
+      AlimtalkBuilder: ChainableBuilder,
+      AlimtalkAttachmentBuilder: ChainableBuilder,
+      BrandMessageBuilder: ChainableBuilder,
+      BrandMessageAttachmentBuilder: ChainableBuilder,
+      DestinationBuilder: ChainableBuilder,
+      OMNIRequestBodyBuilder: ChainableBuilder,
+      KakaoButtonBuilder: ChainableBuilder,
+    };
+  },
+  { virtual: true },
+);
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AdminService } from './admin.service';
@@ -143,6 +205,7 @@ describe('AdminService', () => {
         id: 'user-1',
         email: 'user1@test.com',
         name: 'User One',
+        liveStartNotificationEnabled: false,
         instagramId: '@user_one',
         createdAt: new Date('2026-01-15'),
         lastLoginAt: new Date('2026-01-30'),
@@ -153,6 +216,7 @@ describe('AdminService', () => {
         id: 'user-2',
         email: 'user2@test.com',
         name: 'User Two',
+        liveStartNotificationEnabled: true,
         instagramId: '@user_two',
         createdAt: new Date('2026-01-20'),
         lastLoginAt: null,
@@ -321,6 +385,7 @@ describe('AdminService', () => {
         lastPurchaseAt: null,
         profileCompletedAt: null,
         kakaoPhone: undefined,
+        liveStartNotificationEnabled: false,
         shippingAddressSummary: null,
         status: 'ACTIVE',
         role: 'USER',
@@ -353,6 +418,7 @@ describe('AdminService', () => {
       id: userId,
       email: 'test@example.com',
       name: 'Test User',
+      liveStartNotificationEnabled: true,
       instagramId: '@testuser',
       depositorName: 'Test Depositor',
       shippingAddress: mockPlainAddress,
@@ -371,6 +437,7 @@ describe('AdminService', () => {
       expect(result.id).toBe(userId);
       expect(result.email).toBe('test@example.com');
       expect(result.shippingAddress).toEqual(mockPlainAddress);
+      expect(result.liveStartNotificationEnabled).toBe(true);
       expect(result.statistics.totalOrders).toBe(0);
     });
 
@@ -396,6 +463,44 @@ describe('AdminService', () => {
       const result = await service.getUserDetail(userId);
 
       expect(result.shippingAddress).toBeNull();
+    });
+  });
+
+  describe('updateUser', () => {
+    const userId = 'user-123';
+
+    it('should update liveStartNotificationEnabled when provided', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ id: userId } as any);
+      const updateSpy = jest.spyOn(prisma.user, 'update').mockResolvedValue({ id: userId } as any);
+      jest.spyOn(service, 'getUserDetail').mockResolvedValue({
+        id: userId,
+        email: 'test@example.com',
+        name: 'Test User',
+        kakaoPhone: '010-1234-5678',
+        liveStartNotificationEnabled: true,
+        instagramId: '@testuser',
+        depositorName: 'Test Depositor',
+        shippingAddress: null,
+        createdAt: new Date('2026-01-15').toISOString(),
+        lastLoginAt: null,
+        status: 'ACTIVE' as any,
+        role: 'USER' as any,
+        suspendedAt: null,
+        statistics: {
+          totalOrders: 0,
+          totalPurchaseAmount: '0',
+          averageOrderValue: 0,
+          orderFrequency: 0,
+        },
+      });
+
+      const result = await service.updateUser(userId, { liveStartNotificationEnabled: true });
+
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { liveStartNotificationEnabled: true },
+      });
+      expect(result.liveStartNotificationEnabled).toBe(true);
     });
   });
 

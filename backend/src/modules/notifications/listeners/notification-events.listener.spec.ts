@@ -1,52 +1,138 @@
+jest.mock(
+  '@bizgo/bizgo-sdk-comm-js',
+  () => {
+    class ChainableBuilder {
+      setSenderKey() {
+        return this;
+      }
+      setBaseURL() {
+        return this;
+      }
+      setApiKey() {
+        return this;
+      }
+      setMsgType() {
+        return this;
+      }
+      setTemplateCode() {
+        return this;
+      }
+      setText() {
+        return this;
+      }
+      setAttachment() {
+        return this;
+      }
+      setType() {
+        return this;
+      }
+      setName() {
+        return this;
+      }
+      setUrlMobile() {
+        return this;
+      }
+      setUrlPc() {
+        return this;
+      }
+      setTo() {
+        return this;
+      }
+      setDestinations() {
+        return this;
+      }
+      setMessageFlow() {
+        return this;
+      }
+      build() {
+        return {};
+      }
+    }
+
+    return {
+      Bizgo: class {
+        send = { OMNI: jest.fn() };
+      },
+      BizgoOptionsBuilder: ChainableBuilder,
+      AlimtalkBuilder: ChainableBuilder,
+      AlimtalkAttachmentBuilder: ChainableBuilder,
+      BrandMessageBuilder: ChainableBuilder,
+      BrandMessageAttachmentBuilder: ChainableBuilder,
+      DestinationBuilder: ChainableBuilder,
+      OMNIRequestBodyBuilder: ChainableBuilder,
+      KakaoButtonBuilder: ChainableBuilder,
+    };
+  },
+  { virtual: true },
+);
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { NotificationEventsListener } from './notification-events.listener';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
 import { NotificationsService } from '../notifications.service';
+import { OrderConfirmationBatchService } from '../order-confirmation-batch.service';
 
 describe('NotificationEventsListener', () => {
   let listener: NotificationEventsListener;
-  let prisma: PrismaService;
-  let alimtalkService: AlimtalkService;
-  let _notificationsService: NotificationsService;
-
-  const mockOrder = {
-    id: 'ORD-20260309-00001',
-    total: 50000,
-    pointsUsed: 0,
+  let prisma: {
+    order: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock; findMany: jest.Mock };
+    liveStream: { findUnique: jest.Mock };
+    product: { findUnique: jest.Mock };
+  };
+  let alimtalkService: {
+    sendOrderAlimtalk: jest.Mock;
+    sendCartExpiringAlimtalk: jest.Mock;
+    sendCartReminderFriendtalk: jest.Mock;
+    sendLiveStartAlimtalk: jest.Mock;
+  };
+  let notificationsService: {
+    sendPaymentConfirmedNotification: jest.Mock;
+    sendReservationPromotedNotification: jest.Mock;
+    sendCartExpiredNotification: jest.Mock;
+  };
+  let batchService: {
+    shouldUseGroupedFlow: jest.Mock;
+    hasPendingOrSentBatchForOrder: jest.Mock;
+    scheduleBatchesForStreamEnd: jest.Mock;
   };
 
   beforeEach(async () => {
+    prisma = {
+      order: { findUnique: jest.fn() },
+      user: { findUnique: jest.fn(), findMany: jest.fn() },
+      liveStream: { findUnique: jest.fn() },
+      product: { findUnique: jest.fn() },
+    };
+
+    alimtalkService = {
+      sendOrderAlimtalk: jest.fn(),
+      sendCartExpiringAlimtalk: jest.fn(),
+      sendCartReminderFriendtalk: jest.fn(),
+      sendLiveStartAlimtalk: jest.fn(),
+    };
+
+    notificationsService = {
+      sendPaymentConfirmedNotification: jest.fn(),
+      sendReservationPromotedNotification: jest.fn(),
+      sendCartExpiredNotification: jest.fn(),
+    };
+
+    batchService = {
+      shouldUseGroupedFlow: jest.fn().mockResolvedValue(false),
+      hasPendingOrSentBatchForOrder: jest.fn().mockResolvedValue(false),
+      scheduleBatchesForStreamEnd: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationEventsListener,
-        {
-          provide: PrismaService,
-          useValue: {
-            order: {
-              findUnique: jest.fn(),
-            },
-            user: {
-              findUnique: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: AlimtalkService,
-          useValue: {
-            sendOrderAlimtalk: jest.fn(),
-          },
-        },
-        {
-          provide: NotificationsService,
-          useValue: {
-            sendPaymentConfirmedNotification: jest.fn(),
-            sendReservationPromotedNotification: jest.fn(),
-            sendCartExpiredNotification: jest.fn(),
-          },
-        },
+        { provide: PrismaService, useValue: prisma },
+        { provide: AlimtalkService, useValue: alimtalkService },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: OrderConfirmationBatchService, useValue: batchService },
         {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
@@ -54,123 +140,72 @@ describe('NotificationEventsListener', () => {
       ],
     }).compile();
 
-    listener = module.get<NotificationEventsListener>(NotificationEventsListener);
-    prisma = module.get<PrismaService>(PrismaService);
-    alimtalkService = module.get<AlimtalkService>(AlimtalkService);
-    _notificationsService = module.get<NotificationsService>(NotificationsService);
+    listener = module.get(NotificationEventsListener);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('EventEmitter2 통합 - order:created 이벤트', () => {
-    let integrationModule: TestingModule;
-    let eventEmitter: EventEmitter2;
-    let integrationAlimtalkService: AlimtalkService;
+  it('skips immediate ORDER_CONFIRMATION on order:created when grouped live flow applies', async () => {
+    batchService.shouldUseGroupedFlow.mockResolvedValue(true);
 
-    const payload = { orderId: 'ORD-20260309-00001', userId: 'user-1' };
-
-    beforeEach(async () => {
-      integrationModule = await Test.createTestingModule({
-        imports: [EventEmitterModule.forRoot()],
-        providers: [
-          NotificationEventsListener,
-          {
-            provide: PrismaService,
-            useValue: {
-              order: { findUnique: jest.fn().mockResolvedValue(mockOrder) },
-              user: { findUnique: jest.fn().mockResolvedValue({ kakaoPhone: '010-9999-0000' }) },
-              liveStream: { findFirst: jest.fn(), findUnique: jest.fn() },
-              product: { findUnique: jest.fn() },
-            },
-          },
-          {
-            provide: AlimtalkService,
-            useValue: { sendOrderAlimtalk: jest.fn() },
-          },
-          {
-            provide: NotificationsService,
-            useValue: {
-              sendPaymentConfirmedNotification: jest.fn(),
-              sendReservationPromotedNotification: jest.fn(),
-              sendCartExpiredNotification: jest.fn(),
-            },
-          },
-          {
-            provide: ConfigService,
-            useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
-          },
-        ],
-      }).compile();
-
-      await integrationModule.init();
-      eventEmitter = integrationModule.get<EventEmitter2>(EventEmitter2);
-      integrationAlimtalkService = integrationModule.get<AlimtalkService>(AlimtalkService);
+    await listener.handleOrderCreated({
+      orderId: 'ORD-1',
+      userId: 'user-1',
+      streamKeys: ['stream-1'],
     });
 
-    afterEach(async () => {
-      await integrationModule.close();
+    expect(batchService.shouldUseGroupedFlow).toHaveBeenCalledWith(['stream-1']);
+    expect(alimtalkService.sendOrderAlimtalk).not.toHaveBeenCalled();
+  });
+
+  it('sends immediate ORDER_CONFIRMATION on order:created for non-live orders', async () => {
+    prisma.order.findUnique.mockResolvedValue({ id: 'ORD-1', total: 50000, pointsUsed: 0 });
+    prisma.user.findUnique.mockResolvedValue({ kakaoPhone: '01012345678' });
+
+    await listener.handleOrderCreated({ orderId: 'ORD-1', userId: 'user-1', streamKeys: [] });
+
+    expect(alimtalkService.sendOrderAlimtalk).toHaveBeenCalledWith('01012345678', 'ORD-1', 50000);
+  });
+
+  it('skips immediate ORDER_CONFIRMATION on order:paid when grouped batch already exists', async () => {
+    prisma.user.findUnique.mockResolvedValue({ kakaoPhone: '01012345678' });
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'ORD-1',
+      total: 50000,
+      orderItems: [{ Product: { streamKey: 'stream-1' } }],
     });
+    batchService.hasPendingOrSentBatchForOrder.mockResolvedValue(true);
 
-    it('emitAsync("order:created") 호출 시 주문 알림톡 발송 로직이 실행된다', async () => {
-      const sendSpy = jest.spyOn(integrationAlimtalkService, 'sendOrderAlimtalk');
+    await listener.handleOrderPaid({ orderId: 'ORD-1', userId: 'user-1' });
 
-      await eventEmitter.emitAsync('order:created', payload);
+    expect(alimtalkService.sendOrderAlimtalk).not.toHaveBeenCalled();
+    expect(notificationsService.sendPaymentConfirmedNotification).toHaveBeenCalledWith(
+      'user-1',
+      'ORD-1',
+    );
+  });
 
-      expect(sendSpy).toHaveBeenCalledTimes(1);
-      expect(sendSpy).toHaveBeenCalledWith('010-9999-0000', payload.orderId, 50000);
+  it('schedules grouped batches on stream end', async () => {
+    await listener.handleStreamEnded({ streamId: 'stream-id', streamKey: 'stream-1' });
+
+    expect(batchService.scheduleBatchesForStreamEnd).toHaveBeenCalledWith({
+      streamId: 'stream-id',
+      streamKey: 'stream-1',
     });
   });
 
-  describe('handleOrderCreated - 알림톡 전화번호 fallback', () => {
-    const payload = { orderId: 'ORD-20260309-00001', userId: 'user-1' };
-
-    it('kakaoPhone이 있으면 kakaoPhone으로 알림톡을 발송한다', async () => {
-      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        kakaoPhone: '010-9999-0000',
-      } as any);
-
-      await listener.handleOrderCreated(payload);
-
-      expect(alimtalkService.sendOrderAlimtalk).toHaveBeenCalledWith(
-        '010-9999-0000',
-        payload.orderId,
-        50000,
-      );
+  it('handles stream:started without throwing', async () => {
+    prisma.liveStream.findUnique.mockResolvedValue({
+      title: '라이브',
+      streamKey: 'stream-1',
+      description: '설명',
     });
+    prisma.user.findMany.mockResolvedValue([{ kakaoPhone: '01012345678' }]);
 
-    it('kakaoPhone이 null이면 알림톡을 발송하지 않는다', async () => {
-      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        kakaoPhone: null,
-      } as any);
-
-      await listener.handleOrderCreated(payload);
-
-      expect(alimtalkService.sendOrderAlimtalk).not.toHaveBeenCalled();
-    });
-
-    it('알림톡 발송 실패 시 에러를 catch하고 계속 진행한다', async () => {
-      jest.spyOn(prisma.order, 'findUnique').mockResolvedValue(mockOrder as any);
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
-        kakaoPhone: null,
-      } as any);
-      jest
-        .spyOn(alimtalkService, 'sendOrderAlimtalk')
-        .mockRejectedValue(new Error('알림톡 서버 오류'));
-
-      // 에러가 throw되지 않아야 한다
-      await expect(listener.handleOrderCreated(payload)).resolves.not.toThrow();
-    });
-  });
-
-  describe('handleStreamStarted - 라이브 시작 이벤트', () => {
-    it('stream:started 이벤트 수신 시 에러 없이 처리된다', async () => {
-      await expect(
-        listener.handleStreamStarted({ streamId: 'stream-1', userId: 'user-1' }),
-      ).resolves.not.toThrow();
-    });
+    await expect(
+      listener.handleStreamStarted({ streamId: 'stream-id', userId: 'admin-1' }),
+    ).resolves.not.toThrow();
   });
 });

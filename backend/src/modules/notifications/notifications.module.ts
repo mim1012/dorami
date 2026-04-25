@@ -5,6 +5,7 @@ import { NotificationSchedulerService } from './notification-scheduler.service';
 import { NotificationsController } from './notifications.controller';
 import { KakaoTalkClient } from './clients/kakao-talk.client';
 import { NotificationEventsListener } from './listeners/notification-events.listener';
+import { OrderConfirmationBatchService } from './order-confirmation-batch.service';
 import { AlimtalkModule } from '../admin/alimtalk.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { AlimtalkModule } from '../admin/alimtalk.module';
     PushNotificationService,
     NotificationSchedulerService,
     KakaoTalkClient,
+    OrderConfirmationBatchService,
     NotificationEventsListener,
   ],
   exports: [NotificationsService, PushNotificationService],

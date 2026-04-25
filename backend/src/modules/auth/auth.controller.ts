@@ -422,7 +422,6 @@ export class AuthController {
     }
     const appEnv = this.configService.get<string>('APP_ENV', 'development');
     const isStaging = appEnv === 'staging';
-
     if (!isStaging) {
       const clientIp: string = request.ip ?? request.socket?.remoteAddress ?? '';
       const isLocal =

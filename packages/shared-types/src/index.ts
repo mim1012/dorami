@@ -151,6 +151,7 @@ export interface User {
   depositorName?: string;
   instagramId?: string;
   phone?: string;
+  liveStartNotificationEnabled?: boolean;
   profileComplete?: boolean;
   profileCompletedAt?: string;
   shippingAddress?: ShippingAddress;
