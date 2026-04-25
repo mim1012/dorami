@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { apiClient } from '@/lib/api/client';
 import {
-  listAuthSessions,
-  revokeAuthSession,
-  type AuthSessionSummary,
-} from '@/lib/api/auth-sessions';
-import {
   formatPhoneNumberForInput,
   inferPhoneRegion,
   isValidProfilePhone,
@@ -26,7 +21,6 @@ import {
   PointsBalanceCard,
   AddressEditModal,
   ProfileCompletionBanner,
-  AuthSessionsCard,
   type AddressFormData,
 } from '@/components/my-page';
 
@@ -61,9 +55,6 @@ export default function MyPagePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [sessions, setSessions] = useState<AuthSessionSummary[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
-  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isPhoneEditOpen, setIsPhoneEditOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -78,7 +69,6 @@ export default function MyPagePage() {
   const [emailInput, setEmailInput] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [sessionErrorMessage, setSessionErrorMessage] = useState<string | null>(null);
 
   const [addressFormData, setAddressFormData] = useState<AddressFormData>({
     fullName: '',
@@ -108,28 +98,6 @@ export default function MyPagePage() {
     };
 
     loadProfile();
-  }, [user]);
-
-  useEffect(() => {
-    const loadSessions = async () => {
-      if (!user) {
-        setSessions([]);
-        setSessionsLoading(false);
-        return;
-      }
-
-      setSessionsLoading(true);
-      try {
-        setSessions(await listAuthSessions());
-      } catch (error) {
-        console.error('Failed to load auth sessions:', error);
-        setSessions([]);
-      } finally {
-        setSessionsLoading(false);
-      }
-    };
-
-    void loadSessions();
   }, [user]);
 
   const prefillAddressForm = (address?: ShippingAddress) => {
@@ -270,29 +238,6 @@ export default function MyPagePage() {
     }
   };
 
-  const handleRevokeSession = async (sessionId: string) => {
-    setRevokingSessionId(sessionId);
-    setSessionErrorMessage(null);
-    try {
-      const result = await revokeAuthSession(sessionId);
-      setSessions((current) => current.filter((session) => session.id !== sessionId));
-      setSuccessMessage(
-        result.revokedCurrentSession
-          ? '현재 세션이 종료되었습니다.'
-          : '선택한 기기의 로그인 세션을 종료했습니다.',
-      );
-      setTimeout(() => setSuccessMessage(null), 3000);
-      if (result.revokedCurrentSession) {
-        router.replace('/login');
-      }
-    } catch {
-      setSessionErrorMessage('세션 종료에 실패했습니다. 잠시 후 다시 시도해주세요.');
-      setTimeout(() => setSessionErrorMessage(null), 3000);
-    } finally {
-      setRevokingSessionId(null);
-    }
-  };
-
   // Loading state (auth + profile guard + profile data)
   if (authLoading || (user && isLoadingProfile)) {
     return (
@@ -341,12 +286,6 @@ export default function MyPagePage() {
             </div>
           )}
 
-          {sessionErrorMessage && (
-            <div className="bg-error-bg border border-error/30 rounded-lg p-4 mb-6">
-              <Body className="text-error">{sessionErrorMessage}</Body>
-            </div>
-          )}
-
           <ProfileCompletionBanner user={user} />
 
           <ProfileInfoCard
@@ -371,13 +310,6 @@ export default function MyPagePage() {
           {profile.role === 'ADMIN' && <AdminDashboardCard />}
 
           <OrderHistoryCard />
-
-          <AuthSessionsCard
-            sessions={sessions}
-            loading={sessionsLoading}
-            revokingSessionId={revokingSessionId}
-            onRevokeSession={handleRevokeSession}
-          />
 
           {/* 로그아웃 버튼 */}
           <div className="mt-6">
