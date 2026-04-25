@@ -318,12 +318,18 @@ export class AlimtalkService {
     config: PaymentConfig | null,
     template: OrderTemplate,
   ): AlimtalkMessage {
+    const primaryOrderId = payload.orderIds[0] ?? '주문';
     const orderLabel =
       payload.orderIds.length > 1
-        ? `${payload.orderIds[0]} 외 ${payload.orderIds.length - 1}건`
-        : (payload.orderIds[0] ?? '주문');
+        ? `${primaryOrderId} 외 ${payload.orderIds.length - 1}건`
+        : primaryOrderId;
 
     const productNames = payload.items.map((item) => item.productName);
+
+    const orderLink =
+      payload.orderIds[0] !== undefined
+        ? `${this.frontendUrl}/orders/${payload.orderIds[0]}`
+        : `${this.frontendUrl}/orders`;
 
     return this.buildOrderMessagePayload(
       payload.phone,
@@ -331,8 +337,8 @@ export class AlimtalkService {
       orderLabel,
       payload.totalAmount,
       productNames,
-      `${this.frontendUrl}/orders`,
-      '주문 내역 보기',
+      orderLink,
+      '주문 상세 보기',
       config,
       template,
     );

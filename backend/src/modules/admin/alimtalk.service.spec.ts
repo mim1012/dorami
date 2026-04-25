@@ -341,6 +341,40 @@ describe('AlimtalkService', () => {
     expect(message.text).toContain('■ Venmo: @venmo (Venmo Kim)');
   });
 
+  it('uses single-order button metadata for grouped CRDER_CONFIRMATION messages', () => {
+    const message = (service as any).buildGroupedOrderMessage(
+      {
+        phone: '01012345678',
+        customerName: '김지훈',
+        orderIds: ['ORD-20260425-00001', 'ORD-20260425-00002'],
+        totalAmount: 420,
+        items: [
+          { productName: 'Hermes Stage Load 095', quantity: 1 },
+          { productName: 'Hermes Stage Load 096', quantity: 3 },
+        ],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액}원',
+        kakaoTemplateCode: 'CRDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.buttons).toEqual([
+      {
+        buttonType: 'WL',
+        buttonName: '주문 상세 보기',
+        linkMo: 'https://www.doremi-live.com/orders/ORD-20260425-00001',
+      },
+    ]);
+  });
+
   it('uses friendtalk path for cart reminder test sends', async () => {
     prisma.notificationTemplate.findMany.mockResolvedValue([
       {
