@@ -187,7 +187,7 @@ export class CartService {
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
+      ),
     );
 
     this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${cartItem.expiresAt}`);
