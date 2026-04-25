@@ -912,16 +912,13 @@ export class AlimtalkService {
     }
 
     const testOrderId = generateOrderId(1);
+    const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
     const msg = this.buildOrderMessage(
       phone,
       testOrderId,
       50000,
       { user: { name: '테스트' }, orderItems: [{ productName: '테스트 상품' }] },
-      {
-        bankName: 'KB국민은행',
-        bankAccountNumber: '123-456-789',
-        bankAccountHolder: '도레미마켓',
-      } as PaymentConfig,
+      config,
       template,
     );
     return this._sendAlimtalk([msg]);
