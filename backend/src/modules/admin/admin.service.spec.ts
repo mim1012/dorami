@@ -66,6 +66,7 @@ import { AdminService } from './admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { InsufficientStockException } from '../../common/exceptions/business.exception';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlimtalkService } from './alimtalk.service';
@@ -126,6 +127,7 @@ describe('AdminService', () => {
               delete: jest.fn(),
             },
             product: {
+              findUnique: jest.fn(),
               update: jest.fn(),
             },
             liveStream: {
@@ -1491,6 +1493,150 @@ describe('AdminService', () => {
 
       expect(result.restoredStock).toBe(0);
       expect(txMock.product.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateOrderItemQuantity', () => {
+    const makeOrderWithItems = (overrides: Record<string, any> = {}) => ({
+      id: 'ORD-20260327-00001',
+      status: 'PENDING_PAYMENT',
+      deletedAt: null,
+      subtotal: '30.00',
+      shippingFee: '7.00',
+      total: '37.00',
+      orderItems: [
+        {
+          id: 'item-1',
+          productId: 'prod-1',
+          productName: '상품A',
+          price: '10.00',
+          quantity: 2,
+          shippingFee: '4.00',
+        },
+        {
+          id: 'item-2',
+          productId: 'prod-2',
+          productName: '상품B',
+          price: '10.00',
+          quantity: 1,
+          shippingFee: '3.00',
+        },
+      ],
+      ...overrides,
+    });
+
+    it('수량 증가 시 재고를 차감하고 주문 금액을 재계산해야 한다', async () => {
+      const order = makeOrderWithItems();
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      const txMock = {
+        orderItem: { update: jest.fn() },
+        product: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'prod-1', quantity: 5, status: 'AVAILABLE' }),
+          update: jest.fn(),
+        },
+        order: { update: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(txMock));
+
+      const result = await service.updateOrderItemQuantity('ORD-20260327-00001', 'item-1', 4);
+
+      expect(result.orderId).toBe('ORD-20260327-00001');
+      expect(result.itemId).toBe('item-1');
+      expect(result.previousQuantity).toBe(2);
+      expect(result.updatedQuantity).toBe(4);
+      expect(result.stockDelta).toBe(-2);
+      expect(result.updatedSubtotal).toBe('50.00');
+      expect(result.updatedShippingFee).toBe('7.00');
+      expect(result.updatedTotal).toBe('57.00');
+      expect(txMock.product.findUnique).toHaveBeenCalledWith({
+        where: { id: 'prod-1' },
+        select: { id: true, quantity: true, status: true },
+      });
+      expect(txMock.product.update).toHaveBeenCalledWith({
+        where: { id: 'prod-1' },
+        data: { quantity: 3, status: 'AVAILABLE' },
+      });
+      expect(txMock.orderItem.update).toHaveBeenCalledWith({
+        where: { id: 'item-1' },
+        data: { quantity: 4 },
+      });
+      expect(txMock.order.update).toHaveBeenCalledWith({
+        where: { id: 'ORD-20260327-00001' },
+        data: {
+          subtotal: 50,
+          shippingFee: 7,
+          total: 57,
+        },
+      });
+    });
+
+    it('수량 감소 시 재고를 복원하고 주문 금액을 재계산해야 한다', async () => {
+      const order = makeOrderWithItems();
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      const txMock = {
+        orderItem: { update: jest.fn() },
+        product: {
+          findUnique: jest.fn(),
+          update: jest.fn(),
+        },
+        order: { update: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(txMock));
+
+      const result = await service.updateOrderItemQuantity('ORD-20260327-00001', 'item-1', 1);
+
+      expect(result.previousQuantity).toBe(2);
+      expect(result.updatedQuantity).toBe(1);
+      expect(result.stockDelta).toBe(1);
+      expect(result.updatedSubtotal).toBe('20.00');
+      expect(result.updatedShippingFee).toBe('7.00');
+      expect(result.updatedTotal).toBe('27.00');
+      expect(txMock.product.findUnique).not.toHaveBeenCalled();
+      expect(txMock.product.update).toHaveBeenCalledWith({
+        where: { id: 'prod-1' },
+        data: {
+          quantity: { increment: 1 },
+          status: 'AVAILABLE',
+        },
+      });
+    });
+
+    it('재고가 부족하면 수량 증가를 막아야 한다', async () => {
+      const order = makeOrderWithItems();
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      const txMock = {
+        orderItem: { update: jest.fn() },
+        product: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'prod-1', quantity: 1, status: 'AVAILABLE' }),
+          update: jest.fn(),
+        },
+        order: { update: jest.fn() },
+      };
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(txMock));
+
+      await expect(
+        service.updateOrderItemQuantity('ORD-20260327-00001', 'item-1', 4),
+      ).rejects.toThrow(InsufficientStockException);
+
+      expect(txMock.orderItem.update).not.toHaveBeenCalled();
+      expect(txMock.product.update).not.toHaveBeenCalled();
+      expect(txMock.order.update).not.toHaveBeenCalled();
+    });
+
+    it('PENDING_PAYMENT가 아닌 주문은 수량 수정할 수 없어야 한다', async () => {
+      const order = makeOrderWithItems({ status: 'PAYMENT_CONFIRMED' });
+      jest.spyOn(prisma.order, 'findFirst').mockResolvedValue(order as any);
+
+      await expect(
+        service.updateOrderItemQuantity('ORD-20260327-00001', 'item-1', 3),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

@@ -607,6 +607,12 @@ export class UpdateOrderStatusDto {
   status!: OrderStatus;
 }
 
+export class UpdateOrderItemQuantityDto {
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
+
 export class BulkUpdateOrderStatusDto {
   @IsArray()
   @IsString({ each: true })
@@ -632,4 +638,15 @@ export class RemoveOrderItemResponseDto {
   updatedShippingFee!: string;
   updatedTotal!: string;
   remainingItemCount!: number;
+}
+
+export class UpdateOrderItemQuantityResponseDto {
+  orderId!: string;
+  itemId!: string;
+  previousQuantity!: number;
+  updatedQuantity!: number;
+  stockDelta!: number;
+  updatedSubtotal!: string;
+  updatedShippingFee!: string;
+  updatedTotal!: string;
 }

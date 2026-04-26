@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { InsufficientStockException } from '../../common/exceptions/business.exception';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
@@ -323,6 +324,29 @@ export class AdminService {
       .filter(Boolean);
 
     return lines.length > 0 ? lines.join(' / ') : null;
+  }
+
+  private calculateOrderTotals(
+    items: Array<{
+      price: number | string | Prisma.Decimal;
+      quantity: number;
+      shippingFee: number | string | Prisma.Decimal;
+    }>,
+  ) {
+    const subtotalCents = items.reduce(
+      (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
+      0,
+    );
+    const shippingFeeCents = items.reduce(
+      (sum, item) => sum + Math.round(Number(item.shippingFee) * 100),
+      0,
+    );
+
+    return {
+      subtotal: subtotalCents / 100,
+      shippingFee: shippingFeeCents / 100,
+      total: (subtotalCents + shippingFeeCents) / 100,
+    };
   }
 
   async getUserList(query: GetUsersQueryDto): Promise<UserListResponseDto> {
@@ -2333,19 +2357,7 @@ export class AdminService {
     }
 
     const remainingItems = orderItems.filter((item) => item.id !== itemId);
-
-    // Cent-based integer arithmetic to avoid floating-point errors
-    const updatedSubtotal =
-      remainingItems.reduce(
-        (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
-        0,
-      ) / 100;
-
-    const updatedShippingFee =
-      remainingItems.reduce((sum, item) => sum + Math.round(Number(item.shippingFee) * 100), 0) /
-      100;
-
-    const updatedTotal = updatedSubtotal + updatedShippingFee;
+    const updatedTotals = this.calculateOrderTotals(remainingItems);
 
     let restoredStock = 0;
 
@@ -2367,9 +2379,9 @@ export class AdminService {
         await tx.order.update({
           where: { id: orderId },
           data: {
-            subtotal: updatedSubtotal,
-            shippingFee: updatedShippingFee,
-            total: updatedTotal,
+            subtotal: updatedTotals.subtotal,
+            shippingFee: updatedTotals.shippingFee,
+            total: updatedTotals.total,
           },
         });
       },
@@ -2380,10 +2392,134 @@ export class AdminService {
       orderId,
       removedItemId: itemId,
       restoredStock,
-      updatedSubtotal: updatedSubtotal.toFixed(2),
-      updatedShippingFee: updatedShippingFee.toFixed(2),
-      updatedTotal: updatedTotal.toFixed(2),
+      updatedSubtotal: updatedTotals.subtotal.toFixed(2),
+      updatedShippingFee: updatedTotals.shippingFee.toFixed(2),
+      updatedTotal: updatedTotals.total.toFixed(2),
       remainingItemCount: remainingItems.length,
+    };
+  }
+
+  async updateOrderItemQuantity(
+    orderId: string,
+    itemId: string,
+    quantity: number,
+  ): Promise<{
+    orderId: string;
+    itemId: string;
+    previousQuantity: number;
+    updatedQuantity: number;
+    stockDelta: number;
+    updatedSubtotal: string;
+    updatedShippingFee: string;
+    updatedTotal: string;
+  }> {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deletedAt: null },
+      include: { orderItems: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('주문을 찾을 수 없습니다');
+    }
+
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new BadRequestException('입금 대기 상태의 주문만 수량을 수정할 수 있습니다');
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('수량은 1 이상의 정수여야 합니다');
+    }
+
+    const targetItem = order.orderItems.find((item) => item.id === itemId);
+    if (!targetItem) {
+      throw new NotFoundException('주문 상품을 찾을 수 없습니다');
+    }
+
+    const previousQuantity = targetItem.quantity;
+    if (previousQuantity === quantity) {
+      return {
+        orderId,
+        itemId,
+        previousQuantity,
+        updatedQuantity: quantity,
+        stockDelta: 0,
+        updatedSubtotal: Number(order.subtotal).toFixed(2),
+        updatedShippingFee: Number(order.shippingFee).toFixed(2),
+        updatedTotal: Number(order.total).toFixed(2),
+      };
+    }
+
+    const quantityDelta = quantity - previousQuantity;
+    const stockDelta = previousQuantity - quantity;
+    const updatedItems = order.orderItems.map((item) =>
+      item.id === itemId ? { ...item, quantity } : item,
+    );
+    const updatedTotals = this.calculateOrderTotals(updatedItems);
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        if (quantityDelta > 0) {
+          if (!targetItem.productId) {
+            throw new BadRequestException('재고를 확인할 수 없는 상품은 수량을 늘릴 수 없습니다');
+          }
+
+          const product = await tx.product.findUnique({
+            where: { id: targetItem.productId },
+            select: { id: true, quantity: true, status: true },
+          });
+
+          if (!product) {
+            throw new NotFoundException('상품을 찾을 수 없습니다');
+          }
+
+          if (product.quantity < quantityDelta) {
+            throw new InsufficientStockException(product.id, product.quantity, quantityDelta);
+          }
+
+          const nextStock = product.quantity - quantityDelta;
+          await tx.product.update({
+            where: { id: targetItem.productId },
+            data: {
+              quantity: nextStock,
+              status: nextStock === 0 ? 'SOLD_OUT' : 'AVAILABLE',
+            },
+          });
+        } else if (targetItem.productId) {
+          await tx.product.update({
+            where: { id: targetItem.productId },
+            data: {
+              quantity: { increment: Math.abs(quantityDelta) },
+              status: 'AVAILABLE',
+            },
+          });
+        }
+
+        await tx.orderItem.update({
+          where: { id: itemId },
+          data: { quantity },
+        });
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            subtotal: updatedTotals.subtotal,
+            shippingFee: updatedTotals.shippingFee,
+            total: updatedTotals.total,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+    return {
+      orderId,
+      itemId,
+      previousQuantity,
+      updatedQuantity: quantity,
+      stockDelta,
+      updatedSubtotal: updatedTotals.subtotal.toFixed(2),
+      updatedShippingFee: updatedTotals.shippingFee.toFixed(2),
+      updatedTotal: updatedTotals.total.toFixed(2),
     };
   }
 
