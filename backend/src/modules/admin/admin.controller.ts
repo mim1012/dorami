@@ -31,6 +31,7 @@ import {
   GetOrdersQueryDto,
   UpdateUserStatusDto,
   UpdateAdminUserDto,
+  UpdateOrderItemQuantityDto,
   UpdateOrderStatusDto,
   UpdateSystemSettingsDto,
   UpdateHomeFeaturedProductsDto,
@@ -225,6 +226,22 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '상품 삭제 및 금액 재계산 완료' })
   async removeOrderItem(@Param('orderId') orderId: string, @Param('itemId') itemId: string) {
     return this.adminService.removeOrderItem(orderId, itemId);
+  }
+
+  @Patch('orders/:orderId/items/:itemId')
+  @ApiOperation({
+    summary: '주문 상품 수량 수정 (관리자)',
+    description: '입금 대기 주문에서 개별 상품 수량을 수정하고 재고 및 합계를 재계산합니다.',
+  })
+  @ApiParam({ name: 'orderId', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiParam({ name: 'itemId', description: '주문 상품 ID (UUID)' })
+  @ApiResponse({ status: 200, description: '상품 수량 수정 및 금액 재계산 완료' })
+  async updateOrderItemQuantity(
+    @Param('orderId') orderId: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: UpdateOrderItemQuantityDto,
+  ) {
+    return this.adminService.updateOrderItemQuantity(orderId, itemId, dto.quantity);
   }
 
   @Delete('orders/:id')
