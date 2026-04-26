@@ -133,20 +133,21 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   },
   CART_EXPIRING: {
     sendTiming:
-      '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 친구톡으로 자동 발송됩니다.',
+      '방송이 종료된 뒤 설정한 N시간이 지나면, 그 방송 상품을 장바구니에 담아 둔 고객에게 친구톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 고객 정보와 상품 정보는 장바구니 데이터에서 자동으로 채워지며, 발송 시점은 관리자 설정의 장기 미구매 시간 기준을 따릅니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 고객별 같은 방송 장바구니 상품을 묶어서 첫 상품명과 추가 상품 건수가 자동으로 채워지며, 지연 시간은 관리자 설정의 방송 종료 후 기준을 따릅니다.',
     primaryAction: {
       label: '상품 관리로 이동',
       path: '/admin/products',
     },
     sourceGroups: [
       {
-        heading: '장바구니에서 자동으로 가져오는 항목',
+        heading: '같은 방송 장바구니에서 자동으로 가져오는 항목',
         items: [
           {
-            title: '고객명 · 상품명 · 수량',
-            description: '고객이 장바구니에 담아둔 실제 데이터를 그대로 사용합니다.',
+            title: '고객명 · 첫 상품명 · 추가 상품 건수',
+            description:
+              '같은 streamKey에 연결된 활성 장바구니 상품을 묶어 #{상품명} 외 #{수량}건 형태로 사용합니다.',
           },
         ],
       },
