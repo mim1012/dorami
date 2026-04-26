@@ -3,12 +3,34 @@ import { ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import type { ShippingAddress } from '@live-commerce/shared-types';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 describe('UsersService - Profile Completion', () => {
   let service: UsersService;
   let _prismaService: PrismaService;
+  const mockEncryptionService = {
+    encryptAddress: jest.fn((address: ShippingAddress) => ({
+      __encrypted: true,
+      alg: 'aes-256-gcm',
+      keyVersion: 'pii-v1',
+      iv: 'test-iv',
+      tag: 'test-tag',
+      ciphertext: JSON.stringify(address),
+    })),
+    normalizeAddressValue: jest.fn((value: unknown) => {
+      if (value && typeof value === 'object' && '__encrypted' in (value as Record<string, unknown>)) {
+        const encrypted = value as { ciphertext: string };
+        try {
+          return JSON.parse(encrypted.ciphertext) as ShippingAddress;
+        } catch {
+          return null;
+        }
+      }
+      return value as ShippingAddress | null;
+    }),
+  };
 
   const mockPrismaService = {
     user: {
@@ -32,13 +54,16 @@ describe('UsersService - Profile Completion', () => {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('') },
         },
+        {
+          provide: EncryptionService,
+          useValue: mockEncryptionService,
+        },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
     _prismaService = module.get<PrismaService>(PrismaService);
 
-    // Reset all mocks before each test
     jest.clearAllMocks();
   });
 
@@ -108,7 +133,7 @@ describe('UsersService - Profile Completion', () => {
       zip: '90001',
     };
 
-    it('should complete profile successfully with plain JSON address', async () => {
+    it('should complete profile successfully with encrypted shipping address envelope', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null); // Instagram ID available
       mockPrismaService.user.update.mockResolvedValue({
         id: userId,
@@ -128,14 +153,18 @@ describe('UsersService - Profile Completion', () => {
 
       const result = await service.completeProfile(userId, completeProfileDto);
 
-      // Verify user was updated with plain JSON address
+      // Verify user was updated with encrypted address envelope
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: expect.objectContaining({
           email: 'user@test.com',
           depositorName: 'Kim MinJi',
           instagramId: '@minji_official',
-          shippingAddress: expectedPlainAddress,
+          shippingAddress: expect.objectContaining({
+            __encrypted: true,
+            alg: 'aes-256-gcm',
+            keyVersion: 'pii-v1',
+          }),
           profileCompletedAt: expect.any(Date),
         }),
       });
@@ -248,12 +277,9 @@ describe('UsersService - Profile Completion', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             shippingAddress: expect.objectContaining({
-              fullName: 'Minji Kim',
-              address1: '123 Main St',
-              address2: undefined,
-              city: 'Los Angeles',
-              state: 'CA',
-              zip: '90001',
+              __encrypted: true,
+              alg: 'aes-256-gcm',
+              keyVersion: 'pii-v1',
             }),
           }),
         }),
@@ -295,10 +321,10 @@ describe('UsersService - Profile Completion', () => {
       zip: '90001',
     };
 
-    it('should return plain JSON shipping address', async () => {
+    it('should return decrypted shipping address from encrypted envelope', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: userId,
-        shippingAddress: mockPlainAddress,
+        shippingAddress: mockEncryptionService.encryptAddress(mockPlainAddress),
       });
 
       const result = await service.getShippingAddress(userId);
@@ -384,11 +410,15 @@ describe('UsersService - Profile Completion', () => {
 
       const result = await service.updateAddress(userId, updateAddressDto as any);
 
-      // Verify user was updated with plain JSON address
+      // Verify user was updated with encrypted address envelope
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: {
-          shippingAddress: expectedPlainAddress,
+          shippingAddress: expect.objectContaining({
+            __encrypted: true,
+            alg: 'aes-256-gcm',
+            keyVersion: 'pii-v1',
+          }),
         },
       });
 
@@ -423,23 +453,29 @@ describe('UsersService - Profile Completion', () => {
       expect(mockPrismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
         data: {
-          shippingAddress: plainAddressNoAddress2,
+          shippingAddress: expect.objectContaining({
+            __encrypted: true,
+            alg: 'aes-256-gcm',
+            keyVersion: 'pii-v1',
+          }),
         },
       });
     });
 
-    it('should store plain JSON address (not encrypted)', async () => {
+    it('should store encrypted address envelope', async () => {
       mockPrismaService.user.update.mockResolvedValue(mockFullUser);
       mockPrismaService.user.findUnique.mockResolvedValue(mockFullUser);
 
       await service.updateAddress(userId, updateAddressDto as any);
 
-      // Verify plain JSON address was stored, not an encrypted string
+      // Verify encrypted address envelope was stored
       expect(mockPrismaService.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             shippingAddress: expect.objectContaining({
-              fullName: 'Updated Name',
+              __encrypted: true,
+              alg: 'aes-256-gcm',
+              keyVersion: 'pii-v1',
             }),
           }),
         }),

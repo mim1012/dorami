@@ -214,6 +214,7 @@ describe('OrdersService - createOrderFromCart', () => {
           useValue: {
             decryptAddress: jest.fn((v) => v),
             encryptAddress: jest.fn((v) => v),
+            normalizeAddressValue: jest.fn((v) => v),
           },
         },
       ],
