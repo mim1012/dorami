@@ -318,12 +318,18 @@ export class AlimtalkService {
     config: PaymentConfig | null,
     template: OrderTemplate,
   ): AlimtalkMessage {
+    const primaryOrderId = payload.orderIds[0] ?? '주문';
     const orderLabel =
       payload.orderIds.length > 1
-        ? `${payload.orderIds[0]} 외 ${payload.orderIds.length - 1}건`
-        : (payload.orderIds[0] ?? '주문');
+        ? `${primaryOrderId} 외 ${payload.orderIds.length - 1}건`
+        : primaryOrderId;
 
     const productNames = payload.items.map((item) => item.productName);
+
+    const orderLink =
+      payload.orderIds[0] !== undefined
+        ? `${this.frontendUrl}/orders/${payload.orderIds[0]}`
+        : `${this.frontendUrl}/orders`;
 
     return this.buildOrderMessagePayload(
       payload.phone,
@@ -331,8 +337,8 @@ export class AlimtalkService {
       orderLabel,
       payload.totalAmount,
       productNames,
-      `${this.frontendUrl}/orders`,
-      '주문 내역 보기',
+      orderLink,
+      '주문 상세 보기',
       config,
       template,
     );
@@ -356,11 +362,12 @@ export class AlimtalkService {
       extraItemCount > 0 ? `${firstItem} 외 ${extraItemCount}건` : firstItem;
 
     const paymentInfo = this.buildPaymentInfo(config);
-    const sourceTemplate =
+    const isApprovedOrderConfirmationTemplate =
       template.kakaoTemplateCode === 'CRDER_CONFIRMATION' ||
-      template.kakaoTemplateCode === 'ORDER_CONFIRMATION'
-        ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
-        : template.template;
+      template.kakaoTemplateCode === 'ORDER_CONFIRMATION';
+    const sourceTemplate = isApprovedOrderConfirmationTemplate
+      ? CRDER_CONFIRMATION_APPROVED_TEMPLATE
+      : template.template;
 
     const text = this.replacePaymentTemplateVariables(
       sourceTemplate
@@ -377,13 +384,15 @@ export class AlimtalkService {
       to: phone,
       templateCode: template.kakaoTemplateCode ?? '',
       text,
-      buttons: [
-        {
-          buttonType: 'WL',
-          buttonName,
-          linkMo,
-        },
-      ],
+      buttons: isApprovedOrderConfirmationTemplate
+        ? undefined
+        : [
+            {
+              buttonType: 'WL',
+              buttonName,
+              linkMo,
+            },
+          ],
     };
   }
 
@@ -903,16 +912,13 @@ export class AlimtalkService {
     }
 
     const testOrderId = generateOrderId(1);
+    const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
     const msg = this.buildOrderMessage(
       phone,
       testOrderId,
       50000,
       { user: { name: '테스트' }, orderItems: [{ productName: '테스트 상품' }] },
-      {
-        bankName: 'KB국민은행',
-        bankAccountNumber: '123-456-789',
-        bankAccountHolder: '도레미마켓',
-      } as PaymentConfig,
+      config,
       template,
     );
     return this._sendAlimtalk([msg]);
