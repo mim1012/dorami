@@ -48,3 +48,11 @@ export const NOTIFICATION_VARIABLES = {
 
 export type NotificationEventType = keyof typeof NOTIFICATION_VARIABLES;
 export type NotificationChannel = 'AT' | 'FT';
+
+export const ADMIN_NOTIFICATION_TEMPLATE_TYPES = [
+  'ORDER_CONFIRMATION',
+  'CART_EXPIRING',
+  'LIVE_START',
+] as const satisfies readonly NotificationEventType[];
+
+export type AdminNotificationTemplateType = (typeof ADMIN_NOTIFICATION_TEMPLATE_TYPES)[number];

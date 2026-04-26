@@ -55,4 +55,10 @@ describe('notification presentation copy', () => {
     expect(JSON.stringify(presentation)).not.toContain('streamTitle');
     expect(JSON.stringify(presentation)).not.toContain('streamDescription');
   });
+
+  it('does not expose PAYMENT_REMINDER presentation in the admin UI surface', () => {
+    expect(() => getNotificationPresentation('PAYMENT_REMINDER' as never)).toThrow(
+      'Unsupported notification presentation type: PAYMENT_REMINDER',
+    );
+  });
 });
