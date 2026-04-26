@@ -109,3 +109,6 @@ ssh/
 
 # Duplicate project copy
 dorami/
+
+# Sensitive archives
+dorami-prod-key.zip
