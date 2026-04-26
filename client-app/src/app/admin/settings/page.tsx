@@ -22,7 +22,12 @@ import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { getUserMessage } from '@/lib/errors/error-messages';
-import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
+import {
+  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
+  NOTIFICATION_VARIABLES,
+  type AdminNotificationTemplateType,
+  type NotificationEventType,
+} from '@live-commerce/shared-types';
 import { getNotificationPresentation } from './notifications/presentation';
 
 export const dynamic = 'force-dynamic';
@@ -90,10 +95,10 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'footer', label: '푸터 설정', icon: SettingsIcon },
 ];
 
-const EVENT_TYPES = Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType[];
+const EVENT_TYPES = [...ADMIN_NOTIFICATION_TEMPLATE_TYPES];
 
-function isManagedNotificationType(type: string): type is NotificationEventType {
-  return Object.prototype.hasOwnProperty.call(NOTIFICATION_VARIABLES, type);
+function isManagedNotificationType(type: string): type is AdminNotificationTemplateType {
+  return EVENT_TYPES.includes(type as AdminNotificationTemplateType);
 }
 
 function getVisibleTemplates(templates: NotificationTemplate[]): NotificationTemplate[] {

@@ -1,4 +1,7 @@
-import type { NotificationEventType } from '@live-commerce/shared-types';
+import {
+  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
+  type AdminNotificationTemplateType,
+} from '@live-commerce/shared-types';
 
 export interface NotificationSourceItem {
   title: string;
@@ -24,7 +27,7 @@ export interface NotificationPresentation {
   sourceGroups: NotificationSourceGroup[];
 }
 
-const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
+const PRESENTATIONS: Record<AdminNotificationTemplateType, NotificationPresentation> = {
   LIVE_START: {
     sendTiming: '라이브 방송을 시작하는 순간 고객에게 자동 발송됩니다.',
     valueIntro:
@@ -97,40 +100,6 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
       },
     ],
   },
-  PAYMENT_REMINDER: {
-    sendTiming: '입금 대기 주문이 있을 때 고객에게 알림톡으로 자동 발송됩니다.',
-    valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워지며, 새 템플릿은 #{결제수단} · #{송금계정} · #{수취인명}을 쓰면 됩니다. Zelle/Venmo만 설정하면 그 값만 들어가고 은행명은 끼어들지 않습니다.',
-    primaryAction: {
-      label: '주문 관리로 이동',
-      path: '/admin/orders',
-    },
-    secondaryAction: {
-      label: '결제 설정으로 이동',
-      path: '/admin/settings',
-    },
-    sourceGroups: [
-      {
-        heading: '주문에서 자동으로 가져오는 항목',
-        items: [
-          {
-            title: '주문번호 · 금액',
-            description: '입금 대기 상태의 주문 데이터에서 자동으로 가져옵니다.',
-          },
-        ],
-      },
-      {
-        heading: '관리자 설정에서 가져오는 항목',
-        items: [
-          {
-            title: '결제 수단 안내 (#{결제수단} · #{송금계정} · #{수취인명})',
-            description:
-              'Zelle/Venmo만 설정하면 그 값만 자동으로 사용합니다. 기존 심사본이 있다면 #{은행명} · #{계좌번호} · #{예금주}도 계속 호환됩니다.',
-          },
-        ],
-      },
-    ],
-  },
   CART_EXPIRING: {
     sendTiming:
       '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 친구톡으로 자동 발송됩니다.',
@@ -154,6 +123,14 @@ const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   },
 };
 
-export function getNotificationPresentation(type: NotificationEventType): NotificationPresentation {
+function isAdminNotificationTemplateType(type: string): type is AdminNotificationTemplateType {
+  return ADMIN_NOTIFICATION_TEMPLATE_TYPES.includes(type as AdminNotificationTemplateType);
+}
+
+export function getNotificationPresentation(type: string): NotificationPresentation {
+  if (!isAdminNotificationTemplateType(type)) {
+    throw new Error(`Unsupported notification presentation type: ${type}`);
+  }
+
   return PRESENTATIONS[type];
 }

@@ -15,13 +15,17 @@ import {
   MessageSquare,
   X,
 } from 'lucide-react';
-import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
+import {
+  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
+  NOTIFICATION_VARIABLES,
+  type AdminNotificationTemplateType,
+} from '@live-commerce/shared-types';
 import { getNotificationPresentation } from './presentation';
 
 interface NotificationTemplate {
   id: string;
   name: string;
-  type: string;
+  type: AdminNotificationTemplateType;
   template: string;
   kakaoTemplateCode: string;
   enabled: boolean;
@@ -60,19 +64,18 @@ interface TestDeliveryResponse {
   result: KakaoDeliveryBatchResult;
 }
 
-const EVENT_TYPES = Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType[];
+const EVENT_TYPES = [...ADMIN_NOTIFICATION_TEMPLATE_TYPES];
 
-type TestEndpointMap = Record<NotificationEventType, string>;
+type TestEndpointMap = Record<AdminNotificationTemplateType, string>;
 
 const TEST_ENDPOINTS: TestEndpointMap = {
   ORDER_CONFIRMATION: '/admin/alimtalk/test-order',
-  PAYMENT_REMINDER: '/admin/alimtalk/test-payment-reminder',
   CART_EXPIRING: '/admin/alimtalk/test-cart-expiring',
   LIVE_START: '/admin/alimtalk/test-live',
 };
 
-function isManagedNotificationType(type: string): type is NotificationEventType {
-  return Object.prototype.hasOwnProperty.call(NOTIFICATION_VARIABLES, type);
+function isManagedNotificationType(type: string): type is AdminNotificationTemplateType {
+  return EVENT_TYPES.includes(type as AdminNotificationTemplateType);
 }
 
 function getVisibleTemplates(templates: NotificationTemplate[]): NotificationTemplate[] {
@@ -138,13 +141,13 @@ export default function NotificationSettingsPage() {
   const [settingsConfig, setSettingsConfig] = useState<NotificationSettingsConfig>({
     orderConfirmationDelayHours: 0,
   });
-  const [activeType, setActiveType] = useState<NotificationEventType>('ORDER_CONFIRMATION');
+  const [activeType, setActiveType] = useState<AdminNotificationTemplateType>('ORDER_CONFIRMATION');
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [isSavingOrderDelay, setIsSavingOrderDelay] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
-  const [testTarget, setTestTarget] = useState<NotificationEventType | null>(null);
+  const [testTarget, setTestTarget] = useState<AdminNotificationTemplateType | null>(null);
   const [phone, setPhone] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
@@ -175,7 +178,7 @@ export default function NotificationSettingsPage() {
         });
 
         if (filtered.length > 0) {
-          setActiveType(filtered[0].type as NotificationEventType);
+          setActiveType(filtered[0].type);
         }
       } catch (err: unknown) {
         setError(getUserMessage(err));
@@ -234,7 +237,7 @@ export default function NotificationSettingsPage() {
     }
   };
 
-  const openTestModal = (type: NotificationEventType) => {
+  const openTestModal = (type: AdminNotificationTemplateType) => {
     setTestTarget(type);
     setPhone('');
     setIsTestModalOpen(true);
@@ -327,12 +330,12 @@ export default function NotificationSettingsPage() {
           <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {visibleTemplates.map((template) => {
-                const config = NOTIFICATION_VARIABLES[template.type as NotificationEventType];
+                const config = NOTIFICATION_VARIABLES[template.type];
                 const isActive = activeType === template.type;
                 return (
                   <button
                     key={template.id}
-                    onClick={() => setActiveType(template.type as NotificationEventType)}
+                    onClick={() => setActiveType(template.type)}
                     className={`rounded-xl border px-4 py-3 text-left transition-all ${
                       isActive
                         ? 'border-[#FF4D8D] bg-pink-50 text-[#C62F74] shadow-sm'
@@ -365,19 +368,14 @@ export default function NotificationSettingsPage() {
           {activeTemplate && (
             <div className="p-6">
               {(() => {
-                const presentation = getNotificationPresentation(
-                  activeTemplate.type as NotificationEventType,
-                );
+                const presentation = getNotificationPresentation(activeTemplate.type);
 
                 return (
                   <>
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-base font-bold text-gray-900">
-                          {
-                            NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
-                              .label
-                          }
+                          {NOTIFICATION_VARIABLES[activeTemplate.type].label}
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">{presentation.sendTiming}</p>
                       </div>
@@ -430,9 +428,7 @@ export default function NotificationSettingsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() =>
-                            openTestModal(activeTemplate.type as NotificationEventType)
-                          }
+                          onClick={() => openTestModal(activeTemplate.type)}
                         >
                           테스트 발송
                         </Button>
@@ -560,8 +556,7 @@ export default function NotificationSettingsPage() {
                             className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm transition-colors focus:border-[#FF4D8D] focus:outline-none focus:ring-2 focus:ring-pink-100"
                             placeholder="예: KA01TP..."
                           />
-                          {NOTIFICATION_VARIABLES[activeTemplate.type as NotificationEventType]
-                            .channel === 'AT' &&
+                          {NOTIFICATION_VARIABLES[activeTemplate.type].channel === 'AT' &&
                             !activeTemplate.kakaoTemplateCode?.trim() && (
                               <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
                                 미설정
