@@ -25,7 +25,6 @@ jest.mock(
 );
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { OrderConfirmationBatchStatus } from '@prisma/client';
 import { OrderConfirmationBatchService } from './order-confirmation-batch.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AlimtalkService } from '../admin/alimtalk.service';
@@ -118,6 +117,43 @@ describe('OrderConfirmationBatchService', () => {
         where: { userId_streamKey: { userId: 'user-1', streamKey: 'stream-1' } },
       }),
     );
+    expect(prisma.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'PENDING_PAYMENT',
+        }),
+      }),
+    );
+  });
+
+  it('only schedules pending-payment orders for grouped stream-end batches', async () => {
+    prisma.liveStream.findUnique.mockResolvedValue({
+      id: 'live-1',
+      streamKey: 'stream-1',
+      startedAt: new Date('2026-04-22T10:00:00.000Z'),
+      endedAt: new Date('2026-04-22T11:00:00.000Z'),
+    });
+    prisma.systemConfig.findFirst.mockResolvedValue({ orderConfirmationDelayHours: 0 });
+    prisma.order.findMany.mockResolvedValue([{ id: 'ORD-pending', userId: 'user-1' }]);
+    prisma.orderConfirmationBatch.upsert.mockResolvedValue({ id: 'batch-1' });
+
+    await service.scheduleBatchesForStreamEnd({ streamId: 'live-1', streamKey: 'stream-1' });
+
+    expect(prisma.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'PENDING_PAYMENT',
+        }),
+      }),
+    );
+    expect(prisma.orderConfirmationBatchOrder.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.orderConfirmationBatchOrder.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          orderId: 'ORD-pending',
+        }),
+      }),
+    );
   });
 
   it('sends due grouped batches once and marks them sent', async () => {
@@ -184,7 +220,7 @@ describe('OrderConfirmationBatchService', () => {
     expect(prisma.orderConfirmationBatch.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'batch-1' },
-        data: expect.objectContaining({ status: OrderConfirmationBatchStatus.SENT }),
+        data: expect.objectContaining({ status: 'SENT' }),
       }),
     );
   });
@@ -224,7 +260,7 @@ describe('OrderConfirmationBatchService', () => {
 
     expect(prisma.orderConfirmationBatch.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: OrderConfirmationBatchStatus.FAILED }),
+        data: expect.objectContaining({ status: 'FAILED' }),
       }),
     );
   });
