@@ -110,7 +110,6 @@ function CartItemRow({
             <span className="w-6 text-center text-white text-xs font-bold">{item.quantity}</span>
             <button
               onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-              disabled={item.quantity >= 10}
               className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 active:scale-90 transition-all disabled:opacity-30"
               aria-label="수량 증가"
             >
@@ -194,7 +193,7 @@ export default function LiveCartPanel({ onProceedToCheckout }: LiveCartPanelProp
 
   const handleUpdateQuantity = useCallback(
     (id: string, qty: number) => {
-      if (qty < 1 || qty > 10) return;
+      if (qty < 1) return;
       updateCartItem.mutate({ itemId: id, quantity: qty });
     },
     [updateCartItem],
