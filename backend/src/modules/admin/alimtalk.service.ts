@@ -767,7 +767,7 @@ export class AlimtalkService {
   async sendCartReminderFriendtalk(
     phone: string,
     productName: string,
-    hoursSinceAdded: number,
+    extraItemCount: number,
     streamKey?: string,
   ): Promise<KakaoDeliveryBatchResult> {
     if (!(await this.isEnabled())) {
@@ -790,8 +790,9 @@ export class AlimtalkService {
     const cartUrl = streamKey
       ? `${this.frontendUrl}/live/${streamKey}`
       : `${this.frontendUrl}/cart`;
-
-    const text = `장바구니에 담아두신 "${productName}" 상품이 아직 남아 있어요!\n\n담은 지 약 ${hoursSinceAdded}시간 지났지만 아직 주문이 완료되지 않았습니다.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.\n아래 버튼을 눌러 바로 이어서 진행해 주세요.`;
+    const productSummary =
+      extraItemCount > 0 ? `${productName} 외 ${extraItemCount}건` : productName;
+    const text = `라이브에서 담아두신 "${productSummary}" 상품이 아직 장바구니에 남아 있어요!\n\n방송이 끝난 뒤에도 주문이 완료되지 않아 안내드려요.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.\n아래 버튼을 눌러 바로 이어서 진행해 주세요.`;
 
     try {
       const button = new KakaoButtonBuilder()
@@ -929,6 +930,6 @@ export class AlimtalkService {
   }
 
   async sendTestCartExpiring(phone: string): Promise<KakaoDeliveryBatchResult> {
-    return this.sendCartReminderFriendtalk(phone, '테스트 상품', 24);
+    return this.sendCartReminderFriendtalk(phone, '테스트 상품', 0);
   }
 }
