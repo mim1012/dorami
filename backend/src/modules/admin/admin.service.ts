@@ -2018,6 +2018,36 @@ export class AdminService {
     return this.getUserDetail(userId);
   }
 
+  async bulkUpdateLiveStartNotifications(userIds: string[], enabled: boolean) {
+    const normalizedUserIds = [...new Set(userIds.map((userId) => userId.trim()).filter(Boolean))];
+
+    if (normalizedUserIds.length === 0) {
+      throw new BadRequestException('At least one user ID is required');
+    }
+
+    const existingUsers = await this.prisma.user.findMany({
+      where: { id: { in: normalizedUserIds } },
+      select: { id: true },
+    });
+
+    if (existingUsers.length !== normalizedUserIds.length) {
+      const existingUserIds = new Set(existingUsers.map((user) => user.id));
+      const missingUserIds = normalizedUserIds.filter((userId) => !existingUserIds.has(userId));
+      throw new NotFoundException(`Users not found: ${missingUserIds.join(', ')}`);
+    }
+
+    const result = await this.prisma.user.updateMany({
+      where: { id: { in: normalizedUserIds } },
+      data: { liveStartNotificationEnabled: enabled },
+    });
+
+    return {
+      updatedCount: result.count,
+      liveStartNotificationEnabled: enabled,
+      userIds: normalizedUserIds,
+    };
+  }
+
   /**
    * Update user status (Active/Inactive/Suspended)
    */

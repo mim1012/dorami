@@ -455,6 +455,16 @@ export class UpdateAdminUserDto {
   shippingAddress?: UpdateAdminUserAddressDto;
 }
 
+export class BulkUpdateLiveStartNotificationDto {
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  userIds!: string[];
+
+  @IsBoolean()
+  liveStartNotificationEnabled!: boolean;
+}
+
 export class UserDetailDto {
   id!: string;
   email!: string;
