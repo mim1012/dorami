@@ -196,6 +196,26 @@ describe('NotificationEventsListener', () => {
     });
   });
 
+  it('renders cart reminder payload from all stream cart products', async () => {
+    prisma.user.findUnique.mockResolvedValue({ kakaoPhone: '01012345678' });
+
+    await listener.handleCartReminder({
+      userId: 'user-1',
+      productIds: ['product-1', 'product-2', 'product-3'],
+      productNames: ['첫 상품', '둘째 상품', '셋째 상품'],
+      streamKey: 'stream-1',
+      reminderDelayHours: 0,
+      streamEndedAt: new Date('2026-04-16T11:59:00.000Z'),
+    });
+
+    expect(alimtalkService.sendCartReminderFriendtalk).toHaveBeenCalledWith(
+      '01012345678',
+      '첫 상품',
+      2,
+      'stream-1',
+    );
+  });
+
   it('handles stream:started without throwing', async () => {
     prisma.liveStream.findUnique.mockResolvedValue({
       title: '라이브',

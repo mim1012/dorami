@@ -457,64 +457,103 @@ export class CartService {
   }
 
   /**
-   * Cron job: Send abandoned-cart reminder for long-idle active carts.
-   * Runs every minute and targets carts created around N hours ago that have not been reminded yet.
+   * Cron job: Send stream-end cart reminders for active carts tied to ended live streams.
+   * Runs every minute and targets carts whose related stream ended at least N hours ago.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async sendCartReminders() {
     try {
       const now = new Date();
       const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
-      const reminderHours = Math.max(1, config?.abandonedCartReminderHours ?? 24);
-      const reminderMs = reminderHours * 60 * 60 * 1000;
-      const windowStart = new Date(now.getTime() - reminderMs - 60 * 1000);
-      const windowEnd = new Date(now.getTime() - reminderMs + 60 * 1000);
+      const reminderHours = Math.max(0, config?.abandonedCartReminderHours ?? 24);
+      const dueAt = new Date(now.getTime() - reminderHours * 60 * 60 * 1000);
 
-      const remindableCarts = await this.prisma.cart.findMany({
+      const remindableCarts = (await this.prisma.cart.findMany({
         where: {
           status: SharedCartStatus.ACTIVE,
           reminderSent: false,
-          createdAt: {
-            gte: windowStart,
-            lte: windowEnd,
+          product: {
+            is: {
+              streamKey: { not: null },
+              liveStream: {
+                is: {
+                  endedAt: {
+                    not: null,
+                    lte: dueAt,
+                  },
+                },
+              },
+            },
           },
         },
         include: {
-          product: { select: { streamKey: true } },
+          product: {
+            select: {
+              streamKey: true,
+              liveStream: {
+                select: {
+                  endedAt: true,
+                },
+              },
+            },
+          },
         },
-      });
+        orderBy: [{ userId: 'asc' }, { createdAt: 'asc' }],
+      })) as Array<
+        Cart & {
+          product: {
+            streamKey: string | null;
+            liveStream: { endedAt: Date | null } | null;
+          } | null;
+        }
+      >;
 
       if (remindableCarts.length === 0) {
         return;
       }
 
-      // Mark reminder as sent before emitting to prevent double-send on retry
       await this.prisma.cart.updateMany({
-        where: { id: { in: remindableCarts.map((c) => c.id) } },
+        where: { id: { in: remindableCarts.map((cart) => cart.id) } },
         data: { reminderSent: true },
       });
 
-      const userCartMap = new Map<string, typeof remindableCarts>();
+      const cartsByUserAndStream = new Map<string, typeof remindableCarts>();
       for (const cart of remindableCarts) {
-        if (!cart.userId) {
+        const streamKey = cart.product?.streamKey ?? null;
+        const userId = cart.userId;
+
+        if (!userId || !streamKey) {
           continue;
         }
-        const existing = userCartMap.get(cart.userId) ?? [];
-        userCartMap.set(cart.userId, [...existing, cart]);
+
+        const groupKey = `${userId}:${streamKey}`;
+        const existing = cartsByUserAndStream.get(groupKey) ?? [];
+        existing.push(cart);
+        cartsByUserAndStream.set(groupKey, existing);
       }
 
-      for (const [userId, items] of userCartMap) {
+      for (const items of cartsByUserAndStream.values()) {
+        const firstItem = items[0];
+        const userId = firstItem?.userId;
+        const streamKey = firstItem?.product?.streamKey ?? null;
+        const streamEndedAt = firstItem?.product?.liveStream?.endedAt ?? null;
+
+        if (!userId || !streamKey || !streamEndedAt) {
+          continue;
+        }
+
         this.eventEmitter.emit('cart:reminder', {
           userId,
-          productIds: items.map((i) => i.productId),
-          productNames: items.map((i) => i.productName),
-          streamKey: items[0]?.product?.streamKey ?? null,
-          hoursSinceAdded: reminderHours,
+          productIds: items.map((item) => item.productId),
+          productNames: items.map((item) => item.productName),
+          streamKey,
+          reminderDelayHours: reminderHours,
+          streamEndedAt,
         });
       }
 
       this.logger.log(
-        `Abandoned cart reminder emitted for ${remindableCarts.length} carts at ${reminderHours}h`,
+        `Stream-end cart reminder emitted for ${remindableCarts.length} carts after ${reminderHours}h delay`,
       );
     } catch (error) {
       this.logger.error('Failed to send cart reminders', (error as Error).stack);

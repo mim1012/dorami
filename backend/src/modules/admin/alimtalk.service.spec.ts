@@ -427,6 +427,31 @@ describe('AlimtalkService', () => {
       recipient: '01012345678',
       providerMessageKey: 'cart-ft-1',
     });
+
+    const omniMock = (service as any).bizgo.send.OMNI as jest.Mock;
+    const request = omniMock.mock.calls[0][0];
+    const text = request.messageFlow[0].brandmessage.text;
+    expect(text).toContain('테스트 상품');
+  });
+
+  it('renders cart reminder friendtalk with the required 상품명 외 수량건 pattern', async () => {
+    prisma.notificationTemplate.findMany.mockResolvedValue([
+      {
+        template: '[도레미마켓] 장바구니 리마인드',
+        kakaoTemplateCode: '',
+        enabled: true,
+      },
+    ]);
+    setBizgoOmniResult({
+      data: { data: { destinations: [{ code: 'A000', result: 'OK', msgKey: 'cart-ft-2' }] } },
+    });
+
+    await service.sendCartReminderFriendtalk('01012345678', '첫 상품', 2, 'stream-1');
+
+    const omniMock = (service as any).bizgo.send.OMNI as jest.Mock;
+    const request = omniMock.mock.calls[0][0];
+    const text = request.messageFlow[0].brandmessage.text;
+    expect(text).toContain('"첫 상품 외 2건"');
   });
 
   it('keeps legacy bank placeholders working for old approved templates', async () => {

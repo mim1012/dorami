@@ -494,7 +494,7 @@ export class UpdateSystemSettingsDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(168)
   abandonedCartReminderHours?: number;
 

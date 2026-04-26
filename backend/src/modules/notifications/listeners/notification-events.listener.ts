@@ -238,7 +238,8 @@ export class NotificationEventsListener {
     productIds: string[];
     productNames: string[];
     streamKey: string | null;
-    hoursSinceAdded: number;
+    reminderDelayHours: number;
+    streamEndedAt: Date | null;
   }) {
     this.logger.log(`Sending cart reminder friendtalk to user ${payload.userId}`);
 
@@ -253,11 +254,12 @@ export class NotificationEventsListener {
       }
 
       const productName = payload.productNames[0] ?? '상품';
+      const extraItemCount = Math.max(0, payload.productNames.length - 1);
 
       await this.alimtalkService.sendCartReminderFriendtalk(
         user.kakaoPhone,
         productName,
-        payload.hoursSinceAdded,
+        extraItemCount,
         payload.streamKey ?? undefined,
       );
     } catch (error) {
