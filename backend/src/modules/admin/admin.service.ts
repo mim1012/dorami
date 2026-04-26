@@ -130,7 +130,7 @@ const MANAGED_NOTIFICATION_DEFAULTS: Record<
   ORDER_CONFIRMATION: {
     name: 'ORDER_CONFIRMATION',
     template:
-      '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액}원\n\n현재 입금대기 상태입니다.\n아래 계정으로 입금해주시면 확인 후 처리됩니다.\n\n■ Zelle: #{젤계정} (#{젤예금주})\n■ Venmo: #{벤모계정} (#{벤모예금주})',
+      '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액} $\n\n현재 입금대기 상태입니다.\n아래 계정으로 입금해주시면 확인 후 처리됩니다.\n\n■ Zelle: #{젤계정} (#{젤예금주})\n■ Venmo: #{벤모계정} (#{벤모예금주})',
   },
   PAYMENT_REMINDER: {
     name: 'PAYMENT_REMINDER',
