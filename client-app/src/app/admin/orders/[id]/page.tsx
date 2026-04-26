@@ -29,6 +29,43 @@ interface OrderItem {
   size?: string;
 }
 
+interface OrderDetailResponse {
+  id: string;
+  userId: string;
+  userEmail: string;
+  depositorName: string;
+  instagramId: string;
+  shippingAddress: ShippingAddress | null;
+  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'CANCELLED';
+  paymentStatus: string;
+  shippingStatus: string;
+  subtotal: number | string;
+  shippingFee: number | string;
+  total: number | string;
+  createdAt: string;
+  updatedAt: string;
+  paidAt: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  items: Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    productImage?: string;
+    quantity: number;
+    price: number | string;
+    color?: string;
+    size?: string;
+  }>;
+  customer: {
+    id: string;
+    email: string;
+    name: string;
+    instagramId: string | null;
+    depositorName: string | null;
+  };
+}
+
 interface OrderDetail {
   id: string;
   userId: string;
@@ -69,6 +106,17 @@ const ORDER_STATUS_UPDATE_OPTIONS = [
   { value: 'CANCELLED', label: '취소' },
 ];
 
+const normalizeOrderDetail = (order: OrderDetailResponse): OrderDetail => ({
+  ...order,
+  subtotal: Number(order.subtotal),
+  shippingFee: Number(order.shippingFee),
+  total: Number(order.total),
+  items: order.items.map((item) => ({
+    ...item,
+    price: Number(item.price),
+  })),
+});
+
 export default function AdminOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -81,13 +129,19 @@ export default function AdminOrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
+  const [savingQuantityItemId, setSavingQuantityItemId] = useState<string | null>(null);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
 
   const fetchOrderDetail = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<OrderDetail>(`/admin/orders/${orderId}`);
-      setOrder(response.data);
+      const response = await apiClient.get<OrderDetailResponse>(`/admin/orders/${orderId}`);
+      const normalizedOrder = normalizeOrderDetail(response.data);
+      setOrder(normalizedOrder);
+      setQuantityDrafts(
+        Object.fromEntries(normalizedOrder.items.map((item) => [item.id, String(item.quantity)])),
+      );
     } catch (err: any) {
       console.error('Failed to fetch order detail:', err);
       setError(err.response?.data?.message || '주문 상세를 불러오지 못했습니다');
@@ -146,6 +200,41 @@ export default function AdminOrderDetailPage() {
       showToast(err.response?.data?.message || '상품 삭제에 실패했습니다', 'error');
     } finally {
       setRemovingItemId(null);
+    }
+  };
+
+  const handleQuantityDraftChange = (itemId: string, value: string) => {
+    setQuantityDrafts((current) => ({ ...current, [itemId]: value }));
+  };
+
+  const handleUpdateItemQuantity = async (item: OrderItem) => {
+    if (!order) return;
+
+    const draftValue = quantityDrafts[item.id] ?? String(item.quantity);
+    const nextQuantity = Number.parseInt(draftValue, 10);
+
+    if (!Number.isInteger(nextQuantity) || nextQuantity < 1) {
+      showToast('수량은 1 이상의 숫자여야 합니다', 'error');
+      setQuantityDrafts((current) => ({ ...current, [item.id]: String(item.quantity) }));
+      return;
+    }
+
+    if (nextQuantity === item.quantity) {
+      return;
+    }
+
+    setSavingQuantityItemId(item.id);
+    try {
+      await apiClient.patch(`/admin/orders/${order.id}/items/${item.id}`, {
+        quantity: nextQuantity,
+      });
+      showToast(`"${item.productName}" 수량이 ${nextQuantity}개로 변경되었습니다`, 'success');
+      await fetchOrderDetail();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '수량 변경에 실패했습니다', 'error');
+      setQuantityDrafts((current) => ({ ...current, [item.id]: String(item.quantity) }));
+    } finally {
+      setSavingQuantityItemId(null);
     }
   };
 
@@ -376,7 +465,7 @@ export default function AdminOrderDetailPage() {
           {order.items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-4 bg-white rounded-button p-4 border border-gray-100"
+              className="flex flex-col gap-4 bg-white rounded-button p-4 border border-gray-100 md:flex-row md:items-center"
             >
               {item.productImage && (
                 <img
@@ -393,15 +482,51 @@ export default function AdminOrderDetailPage() {
                   </Body>
                 )}
               </div>
-              <div className="text-right">
+              <div className="text-right md:min-w-[120px]">
                 <Body className="font-medium">{formatCurrency(item.price)}</Body>
-                <Body className="text-secondary-text text-caption">x{item.quantity}</Body>
+                <Body className="text-secondary-text text-caption">
+                  합계 {formatCurrency(item.price * item.quantity)}
+                </Body>
               </div>
+              {order.status === 'PENDING_PAYMENT' ? (
+                <div className="flex flex-col gap-2 md:min-w-[170px]">
+                  <label className="text-xs text-secondary-text">수량</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={quantityDrafts[item.id] ?? String(item.quantity)}
+                      onChange={(e) => handleQuantityDraftChange(item.id, e.target.value)}
+                      disabled={isUpdating || savingQuantityItemId === item.id}
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-hot-pink bg-white"
+                    />
+                    <button
+                      onClick={() => handleUpdateItemQuantity(item)}
+                      disabled={
+                        isUpdating ||
+                        savingQuantityItemId === item.id ||
+                        (quantityDrafts[item.id] ?? String(item.quantity)) === String(item.quantity)
+                      }
+                      className="px-3 py-2 min-h-[44px] rounded-lg border border-hot-pink text-hot-pink hover:bg-hot-pink hover:text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingQuantityItemId === item.id ? '저장 중...' : '수량 저장'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-right md:min-w-[100px]">
+                  <Body className="text-secondary-text text-caption">수량</Body>
+                  <Body className="font-medium">x{item.quantity}</Body>
+                </div>
+              )}
               {order.status === 'PENDING_PAYMENT' && order.items.length > 1 && (
                 <button
                   onClick={() => handleRemoveItem(item)}
-                  disabled={removingItemId === item.id || isUpdating}
-                  className="ml-2 px-3 py-2 min-h-[44px] rounded-lg border border-gray-300 text-gray-400 hover:text-error hover:border-error hover:bg-error/10 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={
+                    removingItemId === item.id || isUpdating || savingQuantityItemId === item.id
+                  }
+                  className="px-3 py-2 min-h-[44px] rounded-lg border border-gray-300 text-gray-400 hover:text-error hover:border-error hover:bg-error/10 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {removingItemId === item.id ? '삭제 중...' : '삭제'}
                 </button>

@@ -7,6 +7,7 @@ import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { OrderConfirmationBatchService } from '../order-confirmation-batch.service';
 import { UserStatus } from '@prisma/client';
+import { CartService } from '../../cart/cart.service';
 
 @Injectable()
 export class NotificationEventsListener {
@@ -18,6 +19,7 @@ export class NotificationEventsListener {
     private prisma: PrismaService,
     private orderConfirmationBatchService: OrderConfirmationBatchService,
     private readonly configService: ConfigService,
+    private readonly cartService: CartService,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('NotificationEventsListener');
@@ -127,7 +129,10 @@ export class NotificationEventsListener {
     );
 
     try {
-      await this.orderConfirmationBatchService.scheduleBatchesForStreamEnd(payload);
+      await Promise.all([
+        this.orderConfirmationBatchService.scheduleBatchesForStreamEnd(payload),
+        this.cartService.triggerImmediateStreamEndReminders(payload.streamKey),
+      ]);
     } catch (error) {
       this.logger.error(
         'Failed to schedule stream ended order confirmation batches',
@@ -238,7 +243,8 @@ export class NotificationEventsListener {
     productIds: string[];
     productNames: string[];
     streamKey: string | null;
-    hoursSinceAdded: number;
+    reminderDelayHours: number;
+    streamEndedAt: Date | null;
   }) {
     this.logger.log(`Sending cart reminder friendtalk to user ${payload.userId}`);
 
@@ -253,11 +259,12 @@ export class NotificationEventsListener {
       }
 
       const productName = payload.productNames[0] ?? '상품';
+      const extraItemCount = Math.max(0, payload.productNames.length - 1);
 
       await this.alimtalkService.sendCartReminderFriendtalk(
         user.kakaoPhone,
         productName,
-        payload.hoursSinceAdded,
+        extraItemCount,
         payload.streamKey ?? undefined,
       );
     } catch (error) {

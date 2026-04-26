@@ -22,7 +22,12 @@ import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { getUserMessage } from '@/lib/errors/error-messages';
-import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
+import {
+  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
+  NOTIFICATION_VARIABLES,
+  type AdminNotificationTemplateType,
+  type NotificationEventType,
+} from '@live-commerce/shared-types';
 import { getNotificationPresentation } from './notifications/presentation';
 
 export const dynamic = 'force-dynamic';
@@ -90,10 +95,10 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'footer', label: '푸터 설정', icon: SettingsIcon },
 ];
 
-const EVENT_TYPES = Object.keys(NOTIFICATION_VARIABLES) as NotificationEventType[];
+const EVENT_TYPES = [...ADMIN_NOTIFICATION_TEMPLATE_TYPES];
 
-function isManagedNotificationType(type: string): type is NotificationEventType {
-  return Object.prototype.hasOwnProperty.call(NOTIFICATION_VARIABLES, type);
+function isManagedNotificationType(type: string): type is AdminNotificationTemplateType {
+  return EVENT_TYPES.includes(type as AdminNotificationTemplateType);
 }
 
 function getVisibleTemplates(templates: NotificationTemplate[]): NotificationTemplate[] {
@@ -447,9 +452,9 @@ export default function AdminSettingsPage() {
             <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 리마인드 설정</h4>
             <div className="space-y-4 mb-4">
               <Input
-                label="장기 미구매 장바구니 알림 기준 (시간)"
+                label="방송 종료 후 장바구니 리마인드 지연 시간 (시간)"
                 type="number"
-                min={1}
+                min={0}
                 max={168}
                 value={settings.abandonedCartReminderHours}
                 onChange={(e) =>
@@ -457,15 +462,15 @@ export default function AdminSettingsPage() {
                     ...settings,
                     abandonedCartReminderHours: Math.min(
                       168,
-                      Math.max(1, parseInt(e.target.value || '24', 10) || 24),
+                      Math.max(0, parseInt(e.target.value || '0', 10) || 0),
                     ),
                   })
                 }
                 fullWidth
               />
               <p className="text-xs text-gray-500 mt-1">
-                타이머 만료 기준이 아니라 장바구니에 담은 뒤 이 시간이 지나도 주문하지 않은 고객에게
-                1회 알림을 보냅니다.
+                방송이 끝난 뒤 이 시간이 지나면 해당 방송 상품을 장바구니에 담아 둔 고객에게 1회
+                친구톡을 보냅니다. 0이면 방송 종료 직후 스케줄러가 바로 처리합니다.
               </p>
             </div>
           </div>
@@ -536,8 +541,8 @@ export default function AdminSettingsPage() {
             </div>
 
             <p className="text-xs text-gray-500">
-              아래 카드에서 주문 확인 알림톡, 입금 안내 알림톡, 장바구니 리마인드 친구톡, 라이브
-              시작 알림톡을 각각 따로 켜고 끌 수 있습니다.
+              아래 카드에서 주문 확인 알림톡, 장바구니 리마인드 친구톡, 라이브 시작 알림톡을 각각
+              따로 켜고 끌 수 있습니다.
             </p>
 
             {settings.alimtalkEnabled && (
@@ -578,8 +583,8 @@ export default function AdminSettingsPage() {
                 fullWidth
               />
               <p className="text-xs text-gray-500">
-                0이면 방송 종료 직후 다음 스케줄 실행 시점부터 발송 대상이 됩니다. 일반 비라이브
-                주문의 즉시 ORDER_CONFIRMATION에는 영향을 주지 않습니다.
+                0이면 방송 종료 직후 바로 묶음 알림톡이 발송됩니다. 일반 비라이브 주문의 즉시
+                ORDER_CONFIRMATION에는 영향을 주지 않습니다.
               </p>
             </div>
 

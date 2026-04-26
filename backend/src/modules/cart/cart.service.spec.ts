@@ -233,6 +233,46 @@ describe('CartService', () => {
       ).rejects.toThrow(InsufficientStockException);
     });
 
+    it('should allow adding more than 10 items when stock permits', async () => {
+      const highStockProduct = { ...mockProduct, quantity: 25, timerEnabled: false };
+      const createdCartItem = {
+        ...mockCartItem,
+        quantity: 12,
+        timerEnabled: false,
+        expiresAt: null,
+      };
+
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(highStockProduct as any);
+      jest
+        .spyOn(prismaService.cart, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prismaService.cart, 'create').mockResolvedValue(createdCartItem as any);
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(highStockProduct),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
+            create: jest.fn().mockResolvedValue(createdCartItem),
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return callback(tx);
+      });
+
+      const result = await service.addToCart('user-1', {
+        productId: 'product-1',
+        quantity: 12,
+      });
+
+      expect(result.quantity).toBe(12);
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
     it('should update existing cart item quantity when same product/color/size', async () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest
@@ -383,6 +423,37 @@ describe('CartService', () => {
       expect(result.quantity).toBe(3);
       // Timer should be refreshed since product.timerEnabled is true
       expect(result.expiresAt).toBeDefined();
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should allow updating cart item quantity beyond 10 when stock permits', async () => {
+      const highStockProduct = { ...mockProduct, quantity: 25, timerEnabled: false };
+      const highQuantityCartItem = {
+        ...mockCartItem,
+        quantity: 12,
+        timerEnabled: false,
+        expiresAt: null,
+      };
+
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(highStockProduct as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(highStockProduct),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+            update: jest.fn().mockResolvedValue(highQuantityCartItem),
+          },
+        };
+        return callback(tx);
+      });
+
+      const result = await service.updateCartItem('user-1', 'cart-1', { quantity: 12 });
+
+      expect(result.quantity).toBe(12);
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
 
@@ -558,7 +629,7 @@ describe('CartService', () => {
   });
 
   describe('sendCartReminders', () => {
-    it('should target long-idle active carts based on createdAt rather than timer expiry', async () => {
+    it('should target active carts linked to streams that ended before the configured delay', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-04-16T12:00:00.000Z'));
       jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue([] as any);
 
@@ -569,18 +640,155 @@ describe('CartService', () => {
           where: expect.objectContaining({
             status: 'ACTIVE',
             reminderSent: false,
-            createdAt: {
-              gte: new Date('2026-04-15T11:59:00.000Z'),
-              lte: new Date('2026-04-15T12:01:00.000Z'),
+            product: {
+              is: {
+                streamKey: { not: null },
+                liveStream: {
+                  is: {
+                    endedAt: {
+                      not: null,
+                      lte: new Date('2026-04-15T12:00:00.000Z'),
+                    },
+                  },
+                },
+              },
             },
           }),
         }),
       );
       expect(prismaService.cart.findMany).toHaveBeenCalledWith(
         expect.not.objectContaining({
-          where: expect.objectContaining({ timerEnabled: true, expiresAt: expect.anything() }),
+          where: expect.objectContaining({ createdAt: expect.anything() }),
         }),
       );
+
+      jest.useRealTimers();
+    });
+
+    it('should allow zero-hour delay and emit reminders grouped by user and stream', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-04-16T12:00:00.000Z'));
+      jest
+        .spyOn(prismaService.systemConfig, 'findFirst')
+        .mockResolvedValue({ abandonedCartReminderHours: 0 } as any);
+      jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue([
+        {
+          id: 'cart-1',
+          userId: 'user-1',
+          productId: 'product-1',
+          productName: '첫 상품',
+          product: {
+            streamKey: 'stream-1',
+            liveStream: { endedAt: new Date('2026-04-16T11:59:00.000Z') },
+          },
+        },
+        {
+          id: 'cart-2',
+          userId: 'user-1',
+          productId: 'product-2',
+          productName: '둘째 상품',
+          product: {
+            streamKey: 'stream-1',
+            liveStream: { endedAt: new Date('2026-04-16T11:59:00.000Z') },
+          },
+        },
+        {
+          id: 'cart-3',
+          userId: 'user-1',
+          productId: 'product-3',
+          productName: '다른 방송 상품',
+          product: {
+            streamKey: 'stream-2',
+            liveStream: { endedAt: new Date('2026-04-16T11:58:00.000Z') },
+          },
+        },
+      ] as any);
+      jest.spyOn(prismaService.cart, 'updateMany').mockResolvedValue({ count: 3 } as any);
+
+      await service.sendCartReminders();
+
+      expect(prismaService.cart.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            product: {
+              is: {
+                streamKey: { not: null },
+                liveStream: {
+                  is: {
+                    endedAt: {
+                      not: null,
+                      lte: new Date('2026-04-16T12:00:00.000Z'),
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        }),
+      );
+      expect(prismaService.cart.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['cart-1', 'cart-2', 'cart-3'] } },
+        data: { reminderSent: true },
+      });
+      expect(eventEmitter.emit).toHaveBeenNthCalledWith(1, 'cart:reminder', {
+        userId: 'user-1',
+        productIds: ['product-1', 'product-2'],
+        productNames: ['첫 상품', '둘째 상품'],
+        streamKey: 'stream-1',
+        reminderDelayHours: 0,
+        streamEndedAt: new Date('2026-04-16T11:59:00.000Z'),
+      });
+      expect(eventEmitter.emit).toHaveBeenNthCalledWith(2, 'cart:reminder', {
+        userId: 'user-1',
+        productIds: ['product-3'],
+        productNames: ['다른 방송 상품'],
+        streamKey: 'stream-2',
+        reminderDelayHours: 0,
+        streamEndedAt: new Date('2026-04-16T11:58:00.000Z'),
+      });
+
+      jest.useRealTimers();
+    });
+
+    it('should trigger immediate reminders only for the ended stream when delay is 0', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-04-16T12:00:00.000Z'));
+      jest
+        .spyOn(prismaService.systemConfig, 'findFirst')
+        .mockResolvedValue({ abandonedCartReminderHours: 0 } as any);
+      jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue([
+        {
+          id: 'cart-1',
+          userId: 'user-1',
+          productId: 'product-1',
+          productName: '첫 상품',
+          product: {
+            streamKey: 'stream-1',
+            liveStream: { endedAt: new Date('2026-04-16T11:59:00.000Z') },
+          },
+        },
+      ] as any);
+      jest.spyOn(prismaService.cart, 'updateMany').mockResolvedValue({ count: 1 } as any);
+
+      await service.triggerImmediateStreamEndReminders('stream-1');
+
+      expect(prismaService.cart.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            product: {
+              is: expect.objectContaining({
+                streamKey: 'stream-1',
+              }),
+            },
+          }),
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith('cart:reminder', {
+        userId: 'user-1',
+        productIds: ['product-1'],
+        productNames: ['첫 상품'],
+        streamKey: 'stream-1',
+        reminderDelayHours: 0,
+        streamEndedAt: new Date('2026-04-16T11:59:00.000Z'),
+      });
 
       jest.useRealTimers();
     });

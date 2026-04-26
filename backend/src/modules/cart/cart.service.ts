@@ -459,68 +459,129 @@ export class CartService {
   }
 
   /**
-   * Cron job: Send abandoned-cart reminder for long-idle active carts.
-   * Runs every minute and targets carts created around N hours ago that have not been reminded yet.
+   * Cron job: Send stream-end cart reminders for active carts tied to ended live streams.
+   * Runs every minute and targets carts whose related stream ended at least N hours ago.
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async sendCartReminders() {
     try {
-      const now = new Date();
-      const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
-      const reminderHours = Math.max(1, config?.abandonedCartReminderHours ?? 24);
-      const reminderMs = reminderHours * 60 * 60 * 1000;
-      const windowStart = new Date(now.getTime() - reminderMs - 60 * 1000);
-      const windowEnd = new Date(now.getTime() - reminderMs + 60 * 1000);
-
-      const remindableCarts = await this.prisma.cart.findMany({
-        where: {
-          status: SharedCartStatus.ACTIVE,
-          reminderSent: false,
-          createdAt: {
-            gte: windowStart,
-            lte: windowEnd,
-          },
-        },
-        include: {
-          product: { select: { streamKey: true } },
-        },
-      });
-
-      if (remindableCarts.length === 0) {
-        return;
-      }
-
-      // Mark reminder as sent before emitting to prevent double-send on retry
-      await this.prisma.cart.updateMany({
-        where: { id: { in: remindableCarts.map((c) => c.id) } },
-        data: { reminderSent: true },
-      });
-
-      const userCartMap = new Map<string, typeof remindableCarts>();
-      for (const cart of remindableCarts) {
-        if (!cart.userId) {
-          continue;
-        }
-        const existing = userCartMap.get(cart.userId) ?? [];
-        userCartMap.set(cart.userId, [...existing, cart]);
-      }
-
-      for (const [userId, items] of userCartMap) {
-        this.eventEmitter.emit('cart:reminder', {
-          userId,
-          productIds: items.map((i) => i.productId),
-          productNames: items.map((i) => i.productName),
-          streamKey: items[0]?.product?.streamKey ?? null,
-          hoursSinceAdded: reminderHours,
-        });
-      }
-
-      this.logger.log(
-        `Abandoned cart reminder emitted for ${remindableCarts.length} carts at ${reminderHours}h`,
-      );
+      await this.processStreamEndCartReminders();
     } catch (error) {
       this.logger.error('Failed to send cart reminders', (error as Error).stack);
     }
+  }
+
+  async triggerImmediateStreamEndReminders(streamKey?: string | null) {
+    try {
+      const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+      const reminderHours = Math.max(0, config?.abandonedCartReminderHours ?? 24);
+
+      if (reminderHours !== 0) {
+        return;
+      }
+
+      await this.processStreamEndCartReminders(streamKey ?? undefined);
+    } catch (error) {
+      this.logger.error(
+        'Failed to trigger immediate stream-end cart reminders',
+        (error as Error).stack,
+      );
+    }
+  }
+
+  private async processStreamEndCartReminders(streamKey?: string) {
+    const now = new Date();
+    const config = await this.prisma.systemConfig.findFirst({ where: { id: 'system' } });
+    const reminderHours = Math.max(0, config?.abandonedCartReminderHours ?? 24);
+    const dueAt = new Date(now.getTime() - reminderHours * 60 * 60 * 1000);
+
+    const remindableCarts = (await this.prisma.cart.findMany({
+      where: {
+        status: SharedCartStatus.ACTIVE,
+        reminderSent: false,
+        product: {
+          is: {
+            streamKey: streamKey ?? { not: null },
+            liveStream: {
+              is: {
+                endedAt: {
+                  not: null,
+                  lte: dueAt,
+                },
+              },
+            },
+          },
+        },
+      },
+      include: {
+        product: {
+          select: {
+            streamKey: true,
+            liveStream: {
+              select: {
+                endedAt: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ userId: 'asc' }, { createdAt: 'asc' }],
+    })) as Array<
+      Cart & {
+        product: {
+          streamKey: string | null;
+          liveStream: { endedAt: Date | null } | null;
+        } | null;
+      }
+    >;
+
+    if (remindableCarts.length === 0) {
+      return;
+    }
+
+    await this.prisma.cart.updateMany({
+      where: { id: { in: remindableCarts.map((cart) => cart.id) } },
+      data: { reminderSent: true },
+    });
+
+    const cartsByUserAndStream = new Map<string, typeof remindableCarts>();
+    for (const cart of remindableCarts) {
+      const currentStreamKey = cart.product?.streamKey ?? null;
+      const userId = cart.userId;
+
+      if (!userId || !currentStreamKey) {
+        continue;
+      }
+
+      const groupKey = `${userId}:${currentStreamKey}`;
+      const existing = cartsByUserAndStream.get(groupKey) ?? [];
+      existing.push(cart);
+      cartsByUserAndStream.set(groupKey, existing);
+    }
+
+    for (const items of cartsByUserAndStream.values()) {
+      const firstItem = items[0];
+      const userId = firstItem?.userId;
+      const groupedStreamKey = firstItem?.product?.streamKey ?? null;
+      const streamEndedAt = firstItem?.product?.liveStream?.endedAt ?? null;
+
+      if (!userId || !groupedStreamKey || !streamEndedAt) {
+        continue;
+      }
+
+      this.eventEmitter.emit('cart:reminder', {
+        userId,
+        productIds: items.map((item) => item.productId),
+        productNames: items.map((item) => item.productName),
+        streamKey: groupedStreamKey,
+        reminderDelayHours: reminderHours,
+        streamEndedAt,
+      });
+    }
+
+    this.logger.log(
+      `Stream-end cart reminder emitted for ${remindableCarts.length} carts after ${reminderHours}h delay`,
+    );
   }
 
   /**
@@ -603,7 +664,9 @@ export class CartService {
           select: { shippingAddress: true },
         });
         if (user?.shippingAddress) {
-          const shippingAddress = this.encryptionService.normalizeAddressValue(user.shippingAddress);
+          const shippingAddress = this.encryptionService.normalizeAddressValue(
+            user.shippingAddress,
+          );
           if (shippingAddress) {
             isCA = isCaliforniaAddress(shippingAddress);
           }

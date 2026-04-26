@@ -89,6 +89,24 @@ describe('Admin Users (E2E)', () => {
           role: 'USER',
           status: 'INACTIVE',
         },
+        {
+          id: 'test-user-4',
+          kakaoId: 'kakao-test-4',
+          name: 'Dana Toggle',
+          email: 'dana@test.com',
+          liveStartNotificationEnabled: false,
+          role: 'USER',
+          status: 'ACTIVE',
+        },
+        {
+          id: 'test-user-5',
+          kakaoId: 'kakao-test-5',
+          name: 'Evan Toggle',
+          email: 'evan@test.com',
+          liveStartNotificationEnabled: true,
+          role: 'USER',
+          status: 'ACTIVE',
+        },
       ],
     });
 
@@ -116,6 +134,8 @@ describe('Admin Users (E2E)', () => {
             'test-user-1',
             'test-user-2',
             'test-user-3',
+            'test-user-4',
+            'test-user-5',
           ],
         },
       },
@@ -147,9 +167,7 @@ describe('Admin Users (E2E)', () => {
     });
 
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/api/admin/users')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/admin/users').expect(401);
     });
 
     it('should respect pagination parameters', async () => {
@@ -189,10 +207,11 @@ describe('Admin Users (E2E)', () => {
       expect(response.body.users.length).toBeGreaterThan(0);
 
       // Check that at least one user matches the search
-      const hasMatch = response.body.users.some((user: any) =>
-        user.name?.toLowerCase().includes('alice') ||
-        user.email?.toLowerCase().includes('alice') ||
-        user.instagramId?.toLowerCase().includes('alice'),
+      const hasMatch = response.body.users.some(
+        (user: any) =>
+          user.name?.toLowerCase().includes('alice') ||
+          user.email?.toLowerCase().includes('alice') ||
+          user.instagramId?.toLowerCase().includes('alice'),
       );
       expect(hasMatch).toBe(true);
     });
@@ -266,7 +285,9 @@ describe('Admin Users (E2E)', () => {
 
     it('should handle combined filters', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/admin/users?search=test&status=ACTIVE&page=1&limit=10&sortBy=createdAt&sortOrder=desc')
+        .get(
+          '/api/admin/users?search=test&status=ACTIVE&page=1&limit=10&sortBy=createdAt&sortOrder=desc',
+        )
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .expect(200);
 
@@ -307,6 +328,47 @@ describe('Admin Users (E2E)', () => {
       const expectedPages = Math.ceil(total / limit);
 
       expect(totalPages).toBe(expectedPages);
+    });
+  });
+
+  describe('PATCH /admin/users/live-start-notifications', () => {
+    it('should bulk update live start notification preferences for selected users', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/api/admin/users/live-start-notifications')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          userIds: ['test-user-4', 'test-user-5'],
+          liveStartNotificationEnabled: true,
+        })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        updatedCount: 2,
+        liveStartNotificationEnabled: true,
+        userIds: ['test-user-4', 'test-user-5'],
+      });
+
+      const updatedUsers = await prismaService.user.findMany({
+        where: { id: { in: ['test-user-4', 'test-user-5'] } },
+        select: { id: true, liveStartNotificationEnabled: true },
+        orderBy: { id: 'asc' },
+      });
+
+      expect(updatedUsers).toEqual([
+        { id: 'test-user-4', liveStartNotificationEnabled: true },
+        { id: 'test-user-5', liveStartNotificationEnabled: true },
+      ]);
+    });
+
+    it('should reject unknown user ids during bulk update', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/admin/users/live-start-notifications')
+        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .send({
+          userIds: ['test-user-4', 'missing-user'],
+          liveStartNotificationEnabled: false,
+        })
+        .expect(404);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CartStatus } from '@live-commerce/shared-types';
@@ -11,10 +11,9 @@ export class AddToCartDto {
   @IsString()
   productId!: string;
 
-  @ApiProperty({ description: 'Quantity to add', example: 1, minimum: 1, maximum: 10 })
+  @ApiProperty({ description: 'Quantity to add', example: 1, minimum: 1 })
   @IsNumber()
   @Min(1)
-  @Max(10)
   @Type(() => Number)
   quantity!: number;
 
@@ -30,10 +29,9 @@ export class AddToCartDto {
 }
 
 export class UpdateCartItemDto {
-  @ApiProperty({ description: 'New quantity', example: 2, minimum: 1, maximum: 10 })
+  @ApiProperty({ description: 'New quantity', example: 2, minimum: 1 })
   @IsNumber()
   @Min(1)
-  @Max(10)
   @Type(() => Number)
   quantity!: number;
 }

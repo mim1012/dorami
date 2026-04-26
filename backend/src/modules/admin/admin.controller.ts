@@ -31,6 +31,7 @@ import {
   GetOrdersQueryDto,
   UpdateUserStatusDto,
   UpdateAdminUserDto,
+  UpdateOrderItemQuantityDto,
   UpdateOrderStatusDto,
   UpdateSystemSettingsDto,
   UpdateHomeFeaturedProductsDto,
@@ -40,6 +41,7 @@ import {
   SendTestAlimtalkDto,
   BulkUpdateOrderStatusDto,
   BulkDeleteOrdersDto,
+  BulkUpdateLiveStartNotificationDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -65,6 +67,19 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '사용자 목록 및 페이지네이션 정보' })
   async getUserList(@Query() query: GetUsersQueryDto) {
     return this.adminService.getUserList(query);
+  }
+
+  @Patch('users/live-start-notifications')
+  @ApiOperation({
+    summary: '사용자 라이브 시작 알림 수신 여부 일괄 변경 (관리자)',
+    description: '선택한 사용자들의 라이브 시작 알림 수신 여부를 일괄 변경합니다.',
+  })
+  @ApiResponse({ status: 200, description: '라이브 시작 알림 수신 여부 일괄 변경 성공' })
+  async bulkUpdateLiveStartNotifications(@Body() dto: BulkUpdateLiveStartNotificationDto) {
+    return this.adminService.bulkUpdateLiveStartNotifications(
+      dto.userIds,
+      dto.liveStartNotificationEnabled,
+    );
   }
 
   @Get('orders')
@@ -211,6 +226,22 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '상품 삭제 및 금액 재계산 완료' })
   async removeOrderItem(@Param('orderId') orderId: string, @Param('itemId') itemId: string) {
     return this.adminService.removeOrderItem(orderId, itemId);
+  }
+
+  @Patch('orders/:orderId/items/:itemId')
+  @ApiOperation({
+    summary: '주문 상품 수량 수정 (관리자)',
+    description: '입금 대기 주문에서 개별 상품 수량을 수정하고 재고 및 합계를 재계산합니다.',
+  })
+  @ApiParam({ name: 'orderId', description: '주문 ID', example: 'ORD-20240101-00001' })
+  @ApiParam({ name: 'itemId', description: '주문 상품 ID (UUID)' })
+  @ApiResponse({ status: 200, description: '상품 수량 수정 및 금액 재계산 완료' })
+  async updateOrderItemQuantity(
+    @Param('orderId') orderId: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: UpdateOrderItemQuantityDto,
+  ) {
+    return this.adminService.updateOrderItemQuantity(orderId, itemId, dto.quantity);
   }
 
   @Delete('orders/:id')

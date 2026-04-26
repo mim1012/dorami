@@ -455,6 +455,16 @@ export class UpdateAdminUserDto {
   shippingAddress?: UpdateAdminUserAddressDto;
 }
 
+export class BulkUpdateLiveStartNotificationDto {
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  userIds!: string[];
+
+  @IsBoolean()
+  liveStartNotificationEnabled!: boolean;
+}
+
 export class UserDetailDto {
   id!: string;
   email!: string;
@@ -494,7 +504,7 @@ export class UpdateSystemSettingsDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(168)
   abandonedCartReminderHours?: number;
 
@@ -607,6 +617,12 @@ export class UpdateOrderStatusDto {
   status!: OrderStatus;
 }
 
+export class UpdateOrderItemQuantityDto {
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
+
 export class BulkUpdateOrderStatusDto {
   @IsArray()
   @IsString({ each: true })
@@ -632,4 +648,15 @@ export class RemoveOrderItemResponseDto {
   updatedShippingFee!: string;
   updatedTotal!: string;
   remainingItemCount!: number;
+}
+
+export class UpdateOrderItemQuantityResponseDto {
+  orderId!: string;
+  itemId!: string;
+  previousQuantity!: number;
+  updatedQuantity!: number;
+  stockDelta!: number;
+  updatedSubtotal!: string;
+  updatedShippingFee!: string;
+  updatedTotal!: string;
 }

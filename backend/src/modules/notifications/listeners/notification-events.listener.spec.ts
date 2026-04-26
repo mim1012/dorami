@@ -73,6 +73,7 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 import { AlimtalkService } from '../../admin/alimtalk.service';
 import { NotificationsService } from '../notifications.service';
 import { OrderConfirmationBatchService } from '../order-confirmation-batch.service';
+import { CartService } from '../../cart/cart.service';
 
 describe('NotificationEventsListener', () => {
   let listener: NotificationEventsListener;
@@ -97,6 +98,9 @@ describe('NotificationEventsListener', () => {
     shouldUseGroupedFlow: jest.Mock;
     hasPendingOrSentBatchForOrder: jest.Mock;
     scheduleBatchesForStreamEnd: jest.Mock;
+  };
+  let cartService: {
+    triggerImmediateStreamEndReminders: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -125,6 +129,9 @@ describe('NotificationEventsListener', () => {
       hasPendingOrSentBatchForOrder: jest.fn().mockResolvedValue(false),
       scheduleBatchesForStreamEnd: jest.fn().mockResolvedValue(undefined),
     };
+    cartService = {
+      triggerImmediateStreamEndReminders: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -133,6 +140,7 @@ describe('NotificationEventsListener', () => {
         { provide: AlimtalkService, useValue: alimtalkService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: OrderConfirmationBatchService, useValue: batchService },
+        { provide: CartService, useValue: cartService },
         {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('https://www.doremi-live.com') },
@@ -187,13 +195,34 @@ describe('NotificationEventsListener', () => {
     );
   });
 
-  it('schedules grouped batches on stream end', async () => {
+  it('schedules grouped batches and triggers immediate cart reminders on stream end', async () => {
     await listener.handleStreamEnded({ streamId: 'stream-id', streamKey: 'stream-1' });
 
     expect(batchService.scheduleBatchesForStreamEnd).toHaveBeenCalledWith({
       streamId: 'stream-id',
       streamKey: 'stream-1',
     });
+    expect(cartService.triggerImmediateStreamEndReminders).toHaveBeenCalledWith('stream-1');
+  });
+
+  it('renders cart reminder payload from all stream cart products', async () => {
+    prisma.user.findUnique.mockResolvedValue({ kakaoPhone: '01012345678' });
+
+    await listener.handleCartReminder({
+      userId: 'user-1',
+      productIds: ['product-1', 'product-2', 'product-3'],
+      productNames: ['첫 상품', '둘째 상품', '셋째 상품'],
+      streamKey: 'stream-1',
+      reminderDelayHours: 0,
+      streamEndedAt: new Date('2026-04-16T11:59:00.000Z'),
+    });
+
+    expect(alimtalkService.sendCartReminderFriendtalk).toHaveBeenCalledWith(
+      '01012345678',
+      '첫 상품',
+      2,
+      'stream-1',
+    );
   });
 
   it('handles stream:started without throwing', async () => {

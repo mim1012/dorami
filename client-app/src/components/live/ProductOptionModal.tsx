@@ -35,7 +35,7 @@ export function ProductOptionModal({
   }
 
   const totalPrice = product.price * quantity;
-  const maxQuantity = Math.min(product.stock, 10); // Max 10 items per order
+  const maxQuantity = Math.max(product.stock, 1);
   const isAddToCartDisabled = quantity < 1 || quantity > maxQuantity || product.stock === 0;
 
   const handleQuantityChange = (delta: number) => {
