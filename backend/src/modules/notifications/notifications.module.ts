@@ -7,9 +7,10 @@ import { KakaoTalkClient } from './clients/kakao-talk.client';
 import { NotificationEventsListener } from './listeners/notification-events.listener';
 import { OrderConfirmationBatchService } from './order-confirmation-batch.service';
 import { AlimtalkModule } from '../admin/alimtalk.module';
+import { CartModule } from '../cart/cart.module';
 
 @Module({
-  imports: [AlimtalkModule],
+  imports: [AlimtalkModule, CartModule],
   controllers: [NotificationsController],
   providers: [
     NotificationsService,

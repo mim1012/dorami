@@ -90,12 +90,13 @@ export class OrderConfirmationBatchService {
 
     const streamKey = payload.streamKey?.trim() || stream.streamKey;
     const streamEnd = stream.endedAt ?? new Date();
-    const scheduledAt = await this.buildScheduledAt(streamEnd);
+    const { scheduledAt, delayHours } = await this.buildScheduleConfig(streamEnd);
 
     const orders = await this.prisma.order.findMany({
       where: {
         deletedAt: null,
         status: 'PENDING_PAYMENT',
+        paymentStatus: 'PENDING',
         createdAt: {
           gte: stream.startedAt,
           lte: streamEnd,
@@ -172,14 +173,35 @@ export class OrderConfirmationBatchService {
     this.logger.log(
       `Prepared ${ordersByUserId.size} grouped order confirmation batch(es) for stream ${streamKey}`,
     );
+
+    if (delayHours === 0) {
+      await this.processDueBatchesForStream(streamKey);
+    }
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processDueBatches() {
-    const dueBatches = await this.prisma.orderConfirmationBatch.findMany({
+    const dueBatches = await this.findDueBatches();
+
+    for (const batch of dueBatches) {
+      await this.processBatch(batch as BatchWithOrders);
+    }
+  }
+
+  private async processDueBatchesForStream(streamKey: string) {
+    const dueBatches = await this.findDueBatches(streamKey);
+
+    for (const batch of dueBatches) {
+      await this.processBatch(batch as BatchWithOrders);
+    }
+  }
+
+  private async findDueBatches(streamKey?: string) {
+    return this.prisma.orderConfirmationBatch.findMany({
       where: {
         status: OrderConfirmationBatchStatus.PENDING,
         scheduledAt: { lte: new Date() },
+        ...(streamKey ? { streamKey } : {}),
       },
       orderBy: { scheduledAt: 'asc' },
       take: 50,
@@ -206,10 +228,6 @@ export class OrderConfirmationBatchService {
         },
       },
     });
-
-    for (const batch of dueBatches) {
-      await this.processBatch(batch as BatchWithOrders);
-    }
   }
 
   private async processBatch(batch: BatchWithOrders) {
@@ -287,14 +305,17 @@ export class OrderConfirmationBatchService {
     });
   }
 
-  private async buildScheduledAt(streamEnd: Date) {
+  private async buildScheduleConfig(streamEnd: Date) {
     const config = await this.prisma.systemConfig.findFirst({
       where: { id: 'system' },
       select: { orderConfirmationDelayHours: true },
     });
 
     const delayHours = Math.max(0, config?.orderConfirmationDelayHours ?? 0);
-    return new Date(streamEnd.getTime() + delayHours * 60 * 60 * 1000);
+    return {
+      delayHours,
+      scheduledAt: new Date(streamEnd.getTime() + delayHours * 60 * 60 * 1000),
+    };
   }
 
   private async failBatch(batchId: string, reason: string) {

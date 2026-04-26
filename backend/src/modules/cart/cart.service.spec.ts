@@ -747,6 +747,50 @@ describe('CartService', () => {
 
       jest.useRealTimers();
     });
+
+    it('should trigger immediate reminders only for the ended stream when delay is 0', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-04-16T12:00:00.000Z'));
+      jest
+        .spyOn(prismaService.systemConfig, 'findFirst')
+        .mockResolvedValue({ abandonedCartReminderHours: 0 } as any);
+      jest.spyOn(prismaService.cart, 'findMany').mockResolvedValue([
+        {
+          id: 'cart-1',
+          userId: 'user-1',
+          productId: 'product-1',
+          productName: '첫 상품',
+          product: {
+            streamKey: 'stream-1',
+            liveStream: { endedAt: new Date('2026-04-16T11:59:00.000Z') },
+          },
+        },
+      ] as any);
+      jest.spyOn(prismaService.cart, 'updateMany').mockResolvedValue({ count: 1 } as any);
+
+      await service.triggerImmediateStreamEndReminders('stream-1');
+
+      expect(prismaService.cart.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            product: {
+              is: expect.objectContaining({
+                streamKey: 'stream-1',
+              }),
+            },
+          }),
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith('cart:reminder', {
+        userId: 'user-1',
+        productIds: ['product-1'],
+        productNames: ['첫 상품'],
+        streamKey: 'stream-1',
+        reminderDelayHours: 0,
+        streamEndedAt: new Date('2026-04-16T11:59:00.000Z'),
+      });
+
+      jest.useRealTimers();
+    });
   });
 
   describe('expireTimedOutCarts', () => {

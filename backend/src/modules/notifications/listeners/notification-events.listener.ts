@@ -7,6 +7,7 @@ import { LoggerService } from '../../../common/logger/logger.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { OrderConfirmationBatchService } from '../order-confirmation-batch.service';
 import { UserStatus } from '@prisma/client';
+import { CartService } from '../../cart/cart.service';
 
 @Injectable()
 export class NotificationEventsListener {
@@ -18,6 +19,7 @@ export class NotificationEventsListener {
     private prisma: PrismaService,
     private orderConfirmationBatchService: OrderConfirmationBatchService,
     private readonly configService: ConfigService,
+    private readonly cartService: CartService,
   ) {
     this.logger = new LoggerService();
     this.logger.setContext('NotificationEventsListener');
@@ -127,7 +129,10 @@ export class NotificationEventsListener {
     );
 
     try {
-      await this.orderConfirmationBatchService.scheduleBatchesForStreamEnd(payload);
+      await Promise.all([
+        this.orderConfirmationBatchService.scheduleBatchesForStreamEnd(payload),
+        this.cartService.triggerImmediateStreamEndReminders(payload.streamKey),
+      ]);
     } catch (error) {
       this.logger.error(
         'Failed to schedule stream ended order confirmation batches',
