@@ -541,8 +541,8 @@ export default function NotificationSettingsPage() {
                             </Button>
                           </div>
                           <p className="mt-3 text-xs text-gray-500">
-                            0이면 방송 종료 직후 스케줄러가 바로 처리할 수 있습니다. 비라이브 주문은
-                            계속 즉시 발송됩니다.
+                            0이면 방송 종료 직후 바로 발송됩니다. 비라이브 주문은 계속 즉시
+                            발송됩니다.
                           </p>
                         </div>
                       )}

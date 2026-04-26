@@ -541,8 +541,8 @@ export default function AdminSettingsPage() {
             </div>
 
             <p className="text-xs text-gray-500">
-              아래 카드에서 주문 확인 알림톡, 입금 안내 알림톡, 장바구니 리마인드 친구톡, 라이브
-              시작 알림톡을 각각 따로 켜고 끌 수 있습니다.
+              아래 카드에서 주문 확인 알림톡, 장바구니 리마인드 친구톡, 라이브 시작 알림톡을 각각
+              따로 켜고 끌 수 있습니다.
             </p>
 
             {settings.alimtalkEnabled && (
@@ -583,8 +583,8 @@ export default function AdminSettingsPage() {
                 fullWidth
               />
               <p className="text-xs text-gray-500">
-                0이면 방송 종료 직후 다음 스케줄 실행 시점부터 발송 대상이 됩니다. 일반 비라이브
-                주문의 즉시 ORDER_CONFIRMATION에는 영향을 주지 않습니다.
+                0이면 방송 종료 직후 바로 묶음 알림톡이 발송됩니다. 일반 비라이브 주문의 즉시
+                ORDER_CONFIRMATION에는 영향을 주지 않습니다.
               </p>
             </div>
 
