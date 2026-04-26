@@ -92,6 +92,7 @@ describe('CartService', () => {
           useValue: {
             decryptAddress: jest.fn((v) => v),
             encryptAddress: jest.fn((v) => v),
+            normalizeAddressValue: jest.fn((v) => v),
           },
         },
         {

@@ -140,6 +140,17 @@ describe('AdminService', () => {
             decryptAddress: jest.fn(),
             encryptAddress: jest.fn(),
             tryDecryptAddress: jest.fn(),
+            normalizeAddressValue: jest.fn((value) => {
+              if (value && typeof value === 'object' && '__encrypted' in (value as Record<string, unknown>)) {
+                const encrypted = value as { ciphertext: string };
+                try {
+                  return JSON.parse(encrypted.ciphertext) as Record<string, unknown>;
+                } catch {
+                  return null;
+                }
+              }
+              return typeof value === 'string' ? null : (value as Record<string, unknown> | null);
+            }),
           },
         },
         {

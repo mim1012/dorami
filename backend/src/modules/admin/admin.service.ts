@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import * as ExcelJS from 'exceljs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AlimtalkService } from './alimtalk.service';
 import { RedisService } from '../../common/redis/redis.service';
@@ -155,6 +156,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
+    private encryptionService: EncryptionService,
     private notificationsService: NotificationsService,
     private alimtalkService: AlimtalkService,
     private redisService: RedisService,
@@ -257,6 +259,11 @@ export class AdminService {
   }
 
   private parseShippingAddress(addressValue: unknown): Record<string, unknown> | null {
+    const normalized = this.encryptionService.normalizeAddressValue(addressValue);
+    if (normalized) {
+      return normalized as unknown as Record<string, unknown>;
+    }
+
     if (!addressValue) {
       return null;
     }
