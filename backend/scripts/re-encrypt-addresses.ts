@@ -30,7 +30,7 @@
  *   PROFILE_ENCRYPTION_KEY_VERSION  - Current envelope keyVersion (default: pii-v1)
  */
 
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import {
   analyzeAddressValue,
   encryptAddressEnvelope,
@@ -253,7 +253,7 @@ async function processUsers(
             analysis.address,
             currentKey,
             currentKeyVersion,
-          ) as Prisma.InputJsonValue,
+          ) as any,
         },
       });
       stats.rewritten += 1;
@@ -321,7 +321,7 @@ async function processOrders(
             analysis.address,
             currentKey,
             currentKeyVersion,
-          ) as Prisma.InputJsonValue,
+          ) as any,
         },
       });
       stats.rewritten += 1;
