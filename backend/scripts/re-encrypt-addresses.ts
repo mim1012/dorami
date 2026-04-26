@@ -1,140 +1,208 @@
 /**
- * Re-encrypt shipping addresses migration script.
+ * Shipping address backfill / re-encryption script.
  *
- * Reads every user row that has a shippingAddress, tries to decrypt with:
- *   1. The current PROFILE_ENCRYPTION_KEY
- *   2. Each key listed in PROFILE_LEGACY_ENCRYPTION_KEYS (comma-separated)
- *   3. Plain JSON (unencrypted legacy data)
+ * Supports both legacy `iv:tag:ciphertext` strings and current JSON envelope payloads.
+ * The script classifies each row, reports dry-run counts, and optionally rewrites any
+ * plain/legacy/stale rows into the current envelope format.
  *
- * If decryption succeeds with anything other than the current key (case 2 or 3),
- * the address is re-encrypted with the current key and saved back.
+ * Default scope is `users` for safety. Use `--scope=orders` or `--scope=both` explicitly
+ * after validating dry-run output.
  *
  * Usage:
- *   # Dry run (default) - shows what would change without writing
+ *   # Dry-run users only (default)
  *   npx ts-node scripts/re-encrypt-addresses.ts
  *
- *   # Apply changes
+ *   # Dry-run both users and orders
+ *   npx ts-node scripts/re-encrypt-addresses.ts --scope=both
+ *
+ *   # Apply users backfill
  *   npx ts-node scripts/re-encrypt-addresses.ts --apply
+ *
+ *   # Apply orders only with smaller batches
+ *   npx ts-node scripts/re-encrypt-addresses.ts --scope=orders --apply --batch-size=100
  *
  * Required env vars:
  *   DATABASE_URL                    - PostgreSQL connection string
- *   PROFILE_ENCRYPTION_KEY          - Current (target) encryption key
+ *   PROFILE_ENCRYPTION_KEY          - Current (target) encryption key (64-char hex)
+ *
+ * Optional env vars:
  *   PROFILE_LEGACY_ENCRYPTION_KEYS  - Comma-separated list of old keys to try
+ *   PROFILE_ENCRYPTION_KEY_VERSION  - Current envelope keyVersion (default: pii-v1)
  */
 
-import { PrismaClient } from '@prisma/client';
-import * as crypto from 'crypto';
-import type { ShippingAddress } from '@live-commerce/shared-types';
+import { Prisma, PrismaClient } from '@prisma/client';
+import {
+  analyzeAddressValue,
+  encryptAddressEnvelope,
+  type AddressBackfillAnalysis,
+  type AddressBackfillStatus,
+} from '../src/common/services/address-backfill.util';
 
-const ALGORITHM = 'aes-256-gcm';
+const ALL_STATUSES: AddressBackfillStatus[] = [
+  'empty',
+  'plain-json',
+  'current-envelope',
+  'legacy-string-current-key',
+  'legacy-string-legacy-key',
+  'envelope-legacy-key',
+  'envelope-stale-version',
+  'decrypt-failed',
+];
 
-function decryptWithKey(encrypted: string, key: Buffer): ShippingAddress {
-  const [ivHex, authTagHex, ciphertext] = encrypted.split(':');
-  if (!ivHex || !authTagHex || !ciphertext) {
-    throw new Error('Invalid encrypted address format');
+type Scope = 'users' | 'orders' | 'both';
+type EntityType = 'users' | 'orders';
+
+interface CliOptions {
+  dryRun: boolean;
+  scope: Scope;
+  batchSize: number;
+  sampleLimit: number;
+}
+
+interface StatsSummary {
+  scanned: number;
+  rewriteCandidates: number;
+  rewritten: number;
+  failed: number;
+  statuses: Record<AddressBackfillStatus, number>;
+  samples: string[];
+}
+
+function parseArgs(argv: string[]): CliOptions {
+  let scope: Scope = 'users';
+  let batchSize = 200;
+  let sampleLimit = 20;
+
+  for (const arg of argv) {
+    if (arg.startsWith('--scope=')) {
+      const value = arg.split('=')[1] as Scope | undefined;
+      if (value === 'users' || value === 'orders' || value === 'both') {
+        scope = value;
+      } else {
+        throw new Error(`Invalid --scope value: ${value}`);
+      }
+      continue;
+    }
+
+    if (arg.startsWith('--batch-size=')) {
+      batchSize = parsePositiveInt(arg.split('=')[1], '--batch-size');
+      continue;
+    }
+
+    if (arg.startsWith('--sample-limit=')) {
+      sampleLimit = parsePositiveInt(arg.split('=')[1], '--sample-limit');
+    }
   }
 
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-
-  let plaintext = decipher.update(ciphertext, 'hex', 'utf8');
-  plaintext += decipher.final('utf8');
-
-  return JSON.parse(plaintext) as ShippingAddress;
+  return {
+    dryRun: !argv.includes('--apply'),
+    scope,
+    batchSize,
+    sampleLimit,
+  };
 }
 
-function encryptWithKey(address: ShippingAddress, key: Buffer): string {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-
-  const plaintext = JSON.stringify(address);
-  let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
-  ciphertext += cipher.final('hex');
-  const authTag = cipher.getAuthTag();
-
-  return `${iv.toString('hex')}:${authTag.toString('hex')}:${ciphertext}`;
+function parsePositiveInt(raw: string | undefined, flagName: string): number {
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${flagName} must be a positive integer`);
+  }
+  return value;
 }
 
-function tryDecryptAll(
-  encrypted: string,
+function parseRequiredHexKey(envName: string): Buffer {
+  const value = process.env[envName];
+  if (!value || value.length !== 64) {
+    throw new Error(`${envName} must be a 64-character hex string`);
+  }
+  return Buffer.from(value, 'hex');
+}
+
+function parseLegacyKeys(): Buffer[] {
+  const raw = process.env.PROFILE_LEGACY_ENCRYPTION_KEYS || '';
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      if (entry.length !== 64) {
+        throw new Error(
+          `PROFILE_LEGACY_ENCRYPTION_KEYS contains a non-64-char value: ${entry.slice(0, 8)}...`,
+        );
+      }
+      return Buffer.from(entry, 'hex');
+    });
+}
+
+function createStatsSummary(): StatsSummary {
+  return {
+    scanned: 0,
+    rewriteCandidates: 0,
+    rewritten: 0,
+    failed: 0,
+    statuses: ALL_STATUSES.reduce(
+      (acc, status) => {
+        acc[status] = 0;
+        return acc;
+      },
+      {} as Record<AddressBackfillStatus, number>,
+    ),
+    samples: [],
+  };
+}
+
+function formatEntityLabel(entityType: EntityType, row: { id: string; label?: string | null }): string {
+  const suffix = row.label ? ` (${row.label})` : '';
+  return `${entityType}:${row.id}${suffix}`;
+}
+
+function pushSample(
+  stats: StatsSummary,
+  sampleLimit: number,
+  entityType: EntityType,
+  row: { id: string; label?: string | null },
+  analysis: AddressBackfillAnalysis,
+): void {
+  if (stats.samples.length >= sampleLimit) {
+    return;
+  }
+
+  stats.samples.push(
+    `${formatEntityLabel(entityType, row)} -> ${analysis.status}` +
+      (analysis.keyVersion ? ` [keyVersion=${analysis.keyVersion}]` : ''),
+  );
+}
+
+function printSummary(entityType: EntityType, stats: StatsSummary): void {
+  console.log(`\n[${entityType}] summary`);
+  console.log(`  scanned: ${stats.scanned}`);
+  console.log(`  rewrite candidates: ${stats.rewriteCandidates}`);
+  console.log(`  rewritten: ${stats.rewritten}`);
+  console.log(`  failures: ${stats.failed}`);
+
+  for (const status of ALL_STATUSES) {
+    console.log(`  ${status}: ${stats.statuses[status]}`);
+  }
+
+  if (stats.samples.length > 0) {
+    console.log(`  samples:`);
+    for (const sample of stats.samples) {
+      console.log(`    - ${sample}`);
+    }
+  }
+}
+
+async function processUsers(
+  prisma: PrismaClient,
+  stats: StatsSummary,
+  options: CliOptions,
   currentKey: Buffer,
   legacyKeys: Buffer[],
-): { address: ShippingAddress; source: string } | null {
-  // Try current key
-  try {
-    const address = decryptWithKey(encrypted, currentKey);
-    return { address, source: 'current' };
-  } catch {
-    // continue
-  }
+  currentKeyVersion: string,
+): Promise<void> {
+  let cursor: string | undefined;
 
-  // Try legacy keys
-  for (let i = 0; i < legacyKeys.length; i++) {
-    try {
-      const address = decryptWithKey(encrypted, legacyKeys[i]);
-      return { address, source: `legacy-${i + 1}` };
-    } catch {
-      // continue
-    }
-  }
-
-  // Try plain JSON
-  try {
-    const parsed = JSON.parse(encrypted);
-    if (parsed && typeof parsed === 'object' && parsed.fullName) {
-      return { address: parsed as ShippingAddress, source: 'plain-json' };
-    }
-  } catch {
-    // not JSON
-  }
-
-  return null;
-}
-
-async function main() {
-  const dryRun = !process.argv.includes('--apply');
-
-  console.log('='.repeat(60));
-  console.log('  Shipping Address Re-encryption Migration');
-  console.log(`  Mode: ${dryRun ? 'DRY RUN (no changes)' : 'APPLY (writing changes)'}`);
-  console.log('='.repeat(60));
-
-  // Validate keys
-  const currentKeyStr = process.env.PROFILE_ENCRYPTION_KEY;
-  if (!currentKeyStr || currentKeyStr.length !== 64) {
-    console.error('ERROR: PROFILE_ENCRYPTION_KEY must be a 64-character hex string');
-    process.exit(1);
-  }
-  const currentKey = Buffer.from(currentKeyStr, 'hex');
-
-  const legacyKeysStr = process.env.PROFILE_LEGACY_ENCRYPTION_KEYS || '';
-  const legacyKeys: Buffer[] = [];
-  if (legacyKeysStr) {
-    for (const lk of legacyKeysStr.split(',')) {
-      const trimmed = lk.trim();
-      if (trimmed.length === 64) {
-        legacyKeys.push(Buffer.from(trimmed, 'hex'));
-      } else if (trimmed.length > 0) {
-        console.warn(`WARNING: Skipping invalid legacy key (length ${trimmed.length}): ${trimmed.substring(0, 8)}...`);
-      }
-    }
-  }
-
-  console.log(`\nCurrent key: ${currentKeyStr.substring(0, 8)}...${currentKeyStr.substring(56)}`);
-  console.log(`Legacy keys: ${legacyKeys.length}`);
-
-  if (legacyKeys.length === 0) {
-    console.error('\nERROR: No legacy keys provided. Set PROFILE_LEGACY_ENCRYPTION_KEYS env var.');
-    console.error('Example: PROFILE_LEGACY_ENCRYPTION_KEYS=4301084e...c4c0,0123456789...abcdef');
-    process.exit(1);
-  }
-
-  const prisma = new PrismaClient();
-
-  try {
-    // Fetch all users with shipping addresses
+  for (;;) {
     const users = await prisma.user.findMany({
       where: {
         shippingAddress: { not: null as unknown as undefined },
@@ -144,84 +212,165 @@ async function main() {
         name: true,
         shippingAddress: true,
       },
+      orderBy: { id: 'asc' },
+      take: options.batchSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
-    console.log(`\nTotal users with shippingAddress: ${users.length}`);
-
-    let alreadyCurrent = 0;
-    let reEncrypted = 0;
-    let failed = 0;
-    let skippedNull = 0;
-    const failures: { userId: string; name: string; preview: string }[] = [];
+    if (users.length === 0) {
+      return;
+    }
 
     for (const user of users) {
-      if (!user.shippingAddress) {
-        skippedNull++;
+      const analysis = analyzeAddressValue(user.shippingAddress, {
+        currentKey,
+        legacyKeys,
+        currentKeyVersion,
+      });
+
+      stats.scanned += 1;
+      stats.statuses[analysis.status] += 1;
+
+      if (analysis.status === 'decrypt-failed') {
+        stats.failed += 1;
+      }
+
+      if (!analysis.shouldRewrite || !analysis.address) {
         continue;
       }
 
-      const encrypted = user.shippingAddress as string;
-      const result = tryDecryptAll(encrypted, currentKey, legacyKeys);
+      stats.rewriteCandidates += 1;
+      pushSample(stats, options.sampleLimit, 'users', { id: user.id, label: user.name }, analysis);
 
-      if (!result) {
-        failed++;
-        failures.push({
-          userId: user.id,
-          name: user.name,
-          preview: encrypted.substring(0, 40) + '...',
-        });
+      if (options.dryRun) {
         continue;
       }
 
-      if (result.source === 'current') {
-        alreadyCurrent++;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          shippingAddress: encryptAddressEnvelope(
+            analysis.address,
+            currentKey,
+            currentKeyVersion,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      stats.rewritten += 1;
+    }
+
+    cursor = users[users.length - 1].id;
+  }
+}
+
+async function processOrders(
+  prisma: PrismaClient,
+  stats: StatsSummary,
+  options: CliOptions,
+  currentKey: Buffer,
+  legacyKeys: Buffer[],
+  currentKeyVersion: string,
+): Promise<void> {
+  let cursor: string | undefined;
+
+  for (;;) {
+    const orders = await prisma.order.findMany({
+      select: {
+        id: true,
+        userEmail: true,
+        shippingAddress: true,
+      },
+      orderBy: { id: 'asc' },
+      take: options.batchSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    if (orders.length === 0) {
+      return;
+    }
+
+    for (const order of orders) {
+      const analysis = analyzeAddressValue(order.shippingAddress, {
+        currentKey,
+        legacyKeys,
+        currentKeyVersion,
+      });
+
+      stats.scanned += 1;
+      stats.statuses[analysis.status] += 1;
+
+      if (analysis.status === 'decrypt-failed') {
+        stats.failed += 1;
+      }
+
+      if (!analysis.shouldRewrite || !analysis.address) {
         continue;
       }
 
-      // Needs re-encryption
-      console.log(
-        `  [${result.source}] User ${user.id} (${user.name}): ${result.address.fullName}, ${result.address.city}`,
-      );
+      stats.rewriteCandidates += 1;
+      pushSample(stats, options.sampleLimit, 'orders', { id: order.id, label: order.userEmail }, analysis);
 
-      if (!dryRun) {
-        const newEncrypted = encryptWithKey(result.address, currentKey);
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { shippingAddress: newEncrypted as unknown as undefined },
-        });
+      if (options.dryRun) {
+        continue;
       }
-      reEncrypted++;
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          shippingAddress: encryptAddressEnvelope(
+            analysis.address,
+            currentKey,
+            currentKeyVersion,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      stats.rewritten += 1;
     }
 
-    console.log('\n' + '='.repeat(60));
-    console.log('  Results');
-    console.log('='.repeat(60));
-    console.log(`  Already using current key: ${alreadyCurrent}`);
-    console.log(`  Re-encrypted (${dryRun ? 'would be' : 'done'}): ${reEncrypted}`);
-    console.log(`  Failed (unrecoverable): ${failed}`);
-    console.log(`  Skipped (null address): ${skippedNull}`);
-    console.log(`  Total processed: ${users.length}`);
+    cursor = orders[orders.length - 1].id;
+  }
+}
 
-    if (failures.length > 0) {
-      console.log('\n  Failed users:');
-      for (const f of failures) {
-        console.log(`    - ${f.userId} (${f.name}): ${f.preview}`);
-      }
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const currentKey = parseRequiredHexKey('PROFILE_ENCRYPTION_KEY');
+  const legacyKeys = parseLegacyKeys();
+  const currentKeyVersion = process.env.PROFILE_ENCRYPTION_KEY_VERSION || 'pii-v1';
+  const prisma = new PrismaClient();
+
+  console.log('='.repeat(72));
+  console.log('Shipping Address Backfill / Re-encryption');
+  console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'APPLY'}`);
+  console.log(`Scope: ${options.scope}`);
+  console.log(`Batch size: ${options.batchSize}`);
+  console.log(`Sample limit: ${options.sampleLimit}`);
+  console.log(`Current key version: ${currentKeyVersion}`);
+  console.log(`Legacy keys loaded: ${legacyKeys.length}`);
+  console.log('='.repeat(72));
+
+  if (legacyKeys.length === 0) {
+    console.log('WARNING: PROFILE_LEGACY_ENCRYPTION_KEYS is empty; legacy-encrypted rows will fail to decrypt.');
+  }
+
+  const userStats = createStatsSummary();
+  const orderStats = createStatsSummary();
+
+  try {
+    if (options.scope === 'users' || options.scope === 'both') {
+      await processUsers(prisma, userStats, options, currentKey, legacyKeys, currentKeyVersion);
+      printSummary('users', userStats);
     }
 
-    if (dryRun && reEncrypted > 0) {
-      console.log(`\n  Run with --apply to write changes.`);
-    }
-
-    if (dryRun && reEncrypted === 0 && failed === 0) {
-      console.log('\n  All addresses are already encrypted with the current key.');
+    if (options.scope === 'orders' || options.scope === 'both') {
+      await processOrders(prisma, orderStats, options, currentKey, legacyKeys, currentKeyVersion);
+      printSummary('orders', orderStats);
     }
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((err) => {
-  console.error('Migration failed:', err);
+main().catch((error) => {
+  console.error('Backfill script failed:', error);
   process.exit(1);
 });
