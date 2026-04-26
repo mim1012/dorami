@@ -149,7 +149,6 @@ export function CartItemCard({
                     </span>
                     <button
                       onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                      disabled={item.quantity >= 10}
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-border-color/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       aria-label="수량 증가"
                     >

@@ -57,7 +57,7 @@ export default function ProductDetailModal({
 
   if (!isOpen) return null;
 
-  const maxQuantity = Math.min(product.stock || 10, 10);
+  const maxQuantity = Math.max(product.stock || 0, 1);
   const totalPrice = product.price * quantity;
 
   const handleAddToCart = async () => {

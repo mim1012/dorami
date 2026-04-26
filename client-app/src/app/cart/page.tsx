@@ -72,7 +72,7 @@ function CartPageContent() {
   };
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
-    if (newQuantity < 1 || newQuantity > 10) return;
+    if (newQuantity < 1) return;
     updateCartItem.mutate(
       { itemId: cartItemId, quantity: newQuantity },
       {

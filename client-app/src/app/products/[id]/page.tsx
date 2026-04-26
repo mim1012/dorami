@@ -107,7 +107,7 @@ export default function ProductDetailPage() {
     }
   }, [preselectedSize, preselectedColor, preselectedQuantity, product, sizes, colors]);
 
-  const maxQuantity = product ? Math.min(product.stock || 0, 10) : 1;
+  const maxQuantity = product ? Math.max(product.stock || 0, 1) : 1;
 
   const handleQuantityChange = (delta: number) => {
     const next = quantity + delta;

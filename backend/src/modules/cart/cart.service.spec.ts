@@ -232,6 +232,46 @@ describe('CartService', () => {
       ).rejects.toThrow(InsufficientStockException);
     });
 
+    it('should allow adding more than 10 items when stock permits', async () => {
+      const highStockProduct = { ...mockProduct, quantity: 25, timerEnabled: false };
+      const createdCartItem = {
+        ...mockCartItem,
+        quantity: 12,
+        timerEnabled: false,
+        expiresAt: null,
+      };
+
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(highStockProduct as any);
+      jest
+        .spyOn(prismaService.cart, 'aggregate')
+        .mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prismaService.cart, 'create').mockResolvedValue(createdCartItem as any);
+      jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue({ name: 'Test User' } as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(highStockProduct),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 0 } }),
+            create: jest.fn().mockResolvedValue(createdCartItem),
+            findFirst: jest.fn().mockResolvedValue(null),
+          },
+        };
+        return callback(tx);
+      });
+
+      const result = await service.addToCart('user-1', {
+        productId: 'product-1',
+        quantity: 12,
+      });
+
+      expect(result.quantity).toBe(12);
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
     it('should update existing cart item quantity when same product/color/size', async () => {
       jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(mockProduct as any);
       jest
@@ -382,6 +422,37 @@ describe('CartService', () => {
       expect(result.quantity).toBe(3);
       // Timer should be refreshed since product.timerEnabled is true
       expect(result.expiresAt).toBeDefined();
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should allow updating cart item quantity beyond 10 when stock permits', async () => {
+      const highStockProduct = { ...mockProduct, quantity: 25, timerEnabled: false };
+      const highQuantityCartItem = {
+        ...mockCartItem,
+        quantity: 12,
+        timerEnabled: false,
+        expiresAt: null,
+      };
+
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(mockCartItem as any);
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(highStockProduct as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(highStockProduct),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+            update: jest.fn().mockResolvedValue(highQuantityCartItem),
+          },
+        };
+        return callback(tx);
+      });
+
+      const result = await service.updateCartItem('user-1', 'cart-1', { quantity: 12 });
+
+      expect(result.quantity).toBe(12);
       expect(prismaService.$transaction).toHaveBeenCalled();
     });
 

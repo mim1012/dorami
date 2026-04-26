@@ -52,7 +52,7 @@ export function ProductDetailModal({
   const touchStartXRef = useRef<number | null>(null);
   const stock = product.stock;
   const isOutOfStock = stock !== undefined && stock <= 0;
-  const maxQuantity = stock !== undefined ? Math.min(stock, 10) : 10;
+  const maxQuantity = stock !== undefined ? Math.max(stock, 1) : 1;
   const stockDisplayClass =
     stock === undefined
       ? 'text-gray-900'
