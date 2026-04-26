@@ -605,7 +605,7 @@ export default function NotificationSettingsPage() {
                           </div>
                           <p className="mt-3 text-xs text-gray-500">
                             0이면 방송 종료 직후 바로 처리됩니다. 메시지에는 같은 방송 장바구니
-                            상품이 #{상품명} 외 #{수량}건 형태로 표시됩니다.
+                            상품이 {'#{상품명}'} 외 {'#{수량}'}건 형태로 표시됩니다.
                           </p>
                         </div>
                       )}
