@@ -2,13 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import { LoggerService } from '../../../common/logger/logger.service';
+import { PrismaService } from '../../../common/prisma/prisma.service';
 
 @Injectable()
 export class KakaoTalkClient {
   private client: AxiosInstance;
   private logger: LoggerService;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     this.logger = new LoggerService();
     this.logger.setContext('KakaoTalkClient');
 
@@ -22,11 +26,27 @@ export class KakaoTalkClient {
     });
   }
 
+  private async isEnabled(): Promise<boolean> {
+    const config = await this.prisma.systemConfig.findFirst({
+      where: { id: 'system' },
+      select: { alimtalkEnabled: true },
+    });
+
+    return !!config?.alimtalkEnabled;
+  }
+
   async sendTemplateMessage(
     userId: string,
     templateId: string,
     variables: Record<string, string>,
   ): Promise<{ success: boolean }> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug(
+        `Global Kakao toggle disabled, skipping template message for user ${userId}`,
+      );
+      return { success: false };
+    }
+
     try {
       await this.client.post('/v2/api/talk/memo/default/send', {
         template_id: templateId,
@@ -50,6 +70,11 @@ export class KakaoTalkClient {
     description: string,
     link?: string,
   ): Promise<{ success: boolean }> {
+    if (!(await this.isEnabled())) {
+      this.logger.debug(`Global Kakao toggle disabled, skipping custom message for user ${userId}`);
+      return { success: false };
+    }
+
     try {
       const template = {
         object_type: 'text',

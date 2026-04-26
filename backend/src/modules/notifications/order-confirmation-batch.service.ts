@@ -95,7 +95,7 @@ export class OrderConfirmationBatchService {
     const orders = await this.prisma.order.findMany({
       where: {
         deletedAt: null,
-        status: { not: 'CANCELLED' },
+        status: 'PENDING_PAYMENT',
         createdAt: {
           gte: stream.startedAt,
           lte: streamEnd,
