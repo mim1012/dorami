@@ -40,6 +40,7 @@ import {
   SendTestAlimtalkDto,
   BulkUpdateOrderStatusDto,
   BulkDeleteOrdersDto,
+  BulkUpdateLiveStartNotificationDto,
 } from './dto/admin.dto';
 import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -65,6 +66,19 @@ export class AdminController {
   @ApiResponse({ status: 200, description: '사용자 목록 및 페이지네이션 정보' })
   async getUserList(@Query() query: GetUsersQueryDto) {
     return this.adminService.getUserList(query);
+  }
+
+  @Patch('users/live-start-notifications')
+  @ApiOperation({
+    summary: '사용자 라이브 시작 알림 수신 여부 일괄 변경 (관리자)',
+    description: '선택한 사용자들의 라이브 시작 알림 수신 여부를 일괄 변경합니다.',
+  })
+  @ApiResponse({ status: 200, description: '라이브 시작 알림 수신 여부 일괄 변경 성공' })
+  async bulkUpdateLiveStartNotifications(@Body() dto: BulkUpdateLiveStartNotificationDto) {
+    return this.adminService.bulkUpdateLiveStartNotifications(
+      dto.userIds,
+      dto.liveStartNotificationEnabled,
+    );
   }
 
   @Get('orders')

@@ -46,6 +46,7 @@ function AdminUsersContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingUserIds, setUpdatingUserIds] = useState<string[]>([]);
+  const [isBulkUpdatingNotifications, setIsBulkUpdatingNotifications] = useState(false);
 
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get('limit') || '20', 10));
@@ -182,6 +183,41 @@ function AdminUsersContent() {
     }
   };
 
+  const handleBulkLiveStartNotificationUpdate = async (nextEnabled: boolean) => {
+    const visibleUserIds = users.map((user) => user.id);
+    if (visibleUserIds.length === 0) {
+      return;
+    }
+
+    const previousUsers = users;
+    setIsBulkUpdatingNotifications(true);
+    setUpdatingUserIds((prev) => [...new Set([...prev, ...visibleUserIds])]);
+    setUsers((prev) =>
+      prev.map((user) => ({ ...user, liveStartNotificationEnabled: nextEnabled })),
+    );
+
+    try {
+      await apiClient.patch('/admin/users/live-start-notifications', {
+        userIds: visibleUserIds,
+        liveStartNotificationEnabled: nextEnabled,
+      });
+      showToast(
+        `현재 페이지 사용자 ${visibleUserIds.length}명의 라이브 시작 알림을 ${nextEnabled ? '수신' : '미수신'}으로 변경했습니다.`,
+        'success',
+      );
+    } catch (err: any) {
+      console.error('Failed to bulk update live start notification preferences:', err);
+      setUsers(previousUsers);
+      showToast(
+        err.response?.data?.message || '현재 페이지 알림 설정 일괄 저장에 실패했습니다',
+        'error',
+      );
+    } finally {
+      setIsBulkUpdatingNotifications(false);
+      setUpdatingUserIds((prev) => prev.filter((id) => !visibleUserIds.includes(id)));
+    }
+  };
+
   const columns: Column<UserListItem>[] = [
     {
       key: 'instagramId',
@@ -225,7 +261,7 @@ function AdminUsersContent() {
             <input
               type="checkbox"
               checked={user.liveStartNotificationEnabled}
-              disabled={isUpdating}
+              disabled={isUpdating || isBulkUpdatingNotifications}
               onChange={(event) => handleLiveStartNotificationToggle(event, user)}
               className="h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
             />
@@ -281,6 +317,10 @@ function AdminUsersContent() {
   ];
 
   const hasActiveFilters = debouncedSearch || dateFrom || dateTo;
+  const allVisibleUsersEnabled =
+    users.length > 0 && users.every((user) => user.liveStartNotificationEnabled);
+  const allVisibleUsersDisabled =
+    users.length > 0 && users.every((user) => !user.liveStartNotificationEnabled);
 
   return (
     <div className="space-y-6">
@@ -353,6 +393,36 @@ function AdminUsersContent() {
         </div>
       ) : (
         <>
+          <div className="bg-content-bg rounded-button p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <Body className="text-primary-text font-medium">
+                현재 페이지 라이브 시작 알림 일괄 변경
+              </Body>
+              <Body className="text-secondary-text text-sm">
+                현재 보이는 회원 {users.length}명의 알림 설정을 한 번에 변경할 수 있습니다.
+              </Body>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                onClick={() => handleBulkLiveStartNotificationUpdate(true)}
+                disabled={
+                  users.length === 0 || isBulkUpdatingNotifications || allVisibleUsersEnabled
+                }
+              >
+                현재 페이지 전체 수신
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleBulkLiveStartNotificationUpdate(false)}
+                disabled={
+                  users.length === 0 || isBulkUpdatingNotifications || allVisibleUsersDisabled
+                }
+              >
+                현재 페이지 전체 미수신
+              </Button>
+            </div>
+          </div>
           <Table
             columns={columns}
             data={users}
