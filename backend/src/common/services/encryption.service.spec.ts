@@ -32,7 +32,7 @@ describe('EncryptionService', () => {
   });
 
   describe('encryptAddress', () => {
-    it('should encrypt shipping address to string format', () => {
+    it('should encrypt shipping address to versioned envelope object', () => {
       const address: ShippingAddress = {
         fullName: 'John Doe',
         address1: '123 Main St',
@@ -44,14 +44,14 @@ describe('EncryptionService', () => {
 
       const encrypted = service.encryptAddress(address);
 
-      // Should return string in format: iv:authTag:ciphertext
-      expect(typeof encrypted).toBe('string');
-      expect(encrypted.split(':').length).toBe(3);
-
-      const [iv, authTag, ciphertext] = encrypted.split(':');
-      expect(iv).toHaveLength(32); // 16 bytes = 32 hex chars
-      expect(authTag).toHaveLength(32); // 16 bytes = 32 hex chars
-      expect(ciphertext.length).toBeGreaterThan(0);
+      expect(encrypted).toMatchObject({
+        __encrypted: true,
+        alg: 'aes-256-gcm',
+        keyVersion: 'pii-v1',
+      });
+      expect(encrypted.iv).toHaveLength(32); // 16 bytes = 32 hex chars
+      expect(encrypted.tag).toHaveLength(32); // 16 bytes = 32 hex chars
+      expect(encrypted.ciphertext.length).toBeGreaterThan(0);
     });
 
     it('should produce different ciphertext for same input (due to random IV)', () => {
@@ -66,8 +66,8 @@ describe('EncryptionService', () => {
       const encrypted1 = service.encryptAddress(address);
       const encrypted2 = service.encryptAddress(address);
 
-      // Different IVs should produce different encrypted strings
-      expect(encrypted1).not.toBe(encrypted2);
+      // Different IVs should produce different encrypted payloads
+      expect(encrypted1).not.toEqual(encrypted2);
     });
 
     it('should handle address without optional address2 field', () => {
@@ -81,8 +81,10 @@ describe('EncryptionService', () => {
 
       const encrypted = service.encryptAddress(address);
 
-      expect(typeof encrypted).toBe('string');
-      expect(encrypted.split(':').length).toBe(3);
+      expect(encrypted).toMatchObject({
+        __encrypted: true,
+        alg: 'aes-256-gcm',
+      });
     });
   });
 
@@ -145,11 +147,10 @@ describe('EncryptionService', () => {
       };
 
       const encrypted = service.encryptAddress(address);
-      const [iv, authTag, ciphertext] = encrypted.split(':');
-
-      // Corrupt the ciphertext
-      const corruptedCiphertext = ciphertext.slice(0, -4) + 'FFFF';
-      const corruptedEncrypted = `${iv}:${authTag}:${corruptedCiphertext}`;
+      const corruptedEncrypted = {
+        ...encrypted,
+        ciphertext: encrypted.ciphertext.slice(0, -4) + 'FFFF',
+      };
 
       expect(() => {
         service.decryptAddress(corruptedEncrypted);
@@ -284,17 +285,16 @@ describe('EncryptionService', () => {
       expect(isolatedService.tryDecryptAddress(encrypted)).toBeNull();
     });
 
-    it('should decrypt plain JSON addresses via tryDecryptAddress', () => {
+    it('should decrypt plain JSON object addresses via tryDecryptAddress', () => {
       const address: ShippingAddress = {
-        fullName: 'Plain User',
-        address1: '200 Plain St',
+        fullName: 'Plain Object User',
+        address1: '201 Plain St',
         city: 'Plain City',
-        state: 'NY',
-        zip: '10001',
+        state: 'WA',
+        zip: '98052',
       };
 
-      const plainJson = JSON.stringify(address);
-      const decrypted = currentService.tryDecryptAddress(plainJson);
+      const decrypted = currentService.tryDecryptAddress(address as any);
       expect(decrypted).toEqual(address);
     });
 
@@ -348,8 +348,8 @@ describe('EncryptionService', () => {
       const decrypted2 = service.decryptAddress(encrypted2);
       expect(decrypted2).toEqual(address);
 
-      // Encrypted strings should be different (random IVs)
-      expect(encrypted1).not.toBe(encrypted2);
+      // Encrypted payloads should be different (random IVs)
+      expect(encrypted1).not.toEqual(encrypted2);
     });
 
     it('should handle special characters in address', () => {

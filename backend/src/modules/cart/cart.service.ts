@@ -3,6 +3,7 @@ import { InsufficientStockException } from '../../common/exceptions/business.exc
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { isCaliforniaAddress } from '../../common/utils/address.util';
 import {
   AddToCartDto,
@@ -56,6 +57,7 @@ export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   private async withSerializableRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
@@ -751,7 +753,12 @@ export class CartService {
           select: { shippingAddress: true },
         });
         if (user?.shippingAddress) {
-          isCA = isCaliforniaAddress(user.shippingAddress);
+          const shippingAddress = this.encryptionService.normalizeAddressValue(
+            user.shippingAddress,
+          );
+          if (shippingAddress) {
+            isCA = isCaliforniaAddress(shippingAddress);
+          }
         }
       }
       appliedShippingFee = isCA ? caShippingFee : defaultShippingFee;

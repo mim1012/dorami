@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AlimtalkModule } from './alimtalk.module';
@@ -7,7 +8,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [NotificationsModule, AlimtalkModule],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, EncryptionService],
   exports: [AdminService, AlimtalkModule],
 })
 export class AdminModule {}
