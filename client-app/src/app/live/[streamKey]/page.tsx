@@ -666,6 +666,7 @@ export default function LiveStreamPage() {
     quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
+    variantId?: string,
   ) => {
     const { isAuthenticated } = useAuthStore.getState();
 
@@ -681,6 +682,7 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
+        variantId,
         quantity,
         color: selectedColor,
         size: selectedSize,
