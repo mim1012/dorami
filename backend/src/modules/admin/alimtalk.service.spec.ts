@@ -369,6 +369,35 @@ describe('AlimtalkService', () => {
     expect(message.buttons).toBeUndefined();
   });
 
+  it('uses grouped order quantities when rendering ORDER_CONFIRMATION product summary', () => {
+    const message = (service as any).buildGroupedOrderMessage(
+      {
+        phone: '01075358897',
+        customerName: '김지훈',
+        orderIds: ['ORD-20260426-00002', 'ORD-20260426-00003'],
+        totalAmount: 3165,
+        items: [
+          { productName: 'Hermes Stage Load 097', quantity: 2 },
+          { productName: 'Hermes Stage Load 098', quantity: 1 },
+        ],
+      },
+      {
+        zelleEmail: '422sss@live.com',
+        zelleRecipientName: 'MIN KIM',
+        venmoEmail: '@doremi03',
+        venmoRecipientName: '@doremi03',
+      },
+      {
+        template:
+          '[도레미 마켓] 주문이 접수되었습니다\n\n#{고객명}님, 주문이 완료되었습니다.\n\n■ 주문번호: #{주문번호}\n■ 주문상품: #{상품표시명}\n■ 결제금액: #{금액} $\n\n현재 입금대기 상태입니다.\n아래 계정으로 입금해주시면 확인 후 처리됩니다.\n\n■ Zelle: #{젤계정} (#{젤예금주})\n■ Venmo: #{벤모계정} (#{벤모예금주})',
+        kakaoTemplateCode: 'ORDER_CONFIRMATION',
+      },
+    );
+
+    expect(message.text).toContain('■ 주문번호: ORD-20260426-00002 외 1건');
+    expect(message.text).toContain('■ 주문상품: Hermes Stage Load 097 외 2건');
+  });
+
   it('uses system config payment info for ORDER_CONFIRMATION test sends', async () => {
     prisma.notificationTemplate.findMany.mockResolvedValue([
       {

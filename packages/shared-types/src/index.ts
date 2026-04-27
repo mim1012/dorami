@@ -243,6 +243,7 @@ export interface ProductVariant {
   stock: number;
   status: VariantStatus;
   sortOrder: number;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

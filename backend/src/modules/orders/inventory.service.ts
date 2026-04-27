@@ -103,9 +103,40 @@ export class InventoryService {
    */
   async batchDecreaseStockTx(
     tx: Prisma.TransactionClient,
-    items: { productId: string; quantity: number }[],
+    items: { productId: string; quantity: number; variantId?: string }[],
   ): Promise<void> {
     for (const item of items) {
+      if (item.variantId) {
+        const variant = await (tx as any).productVariant.findFirst({
+          where: {
+            id: item.variantId,
+            productId: item.productId,
+            deletedAt: null,
+          },
+        });
+
+        if (!variant) {
+          throw new ProductNotFoundException(item.variantId);
+        }
+
+        if (variant.status === 'SOLD_OUT' || variant.status === 'HIDDEN') {
+          throw new ProductSoldOutException(item.productId);
+        }
+
+        if (variant.stock < item.quantity) {
+          throw new InsufficientStockException(item.productId, variant.stock, item.quantity);
+        }
+
+        await (tx as any).productVariant.update({
+          where: { id: item.variantId },
+          data: {
+            stock: variant.stock - item.quantity,
+            status: variant.stock - item.quantity === 0 ? 'SOLD_OUT' : variant.status,
+          },
+        });
+        continue;
+      }
+
       const product = await tx.product.findUnique({
         where: { id: item.productId },
       });
@@ -137,9 +168,32 @@ export class InventoryService {
    */
   async batchRestoreStockTx(
     tx: Prisma.TransactionClient,
-    items: { productId: string; quantity: number }[],
+    items: { productId: string; quantity: number; variantId?: string }[],
   ): Promise<void> {
     for (const item of items) {
+      if (item.variantId) {
+        const variant = await (tx as any).productVariant.findFirst({
+          where: {
+            id: item.variantId,
+            productId: item.productId,
+            deletedAt: null,
+          },
+        });
+
+        if (!variant) {
+          continue;
+        }
+
+        await (tx as any).productVariant.update({
+          where: { id: item.variantId },
+          data: {
+            stock: { increment: item.quantity },
+            ...(variant.status === 'SOLD_OUT' ? { status: 'ACTIVE' } : {}),
+          },
+        });
+        continue;
+      }
+
       const product = await tx.product.findUnique({ where: { id: item.productId } });
       if (!product) {
         continue;

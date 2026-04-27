@@ -324,7 +324,9 @@ export class AlimtalkService {
         ? `${primaryOrderId} 외 ${payload.orderIds.length - 1}건`
         : primaryOrderId;
 
-    const productNames = payload.items.map((item) => item.productName);
+    const productNames = payload.items.flatMap((item) =>
+      Array.from({ length: Math.max(item.quantity, 1) }, () => item.productName),
+    );
 
     const orderLink =
       payload.orderIds[0] !== undefined

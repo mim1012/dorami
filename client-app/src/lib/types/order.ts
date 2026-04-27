@@ -6,7 +6,9 @@ export { OrderStatus, PaymentStatus } from '@live-commerce/shared-types';
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId?: string;
   productName: string;
+  variantLabel?: string;
   quantity: number;
   price: number;
   shippingFee: number;
