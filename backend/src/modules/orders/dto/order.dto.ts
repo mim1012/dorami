@@ -119,7 +119,9 @@ export class OrderResponseDto {
   items!: {
     id: string;
     productId: string;
+    variantId?: string;
     productName: string;
+    variantLabel?: string;
     quantity: number;
     price: string;
     shippingFee: string;

@@ -196,6 +196,7 @@ model Product {
   carts        Cart[]
   reservations Reservation[]
   orderItems   OrderItem[]
+  variants     ProductVariant[]
 
   @@index([streamKey])
   @@index([streamKey, status]) // For stream products filtering
@@ -210,6 +211,33 @@ enum ProductStatus {
   SOLD_OUT
 }
 
+enum VariantStatus {
+  ACTIVE
+  SOLD_OUT
+  HIDDEN
+}
+
+model ProductVariant {
+  id        String        @id @default(uuid())
+  productId String        @map("product_id")
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color     String?
+  size      String?
+  label     String?
+  price     Decimal       @db.Decimal(10, 2)
+  stock     Int
+  status    VariantStatus @default(ACTIVE)
+  sortOrder Int           @default(0) @map("sort_order")
+  deletedAt DateTime?     @map("deleted_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@unique([productId, color, size])
+  @@index([productId, status])
+  @@index([productId, sortOrder])
+  @@map("product_variants")
+}
+
 // Epic 6: Shopping Cart & Reservation Timer
 model Cart {
   id           String     @id @default(uuid())
@@ -217,7 +245,9 @@ model Cart {
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId    String     @map("product_id")
   product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId    String?    @map("variant_id")
   productName  String     @map("product_name") // Denormalized for history
+  variantLabel String?    @map("variant_label")
   price        Decimal    @db.Decimal(10, 2)
   quantity     Int
   color        String?
@@ -232,6 +262,7 @@ model Cart {
 
   @@index([userId, status])
   @@index([productId, status]) // For reserved quantity calculation (N+1 fix)
+  @@index([variantId, status])
   @@index([expiresAt])
   @@index([status, timerEnabled, expiresAt]) // For cron job: expireTimedOutCarts
   @@index([status, timerEnabled, reminderSent, expiresAt]) // For cron: sendCartReminders
@@ -319,20 +350,23 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(uuid())
-  orderId     String   @map("order_id")
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String?  @map("product_id")
-  productName String   @map("product_name") // Denormalized
-  price       Decimal  @db.Decimal(10, 2)
-  quantity    Int
-  color       String?
-  size        String?
-  shippingFee Decimal  @map("shipping_fee") @db.Decimal(10, 2)
-  Product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id           String   @id @default(uuid())
+  orderId      String   @map("order_id")
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?  @map("product_id")
+  variantId    String?  @map("variant_id")
+  productName  String   @map("product_name") // Denormalized
+  variantLabel String?  @map("variant_label")
+  price        Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  color        String?
+  size         String?
+  shippingFee  Decimal  @map("shipping_fee") @db.Decimal(10, 2)
+  Product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
   @@index([productId, orderId])
   @@map("order_items")
 }

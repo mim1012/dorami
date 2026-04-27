@@ -38,6 +38,12 @@ export enum ProductStatus {
   SOLD_OUT = 'SOLD_OUT',
 }
 
+export enum VariantStatus {
+  ACTIVE = 'ACTIVE',
+  SOLD_OUT = 'SOLD_OUT',
+  HIDDEN = 'HIDDEN',
+}
+
 export enum CartStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
@@ -219,7 +225,24 @@ export interface Product {
   isNew?: boolean;
   discountRate?: number;
   originalPrice?: number;
+  variants?: ProductVariant[];
+  minPrice?: number;
+  maxPrice?: number;
   status: ProductStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  color?: string;
+  size?: string;
+  label?: string;
+  price: number;
+  stock: number;
+  status: VariantStatus;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +251,8 @@ export interface Cart {
   id: string;
   userId: string;
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   productName: string;
   price: string; // Decimal as string
   quantity: number;
@@ -277,6 +302,8 @@ export interface OrderItem {
   id: string;
   orderId: string;
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   productName: string;
   price: string; // Decimal as string
   quantity: number;
