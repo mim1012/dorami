@@ -113,7 +113,7 @@ describe('ProductsService.getLiveDeals', () => {
     );
   });
 
-  it('should include only AVAILABLE products ordered by sortOrder then createdAt', async () => {
+  it('should include only AVAILABLE non-hidden products ordered by sortOrder then createdAt', async () => {
     mockPrisma.liveStream.findFirst.mockResolvedValue(null);
 
     await service.getLiveDeals();
@@ -122,7 +122,7 @@ describe('ProductsService.getLiveDeals', () => {
       expect.objectContaining({
         include: expect.objectContaining({
           products: expect.objectContaining({
-            where: { status: 'AVAILABLE' },
+            where: { status: 'AVAILABLE', excludeFromStore: false },
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
             take: 8,
           }),
