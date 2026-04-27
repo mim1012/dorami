@@ -17,7 +17,14 @@ export type ChatConnectionStatus =
   | 'reconnecting'
   | 'failed';
 
-export function useChatConnection(streamKey: string) {
+interface UseChatConnectionOptions {
+  enabled?: boolean;
+}
+
+export function useChatConnection(
+  streamKey: string,
+  { enabled = true }: UseChatConnectionOptions = {},
+) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
@@ -46,14 +53,16 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // Guard: Don't connect if streamKey is not available
-    if (!streamKey) {
+    if (!streamKey || !enabled) {
       // Clean up any stale socket and queue from previous renders
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
       pendingMessageQueueRef.current = [];
+      authRefreshAttemptedRef.current = false;
       setIsConnected(false);
+      setConnectionStatus('disconnected');
       return;
     }
     const reconnectConfig = RECONNECT_CONFIG.chat;
@@ -170,7 +179,7 @@ export function useChatConnection(streamKey: string) {
       }
       pendingMessageQueueRef.current = [];
     };
-  }, [streamKey]);
+  }, [enabled, streamKey]);
 
   const sendMessage = (message: string) => {
     const trimmedMessage = message.trim();

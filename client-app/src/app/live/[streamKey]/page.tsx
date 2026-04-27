@@ -49,6 +49,7 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -118,7 +119,8 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { isSessionVerified, isVerifying, isUserAuthenticated } = useAuth();
+  const liveRealtimeEnabled = !isVerifying && isSessionVerified && isUserAuthenticated;
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -184,7 +186,7 @@ export default function LiveStreamPage() {
     userCount,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '');
+  } = useChatConnection(streamKey ?? '', { enabled: liveRealtimeEnabled });
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -766,6 +768,7 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
+              socketAuthReady={liveRealtimeEnabled}
               muted={isMobileMuted}
               volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
@@ -1145,6 +1148,7 @@ export default function LiveStreamPage() {
                   key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
+                  socketAuthReady={liveRealtimeEnabled}
                   onViewerCountChange={handleViewerCountChange}
                   onStreamError={setVideoError}
                 />
