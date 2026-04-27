@@ -12,6 +12,12 @@ import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import { formatPrice } from '@/lib/utils/price';
 import {
+  createEmptyEditableVariant,
+  deriveOptionSummaries,
+  normalizeEditableVariants,
+  type EditableProductVariant,
+} from '@/lib/utils/product-variants';
+import {
   Plus,
   Edit,
   Trash2,
@@ -61,6 +67,7 @@ interface ProductFormData {
   stock: string;
   colorOptions: string;
   sizeOptions: string;
+  variants: EditableProductVariant[];
   timerEnabled: boolean;
   timerDurationHours: string;
   imageUrl: string;
@@ -94,6 +101,31 @@ function calcDiscountRate(originalPrice: string, discountPrice: string): number 
   const disc = parseFloat(discountPrice);
   if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc <= 0 || disc >= orig) return null;
   return Math.round(((orig - disc) / orig) * 1000) / 10;
+}
+
+function mapProductToEditableVariants(product: Product): EditableProductVariant[] {
+  if (product.variants && product.variants.length > 0) {
+    return product.variants.map((variant) => ({
+      id: variant.id,
+      color: variant.color ?? '',
+      size: variant.size ?? '',
+      label: variant.label ?? '',
+      price: String(variant.price),
+      stock: String(variant.stock),
+      status: variant.status,
+    }));
+  }
+
+  return [
+    {
+      color: product.colorOptions?.[0] ?? '',
+      size: product.sizeOptions?.[0] ?? '',
+      label: '',
+      price: String(product.price),
+      stock: String(product.stock),
+      status: product.status === 'SOLD_OUT' ? 'SOLD_OUT' : 'ACTIVE',
+    },
+  ];
 }
 
 async function resizeImage(file: File, maxWidth = 800, maxHeight = 800): Promise<File> {
@@ -363,6 +395,7 @@ export default function AdminProductsPage() {
     stock: '',
     colorOptions: '',
     sizeOptions: '',
+    variants: [createEmptyEditableVariant()],
     timerEnabled: false,
     timerDurationHours: '1',
     imageUrl: '',
@@ -572,6 +605,36 @@ export default function AdminProductsPage() {
     }));
   };
 
+  const handleVariantFieldChange = (
+    index: number,
+    field: keyof EditableProductVariant,
+    value: string,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((variant, rowIndex) =>
+        rowIndex === index ? { ...variant, [field]: value } : variant,
+      ),
+    }));
+  };
+
+  const handleAddVariantRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, createEmptyEditableVariant()],
+    }));
+  };
+
+  const handleRemoveVariantRow = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants:
+        prev.variants.length === 1
+          ? [createEmptyEditableVariant()]
+          : prev.variants.filter((_, rowIndex) => rowIndex !== index),
+    }));
+  };
+
   // --- Modal Close ---
   const handleCloseModal = () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -598,6 +661,7 @@ export default function AdminProductsPage() {
         stock: product.stock.toString(),
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
+        variants: mapProductToEditableVariants(product),
         timerEnabled: product.timerEnabled,
         timerDurationHours: minutesToHours(product.timerDuration).toString(),
         imageUrl: product.imageUrl || '',
@@ -624,6 +688,7 @@ export default function AdminProductsPage() {
         stock: '',
         colorOptions: '',
         sizeOptions: '',
+        variants: [createEmptyEditableVariant()],
         timerEnabled: false,
         timerDurationHours: '1',
         imageUrl: '',
@@ -715,18 +780,27 @@ export default function AdminProductsPage() {
         apiDiscountRate = undefined;
       }
 
+      const normalizedVariants = normalizeEditableVariants(formData.variants);
+      const variantSummary =
+        normalizedVariants.length > 0 ? deriveOptionSummaries(formData.variants) : null;
+
       const basePayload = {
         name: formData.name,
-        price: apiPrice,
-        stock: parseInt(formData.stock),
-        colorOptions: formData.colorOptions
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        sizeOptions: formData.sizeOptions
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
+        price: variantSummary?.minPrice ?? apiPrice,
+        stock: variantSummary?.totalStock ?? parseInt(formData.stock),
+        colorOptions:
+          variantSummary?.colorOptions ??
+          formData.colorOptions
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        sizeOptions:
+          variantSummary?.sizeOptions ??
+          formData.sizeOptions
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        ...(normalizedVariants.length > 0 ? { variants: normalizedVariants } : {}),
         timerEnabled: formData.timerEnabled,
         timerDuration:
           Math.min(
@@ -1180,7 +1254,7 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="색상 옵션 (쉼표로 구분)"
+              label="색상 옵션 (legacy fallback)"
               name="colorOptions"
               value={formData.colorOptions}
               onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
@@ -1188,13 +1262,98 @@ export default function AdminProductsPage() {
               fullWidth
             />
             <Input
-              label="사이즈 옵션 (쉼표로 구분)"
+              label="사이즈 옵션 (legacy fallback)"
               name="sizeOptions"
               value={formData.sizeOptions}
               onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
               placeholder="예: S, M, L, XL"
               fullWidth
             />
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-gray-200 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Body className="font-semibold text-primary-text">옵션별 가격 / 재고</Body>
+                <p className="text-xs text-secondary-text mt-1">
+                  색상/사이즈 조합별로 가격과 재고를 관리합니다. 저장 시 대표 가격/재고와 옵션
+                  요약은 아래 행 기준으로 자동 계산됩니다.
+                </p>
+              </div>
+              <Button type="button" variant="outline" onClick={handleAddVariantRow}>
+                옵션 행 추가
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {formData.variants.map((variant, index) => (
+                <div
+                  key={`${variant.id ?? 'new'}-${index}`}
+                  className="grid grid-cols-1 gap-3 rounded-lg border border-gray-100 p-3 lg:grid-cols-[1fr_1fr_1.2fr_0.9fr_0.9fr_0.9fr_auto]"
+                >
+                  <Input
+                    label="색상"
+                    value={variant.color ?? ''}
+                    onChange={(e) => handleVariantFieldChange(index, 'color', e.target.value)}
+                    placeholder="Black"
+                    fullWidth
+                  />
+                  <Input
+                    label="사이즈"
+                    value={variant.size ?? ''}
+                    onChange={(e) => handleVariantFieldChange(index, 'size', e.target.value)}
+                    placeholder="M"
+                    fullWidth
+                  />
+                  <Input
+                    label="표시명"
+                    value={variant.label ?? ''}
+                    onChange={(e) => handleVariantFieldChange(index, 'label', e.target.value)}
+                    placeholder="Black / M"
+                    fullWidth
+                  />
+                  <Input
+                    label="가격"
+                    type="number"
+                    step="0.01"
+                    value={variant.price}
+                    onChange={(e) => handleVariantFieldChange(index, 'price', e.target.value)}
+                    placeholder="29.00"
+                    fullWidth
+                  />
+                  <Input
+                    label="재고"
+                    type="number"
+                    value={variant.stock}
+                    onChange={(e) => handleVariantFieldChange(index, 'stock', e.target.value)}
+                    placeholder="10"
+                    fullWidth
+                  />
+                  <label className="flex flex-col gap-1 text-sm font-medium text-primary-text">
+                    상태
+                    <select
+                      value={variant.status}
+                      onChange={(e) => handleVariantFieldChange(index, 'status', e.target.value)}
+                      className="h-11 rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
+                    >
+                      <option value="ACTIVE">판매중</option>
+                      <option value="SOLD_OUT">품절</option>
+                      <option value="HIDDEN">숨김</option>
+                    </select>
+                  </label>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-error text-error hover:bg-error/10"
+                      onClick={() => handleRemoveVariantRow(index)}
+                    >
+                      삭제
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
