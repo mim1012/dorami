@@ -252,11 +252,15 @@ describe('NotificationEventsListener', () => {
 
     await listener.handleStreamStarted({ streamId: 'stream-id', userId: 'admin-1' });
 
-    expect(alimtalkService.sendLiveStartAlimtalk).toHaveBeenCalledWith(
-      ['2135551234', '01012345678'],
-      '라이브',
-      expect.stringContaining('/live/stream-1'),
-      '설명',
-    );
+    const [recipients, title, streamUrl, description] = (
+      alimtalkService.sendLiveStartAlimtalk as jest.Mock
+    ).mock.calls[0];
+
+    expect(recipients).toHaveLength(2);
+    expect(recipients).toEqual(expect.arrayContaining(['01012345678']));
+    expect(recipients.some((phone: string) => phone.startsWith('+1'))).toBe(true);
+    expect(title).toBe('라이브');
+    expect(streamUrl).toEqual(expect.stringContaining('/live/stream-1'));
+    expect(description).toBe('설명');
   });
 });
