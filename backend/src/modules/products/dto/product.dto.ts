@@ -12,13 +12,119 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
   IsDateString,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductStatus } from '@live-commerce/shared-types';
+import { ProductStatus, VariantStatus } from '@live-commerce/shared-types';
 
 // Re-export for backward compatibility
-export { ProductStatus } from '@live-commerce/shared-types';
+export { ProductStatus, VariantStatus } from '@live-commerce/shared-types';
+
+export class CreateProductVariantDto {
+  @ApiPropertyOptional({
+    description: 'Existing variant ID for update flows',
+    example: 'variant-1',
+  })
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiPropertyOptional({ description: 'Owning product ID', example: 'product-1' })
+  @IsOptional()
+  @IsString()
+  productId?: string;
+
+  @ApiPropertyOptional({ description: 'Variant color', example: 'Black' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  color?: string;
+
+  @ApiPropertyOptional({ description: 'Variant size', example: 'M' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  size?: string;
+
+  @ApiPropertyOptional({ description: 'Variant label', example: 'Black / M' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  label?: string;
+
+  @ApiProperty({ description: 'Variant price', example: 29000, minimum: 0.01 })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Type(() => Number)
+  price!: number;
+
+  @ApiProperty({ description: 'Variant stock', example: 3, minimum: 0 })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  stock!: number;
+
+  @ApiPropertyOptional({
+    description: 'Variant status',
+    enum: VariantStatus,
+    example: VariantStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(VariantStatus)
+  status?: VariantStatus;
+
+  @ApiPropertyOptional({ description: 'Sort order', example: 0, minimum: 0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  sortOrder?: number;
+}
+
+export class UpdateProductVariantDto extends CreateProductVariantDto {}
+
+export class ProductVariantResponseDto {
+  @ApiProperty({ description: 'Variant ID', example: 'variant-1' })
+  id!: string;
+
+  @ApiProperty({ description: 'Owning product ID', example: 'product-1' })
+  productId!: string;
+
+  @ApiPropertyOptional({ description: 'Variant color', example: 'Black' })
+  color?: string;
+
+  @ApiPropertyOptional({ description: 'Variant size', example: 'M' })
+  size?: string;
+
+  @ApiPropertyOptional({ description: 'Variant label', example: 'Black / M' })
+  label?: string;
+
+  @ApiProperty({ description: 'Variant price', example: 29000 })
+  price!: number;
+
+  @ApiProperty({ description: 'Variant stock', example: 3 })
+  stock!: number;
+
+  @ApiProperty({
+    description: 'Variant status',
+    enum: VariantStatus,
+    example: VariantStatus.ACTIVE,
+  })
+  status!: VariantStatus;
+
+  @ApiProperty({ description: 'Sort order', example: 0 })
+  sortOrder!: number;
+
+  @ApiPropertyOptional({ description: 'Soft delete timestamp' })
+  deletedAt?: Date | null;
+
+  @ApiProperty({ description: 'Created timestamp', example: '2024-01-15T10:30:00.000Z' })
+  createdAt!: Date;
+
+  @ApiProperty({ description: 'Updated timestamp', example: '2024-01-15T10:30:00.000Z' })
+  updatedAt!: Date;
+}
 
 export class CreateProductDto {
   @ApiPropertyOptional({
@@ -45,11 +151,11 @@ export class CreateProductDto {
   @ApiProperty({
     description: 'Available quantity (stock)',
     example: 50,
-    minimum: 1,
+    minimum: 0,
     maximum: 9999,
   })
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(9999)
   @Type(() => Number)
   stock!: number; // Maps to quantity in database
@@ -102,15 +208,6 @@ export class CreateProductDto {
   freeShippingMessage?: string;
 
   @ApiPropertyOptional({
-    description: 'Initial product status',
-    enum: ProductStatus,
-    example: ProductStatus.SOLD_OUT,
-  })
-  @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
-
-  @ApiPropertyOptional({
     description: 'Hide product from store/past-products until released',
     example: false,
     default: false,
@@ -161,6 +258,23 @@ export class CreateProductDto {
   @IsString({ each: true })
   @MaxLength(2048, { each: true })
   images?: string[];
+
+  @ApiPropertyOptional({ description: 'Product variants', type: [CreateProductVariantDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductVariantDto)
+  variants?: CreateProductVariantDto[];
+
+  @ApiPropertyOptional({
+    description: 'Product status',
+    enum: ProductStatus,
+    example: ProductStatus.AVAILABLE,
+  })
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
 
   @ApiPropertyOptional({
     description: 'Display NEW badge on product card',
@@ -235,12 +349,12 @@ export class UpdateProductDto {
   @ApiPropertyOptional({
     description: 'Available quantity (stock)',
     example: 50,
-    minimum: 1,
+    minimum: 0,
     maximum: 9999,
   })
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(9999)
   @Type(() => Number)
   stock?: number; // Maps to quantity in database
@@ -337,6 +451,14 @@ export class UpdateProductDto {
   @IsString({ each: true })
   @MaxLength(2048, { each: true })
   images?: string[];
+
+  @ApiPropertyOptional({ description: 'Product variants', type: [UpdateProductVariantDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => UpdateProductVariantDto)
+  variants?: UpdateProductVariantDto[];
 
   @ApiPropertyOptional({
     description: 'Product status',
@@ -468,6 +590,15 @@ export class ProductResponseDto {
 
   @ApiPropertyOptional({ description: 'Original price before discount', example: 35000 })
   originalPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Variants', type: [ProductVariantResponseDto] })
+  variants?: ProductVariantResponseDto[];
+
+  @ApiPropertyOptional({ description: 'Minimum variant price', example: 29000 })
+  minPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Maximum variant price', example: 31000 })
+  maxPrice?: number;
 
   @ApiProperty({
     description: 'Product status',

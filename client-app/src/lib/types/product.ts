@@ -3,10 +3,14 @@
  * Uses shared-types enums with frontend-specific interfaces
  * (numeric types for decimals after API transformation)
  */
-import { ProductStatus } from '@live-commerce/shared-types';
+import {
+  ProductStatus,
+  type ProductVariant as SharedProductVariant,
+} from '@live-commerce/shared-types';
 
 // Re-export enum for convenience
 export { ProductStatus } from '@live-commerce/shared-types';
+export type ProductVariant = SharedProductVariant;
 
 /**
  * Frontend Product interface
@@ -29,6 +33,9 @@ export interface Product {
   isNew?: boolean;
   discountRate?: number;
   originalPrice?: number;
+  variants?: ProductVariant[];
+  minPrice?: number;
+  maxPrice?: number;
   status: ProductStatus;
   excludeFromStore?: boolean;
   createdAt: string;
@@ -53,6 +60,7 @@ export interface ProductListItem {
  */
 export interface AddToCartRequest {
   productId: string;
+  variantId?: string;
   quantity: number;
   color?: string;
   size?: string;

@@ -125,6 +125,7 @@ describe('Product DTO variant support', () => {
       sortOrder: 0,
       isNew: false,
       status: ProductStatus.AVAILABLE,
+      excludeFromStore: false,
       createdAt: new Date(),
       updatedAt: new Date(),
       minPrice: 29000,
