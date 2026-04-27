@@ -33,6 +33,40 @@ describe('Product DTO variant support', () => {
     expect(errors).toHaveLength(0);
   });
 
+  it('accepts product status on create', async () => {
+    const dto = plainToInstance(CreateProductDto, {
+      name: '후드집업',
+      price: 29000,
+      stock: 10,
+      status: ProductStatus.SOLD_OUT,
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+  });
+
+  it('accepts zero summary stock when variants are used', async () => {
+    const dto = plainToInstance(CreateProductDto, {
+      name: '후드집업',
+      price: 29000,
+      stock: 0,
+      variants: [
+        {
+          color: 'Black',
+          size: 'M',
+          price: 29000,
+          stock: 0,
+          status: VariantStatus.SOLD_OUT,
+        },
+      ],
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+  });
+
   it('rejects variant stock below zero', async () => {
     const dto = plainToInstance(CreateProductDto, {
       name: '후드집업',

@@ -151,11 +151,11 @@ export class CreateProductDto {
   @ApiProperty({
     description: 'Available quantity (stock)',
     example: 50,
-    minimum: 1,
+    minimum: 0,
     maximum: 9999,
   })
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(9999)
   @Type(() => Number)
   stock!: number; // Maps to quantity in database
@@ -259,6 +259,15 @@ export class CreateProductDto {
   variants?: CreateProductVariantDto[];
 
   @ApiPropertyOptional({
+    description: 'Product status',
+    enum: ProductStatus,
+    example: ProductStatus.AVAILABLE,
+  })
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
+
+  @ApiPropertyOptional({
     description: 'Display NEW badge on product card',
     example: false,
     default: false,
@@ -331,12 +340,12 @@ export class UpdateProductDto {
   @ApiPropertyOptional({
     description: 'Available quantity (stock)',
     example: 50,
-    minimum: 1,
+    minimum: 0,
     maximum: 9999,
   })
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(0)
   @Max(9999)
   @Type(() => Number)
   stock?: number; // Maps to quantity in database

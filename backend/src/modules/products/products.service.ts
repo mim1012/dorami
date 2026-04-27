@@ -46,6 +46,10 @@ interface ProductUpdateData {
 
 type VariantInput = NonNullable<CreateProductDto['variants']>[number];
 
+function buildVariantIdentityKey(variant: Pick<VariantInput, 'color' | 'size'>) {
+  return `${variant.color?.trim() ?? ''}::${variant.size?.trim() ?? ''}`;
+}
+
 type ProductWithLiveStream = ProductWithVariants & {
   liveStream?: {
     title: string;
@@ -97,6 +101,15 @@ export class ProductsService {
     productId: string,
     variants: VariantInput[],
   ): Promise<ProductVariant[]> {
+    const seenKeys = new Set<string>();
+    for (const variant of variants) {
+      const identityKey = buildVariantIdentityKey(variant);
+      if (seenKeys.has(identityKey)) {
+        throw new BadRequestException('Duplicate color/size variant combination is not allowed');
+      }
+      seenKeys.add(identityKey);
+    }
+
     const persistedVariants: ProductVariant[] = [];
 
     for (const [index, variant] of variants.entries()) {
@@ -186,6 +199,8 @@ export class ProductsService {
           createDto.originalPrice !== null && createDto.originalPrice !== undefined
             ? new Decimal(createDto.originalPrice)
             : null,
+        status:
+          (createDto.status as PrismaProductStatus | undefined) ?? PrismaProductStatus.AVAILABLE,
         expiresAt: createDto.expiresAt ? new Date(createDto.expiresAt) : null,
       },
     });

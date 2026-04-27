@@ -130,13 +130,12 @@ describe('ProductsService', () => {
   });
 
   describe('create', () => {
-    it('should create a new product', async () => {
+    it('should create a product successfully', async () => {
       const createDto = {
         streamKey: 'test-stream-key',
         name: 'Test Product',
-        description: 'Test Description',
         price: 10000,
-        stock: 100,
+        stock: 10,
       };
 
       const mockStream = {
@@ -163,6 +162,45 @@ describe('ProductsService', () => {
 
       expect(result).toBeDefined();
       expect(result.name).toBe(createDto.name);
+    });
+
+    it('should persist create status when provided', async () => {
+      const createDto = {
+        streamKey: 'test-stream-key',
+        name: 'Sold Out Product',
+        price: 10000,
+        stock: 0,
+        status: ProductStatus.SOLD_OUT,
+      };
+
+      const mockStream = {
+        id: 'stream-123',
+        streamKey: 'test-stream-key',
+        status: 'ACTIVE',
+      };
+
+      const mockProduct = buildProduct({
+        id: 'status-product',
+        streamKey: createDto.streamKey,
+        name: createDto.name,
+        price: { toString: () => '10000' },
+        quantity: createDto.stock,
+        colorOptions: [],
+        sizeOptions: [],
+        status: ProductStatus.SOLD_OUT,
+      });
+
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
+      jest.spyOn(prisma.product, 'create').mockResolvedValue(mockProduct as any);
+
+      const result = await service.create(createDto as any);
+
+      expect(prisma.product.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: ProductStatus.SOLD_OUT }),
+        }),
+      );
+      expect(result.status).toBe(ProductStatus.SOLD_OUT);
     });
 
     it('should save variants and derive summary fields from active variants', async () => {
@@ -251,6 +289,37 @@ describe('ProductsService', () => {
       expect(result.maxPrice).toBe(31000);
       expect(result.colorOptions).toEqual(['Black']);
       expect(result.sizeOptions).toEqual(['M', 'L']);
+    });
+
+    it('should reject duplicate color/size variant combinations', async () => {
+      const createDto = {
+        streamKey: 'test-stream-key',
+        name: 'Duplicate Variant Product',
+        price: 10000,
+        stock: 10,
+        variants: [
+          { color: 'Black', size: 'M', price: 10000, stock: 1 },
+          { color: ' Black ', size: 'M', price: 12000, stock: 2 },
+        ],
+      };
+
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue({
+        id: 'stream-123',
+        streamKey: 'test-stream-key',
+        status: 'ACTIVE',
+      } as any);
+      jest.spyOn(prisma.product, 'create').mockResolvedValue(
+        buildProduct({
+          id: 'dup-product',
+          streamKey: createDto.streamKey,
+          name: createDto.name,
+          quantity: createDto.stock,
+        }) as any,
+      );
+
+      await expect(service.create(createDto as any)).rejects.toThrow(
+        'Duplicate color/size variant combination is not allowed',
+      );
     });
   });
 
