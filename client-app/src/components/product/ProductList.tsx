@@ -59,8 +59,12 @@ export default function ProductList({
 
     ws.on('live:product:added', (data: { type: string; data: Product }) => {
       setInternalProducts((prev) => {
-        if (prev.some((p) => p.id === data.data.id)) return prev;
-        return [data.data, ...prev];
+        const nextProduct = data.data;
+        if (nextProduct.excludeFromStore || nextProduct.status !== ProductStatus.AVAILABLE) {
+          return prev;
+        }
+        if (prev.some((p) => p.id === nextProduct.id)) return prev;
+        return [nextProduct, ...prev];
       });
       const id = data.data.id;
       setNewlyAddedIds((prev) => new Set(prev).add(id));
@@ -75,7 +79,17 @@ export default function ProductList({
     });
 
     ws.on('live:product:updated', (data: { type: string; data: Product }) => {
-      setInternalProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+      setInternalProducts((prev) => {
+        const nextProduct = data.data;
+        if (nextProduct.excludeFromStore) {
+          return prev.filter((p) => p.id !== nextProduct.id);
+        }
+        const existing = prev.some((p) => p.id === nextProduct.id);
+        if (!existing) {
+          return nextProduct.status === ProductStatus.AVAILABLE ? [nextProduct, ...prev] : prev;
+        }
+        return prev.map((p) => (p.id === nextProduct.id ? nextProduct : p));
+      });
     });
 
     ws.on('live:product:soldout', (data: { type: string; data: { productId: string } }) => {
@@ -92,7 +106,7 @@ export default function ProductList({
         type: string;
         data: { productId: string; productName: string; remainingStock: number };
       }) => {
-        // low-stock event received; stock store updated via useProductStock
+        console.log('[Products] Low stock warning:', data.data);
       },
     );
 

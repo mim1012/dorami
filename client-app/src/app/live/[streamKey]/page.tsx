@@ -21,7 +21,6 @@ import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
-import { NoticeBox } from '@/components/notices/NoticeBox';
 import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
 import { productKeys } from '@/lib/hooks/queries/use-products';
 import { useChatConnection } from '@/hooks/useChatConnection';
@@ -49,7 +48,6 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -119,8 +117,7 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isSessionVerified, isVerifying, isUserAuthenticated } = useAuth();
-  const liveRealtimeEnabled = !isVerifying && isSessionVerified && isUserAuthenticated;
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -129,17 +126,13 @@ export default function LiveStreamPage() {
     const onSessionExpired = () => {
       if (!hasShownSessionExpiredToast.current) {
         hasShownSessionExpiredToast.current = true;
-        showToast(
-          '세션 갱신이 잠시 불안정해요. 방송은 유지되고, 필요할 때만 다시 로그인하시면 됩니다.',
-          'error',
-          {
-            label: '로그인',
-            onClick: () => {
-              const returnTo = window.location.pathname;
-              window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-            },
+        showToast('로그인이 만료되었어요. 다시 로그인하면 방송을 이어서 볼 수 있어요.', 'error', {
+          label: '로그인',
+          onClick: () => {
+            const returnTo = window.location.pathname;
+            window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
           },
-        );
+        });
       }
     };
 
@@ -184,10 +177,9 @@ export default function LiveStreamPage() {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
-    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '', { enabled: liveRealtimeEnabled });
+  } = useChatConnection(streamKey ?? '');
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -367,23 +359,41 @@ export default function LiveStreamPage() {
 
     const handleProductAdded = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) =>
-        prev.some((p) => p.id === data.data.id) ? prev : [data.data, ...prev],
-      );
+      setAllProducts((prev) => {
+        const nextProduct = data.data as Product;
+        if (nextProduct.excludeFromStore || nextProduct.status !== ProductStatus.AVAILABLE) {
+          return prev;
+        }
+        return prev.some((p) => p.id === nextProduct.id) ? prev : [nextProduct, ...prev];
+      });
     };
 
     const handleProductUpdated = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+      setAllProducts((prev) => {
+        const nextProduct = data.data as Product;
+        if (nextProduct.excludeFromStore) {
+          return prev.filter((p) => p.id !== nextProduct.id);
+        }
+        const existing = prev.some((p) => p.id === nextProduct.id);
+        if (!existing) {
+          return nextProduct.status === ProductStatus.AVAILABLE ? [nextProduct, ...prev] : prev;
+        }
+        return prev.map((p) => (p.id === nextProduct.id ? nextProduct : p));
+      });
     };
 
     const handleProductSoldOut = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) => prev.filter((p) => p.id !== data.data.productId));
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
+        ),
+      );
       setFeaturedProductIfActive((prev) => {
         if (prev && prev.id === data.data.productId) {
-          showToast('이 상품이 품절되어 목록에서 숨겨졌습니다.', 'error');
-          return null;
+          showToast('이 상품이 품절되었습니다.', 'error');
+          return { ...prev, status: ProductStatus.SOLD_OUT };
         }
         return prev;
       });
@@ -415,6 +425,9 @@ export default function LiveStreamPage() {
 
     const handleReconnect = () => {
       if (isCancelled) return;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[LiveEvents] reconnect - rejoin stream', streamKey);
+      }
       handleConnect();
     };
 
@@ -472,7 +485,6 @@ export default function LiveStreamPage() {
       const previousStatus = previousStreamStatusRef.current;
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
-        setViewerCount(response.data.viewerCount ?? 0);
         setError(null);
         // Cancel pending offline grace timer — stream recovered before 10s elapsed
         if (offlineGraceTimerRef.current) {
@@ -666,7 +678,6 @@ export default function LiveStreamPage() {
     quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
-    variantId?: string,
   ) => {
     const { isAuthenticated } = useAuthStore.getState();
 
@@ -682,7 +693,6 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
-        variantId,
         quantity,
         color: selectedColor,
         size: selectedSize,
@@ -754,9 +764,6 @@ export default function LiveStreamPage() {
             onProductClick={handleProductClick}
             products={allProducts}
           />
-          <div className="p-3 border-t border-white/10">
-            <NoticeBox />
-          </div>
         </aside>
       )}
 
@@ -772,7 +779,6 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
-              socketAuthReady={liveRealtimeEnabled}
               muted={isMobileMuted}
               volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
@@ -1152,7 +1158,6 @@ export default function LiveStreamPage() {
                   key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
-                  socketAuthReady={liveRealtimeEnabled}
                   onViewerCountChange={handleViewerCountChange}
                   onStreamError={setVideoError}
                 />
@@ -1266,7 +1271,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!canComposeMessages}
+                disabled={!isConnected}
                 compact={false}
               />
             </div>

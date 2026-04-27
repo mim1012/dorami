@@ -12,17 +12,13 @@ import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import { formatPrice } from '@/lib/utils/price';
 import {
-  buildColorSizeEditableVariants,
-  convertVariantRowsPriceMode,
-  createEmptyEditableVariant,
-  deriveOptionSummaries,
-  inferVariantPriceMode,
-  parseVariantOptionCsv,
-  serializeVariantsForSubmit,
-  validateColorSizeVariants,
-  type EditableProductVariant,
-  type VariantPriceMode,
-} from '@/lib/utils/product-variants';
+  buildImportPreview,
+  inferColumnMapping,
+  parseExcelFile,
+  UNMAPPED_COLUMN,
+  type ImportColumnMapping,
+  type ParsedExcelSheet,
+} from '@/lib/utils/product-import';
 import {
   Plus,
   Edit,
@@ -71,12 +67,8 @@ interface ProductFormData {
   discountEnabled: boolean; // 할인 토글
   discountPrice: string; // 할인가 (discountEnabled=true 일 때만)
   stock: string;
-  status: 'AVAILABLE' | 'SOLD_OUT';
-  variantEnabled: boolean;
-  variantPriceMode: VariantPriceMode;
   colorOptions: string;
   sizeOptions: string;
-  variants: EditableProductVariant[];
   timerEnabled: boolean;
   timerDurationHours: string;
   imageUrl: string;
@@ -110,49 +102,6 @@ function calcDiscountRate(originalPrice: string, discountPrice: string): number 
   const disc = parseFloat(discountPrice);
   if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc <= 0 || disc >= orig) return null;
   return Math.round(((orig - disc) / orig) * 1000) / 10;
-}
-
-function getCurrentSellingPrice(
-  formData: Pick<ProductFormData, 'discountEnabled' | 'discountPrice' | 'originalPrice'>,
-) {
-  const sourcePrice =
-    formData.discountEnabled && formData.discountPrice
-      ? formData.discountPrice
-      : formData.originalPrice;
-  const parsed = Number.parseFloat(sourcePrice);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function mapProductToVariantEditorState(product: Product): {
-  variantEnabled: boolean;
-  variantPriceMode: VariantPriceMode;
-  variants: EditableProductVariant[];
-} {
-  if (!product.variants || product.variants.length === 0) {
-    return {
-      variantEnabled: false,
-      variantPriceMode: 'ADD_ON',
-      variants: [createEmptyEditableVariant()],
-    };
-  }
-
-  const variantPriceMode = inferVariantPriceMode(product.variants as any);
-  const basePrice = product.price;
-
-  return {
-    variantEnabled: true,
-    variantPriceMode,
-    variants: product.variants.map((variant) => ({
-      id: variant.id,
-      color: variant.color ?? '',
-      size: variant.size ?? '',
-      label: variant.label ?? '',
-      price:
-        variantPriceMode === 'ADD_ON' ? String(variant.price - basePrice) : String(variant.price),
-      stock: String(variant.stock),
-      status: variant.status,
-    })),
-  };
 }
 
 async function resizeImage(file: File, maxWidth = 800, maxHeight = 800): Promise<File> {
@@ -413,6 +362,20 @@ export default function AdminProductsPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [parsedExcel, setParsedExcel] = useState<ParsedExcelSheet | null>(null);
+  const [importMapping, setImportMapping] = useState<ImportColumnMapping>({
+    productName: UNMAPPED_COLUMN,
+    option: UNMAPPED_COLUMN,
+    price: UNMAPPED_COLUMN,
+    stock: UNMAPPED_COLUMN,
+  });
+  const [defaultImportStock, setDefaultImportStock] = useState('1');
+  const [defaultImportPrice, setDefaultImportPrice] = useState('');
+  const [bulkImportHideUntilRelease, setBulkImportHideUntilRelease] = useState(true);
+
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
     name: '',
@@ -420,12 +383,8 @@ export default function AdminProductsPage() {
     discountEnabled: false,
     discountPrice: '',
     stock: '',
-    status: 'AVAILABLE',
-    variantEnabled: false,
-    variantPriceMode: 'ADD_ON',
     colorOptions: '',
     sizeOptions: '',
-    variants: [createEmptyEditableVariant()],
     timerEnabled: false,
     timerDurationHours: '1',
     imageUrl: '',
@@ -461,88 +420,6 @@ export default function AdminProductsPage() {
     fetchActiveLiveKey();
   }, []);
 
-  const parsedColorOptions = useMemo(
-    () => parseVariantOptionCsv(formData.colorOptions),
-    [formData.colorOptions],
-  );
-  const parsedSizeOptions = useMemo(
-    () => parseVariantOptionCsv(formData.sizeOptions),
-    [formData.sizeOptions],
-  );
-  const currentSellingPrice = useMemo(() => getCurrentSellingPrice(formData), [formData]);
-
-  useEffect(() => {
-    if (!formData.variantEnabled) {
-      return;
-    }
-
-    const nextVariants = buildColorSizeEditableVariants({
-      colors: parsedColorOptions,
-      sizes: parsedSizeOptions,
-      existingRows: formData.variants,
-      priceMode: formData.variantPriceMode,
-      basePrice: currentSellingPrice,
-    });
-
-    const hasChanged = JSON.stringify(nextVariants) !== JSON.stringify(formData.variants);
-
-    if (hasChanged) {
-      setFormData((prev) => ({ ...prev, variants: nextVariants }));
-    }
-  }, [
-    currentSellingPrice,
-    formData.variantEnabled,
-    formData.variantPriceMode,
-    formData.variants,
-    parsedColorOptions,
-    parsedSizeOptions,
-  ]);
-
-  const variantPreviewRows = useMemo(() => {
-    if (!formData.variantEnabled) {
-      return [] as Array<{ color: string; size: string; label: string }>;
-    }
-
-    return buildColorSizeEditableVariants({
-      colors: parsedColorOptions,
-      sizes: parsedSizeOptions,
-      existingRows: formData.variants,
-      priceMode: formData.variantPriceMode,
-      basePrice: currentSellingPrice,
-    }).map((variant) => ({
-      color: variant.color ?? '',
-      size: variant.size ?? '',
-      label:
-        variant.label || [variant.color, variant.size].filter(Boolean).join(' / ') || '기본 옵션',
-    }));
-  }, [
-    currentSellingPrice,
-    formData.variantEnabled,
-    formData.variantPriceMode,
-    formData.variants,
-    parsedColorOptions,
-    parsedSizeOptions,
-  ]);
-
-  const adminVariantSummary = useMemo(() => {
-    if (!formData.variantEnabled) {
-      return null;
-    }
-
-    return deriveOptionSummaries(formData.variants);
-  }, [formData.variantEnabled, formData.variants]);
-
-  useEffect(() => {
-    if (!formData.variantEnabled || !adminVariantSummary) {
-      return;
-    }
-
-    const nextStock = String(adminVariantSummary.totalStock);
-    if (formData.stock !== nextStock) {
-      setFormData((prev) => ({ ...prev, stock: nextStock }));
-    }
-  }, [adminVariantSummary, formData.stock, formData.variantEnabled]);
-
   // Client-side filtered products
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -553,6 +430,19 @@ export default function AdminProductsPage() {
       return true;
     });
   }, [products, searchQuery, filterStatus, priceMin, priceMax]);
+
+  const importPreview = useMemo(() => {
+    if (!parsedExcel) {
+      return { products: [], warnings: [], errors: [] };
+    }
+
+    return buildImportPreview({
+      parsed: parsedExcel,
+      mapping: importMapping,
+      defaultStock: defaultImportStock,
+      defaultPrice: defaultImportPrice,
+    });
+  }, [parsedExcel, importMapping, defaultImportPrice, defaultImportStock]);
 
   const fetchProducts = async () => {
     try {
@@ -638,6 +528,94 @@ export default function AdminProductsPage() {
     }
   };
 
+  const resetImportState = () => {
+    setImportFileName('');
+    setParsedExcel(null);
+    setImportMapping({
+      productName: UNMAPPED_COLUMN,
+      option: UNMAPPED_COLUMN,
+      price: UNMAPPED_COLUMN,
+      stock: UNMAPPED_COLUMN,
+    });
+    setDefaultImportStock('1');
+    setDefaultImportPrice('');
+    setBulkImportHideUntilRelease(true);
+  };
+
+  const handleCloseImportModal = () => {
+    if (isImporting) return;
+    setIsImportModalOpen(false);
+    resetImportState();
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const parsed = await parseExcelFile(file);
+      setParsedExcel(parsed);
+      setImportFileName(file.name);
+      setImportMapping(inferColumnMapping(parsed.headers));
+      showToast(`엑셀을 읽었습니다. 시트: ${parsed.sheetName}`, 'success');
+    } catch (err: any) {
+      console.error('Failed to parse excel file:', err);
+      showToast(err?.message || '엑셀 파일을 읽지 못했습니다.', 'error');
+      resetImportState();
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleImportMappingChange = (field: keyof ImportColumnMapping, value: string) => {
+    setImportMapping((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleImportProducts = async () => {
+    if (!parsedExcel) {
+      showToast('먼저 엑셀 파일을 업로드해주세요.', 'error');
+      return;
+    }
+    if (!formData.streamKey.trim()) {
+      showToast('업로드할 Stream Key를 먼저 입력해주세요.', 'error');
+      return;
+    }
+    if (importPreview.errors.length > 0) {
+      showToast(importPreview.errors[0], 'error');
+      return;
+    }
+    if (importPreview.products.length === 0) {
+      showToast('등록할 수 있는 상품이 없습니다.', 'error');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      for (const product of importPreview.products) {
+        await apiClient.post('/products', {
+          streamKey: formData.streamKey.trim(),
+          name: product.name,
+          price: product.price,
+          stock: product.stock,
+          colorOptions: product.optionValues,
+          sizeOptions: [],
+          status: bulkImportHideUntilRelease ? 'SOLD_OUT' : 'AVAILABLE',
+          excludeFromStore: bulkImportHideUntilRelease,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      await fetchProducts();
+      showToast(`${importPreview.products.length}개 상품을 업로드했습니다.`, 'success');
+      handleCloseImportModal();
+    } catch (err: any) {
+      console.error('Failed to import products:', err);
+      showToast(`대량 업로드에 실패했습니다: ${err?.message || '알 수 없는 오류'}`, 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // --- Image Upload ---
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -717,19 +695,6 @@ export default function AdminProductsPage() {
     }));
   };
 
-  const handleVariantFieldChange = (
-    index: number,
-    field: keyof EditableProductVariant,
-    value: string,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      variants: prev.variants.map((variant, rowIndex) =>
-        rowIndex === index ? { ...variant, [field]: value } : variant,
-      ),
-    }));
-  };
-
   // --- Modal Close ---
   const handleCloseModal = () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -746,7 +711,6 @@ export default function AdminProductsPage() {
     if (product) {
       setEditingProduct(product);
       const hasDiscount = product.originalPrice != null && product.originalPrice > product.price;
-      const variantEditorState = mapProductToVariantEditorState(product);
       setFormData({
         streamKey: product.streamKey || '',
         name: product.name,
@@ -755,12 +719,8 @@ export default function AdminProductsPage() {
         discountEnabled: hasDiscount,
         discountPrice: hasDiscount ? product.price.toString() : '',
         stock: product.stock.toString(),
-        status: product.status,
-        variantEnabled: variantEditorState.variantEnabled,
-        variantPriceMode: variantEditorState.variantPriceMode,
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
-        variants: variantEditorState.variants,
         timerEnabled: product.timerEnabled,
         timerDurationHours: minutesToHours(product.timerDuration).toString(),
         imageUrl: product.imageUrl || '',
@@ -785,12 +745,8 @@ export default function AdminProductsPage() {
         discountEnabled: false,
         discountPrice: '',
         stock: '',
-        status: 'AVAILABLE',
-        variantEnabled: false,
-        variantPriceMode: 'ADD_ON',
         colorOptions: '',
         sizeOptions: '',
-        variants: [createEmptyEditableVariant()],
         timerEnabled: false,
         timerDurationHours: '1',
         imageUrl: '',
@@ -882,56 +838,18 @@ export default function AdminProductsPage() {
         apiDiscountRate = undefined;
       }
 
-      const normalizedVariants = formData.variantEnabled
-        ? serializeVariantsForSubmit(formData.variants, {
-            priceMode: formData.variantPriceMode,
-            basePrice: currentSellingPrice,
-          })
-        : [];
-
-      const variantValidationError = formData.variantEnabled
-        ? validateColorSizeVariants(formData.variants, {
-            priceMode: formData.variantPriceMode,
-            requireAtLeastOneCombination: true,
-          })
-        : null;
-
-      if (variantValidationError) {
-        setFormErrors((prev) => ({
-          ...prev,
-          colorOptions: prev.colorOptions ?? variantValidationError,
-          sizeOptions: prev.sizeOptions ?? variantValidationError,
-        }));
-        showToast(variantValidationError, 'error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const variantSummary =
-        normalizedVariants.length > 0
-          ? deriveOptionSummaries(
-              normalizedVariants.map((variant) => ({
-                id: variant.id,
-                color: variant.color ?? '',
-                size: variant.size ?? '',
-                label: variant.label ?? '',
-                price: String(variant.price),
-                stock: String(variant.stock),
-                status: variant.status,
-              })),
-            )
-          : null;
-
-      const shouldSendVariants = formData.variantEnabled || Boolean(editingProduct);
-
       const basePayload = {
         name: formData.name,
-        price: variantSummary?.minPrice ?? apiPrice,
-        stock: variantSummary?.totalStock ?? parseInt(formData.stock),
-        colorOptions: formData.variantEnabled ? (variantSummary?.colorOptions ?? []) : [],
-        sizeOptions: formData.variantEnabled ? (variantSummary?.sizeOptions ?? []) : [],
-        ...(shouldSendVariants ? { variants: normalizedVariants } : {}),
-        status: formData.status,
+        price: apiPrice,
+        stock: parseInt(formData.stock),
+        colorOptions: formData.colorOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        sizeOptions: formData.sizeOptions
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         timerEnabled: formData.timerEnabled,
         timerDuration:
           Math.min(
@@ -1128,6 +1046,14 @@ export default function AdminProductsPage() {
             </>
           )}
           <Button
+            variant="outline"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Upload className="w-5 h-5" />
+            엑셀 업로드
+          </Button>
+          <Button
             variant="primary"
             onClick={() => handleOpenModal()}
             className="flex items-center gap-2"
@@ -1274,6 +1200,219 @@ export default function AdminProductsPage() {
         )}
       </div>
 
+      {/* Excel Import Modal */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="엑셀 상품 업로드"
+        maxWidth="xl"
+      >
+        <div className="space-y-4 max-h-[75vh] overflow-y-auto px-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Stream Key"
+              name="bulk-stream-key"
+              value={formData.streamKey}
+              onChange={(e) => setFormData((prev) => ({ ...prev, streamKey: e.target.value }))}
+              placeholder="예: abc123def456"
+              fullWidth
+              helperText="이 Stream Key로 업로드된 상품을 묶습니다"
+            />
+            <div>
+              <label className="block text-sm font-medium text-secondary-text mb-2">업로드할 엑셀</label>
+              <label className="block cursor-pointer rounded-lg border border-dashed border-gray-300 bg-content-bg px-4 py-3 text-sm text-primary-text hover:bg-gray-50 transition-colors">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportFileChange}
+                  className="hidden"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate">{importFileName || '엑셀 파일 선택'}</span>
+                  <Upload className="w-4 h-4 flex-shrink-0" />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {parsedExcel && (
+            <>
+              <div className="rounded-xl border border-gray-200 bg-content-bg p-4 text-sm space-y-2">
+                <div className="flex flex-wrap gap-4 text-secondary-text">
+                  <span>선택 시트: <strong className="text-primary-text">{parsedExcel.sheetName}</strong></span>
+                  <span>헤더 행: <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong></span>
+                  <span>원본 행 수: <strong className="text-primary-text">{parsedExcel.rows.length}</strong></span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead>
+                      <tr>
+                        {parsedExcel.headers.map((header) => (
+                          <th key={header} className="px-2 py-2 text-left text-secondary-text whitespace-nowrap">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedExcel.rawPreviewRows.slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3).map((row, index) => (
+                        <tr key={`${index}-${row.join('|')}`} className="border-t border-gray-100">
+                          {parsedExcel.headers.map((header, headerIndex) => (
+                            <td key={`${header}-${headerIndex}`} className="px-2 py-2 whitespace-nowrap text-primary-text">
+                              {row[headerIndex] || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {([
+                  ['productName', '상품명 컬럼'],
+                  ['option', '옵션 컬럼'],
+                  ['price', '가격 컬럼'],
+                  ['stock', '재고 컬럼'],
+                ] as const).map(([field, label]) => (
+                  <div key={field}>
+                    <label className="block text-sm font-medium text-secondary-text mb-2">{label}</label>
+                    <select
+                      value={importMapping[field]}
+                      onChange={(e) => handleImportMappingChange(field, e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-primary-text"
+                    >
+                      <option value={UNMAPPED_COLUMN}>선택 안 함</option>
+                      {parsedExcel.headers.map((header) => (
+                        <option key={`${field}-${header}`} value={header}>
+                          {header}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-hot-pink/20 bg-hot-pink/5 p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkImportHideUntilRelease}
+                    onChange={(e) => setBulkImportHideUntilRelease(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-primary-text">대량등록 전용 숨김 처리</span>
+                    <span className="block text-xs text-secondary-text mt-1">체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다. 이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.</span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="기본 재고"
+                  name="defaultImportStock"
+                  type="number"
+                  value={defaultImportStock}
+                  onChange={(e) => setDefaultImportStock(e.target.value)}
+                  placeholder="재고 컬럼이 없을 때 사용"
+                  fullWidth
+                  helperText="재고 컬럼이 없거나 비었을 때 사용합니다"
+                />
+                <Input
+                  label="기본 가격"
+                  name="defaultImportPrice"
+                  type="number"
+                  value={defaultImportPrice}
+                  onChange={(e) => setDefaultImportPrice(e.target.value)}
+                  placeholder="가격 컬럼이 없을 때 사용"
+                  fullWidth
+                  helperText="가격 컬럼이 없는 업체 파일에만 입력하세요"
+                />
+              </div>
+
+              {importPreview.errors.length > 0 && (
+                <div className="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error space-y-1">
+                  {importPreview.errors.map((error) => (
+                    <p key={error}>{error}</p>
+                  ))}
+                </div>
+              )}
+
+              {importPreview.warnings.length > 0 && (
+                <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning space-y-1">
+                  {importPreview.warnings.slice(0, 6).map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                  {importPreview.warnings.length > 6 && (
+                    <p>외 {importPreview.warnings.length - 6}개 경고</p>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-gray-200 bg-content-bg p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-primary-text">정규화 미리보기</h3>
+                    <p className="text-xs text-secondary-text">
+                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는 품절입니다.
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-hot-pink">
+                    {importPreview.products.length}개 상품 생성 예정
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-secondary-text">
+                        <th className="px-2 py-2 text-left">상품명</th>
+                        <th className="px-2 py-2 text-left">옵션</th>
+                        <th className="px-2 py-2 text-right">가격</th>
+                        <th className="px-2 py-2 text-right">재고</th>
+                        <th className="px-2 py-2 text-left">원본 행</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.products.slice(0, 20).map((product) => (
+                        <tr key={product.key} className="border-b border-gray-50 text-primary-text">
+                          <td className="px-2 py-2">{product.name}</td>
+                          <td className="px-2 py-2">{product.optionValues.length > 0 ? product.optionValues.join(', ') : '-'}</td>
+                          <td className="px-2 py-2 text-right">{formatPrice(product.price)}</td>
+                          <td className="px-2 py-2 text-right">{product.stock}</td>
+                          <td className="px-2 py-2">{product.sourceRows.join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {importPreview.products.length > 20 && (
+                  <p className="text-xs text-secondary-text">
+                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체 {importPreview.products.length}개가 진행됩니다.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-2">
+            <Button type="button" variant="outline" fullWidth onClick={handleCloseImportModal} disabled={isImporting}>
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              onClick={handleImportProducts}
+              disabled={!parsedExcel || isImporting || importPreview.errors.length > 0 || importPreview.products.length === 0}
+            >
+              {isImporting ? '업로드 중...' : `품절 상태로 ${importPreview.products.length}개 등록`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Product Form Modal */}
       <Modal
         isOpen={isModalOpen}
@@ -1307,73 +1446,31 @@ export default function AdminProductsPage() {
             error={formErrors.name}
           />
 
-          {/* 상품 기본정보 */}
-          <div className="space-y-4 rounded-xl border border-gray-200 p-4">
-            <div>
-              <Body className="font-semibold text-primary-text">상품 기본정보</Body>
-              <p className="mt-1 text-xs text-secondary-text">
-                옵션 사용 여부와 관계없이 대표 판매 정보로 사용됩니다.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input
-                label="판매 가격"
-                name="originalPrice"
-                type="number"
-                step="0.01"
-                value={formData.originalPrice}
-                onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-                placeholder="29.00"
-                required
-                fullWidth
-                error={formErrors.originalPrice}
-              />
-              <Input
-                label={formData.variantEnabled ? '총 재고 (옵션 합계)' : '재고'}
-                name="stock"
-                type="number"
-                value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                placeholder="50"
-                required
-                fullWidth
-                disabled={formData.variantEnabled}
-                helperText={
-                  formData.variantEnabled
-                    ? '옵션 사용 시 활성 옵션 재고 합계로 자동 계산됩니다.'
-                    : undefined
-                }
-                error={formErrors.stock}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm font-medium text-primary-text">
-                판매 상태
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as 'AVAILABLE' | 'SOLD_OUT' })
-                  }
-                  className="h-11 rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
-                >
-                  <option value="AVAILABLE">판매중</option>
-                  <option value="SOLD_OUT">품절</option>
-                </select>
-              </label>
-              <div className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-secondary-text">
-                대표 판매가: {currentSellingPrice != null ? formatPrice(currentSellingPrice) : '-'}
-                {formData.variantEnabled && variantPreviewRows.length > 0 && (
-                  <div className="mt-1 text-xs">
-                    조합 수 {variantPreviewRows.length}개 / 옵션 가격 모드{' '}
-                    {formData.variantPriceMode === 'ADD_ON'
-                      ? '기본 가격 + 추가금'
-                      : '옵션별 개별 가격'}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* 가격 섹션 */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="가격 (정가)"
+              name="originalPrice"
+              type="number"
+              step="0.01"
+              value={formData.originalPrice}
+              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+              placeholder="29.00"
+              required
+              fullWidth
+              error={formErrors.originalPrice}
+            />
+            <Input
+              label="재고"
+              name="stock"
+              type="number"
+              value={formData.stock}
+              onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+              placeholder="50"
+              required
+              fullWidth
+              error={formErrors.stock}
+            />
           </div>
 
           {/* 할인 토글 */}
@@ -1425,219 +1522,23 @@ export default function AdminProductsPage() {
             </div>
           )}
 
-          <div className="space-y-4 rounded-xl border border-gray-200 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Body className="font-semibold text-primary-text">옵션 사용</Body>
-                <p className="mt-1 text-xs text-secondary-text">
-                  색상/사이즈 조합만 지원합니다. 옵션을 켜면 조합 표가 자동 생성됩니다.
-                </p>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-primary-text">
-                <input
-                  type="checkbox"
-                  checked={formData.variantEnabled}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      variantEnabled: e.target.checked,
-                      variants: e.target.checked
-                        ? buildColorSizeEditableVariants({
-                            colors: parseVariantOptionCsv(prev.colorOptions),
-                            sizes: parseVariantOptionCsv(prev.sizeOptions),
-                            existingRows: prev.variants,
-                            priceMode: prev.variantPriceMode,
-                            basePrice: getCurrentSellingPrice(prev),
-                          })
-                        : [createEmptyEditableVariant()],
-                    }))
-                  }
-                  className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
-                />
-                옵션 사용
-              </label>
-            </div>
-
-            {formData.variantEnabled ? (
-              <>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Input
-                    label="색상 CSV"
-                    name="colorOptions"
-                    value={formData.colorOptions}
-                    onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
-                    placeholder="예: Black, Ivory"
-                    fullWidth
-                    helperText="쉼표(,)로 구분해 입력하세요."
-                    error={formErrors.colorOptions}
-                  />
-                  <Input
-                    label="사이즈 CSV"
-                    name="sizeOptions"
-                    value={formData.sizeOptions}
-                    onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
-                    placeholder="예: M, L"
-                    fullWidth
-                    helperText="한쪽만 입력하면 단일 축 옵션으로 생성됩니다."
-                    error={formErrors.sizeOptions}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Body className="font-semibold text-primary-text">조합 미리보기</Body>
-                  {variantPreviewRows.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {variantPreviewRows.map((variant) => (
-                        <span
-                          key={`${variant.color}-${variant.size}-${variant.label}`}
-                          className="rounded-full bg-hot-pink/10 px-3 py-1 text-xs font-medium text-hot-pink"
-                        >
-                          {variant.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-secondary-text">
-                      색상 또는 사이즈를 입력하면 조합이 자동 생성됩니다.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3 rounded-xl border border-gray-100 bg-white/60 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <Body className="font-semibold text-primary-text">옵션 가격 설정</Body>
-                      <p className="mt-1 text-xs text-secondary-text">
-                        {formData.variantPriceMode === 'ADD_ON'
-                          ? '기본 판매 가격을 기준으로 옵션별 추가금을 입력합니다.'
-                          : '각 옵션 조합의 최종 판매 가격을 직접 입력합니다.'}
-                      </p>
-                    </div>
-                    <div className="inline-flex rounded-lg border border-gray-200 p-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            variantPriceMode: 'ADD_ON',
-                            variants: convertVariantRowsPriceMode(prev.variants, {
-                              from: prev.variantPriceMode,
-                              to: 'ADD_ON',
-                              basePrice: getCurrentSellingPrice(prev),
-                            }),
-                          }))
-                        }
-                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                          formData.variantPriceMode === 'ADD_ON'
-                            ? 'bg-hot-pink text-white'
-                            : 'text-secondary-text hover:bg-gray-50'
-                        }`}
-                      >
-                        기본 가격 + 추가금
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            variantPriceMode: 'DIRECT',
-                            variants: convertVariantRowsPriceMode(prev.variants, {
-                              from: prev.variantPriceMode,
-                              to: 'DIRECT',
-                              basePrice: getCurrentSellingPrice(prev),
-                            }),
-                          }))
-                        }
-                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                          formData.variantPriceMode === 'DIRECT'
-                            ? 'bg-hot-pink text-white'
-                            : 'text-secondary-text hover:bg-gray-50'
-                        }`}
-                      >
-                        옵션별 개별 가격
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead>
-                        <tr className="text-left text-secondary-text">
-                          <th className="py-2 pr-3">색상</th>
-                          <th className="py-2 pr-3">사이즈</th>
-                          <th className="py-2 pr-3">조합명</th>
-                          <th className="py-2 pr-3">
-                            {formData.variantPriceMode === 'ADD_ON' ? '추가금' : '개별 가격'}
-                          </th>
-                          <th className="py-2 pr-3">재고</th>
-                          <th className="py-2 pr-3">상태</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {formData.variants.map((variant, index) => (
-                          <tr
-                            key={`${variant.id ?? 'new'}-${variant.color}-${variant.size}-${index}`}
-                          >
-                            <td className="py-3 pr-3 text-primary-text">{variant.color || '-'}</td>
-                            <td className="py-3 pr-3 text-primary-text">{variant.size || '-'}</td>
-                            <td className="py-3 pr-3 min-w-[200px]">
-                              <Input
-                                value={variant.label ?? ''}
-                                onChange={(e) =>
-                                  handleVariantFieldChange(index, 'label', e.target.value)
-                                }
-                                placeholder={`${variant.color || ''}${variant.color && variant.size ? ' / ' : ''}${variant.size || ''}`}
-                                fullWidth
-                              />
-                            </td>
-                            <td className="py-3 pr-3 min-w-[140px]">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={variant.price}
-                                onChange={(e) =>
-                                  handleVariantFieldChange(index, 'price', e.target.value)
-                                }
-                                placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
-                                fullWidth
-                              />
-                            </td>
-                            <td className="py-3 pr-3 min-w-[120px]">
-                              <Input
-                                type="number"
-                                value={variant.stock}
-                                onChange={(e) =>
-                                  handleVariantFieldChange(index, 'stock', e.target.value)
-                                }
-                                placeholder="0"
-                                fullWidth
-                              />
-                            </td>
-                            <td className="py-3 pr-3 min-w-[140px]">
-                              <select
-                                value={variant.status}
-                                onChange={(e) =>
-                                  handleVariantFieldChange(index, 'status', e.target.value)
-                                }
-                                className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
-                              >
-                                <option value="ACTIVE">판매중</option>
-                                <option value="SOLD_OUT">품절</option>
-                                <option value="HIDDEN">숨김</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-secondary-text">
-                옵션을 끄면 일반 단일 상품처럼 대표 가격/재고/판매 상태만 저장됩니다.
-              </p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="색상 옵션 (쉼표로 구분)"
+              name="colorOptions"
+              value={formData.colorOptions}
+              onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
+              placeholder="예: Red, Blue, Black"
+              fullWidth
+            />
+            <Input
+              label="사이즈 옵션 (쉼표로 구분)"
+              name="sizeOptions"
+              value={formData.sizeOptions}
+              onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
+              placeholder="예: S, M, L, XL"
+              fullWidth
+            />
           </div>
 
           <div className="flex items-center gap-4">

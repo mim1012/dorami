@@ -72,7 +72,7 @@ function CartPageContent() {
   };
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
+    if (newQuantity < 1 || newQuantity > 10) return;
     updateCartItem.mutate(
       { itemId: cartItemId, quantity: newQuantity },
       {
@@ -255,7 +255,7 @@ function CartPageContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-primary-black pb-bottom-nav">
+      <div className="min-h-screen bg-primary-black pb-[calc(var(--bottom-tab-height,64px)+116px)]">
         {/* Header */}
         <div className="bg-content-bg border-b border-border-color sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
@@ -376,75 +376,81 @@ function CartPageContent() {
                   )}
                 </div>
 
-                <Button variant="outline" size="lg" fullWidth onClick={() => router.push('/shop')}>
-                  쇼핑 계속하기
-                </Button>
+                {/* Actions moved to floating bottom CTA */}
               </>
             )
           )}
         </div>
       </div>
 
-      {/* Sticky Bottom Price Summary Bar */}
+      {/* Floating Bottom Action Bar */}
       {cart && cart.items.length > 0 && (
-        <div className="sticky bottom-[var(--bottom-tab-height,64px)] z-20 bg-content-bg border-t border-border-color shadow-lg">
-          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <Caption className="text-secondary-text">{selectedItems.length}개 선택</Caption>
-              <Body className="text-hot-pink font-bold text-lg leading-tight">
-                {formatPrice(selectedTotal)}
-              </Body>
+        <div className="fixed inset-x-0 bottom-[var(--bottom-tab-height,64px)] z-30 border-t border-border-color bg-content-bg/95 backdrop-blur supports-[backdrop-filter]:bg-content-bg/85 shadow-[0_-8px_24px_rgba(0,0,0,0.28)]">
+          <div className="max-w-4xl mx-auto px-4 py-3 space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <Caption className="text-secondary-text">{selectedItems.length}개 선택</Caption>
+                <Body className="text-hot-pink font-bold text-lg leading-tight">
+                  {formatPrice(selectedTotal)}
+                </Body>
+              </div>
+              <div className="text-right shrink-0">
+                <Caption className="text-secondary-text">배송비 포함</Caption>
+                <Body className="text-primary-text font-semibold">{formatPrice(selectedShipping)}</Body>
+              </div>
             </div>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={async () => {
-                if (selectedItems.length === 0) {
-                  showToast('결제할 상품을 선택해주세요.', 'error');
-                  return;
-                }
-                const result = await refetch();
-                const freshCart = result.data;
-                const freshHasExpired = freshCart?.items.some(
-                  (item) =>
-                    item.status === 'EXPIRED' ||
-                    (item.expiresAt &&
-                      item.status === 'ACTIVE' &&
-                      new Date(item.expiresAt).getTime() <= Date.now()),
-                );
-                const freshHasSoldOut = freshCart?.items.some(
-                  (item) => selectedItemIds.has(item.id) && item.product?.status === 'SOLD_OUT',
-                );
-                if (
-                  !freshHasExpired &&
-                  !selectedHasExpired &&
-                  !freshHasSoldOut &&
-                  !selectedHasSoldOut
-                ) {
-                  const selectedIds = Array.from(selectedItemIds);
-                  const query = new URLSearchParams();
-                  if (selectedIds.length > 0) {
-                    query.set('cartItemIds', selectedIds.join(','));
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="md" fullWidth onClick={() => router.push('/shop')}>
+                쇼핑 계속하기
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={async () => {
+                  if (selectedItems.length === 0) {
+                    showToast('결제할 상품을 선택해주세요.', 'error');
+                    return;
                   }
-                  router.push(`/checkout${query.toString() ? `?${query.toString()}` : ''}`);
-                } else if (freshHasSoldOut || selectedHasSoldOut) {
-                  showToast('품절된 상품이 포함되어 있습니다. 삭제 후 결제해주세요.', 'error');
-                  queryClient.invalidateQueries({ queryKey: cartKeys.all });
-                } else {
-                  showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
-                  queryClient.invalidateQueries({ queryKey: cartKeys.all });
+                  const result = await refetch();
+                  const freshCart = result.data;
+                  const freshHasExpired = freshCart?.items.some(
+                    (item) =>
+                      item.status === 'EXPIRED' ||
+                      (item.expiresAt &&
+                        item.status === 'ACTIVE' &&
+                        new Date(item.expiresAt).getTime() <= Date.now()),
+                  );
+                  const freshHasSoldOut = freshCart?.items.some(
+                    (item) => selectedItemIds.has(item.id) && item.product?.status === 'SOLD_OUT',
+                  );
+                  if (
+                    !freshHasExpired &&
+                    !selectedHasExpired &&
+                    !freshHasSoldOut &&
+                    !selectedHasSoldOut
+                  ) {
+                    router.push('/checkout');
+                  } else if (freshHasSoldOut || selectedHasSoldOut) {
+                    showToast('품절된 상품이 포함되어 있습니다. 삭제 후 결제해주세요.', 'error');
+                    queryClient.invalidateQueries({ queryKey: cartKeys.all });
+                  } else {
+                    showToast('만료된 상품이 있습니다. 삭제 후 결제해주세요.', 'error');
+                    queryClient.invalidateQueries({ queryKey: cartKeys.all });
+                  }
+                }}
+                disabled={
+                  selectedItems.length === 0 || selectedHasExpired || selectedHasSoldOut || isFetching
                 }
-              }}
-              disabled={
-                selectedItems.length === 0 || selectedHasExpired || selectedHasSoldOut || isFetching
-              }
-            >
-              {selectedHasSoldOut
-                ? '품절 상품 포함'
-                : selectedHasExpired
-                  ? '만료된 상품 포함'
-                  : '결제하기'}
-            </Button>
+                fullWidth
+              >
+                {selectedHasSoldOut
+                  ? '품절 상품 포함'
+                  : selectedHasExpired
+                    ? '만료된 상품 포함'
+                    : '결제하기'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
