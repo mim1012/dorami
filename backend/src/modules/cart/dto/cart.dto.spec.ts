@@ -25,6 +25,18 @@ describe('Cart DTO quantity validation', () => {
     expect(errors).toHaveLength(0);
   });
 
+  it('accepts an optional variant id during the product-to-variant transition', async () => {
+    const dto = plainToInstance(AddToCartDto, {
+      productId: 'product-1',
+      variantId: 'variant-1',
+      quantity: 2,
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+  });
+
   it('still rejects non-positive quantities', async () => {
     const dto = plainToInstance(UpdateCartItemDto, {
       quantity: 0,

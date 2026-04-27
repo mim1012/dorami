@@ -284,6 +284,66 @@ describe('OrdersService - createOrderFromCart', () => {
       expect(result.total).toBe('265'); // 250 + 15
     });
 
+    it('should persist variant snapshot fields from cart items into order items', async () => {
+      const variantCartItems = [
+        {
+          ...mockCartItems[0],
+          variantId: 'variant-1',
+          variantLabel: 'Black / M',
+          color: 'Black',
+          size: 'M',
+          price: new Decimal(31000),
+        },
+      ];
+      const variantOrder = {
+        ...mockOrder,
+        subtotal: new Decimal(62000),
+        shippingFee: new Decimal(10),
+        total: new Decimal(62010),
+        orderItems: [
+          {
+            ...mockOrder.orderItems[0],
+            variantId: 'variant-1',
+            variantLabel: 'Black / M',
+            color: 'Black',
+            size: 'M',
+            price: new Decimal(31000),
+          },
+        ],
+      };
+
+      const tx = {
+        user: { findUnique: jest.fn().mockResolvedValue(mockUser) },
+        cart: {
+          findMany: jest.fn().mockResolvedValue(variantCartItems),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+        order: { create: jest.fn().mockResolvedValue(variantOrder) },
+      };
+      prismaService.$transaction = jest.fn(async (callback) => callback(tx)) as any;
+
+      const result = await service.createOrderFromCart('user-123');
+
+      expect(tx.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            orderItems: {
+              create: [
+                expect.objectContaining({
+                  variantId: 'variant-1',
+                  variantLabel: 'Black / M',
+                  color: 'Black',
+                  size: 'M',
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+      expect(result.items[0]?.variantId).toBe('variant-1');
+      expect(result.items[0]?.variantLabel).toBe('Black / M');
+    });
+
     it('should waive shipping for repeat orders in the same stream', async () => {
       jest
         .spyOn(prismaService.product, 'findMany')

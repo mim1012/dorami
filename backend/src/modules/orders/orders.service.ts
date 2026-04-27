@@ -142,6 +142,7 @@ export class OrdersService {
           tx,
           cartItems.map((item) => ({
             productId: item.productId,
+            variantId: item.variantId ?? undefined,
             quantity: item.quantity,
           })),
         );
@@ -192,6 +193,8 @@ export class OrdersService {
         // Prepare order items (Product connect으로 relation 설정, productId 직접 지정 불가)
         const orderItemsData = cartItems.map((item) => ({
           productName: item.productName,
+          variantId: item.variantId,
+          variantLabel: item.variantLabel,
           quantity: item.quantity,
           price: item.price,
           shippingFee: new Decimal(0),
@@ -941,7 +944,9 @@ export class OrdersService {
       items: order.orderItems.map((item) => ({
         id: item.id,
         productId: item.productId!,
+        variantId: item.variantId ?? undefined,
         productName: this.getDisplayProductName(item),
+        variantLabel: item.variantLabel ?? undefined,
         quantity: item.quantity,
         price: String(item.price),
         shippingFee: String(item.shippingFee),

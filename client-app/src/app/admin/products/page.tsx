@@ -12,6 +12,18 @@ import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import { formatPrice } from '@/lib/utils/price';
 import {
+  buildColorSizeEditableVariants,
+  convertVariantRowsPriceMode,
+  createEmptyEditableVariant,
+  deriveOptionSummaries,
+  inferVariantPriceMode,
+  parseVariantOptionCsv,
+  serializeVariantsForSubmit,
+  validateColorSizeVariants,
+  type EditableProductVariant,
+  type VariantPriceMode,
+} from '@/lib/utils/product-variants';
+import {
   Plus,
   Edit,
   Trash2,
@@ -59,8 +71,12 @@ interface ProductFormData {
   discountEnabled: boolean; // 할인 토글
   discountPrice: string; // 할인가 (discountEnabled=true 일 때만)
   stock: string;
+  status: 'AVAILABLE' | 'SOLD_OUT';
+  variantEnabled: boolean;
+  variantPriceMode: VariantPriceMode;
   colorOptions: string;
   sizeOptions: string;
+  variants: EditableProductVariant[];
   timerEnabled: boolean;
   timerDurationHours: string;
   imageUrl: string;
@@ -94,6 +110,49 @@ function calcDiscountRate(originalPrice: string, discountPrice: string): number 
   const disc = parseFloat(discountPrice);
   if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc <= 0 || disc >= orig) return null;
   return Math.round(((orig - disc) / orig) * 1000) / 10;
+}
+
+function getCurrentSellingPrice(
+  formData: Pick<ProductFormData, 'discountEnabled' | 'discountPrice' | 'originalPrice'>,
+) {
+  const sourcePrice =
+    formData.discountEnabled && formData.discountPrice
+      ? formData.discountPrice
+      : formData.originalPrice;
+  const parsed = Number.parseFloat(sourcePrice);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function mapProductToVariantEditorState(product: Product): {
+  variantEnabled: boolean;
+  variantPriceMode: VariantPriceMode;
+  variants: EditableProductVariant[];
+} {
+  if (!product.variants || product.variants.length === 0) {
+    return {
+      variantEnabled: false,
+      variantPriceMode: 'ADD_ON',
+      variants: [createEmptyEditableVariant()],
+    };
+  }
+
+  const variantPriceMode = inferVariantPriceMode(product.variants as any);
+  const basePrice = product.price;
+
+  return {
+    variantEnabled: true,
+    variantPriceMode,
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      color: variant.color ?? '',
+      size: variant.size ?? '',
+      label: variant.label ?? '',
+      price:
+        variantPriceMode === 'ADD_ON' ? String(variant.price - basePrice) : String(variant.price),
+      stock: String(variant.stock),
+      status: variant.status,
+    })),
+  };
 }
 
 async function resizeImage(file: File, maxWidth = 800, maxHeight = 800): Promise<File> {
@@ -361,8 +420,12 @@ export default function AdminProductsPage() {
     discountEnabled: false,
     discountPrice: '',
     stock: '',
+    status: 'AVAILABLE',
+    variantEnabled: false,
+    variantPriceMode: 'ADD_ON',
     colorOptions: '',
     sizeOptions: '',
+    variants: [createEmptyEditableVariant()],
     timerEnabled: false,
     timerDurationHours: '1',
     imageUrl: '',
@@ -397,6 +460,88 @@ export default function AdminProductsPage() {
     };
     fetchActiveLiveKey();
   }, []);
+
+  const parsedColorOptions = useMemo(
+    () => parseVariantOptionCsv(formData.colorOptions),
+    [formData.colorOptions],
+  );
+  const parsedSizeOptions = useMemo(
+    () => parseVariantOptionCsv(formData.sizeOptions),
+    [formData.sizeOptions],
+  );
+  const currentSellingPrice = useMemo(() => getCurrentSellingPrice(formData), [formData]);
+
+  useEffect(() => {
+    if (!formData.variantEnabled) {
+      return;
+    }
+
+    const nextVariants = buildColorSizeEditableVariants({
+      colors: parsedColorOptions,
+      sizes: parsedSizeOptions,
+      existingRows: formData.variants,
+      priceMode: formData.variantPriceMode,
+      basePrice: currentSellingPrice,
+    });
+
+    const hasChanged = JSON.stringify(nextVariants) !== JSON.stringify(formData.variants);
+
+    if (hasChanged) {
+      setFormData((prev) => ({ ...prev, variants: nextVariants }));
+    }
+  }, [
+    currentSellingPrice,
+    formData.variantEnabled,
+    formData.variantPriceMode,
+    formData.variants,
+    parsedColorOptions,
+    parsedSizeOptions,
+  ]);
+
+  const variantPreviewRows = useMemo(() => {
+    if (!formData.variantEnabled) {
+      return [] as Array<{ color: string; size: string; label: string }>;
+    }
+
+    return buildColorSizeEditableVariants({
+      colors: parsedColorOptions,
+      sizes: parsedSizeOptions,
+      existingRows: formData.variants,
+      priceMode: formData.variantPriceMode,
+      basePrice: currentSellingPrice,
+    }).map((variant) => ({
+      color: variant.color ?? '',
+      size: variant.size ?? '',
+      label:
+        variant.label || [variant.color, variant.size].filter(Boolean).join(' / ') || '기본 옵션',
+    }));
+  }, [
+    currentSellingPrice,
+    formData.variantEnabled,
+    formData.variantPriceMode,
+    formData.variants,
+    parsedColorOptions,
+    parsedSizeOptions,
+  ]);
+
+  const adminVariantSummary = useMemo(() => {
+    if (!formData.variantEnabled) {
+      return null;
+    }
+
+    return deriveOptionSummaries(formData.variants);
+  }, [formData.variantEnabled, formData.variants]);
+
+  useEffect(() => {
+    if (!formData.variantEnabled || !adminVariantSummary) {
+      return;
+    }
+
+    const nextStock = String(adminVariantSummary.totalStock);
+    if (formData.stock !== nextStock) {
+      setFormData((prev) => ({ ...prev, stock: nextStock }));
+    }
+  }, [adminVariantSummary, formData.stock, formData.variantEnabled]);
 
   // Client-side filtered products
   const filteredProducts = useMemo(() => {
@@ -572,6 +717,19 @@ export default function AdminProductsPage() {
     }));
   };
 
+  const handleVariantFieldChange = (
+    index: number,
+    field: keyof EditableProductVariant,
+    value: string,
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((variant, rowIndex) =>
+        rowIndex === index ? { ...variant, [field]: value } : variant,
+      ),
+    }));
+  };
+
   // --- Modal Close ---
   const handleCloseModal = () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -588,6 +746,7 @@ export default function AdminProductsPage() {
     if (product) {
       setEditingProduct(product);
       const hasDiscount = product.originalPrice != null && product.originalPrice > product.price;
+      const variantEditorState = mapProductToVariantEditorState(product);
       setFormData({
         streamKey: product.streamKey || '',
         name: product.name,
@@ -596,8 +755,12 @@ export default function AdminProductsPage() {
         discountEnabled: hasDiscount,
         discountPrice: hasDiscount ? product.price.toString() : '',
         stock: product.stock.toString(),
+        status: product.status,
+        variantEnabled: variantEditorState.variantEnabled,
+        variantPriceMode: variantEditorState.variantPriceMode,
         colorOptions: product.colorOptions.join(', '),
         sizeOptions: product.sizeOptions.join(', '),
+        variants: variantEditorState.variants,
         timerEnabled: product.timerEnabled,
         timerDurationHours: minutesToHours(product.timerDuration).toString(),
         imageUrl: product.imageUrl || '',
@@ -622,8 +785,12 @@ export default function AdminProductsPage() {
         discountEnabled: false,
         discountPrice: '',
         stock: '',
+        status: 'AVAILABLE',
+        variantEnabled: false,
+        variantPriceMode: 'ADD_ON',
         colorOptions: '',
         sizeOptions: '',
+        variants: [createEmptyEditableVariant()],
         timerEnabled: false,
         timerDurationHours: '1',
         imageUrl: '',
@@ -715,18 +882,56 @@ export default function AdminProductsPage() {
         apiDiscountRate = undefined;
       }
 
+      const normalizedVariants = formData.variantEnabled
+        ? serializeVariantsForSubmit(formData.variants, {
+            priceMode: formData.variantPriceMode,
+            basePrice: currentSellingPrice,
+          })
+        : [];
+
+      const variantValidationError = formData.variantEnabled
+        ? validateColorSizeVariants(formData.variants, {
+            priceMode: formData.variantPriceMode,
+            requireAtLeastOneCombination: true,
+          })
+        : null;
+
+      if (variantValidationError) {
+        setFormErrors((prev) => ({
+          ...prev,
+          colorOptions: prev.colorOptions ?? variantValidationError,
+          sizeOptions: prev.sizeOptions ?? variantValidationError,
+        }));
+        showToast(variantValidationError, 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const variantSummary =
+        normalizedVariants.length > 0
+          ? deriveOptionSummaries(
+              normalizedVariants.map((variant) => ({
+                id: variant.id,
+                color: variant.color ?? '',
+                size: variant.size ?? '',
+                label: variant.label ?? '',
+                price: String(variant.price),
+                stock: String(variant.stock),
+                status: variant.status,
+              })),
+            )
+          : null;
+
+      const shouldSendVariants = formData.variantEnabled || Boolean(editingProduct);
+
       const basePayload = {
         name: formData.name,
-        price: apiPrice,
-        stock: parseInt(formData.stock),
-        colorOptions: formData.colorOptions
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        sizeOptions: formData.sizeOptions
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
+        price: variantSummary?.minPrice ?? apiPrice,
+        stock: variantSummary?.totalStock ?? parseInt(formData.stock),
+        colorOptions: formData.variantEnabled ? (variantSummary?.colorOptions ?? []) : [],
+        sizeOptions: formData.variantEnabled ? (variantSummary?.sizeOptions ?? []) : [],
+        ...(shouldSendVariants ? { variants: normalizedVariants } : {}),
+        status: formData.status,
         timerEnabled: formData.timerEnabled,
         timerDuration:
           Math.min(
@@ -1102,31 +1307,73 @@ export default function AdminProductsPage() {
             error={formErrors.name}
           />
 
-          {/* 가격 섹션 */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="가격 (정가)"
-              name="originalPrice"
-              type="number"
-              step="0.01"
-              value={formData.originalPrice}
-              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
-              placeholder="29.00"
-              required
-              fullWidth
-              error={formErrors.originalPrice}
-            />
-            <Input
-              label="재고"
-              name="stock"
-              type="number"
-              value={formData.stock}
-              onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-              placeholder="50"
-              required
-              fullWidth
-              error={formErrors.stock}
-            />
+          {/* 상품 기본정보 */}
+          <div className="space-y-4 rounded-xl border border-gray-200 p-4">
+            <div>
+              <Body className="font-semibold text-primary-text">상품 기본정보</Body>
+              <p className="mt-1 text-xs text-secondary-text">
+                옵션 사용 여부와 관계없이 대표 판매 정보로 사용됩니다.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="판매 가격"
+                name="originalPrice"
+                type="number"
+                step="0.01"
+                value={formData.originalPrice}
+                onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+                placeholder="29.00"
+                required
+                fullWidth
+                error={formErrors.originalPrice}
+              />
+              <Input
+                label={formData.variantEnabled ? '총 재고 (옵션 합계)' : '재고'}
+                name="stock"
+                type="number"
+                value={formData.stock}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                placeholder="50"
+                required
+                fullWidth
+                disabled={formData.variantEnabled}
+                helperText={
+                  formData.variantEnabled
+                    ? '옵션 사용 시 활성 옵션 재고 합계로 자동 계산됩니다.'
+                    : undefined
+                }
+                error={formErrors.stock}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-primary-text">
+                판매 상태
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value as 'AVAILABLE' | 'SOLD_OUT' })
+                  }
+                  className="h-11 rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
+                >
+                  <option value="AVAILABLE">판매중</option>
+                  <option value="SOLD_OUT">품절</option>
+                </select>
+              </label>
+              <div className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-secondary-text">
+                대표 판매가: {currentSellingPrice != null ? formatPrice(currentSellingPrice) : '-'}
+                {formData.variantEnabled && variantPreviewRows.length > 0 && (
+                  <div className="mt-1 text-xs">
+                    조합 수 {variantPreviewRows.length}개 / 옵션 가격 모드{' '}
+                    {formData.variantPriceMode === 'ADD_ON'
+                      ? '기본 가격 + 추가금'
+                      : '옵션별 개별 가격'}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 할인 토글 */}
@@ -1178,23 +1425,219 @@ export default function AdminProductsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="색상 옵션 (쉼표로 구분)"
-              name="colorOptions"
-              value={formData.colorOptions}
-              onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
-              placeholder="예: Red, Blue, Black"
-              fullWidth
-            />
-            <Input
-              label="사이즈 옵션 (쉼표로 구분)"
-              name="sizeOptions"
-              value={formData.sizeOptions}
-              onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
-              placeholder="예: S, M, L, XL"
-              fullWidth
-            />
+          <div className="space-y-4 rounded-xl border border-gray-200 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Body className="font-semibold text-primary-text">옵션 사용</Body>
+                <p className="mt-1 text-xs text-secondary-text">
+                  색상/사이즈 조합만 지원합니다. 옵션을 켜면 조합 표가 자동 생성됩니다.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-medium text-primary-text">
+                <input
+                  type="checkbox"
+                  checked={formData.variantEnabled}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      variantEnabled: e.target.checked,
+                      variants: e.target.checked
+                        ? buildColorSizeEditableVariants({
+                            colors: parseVariantOptionCsv(prev.colorOptions),
+                            sizes: parseVariantOptionCsv(prev.sizeOptions),
+                            existingRows: prev.variants,
+                            priceMode: prev.variantPriceMode,
+                            basePrice: getCurrentSellingPrice(prev),
+                          })
+                        : [createEmptyEditableVariant()],
+                    }))
+                  }
+                  className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                />
+                옵션 사용
+              </label>
+            </div>
+
+            {formData.variantEnabled ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Input
+                    label="색상 CSV"
+                    name="colorOptions"
+                    value={formData.colorOptions}
+                    onChange={(e) => setFormData({ ...formData, colorOptions: e.target.value })}
+                    placeholder="예: Black, Ivory"
+                    fullWidth
+                    helperText="쉼표(,)로 구분해 입력하세요."
+                    error={formErrors.colorOptions}
+                  />
+                  <Input
+                    label="사이즈 CSV"
+                    name="sizeOptions"
+                    value={formData.sizeOptions}
+                    onChange={(e) => setFormData({ ...formData, sizeOptions: e.target.value })}
+                    placeholder="예: M, L"
+                    fullWidth
+                    helperText="한쪽만 입력하면 단일 축 옵션으로 생성됩니다."
+                    error={formErrors.sizeOptions}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Body className="font-semibold text-primary-text">조합 미리보기</Body>
+                  {variantPreviewRows.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {variantPreviewRows.map((variant) => (
+                        <span
+                          key={`${variant.color}-${variant.size}-${variant.label}`}
+                          className="rounded-full bg-hot-pink/10 px-3 py-1 text-xs font-medium text-hot-pink"
+                        >
+                          {variant.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-secondary-text">
+                      색상 또는 사이즈를 입력하면 조합이 자동 생성됩니다.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-gray-100 bg-white/60 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <Body className="font-semibold text-primary-text">옵션 가격 설정</Body>
+                      <p className="mt-1 text-xs text-secondary-text">
+                        {formData.variantPriceMode === 'ADD_ON'
+                          ? '기본 판매 가격을 기준으로 옵션별 추가금을 입력합니다.'
+                          : '각 옵션 조합의 최종 판매 가격을 직접 입력합니다.'}
+                      </p>
+                    </div>
+                    <div className="inline-flex rounded-lg border border-gray-200 p-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            variantPriceMode: 'ADD_ON',
+                            variants: convertVariantRowsPriceMode(prev.variants, {
+                              from: prev.variantPriceMode,
+                              to: 'ADD_ON',
+                              basePrice: getCurrentSellingPrice(prev),
+                            }),
+                          }))
+                        }
+                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                          formData.variantPriceMode === 'ADD_ON'
+                            ? 'bg-hot-pink text-white'
+                            : 'text-secondary-text hover:bg-gray-50'
+                        }`}
+                      >
+                        기본 가격 + 추가금
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            variantPriceMode: 'DIRECT',
+                            variants: convertVariantRowsPriceMode(prev.variants, {
+                              from: prev.variantPriceMode,
+                              to: 'DIRECT',
+                              basePrice: getCurrentSellingPrice(prev),
+                            }),
+                          }))
+                        }
+                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                          formData.variantPriceMode === 'DIRECT'
+                            ? 'bg-hot-pink text-white'
+                            : 'text-secondary-text hover:bg-gray-50'
+                        }`}
+                      >
+                        옵션별 개별 가격
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead>
+                        <tr className="text-left text-secondary-text">
+                          <th className="py-2 pr-3">색상</th>
+                          <th className="py-2 pr-3">사이즈</th>
+                          <th className="py-2 pr-3">조합명</th>
+                          <th className="py-2 pr-3">
+                            {formData.variantPriceMode === 'ADD_ON' ? '추가금' : '개별 가격'}
+                          </th>
+                          <th className="py-2 pr-3">재고</th>
+                          <th className="py-2 pr-3">상태</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {formData.variants.map((variant, index) => (
+                          <tr
+                            key={`${variant.id ?? 'new'}-${variant.color}-${variant.size}-${index}`}
+                          >
+                            <td className="py-3 pr-3 text-primary-text">{variant.color || '-'}</td>
+                            <td className="py-3 pr-3 text-primary-text">{variant.size || '-'}</td>
+                            <td className="py-3 pr-3 min-w-[200px]">
+                              <Input
+                                value={variant.label ?? ''}
+                                onChange={(e) =>
+                                  handleVariantFieldChange(index, 'label', e.target.value)
+                                }
+                                placeholder={`${variant.color || ''}${variant.color && variant.size ? ' / ' : ''}${variant.size || ''}`}
+                                fullWidth
+                              />
+                            </td>
+                            <td className="py-3 pr-3 min-w-[140px]">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={variant.price}
+                                onChange={(e) =>
+                                  handleVariantFieldChange(index, 'price', e.target.value)
+                                }
+                                placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                                fullWidth
+                              />
+                            </td>
+                            <td className="py-3 pr-3 min-w-[120px]">
+                              <Input
+                                type="number"
+                                value={variant.stock}
+                                onChange={(e) =>
+                                  handleVariantFieldChange(index, 'stock', e.target.value)
+                                }
+                                placeholder="0"
+                                fullWidth
+                              />
+                            </td>
+                            <td className="py-3 pr-3 min-w-[140px]">
+                              <select
+                                value={variant.status}
+                                onChange={(e) =>
+                                  handleVariantFieldChange(index, 'status', e.target.value)
+                                }
+                                className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
+                              >
+                                <option value="ACTIVE">판매중</option>
+                                <option value="SOLD_OUT">품절</option>
+                                <option value="HIDDEN">숨김</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-secondary-text">
+                옵션을 끄면 일반 단일 상품처럼 대표 가격/재고/판매 상태만 저장됩니다.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

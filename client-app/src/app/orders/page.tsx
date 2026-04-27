@@ -126,7 +126,13 @@ export default function OrdersPage() {
 
   const handleReorder = async (
     orderId: string,
-    items: Array<{ productId: string; quantity: number; color?: string; size?: string }>,
+    items: Array<{
+      productId: string;
+      quantity: number;
+      variantId?: string;
+      color?: string;
+      size?: string;
+    }>,
   ) => {
     setReorderingId(orderId);
     try {
@@ -135,6 +141,7 @@ export default function OrdersPage() {
           apiClient.post('/cart', {
             productId: item.productId,
             quantity: item.quantity,
+            ...(item.variantId ? { variantId: item.variantId } : {}),
             ...(item.color ? { color: item.color } : {}),
             ...(item.size ? { size: item.size } : {}),
           }),

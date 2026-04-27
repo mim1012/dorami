@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useCallback, Suspense } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useCallback, Suspense, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '@/lib/hooks/queries/use-cart';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { useCheckoutFlow } from '@/lib/hooks/use-checkout-flow';
@@ -14,9 +14,30 @@ import { AlertCircle, CheckCircle, Clock, Coins, DollarSign, MapPin } from 'luci
 function CheckoutContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: cartData } = useCart();
-  const items = cartData?.items ?? [];
   const { user, isLoading: authLoading } = useAuth();
+
+  const selectedCartItemIds = useMemo(() => {
+    const raw = searchParams.get('cartItemIds');
+    if (!raw) {
+      return [] as string[];
+    }
+
+    return raw
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+  }, [searchParams]);
+
+  const items = useMemo(() => {
+    const cartItems = cartData?.items ?? [];
+    if (selectedCartItemIds.length === 0) {
+      return cartItems;
+    }
+
+    return cartItems.filter((item) => selectedCartItemIds.includes(item.id));
+  }, [cartData?.items, selectedCartItemIds]);
 
   const {
     pointsConfig,
@@ -44,7 +65,7 @@ function CheckoutContent() {
     setTermsAgreed,
     setPrivacyAgreed,
     submitOrder,
-  } = useCheckoutFlow({ cartData });
+  } = useCheckoutFlow({ cartData, selectedCartItemIds });
 
   const {
     bankName,

@@ -16,13 +16,16 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { Server } from 'socket.io';
+import { Server, type Socket } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { CustomIoAdapter } from './common/adapters/custom-io.adapter';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { authenticateSocket } from './common/middleware/ws-jwt-auth.middleware';
+import {
+  authenticateSocketIfPresent,
+  type AuthenticatedSocket,
+} from './common/middleware/ws-jwt-auth.middleware';
 import { rateLimitCheck } from './common/middleware/ws-rate-limit.middleware';
 
 async function bootstrap() {
@@ -371,66 +374,77 @@ async function bootstrap() {
   const eventEmitter = app.get(EventEmitter2);
   const streamingService = app.get(StreamingService);
 
+  const getLiveParticipantId = (socket: Socket, authenticatedSocket: AuthenticatedSocket | null) =>
+    authenticatedSocket?.user.userId ?? `guest:${socket.id}`;
+
+  const emitChatHistory = async (targetSocket: Socket, liveId: string) => {
+    try {
+      const historyKey = `chat:${liveId}:history`;
+      const messages = await pubClient.lRange(historyKey, -100, -1);
+      if (messages.length > 0) {
+        targetSocket.emit('chat:history', {
+          type: 'chat:history',
+          data: {
+            liveId,
+            messages: messages.map((m) => JSON.parse(String(m))),
+          },
+        });
+      }
+    } catch (err) {
+      logger.warn(`Failed to load chat history for ${liveId}: ${err}`);
+    }
+  };
+
   // Manually create /chat namespace with full ChatGateway logic
   const chatNamespace = io.of('/chat');
   logger.log('✅ Created /chat namespace manually');
 
   chatNamespace.on('connection', async (socket) => {
     try {
-      // Authenticate socket
-      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
-      logger.log(
-        `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+      const authenticatedSocket = await authenticateSocketIfPresent(
+        socket,
+        jwtService,
+        prismaService,
       );
+      if (authenticatedSocket) {
+        logger.log(
+          `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+        );
+      } else {
+        logger.log(`✅ Guest connected to /chat: ${socket.id}`);
+      }
 
-      // Send welcome message
       socket.emit('connection:success', {
         type: 'connection:success',
         data: {
           message: 'Connected to chat server',
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? null,
+          authenticated: !!authenticatedSocket,
           timestamp: new Date().toISOString(),
         },
       });
 
-      // Handle chat:join-room
       socket.on('chat:join-room', async (payload: { liveId: string }) => {
         if (!rateLimitCheck(socket, 'chat:join-room', { windowMs: 10000, maxEvents: 10 })) {
           return;
         }
         const roomName = `live:${payload.liveId}`;
+        const participantId = getLiveParticipantId(socket, authenticatedSocket);
         await socket.join(roomName);
 
-        logger.log(`📥 User ${authenticatedSocket.user.userId} joined room ${roomName}`);
+        logger.log(`📥 Participant ${participantId} joined room ${roomName}`);
+        await emitChatHistory(socket, payload.liveId);
 
-        // Send recent chat history (last 50 messages from Redis)
-        try {
-          const historyKey = `chat:${payload.liveId}:history`;
-          const messages = await pubClient.lRange(historyKey, -100, -1);
-          if (messages.length > 0) {
-            socket.emit('chat:history', {
-              type: 'chat:history',
-              data: {
-                liveId: payload.liveId,
-                messages: messages.map((m) => JSON.parse(String(m))),
-              },
-            });
-          }
-        } catch (err) {
-          logger.warn(`Failed to load chat history for ${payload.liveId}: ${err}`);
-        }
-
-        // Notify room members
         chatNamespace.to(roomName).emit('chat:user-joined', {
           type: 'chat:user-joined',
           data: {
-            userId: authenticatedSocket.user.userId,
+            userId: participantId,
+            authenticated: !!authenticatedSocket,
             liveId: payload.liveId,
             timestamp: new Date().toISOString(),
           },
         });
 
-        // Confirm to client
         socket.emit('chat:join-room:success', {
           type: 'chat:join-room:success',
           data: {
@@ -440,21 +454,21 @@ async function bootstrap() {
         });
       });
 
-      // Handle chat:leave-room
       socket.on('chat:leave-room', async (payload: { liveId: string }) => {
         if (!rateLimitCheck(socket, 'chat:leave-room', { windowMs: 10000, maxEvents: 10 })) {
           return;
         }
         const roomName = `live:${payload.liveId}`;
+        const participantId = getLiveParticipantId(socket, authenticatedSocket);
         await socket.leave(roomName);
 
-        logger.log(`📤 User ${authenticatedSocket.user.userId} left room ${roomName}`);
+        logger.log(`📤 Participant ${participantId} left room ${roomName}`);
 
-        // Notify room members
         chatNamespace.to(roomName).emit('chat:user-left', {
           type: 'chat:user-left',
           data: {
-            userId: authenticatedSocket.user.userId,
+            userId: participantId,
+            authenticated: !!authenticatedSocket,
             liveId: payload.liveId,
             timestamp: new Date().toISOString(),
           },
@@ -469,16 +483,26 @@ async function bootstrap() {
         });
       });
 
-      // Handle chat:send-message
       socket.on(
         'chat:send-message',
         async (payload: { liveId: string; message: string; clientMessageId?: string }) => {
-          // Rate limiting: max 20 messages per 10 seconds
           if (!rateLimitCheck(socket, 'chat:send-message', { windowMs: 10000, maxEvents: 20 })) {
             return;
           }
 
-          // Validate message
+          const writerSocket =
+            authenticatedSocket ??
+            (await authenticateSocketIfPresent(socket, jwtService, prismaService));
+          if (!writerSocket) {
+            socket.emit('error', {
+              type: 'error',
+              errorCode: 'FORBIDDEN',
+              message: 'Login required to send messages',
+              timestamp: new Date().toISOString(),
+            });
+            return;
+          }
+
           if (!payload.message || typeof payload.message !== 'string') {
             socket.emit('error', {
               type: 'error',
@@ -489,10 +513,8 @@ async function bootstrap() {
             return;
           }
 
-          // Sanitize: strip HTML tags to prevent XSS
           const sanitizedMessage = payload.message.replace(/<[^>]*>/g, '').trim();
 
-          // Validate length (max 500 characters)
           if (sanitizedMessage.length === 0 || sanitizedMessage.length > 500) {
             socket.emit('error', {
               type: 'error',
@@ -505,11 +527,10 @@ async function bootstrap() {
 
           const roomName = `live:${payload.liveId}`;
 
-          // Fetch user's instagramId for display in chat (cached in Redis)
           let username = '익명';
           try {
             const user = await prismaService.user.findUnique({
-              where: { id: authenticatedSocket.user.userId },
+              where: { id: writerSocket.user.userId },
               select: { instagramId: true },
             });
             username = user?.instagramId ?? '익명';
@@ -520,14 +541,13 @@ async function bootstrap() {
           const messageData = {
             id: randomUUID(),
             liveId: payload.liveId,
-            userId: authenticatedSocket.user.userId,
+            userId: writerSocket.user.userId,
             username,
             message: sanitizedMessage,
             clientMessageId: payload.clientMessageId,
             timestamp: new Date().toISOString(),
           };
 
-          // Store message in Redis (async, non-blocking, max 100 messages, 24h TTL)
           const historyKey = `chat:${payload.liveId}:history`;
           pubClient
             .rPush(historyKey, JSON.stringify(messageData))
@@ -535,7 +555,6 @@ async function bootstrap() {
             .then(() => pubClient.expire(historyKey, 86400))
             .catch((err) => logger.warn(`Failed to cache chat message: ${err}`));
 
-          // Broadcast to all clients in room
           chatNamespace.to(roomName).emit('chat:message', {
             type: 'chat:message',
             data: messageData,
@@ -550,10 +569,11 @@ async function bootstrap() {
         },
       );
 
-      // Handle chat:delete-message
       socket.on('chat:delete-message', async (payload: { liveId: string; messageId: string }) => {
-        // Check if user is ADMIN
-        if (authenticatedSocket.user.role !== 'ADMIN') {
+        const adminSocket =
+          authenticatedSocket ??
+          (await authenticateSocketIfPresent(socket, jwtService, prismaService));
+        if (!adminSocket || adminSocket.user.role !== 'ADMIN') {
           socket.emit('error', {
             type: 'error',
             errorCode: 'FORBIDDEN',
@@ -563,7 +583,6 @@ async function bootstrap() {
           return;
         }
 
-        // Validate messageId
         if (!payload.messageId) {
           socket.emit('error', {
             type: 'error',
@@ -577,21 +596,19 @@ async function bootstrap() {
         const roomName = `live:${payload.liveId}`;
 
         logger.log(
-          `🗑️  Admin ${authenticatedSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+          `🗑️  Admin ${adminSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`,
         );
 
-        // Broadcast deletion to all clients in room
         chatNamespace.to(roomName).emit('chat:message-deleted', {
           type: 'chat:message-deleted',
           data: {
             messageId: payload.messageId,
             liveId: payload.liveId,
-            deletedBy: authenticatedSocket.user.userId,
+            deletedBy: adminSocket.user.userId,
             timestamp: new Date().toISOString(),
           },
         });
 
-        // Remove message from Redis history so new joiners don't see it
         const historyKey = `chat:${payload.liveId}:history`;
         pubClient
           .lRange(historyKey, 0, -1)
@@ -618,32 +635,25 @@ async function bootstrap() {
         });
       });
 
-      // Handle disconnect
       socket.on('disconnect', () => {
-        logger.log(`👋 Client disconnected from /chat: ${authenticatedSocket.id}`);
+        logger.log(`👋 Client disconnected from /chat: ${socket.id}`);
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const cookieHeader = socket.handshake.headers.cookie ?? '(no cookies)';
-      const hasAccessToken = cookieHeader.includes('accessToken');
-      logger.error(
-        `❌ Chat connection failed: ${errorMessage} | hasAccessToken=${hasAccessToken} | origin=${socket.handshake.headers.origin ?? 'N/A'}`,
-      );
+      logger.error(`❌ Chat connection setup failed: ${errorMessage}`);
       if (error instanceof Error) {
         Sentry.captureException(error, { tags: { namespace: 'chat', event: 'connection' } });
       }
       socket.emit('error', {
         type: 'error',
-        errorCode: 'AUTH_FAILED',
-        message: 'Authentication failed',
+        errorCode: 'INTERNAL_ERROR',
+        message: 'Chat setup failed',
         detail: errorMessage,
-        hasAccessToken,
         timestamp: new Date().toISOString(),
       });
       socket.disconnect();
     }
   });
-
   // Create /streaming namespace with StreamingGateway logic
   const streamingNamespace = io.of('/streaming');
   const socketStreams = new Map<string, string>();
@@ -651,21 +661,29 @@ async function bootstrap() {
 
   streamingNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
-      logger.log(
-        `✅ Client connected to /streaming: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+      const authenticatedSocket = await authenticateSocketIfPresent(
+        socket,
+        jwtService,
+        prismaService,
       );
+      if (authenticatedSocket) {
+        logger.log(
+          `✅ Client connected to /streaming: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+        );
+      } else {
+        logger.log(`✅ Guest connected to /streaming: ${socket.id}`);
+      }
 
       socket.emit('connection:success', {
         type: 'connection:success',
         data: {
           message: 'Connected to streaming server',
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? null,
+          authenticated: !!authenticatedSocket,
           timestamp: new Date().toISOString(),
         },
       });
 
-      // Handle stream:viewer:join
       socket.on('stream:viewer:join', async (payload: { streamKey: string }) => {
         if (!rateLimitCheck(socket, 'stream:viewer:join', { windowMs: 10000, maxEvents: 10 })) {
           return;
@@ -673,20 +691,18 @@ async function bootstrap() {
         try {
           const { streamKey } = payload;
           const roomName = `stream:${streamKey}`;
+          const participantId = getLiveParticipantId(socket, authenticatedSocket);
 
           await socket.join(roomName);
           socketStreams.set(socket.id, streamKey);
 
-          // Add userId to viewer Set (idempotent — reconnects don't double-count)
-          const userId = authenticatedSocket.user.userId;
-          await pubClient.sAdd(`stream:${streamKey}:viewer_ids`, userId);
+          await pubClient.sAdd(`stream:${streamKey}:viewer_ids`, participantId);
           const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
           logger.log(
-            `📥 Viewer ${authenticatedSocket.user.userId} joined stream ${streamKey}, count: ${viewerCount}`,
+            `📥 Viewer ${participantId} joined stream ${streamKey}, count: ${viewerCount}`,
           );
 
-          // Broadcast viewer count update
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',
             data: {
@@ -716,7 +732,6 @@ async function bootstrap() {
         }
       });
 
-      // Handle stream:viewer:leave
       socket.on('stream:viewer:leave', async (payload: { streamKey: string }) => {
         if (!rateLimitCheck(socket, 'stream:viewer:leave', { windowMs: 10000, maxEvents: 10 })) {
           return;
@@ -724,18 +739,16 @@ async function bootstrap() {
         try {
           const { streamKey } = payload;
           const roomName = `stream:${streamKey}`;
+          const participantId = getLiveParticipantId(socket, authenticatedSocket);
 
           await socket.leave(roomName);
           socketStreams.delete(socket.id);
 
-          // Remove userId from viewer Set
-          const userId = authenticatedSocket.user.userId;
-          await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
+          await pubClient.sRem(`stream:${streamKey}:viewer_ids`, participantId);
           const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
-          logger.log(`📤 Viewer ${authenticatedSocket.user.userId} left stream ${streamKey}`);
+          logger.log(`📤 Viewer ${participantId} left stream ${streamKey}`);
 
-          // Broadcast viewer count update
           streamingNamespace.to(roomName).emit('stream:viewer:update', {
             type: 'stream:viewer:update',
             data: {
@@ -764,14 +777,13 @@ async function bootstrap() {
         }
       });
 
-      // Handle disconnect
       socket.on('disconnect', async () => {
         try {
           const streamKey = socketStreams.get(socket.id);
           if (streamKey) {
             const roomName = `stream:${streamKey}`;
-            const userId = authenticatedSocket.user.userId;
-            await pubClient.sRem(`stream:${streamKey}:viewer_ids`, userId);
+            const participantId = getLiveParticipantId(socket, authenticatedSocket);
+            await pubClient.sRem(`stream:${streamKey}:viewer_ids`, participantId);
             const viewerCount = Number(await pubClient.sCard(`stream:${streamKey}:viewer_ids`));
 
             streamingNamespace.to(roomName).emit('stream:viewer:update', {
@@ -785,7 +797,7 @@ async function bootstrap() {
 
             socketStreams.delete(socket.id);
           }
-          logger.log(`👋 Client disconnected from /streaming: ${authenticatedSocket.id}`);
+          logger.log(`👋 Client disconnected from /streaming: ${socket.id}`);
         } catch (error) {
           logger.error(
             `❌ streaming disconnect error: ${error instanceof Error ? error.message : String(error)}`,
@@ -799,7 +811,7 @@ async function bootstrap() {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`❌ Streaming connection failed: ${errorMessage}`);
+      logger.error(`❌ Streaming connection setup failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
         logger.error(error instanceof Error ? error.stack : String(error));
       }
@@ -808,14 +820,13 @@ async function bootstrap() {
       }
       socket.emit('error', {
         type: 'error',
-        errorCode: 'AUTH_FAILED',
-        message: 'Authentication failed',
+        errorCode: 'INTERNAL_ERROR',
+        message: 'Streaming setup failed',
         timestamp: new Date().toISOString(),
       });
       socket.disconnect();
     }
   });
-
   // Listen for stream:ended events from StreamingService and broadcast to /streaming namespace
   // (Replaces the dead StreamingGateway.handleStreamEnded which was never registered in any module)
   eventEmitter.on('stream:ended', (payload: { streamId: string; streamKey?: string }) => {
@@ -949,14 +960,19 @@ async function bootstrap() {
 
   rootNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
-      logger.log(
-        `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
-      );
+      const authenticatedSocket = await authenticateSocketIfPresent(socket, jwtService, prismaService);
+      if (authenticatedSocket) {
+        logger.log(
+          `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+        );
+      } else {
+        logger.log(`✅ Guest connected to /: ${socket.id}`);
+      }
 
       socket.emit('connected', {
         message: 'Connected to Live Commerce WebSocket',
-        userId: authenticatedSocket.user.userId,
+        userId: authenticatedSocket?.user.userId ?? null,
+        authenticated: !!authenticatedSocket,
       });
 
       // Handle join:stream
@@ -970,7 +986,7 @@ async function bootstrap() {
         logger.log(`📥 Client ${socket.id} joined stream room: ${roomName}`);
 
         rootNamespace.to(roomName).emit('user:joined', {
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? `guest:${socket.id}`,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
@@ -987,7 +1003,7 @@ async function bootstrap() {
         logger.log(`📤 Client ${socket.id} left stream room: ${roomName}`);
 
         rootNamespace.to(roomName).emit('user:left', {
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? `guest:${socket.id}`,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
@@ -1004,11 +1020,11 @@ async function bootstrap() {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`❌ Root connection failed: ${errorMessage}`);
+      logger.error(`❌ Root connection setup failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
         logger.error(error instanceof Error ? error.stack : String(error));
       }
-      socket.emit('error', { message: 'Authentication failed' });
+      socket.emit('error', { message: 'Connection setup failed' });
       socket.disconnect();
     }
   });

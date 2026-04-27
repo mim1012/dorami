@@ -117,10 +117,12 @@ function StoreContent() {
     quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
+    variantId?: string,
   ) => {
     try {
       await apiClient.post('/cart', {
         productId,
+        variantId,
         quantity,
         color: selectedColor,
         size: selectedSize,
@@ -148,7 +150,7 @@ function StoreContent() {
       return;
     }
 
-    void handleAddToCart(product.id);
+    void handleAddToCart(product.id, 1, undefined, undefined, product.variants?.[0]?.id);
   };
 
   const getPaginationPages = () => {

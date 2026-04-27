@@ -49,15 +49,21 @@ function parseCookieToken(cookieHeader: string | undefined): string | null {
   return match ? match[1] : null;
 }
 
+function extractSocketToken(socket: Socket): string | null {
+  return (
+    (socket.handshake.auth.token as string | undefined) ??
+    socket.handshake.headers.authorization?.split(' ')[1] ??
+    parseCookieToken(socket.handshake.headers.cookie as string | undefined) ??
+    null
+  );
+}
+
 export async function authenticateSocket(
   socket: Socket,
   jwtService: JwtService,
   prismaService: PrismaService,
 ): Promise<AuthenticatedSocket> {
-  const token =
-    (socket.handshake.auth.token as string | undefined) ??
-    socket.handshake.headers.authorization?.split(' ')[1] ??
-    parseCookieToken(socket.handshake.headers.cookie as string | undefined);
+  const token = extractSocketToken(socket);
 
   if (!token) {
     throw new WsException('No token provided');
@@ -101,7 +107,11 @@ export async function authenticateSocket(
           where: { id: payload.sid },
           select: { userId: true, revokedAt: true, expiresAt: true },
         });
-        if (!session || session.userId !== uid || session.revokedAt || session.expiresAt.getTime() <= Date.now()) {
+        if (
+          session?.userId !== uid ||
+          session.revokedAt ||
+          session.expiresAt.getTime() <= Date.now()
+        ) {
           throw new WsException('Token has been revoked');
         }
       } catch (err) {
@@ -154,5 +164,22 @@ export async function authenticateSocket(
       throw error;
     }
     throw new WsException('Invalid token');
+  }
+}
+
+export async function authenticateSocketIfPresent(
+  socket: Socket,
+  jwtService: JwtService,
+  prismaService: PrismaService,
+): Promise<AuthenticatedSocket | null> {
+  const token = extractSocketToken(socket);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    return await authenticateSocket(socket, jwtService, prismaService);
+  } catch {
+    return null;
   }
 }

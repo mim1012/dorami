@@ -49,6 +49,7 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -118,7 +119,8 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { isSessionVerified, isVerifying, isUserAuthenticated } = useAuth();
+  const liveRealtimeEnabled = !isVerifying && isSessionVerified && isUserAuthenticated;
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -182,9 +184,10 @@ export default function LiveStreamPage() {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
+    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '');
+  } = useChatConnection(streamKey ?? '', { enabled: liveRealtimeEnabled });
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -469,6 +472,7 @@ export default function LiveStreamPage() {
       const previousStatus = previousStreamStatusRef.current;
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
+        setViewerCount(response.data.viewerCount ?? 0);
         setError(null);
         // Cancel pending offline grace timer — stream recovered before 10s elapsed
         if (offlineGraceTimerRef.current) {
@@ -662,6 +666,7 @@ export default function LiveStreamPage() {
     quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
+    variantId?: string,
   ) => {
     const { isAuthenticated } = useAuthStore.getState();
 
@@ -677,6 +682,7 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
+        variantId,
         quantity,
         color: selectedColor,
         size: selectedSize,
@@ -766,6 +772,7 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
+              socketAuthReady={liveRealtimeEnabled}
               muted={isMobileMuted}
               volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
@@ -1145,6 +1152,7 @@ export default function LiveStreamPage() {
                   key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
+                  socketAuthReady={liveRealtimeEnabled}
                   onViewerCountChange={handleViewerCountChange}
                   onStreamError={setVideoError}
                 />
@@ -1258,7 +1266,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!isConnected}
+                disabled={!canComposeMessages}
                 compact={false}
               />
             </div>

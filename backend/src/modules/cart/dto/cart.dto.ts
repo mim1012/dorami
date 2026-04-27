@@ -11,6 +11,14 @@ export class AddToCartDto {
   @IsString()
   productId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Selected variant ID',
+    example: '123e4567-e89b-12d3-a456-426614174001',
+  })
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
   @ApiProperty({ description: 'Quantity to add', example: 1, minimum: 1 })
   @IsNumber()
   @Min(1)
@@ -45,6 +53,15 @@ export class CartItemResponseDto {
 
   @ApiProperty({ description: 'Product ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   productId!: string;
+
+  @ApiPropertyOptional({
+    description: 'Variant ID',
+    example: '123e4567-e89b-12d3-a456-426614174001',
+  })
+  variantId?: string;
+
+  @ApiPropertyOptional({ description: 'Variant label snapshot', example: 'Black / M' })
+  variantLabel?: string;
 
   @ApiProperty({ description: 'Product name', example: 'Premium Cotton T-Shirt' })
   productName!: string;

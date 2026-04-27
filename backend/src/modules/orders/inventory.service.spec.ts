@@ -146,5 +146,81 @@ describe('InventoryService', () => {
         service.batchDecreaseStockTx(mockTx as any, [{ productId: 'prod-1', quantity: 1 }]),
       ).resolves.not.toThrow();
     });
+
+    it('should decrease variant stock when variantId is provided', async () => {
+      const availableProduct = {
+        id: 'prod-1',
+        quantity: 50,
+        status: 'AVAILABLE',
+      };
+      const availableVariant = {
+        id: 'variant-1',
+        productId: 'prod-1',
+        stock: 5,
+        status: 'ACTIVE',
+        deletedAt: null,
+      };
+
+      const mockTx = {
+        product: {
+          findUnique: jest.fn().mockResolvedValue(availableProduct),
+          update: jest.fn().mockResolvedValue(availableProduct),
+        },
+        productVariant: {
+          findFirst: jest.fn().mockResolvedValue(availableVariant),
+          update: jest.fn().mockResolvedValue({ ...availableVariant, stock: 3 }),
+        },
+      };
+
+      await expect(
+        service.batchDecreaseStockTx(
+          mockTx as any,
+          [{ productId: 'prod-1', variantId: 'variant-1', quantity: 2 }] as any,
+        ),
+      ).resolves.not.toThrow();
+      expect(mockTx.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'variant-1' },
+        data: { stock: 3, status: 'ACTIVE' },
+      });
+    });
+  });
+
+  describe('batchRestoreStockTx', () => {
+    it('should restore variant stock when variantId is provided', async () => {
+      const variant = {
+        id: 'variant-1',
+        productId: 'prod-1',
+        stock: 0,
+        status: 'SOLD_OUT',
+        deletedAt: null,
+      };
+
+      const mockTx = {
+        product: {
+          findUnique: jest.fn(),
+          update: jest.fn(),
+        },
+        productVariant: {
+          findFirst: jest.fn().mockResolvedValue(variant),
+          update: jest.fn().mockResolvedValue({ ...variant, stock: 2, status: 'ACTIVE' }),
+        },
+      };
+
+      await expect(
+        service.batchRestoreStockTx(
+          mockTx as any,
+          [{ productId: 'prod-1', variantId: 'variant-1', quantity: 2 }] as any,
+        ),
+      ).resolves.not.toThrow();
+
+      expect(mockTx.productVariant.update).toHaveBeenCalledWith({
+        where: { id: 'variant-1' },
+        data: {
+          stock: { increment: 2 },
+          status: 'ACTIVE',
+        },
+      });
+      expect(mockTx.product.update).not.toHaveBeenCalled();
+    });
   });
 });

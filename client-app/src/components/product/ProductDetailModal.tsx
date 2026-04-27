@@ -5,6 +5,11 @@ import { X, Timer, Minus, Plus, Check } from 'lucide-react';
 import { Heading2, Body, Caption } from '@/components/common/Typography';
 import { Product, ProductStatus } from '@/lib/types/product';
 import { formatPrice } from '@/lib/utils/price';
+import {
+  getDisplayPrice,
+  getDisplayStock,
+  resolveSelectedVariant,
+} from '@/lib/utils/product-variants';
 import { ImageGallery } from './ImageGallery';
 
 interface ProductDetailModalProps {
@@ -16,12 +21,14 @@ interface ProductDetailModalProps {
     quantity: number,
     selectedColor?: string,
     selectedSize?: string,
+    variantId?: string,
   ) => Promise<void>;
   onBuyNow?: (
     productId: string,
     quantity: number,
     selectedColor?: string,
     selectedSize?: string,
+    variantId?: string,
   ) => Promise<void>;
 }
 
@@ -45,6 +52,10 @@ export default function ProductDetailModal({
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
 
+  const selectedVariant = resolveSelectedVariant(product, selectedColor, selectedSize);
+  const displayPrice = getDisplayPrice(product, selectedVariant);
+  const displayStock = getDisplayStock(product, selectedVariant);
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -57,11 +68,17 @@ export default function ProductDetailModal({
 
   if (!isOpen) return null;
 
-  const maxQuantity = Math.max(product.stock || 0, 1);
-  const totalPrice = product.price * quantity;
+  const maxQuantity = Math.max(displayStock || 0, 1);
+  const totalPrice = displayPrice * quantity;
+
+  useEffect(() => {
+    if (quantity > maxQuantity) {
+      setQuantity(maxQuantity);
+    }
+  }, [maxQuantity, quantity]);
 
   const handleAddToCart = async () => {
-    await onAddToCart(product.id, quantity, selectedColor, selectedSize);
+    await onAddToCart(product.id, quantity, selectedColor, selectedSize, selectedVariant?.id);
     setAddedToCart(true);
     setTimeout(() => {
       setAddedToCart(false);
@@ -71,7 +88,7 @@ export default function ProductDetailModal({
 
   const handleBuyNow = async () => {
     if (onBuyNow) {
-      await onBuyNow(product.id, quantity, selectedColor, selectedSize);
+      await onBuyNow(product.id, quantity, selectedColor, selectedSize, selectedVariant?.id);
       onClose();
     }
   };
@@ -123,13 +140,13 @@ export default function ProductDetailModal({
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg font-black text-error">{product.discountRate}%</span>
                     <span className="text-[32px] font-bold text-hot-pink">
-                      {formatPrice(product.price)}
+                      {formatPrice(displayPrice)}
                     </span>
                   </div>
                 </>
               ) : (
                 <span className="text-[32px] font-bold text-hot-pink">
-                  {formatPrice(product.price)}
+                  {formatPrice(displayPrice)}
                 </span>
               )}
               {product.shippingFee > 0 && (
@@ -161,9 +178,9 @@ export default function ProductDetailModal({
           <div className="flex items-center justify-between p-3 bg-primary-black rounded-lg">
             <Caption className="text-secondary-text">재고</Caption>
             <Body
-              className={`font-medium ${product.stock < 5 ? 'text-warning' : 'text-primary-text'}`}
+              className={`font-medium ${displayStock < 5 ? 'text-warning' : 'text-primary-text'}`}
             >
-              {product.stock}개 남음
+              {displayStock}개 남음
             </Body>
           </div>
 
@@ -253,15 +270,15 @@ export default function ProductDetailModal({
           <div className="flex flex-col gap-3">
             <button
               onClick={handleAddToCart}
-              disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
+              disabled={product.status === ProductStatus.SOLD_OUT || displayStock === 0}
               className={`
                 w-full min-h-[48px] py-3 md:py-4 rounded-button font-bold text-body transition-all flex items-center justify-center gap-2
                 ${
                   addedToCart
                     ? 'bg-success text-white'
-                    : product.status === ProductStatus.SOLD_OUT || product.stock === 0
+                    : product.status === ProductStatus.SOLD_OUT || displayStock === 0
                       ? 'bg-content-bg text-secondary-text cursor-not-allowed'
-                      : 'bg-hot-pink text-white hover:bg-hot-pink-dark active:scale-95'
+                      : 'bg-hot-pink text-white hover:bg-hot-pink/90'
                 }
               `}
             >
@@ -270,7 +287,7 @@ export default function ProductDetailModal({
                   <Check className="w-4 h-4" />
                   <span>장바구니에 담았습니다!</span>
                 </>
-              ) : product.status === ProductStatus.SOLD_OUT || product.stock === 0 ? (
+              ) : product.status === ProductStatus.SOLD_OUT || displayStock === 0 ? (
                 '품절'
               ) : (
                 '장바구니에 담기'
@@ -279,11 +296,11 @@ export default function ProductDetailModal({
             {onBuyNow && (
               <button
                 onClick={handleBuyNow}
-                disabled={product.status === ProductStatus.SOLD_OUT || product.stock === 0}
+                disabled={product.status === ProductStatus.SOLD_OUT || displayStock === 0}
                 className={`
                   w-full min-h-[48px] py-3 md:py-4 rounded-button font-bold text-body transition-colors
                   ${
-                    product.status === ProductStatus.SOLD_OUT || product.stock === 0
+                    product.status === ProductStatus.SOLD_OUT || displayStock === 0
                       ? 'bg-content-bg text-secondary-text cursor-not-allowed'
                       : 'bg-border-color text-primary-text hover:bg-secondary-text/20'
                   }

@@ -53,6 +53,10 @@ describe('CartService', () => {
               findMany: jest.fn().mockResolvedValue([]),
               update: jest.fn(),
             },
+            productVariant: {
+              findFirst: jest.fn(),
+              update: jest.fn(),
+            },
             cart: {
               aggregate: jest.fn(),
               findFirst: jest.fn(),
@@ -336,6 +340,73 @@ describe('CartService', () => {
       expect(result.timerEnabled).toBe(false);
       expect(result.expiresAt).toBeUndefined();
     });
+
+    it('should use variant snapshot fields and variant stock when variantId is provided', async () => {
+      const variantProduct = { ...mockProduct, quantity: 999 };
+      const variant = {
+        id: 'variant-1',
+        productId: 'product-1',
+        color: 'Black',
+        size: 'M',
+        label: 'Black / M',
+        price: new Decimal(31000),
+        stock: 4,
+        status: 'ACTIVE',
+        deletedAt: null,
+      };
+      const createdCartItem = {
+        ...mockCartItem,
+        variantId: 'variant-1',
+        variantLabel: 'Black / M',
+        color: 'Black',
+        size: 'M',
+        price: new Decimal(31000),
+      };
+
+      (prismaService as any).productVariant = {
+        findFirst: jest.fn().mockResolvedValue(variant),
+      };
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(variantProduct as any);
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(null);
+
+      const tx = {
+        product: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(variantProduct),
+        },
+        productVariant: {
+          findFirst: jest.fn().mockResolvedValue(variant),
+        },
+        cart: {
+          aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+          create: jest.fn().mockResolvedValue(createdCartItem),
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      };
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) =>
+        callback(tx),
+      );
+
+      const result = await service.addToCart('user-1', {
+        productId: 'product-1',
+        variantId: 'variant-1',
+        quantity: 2,
+      });
+
+      expect(tx.cart.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            variantId: 'variant-1',
+            variantLabel: 'Black / M',
+            color: 'Black',
+            size: 'M',
+            price: new Decimal(31000),
+          }),
+        }),
+      );
+      expect(result.variantId).toBe('variant-1');
+      expect(result.variantLabel).toBe('Black / M');
+      expect(result.price).toBe('31000');
+    });
   });
 
   describe('getCart', () => {
@@ -424,6 +495,51 @@ describe('CartService', () => {
       // Timer should be refreshed since product.timerEnabled is true
       expect(result.expiresAt).toBeDefined();
       expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should enforce variant stock when updating a variant-backed cart item', async () => {
+      const variantCartItem = {
+        ...mockCartItem,
+        variantId: 'variant-1',
+        variantLabel: 'Black / M',
+        color: 'Black',
+        size: 'M',
+        quantity: 1,
+      };
+      const variantProduct = { ...mockProduct, quantity: 999 };
+      const variant = {
+        id: 'variant-1',
+        productId: 'product-1',
+        stock: 2,
+        status: 'ACTIVE',
+        color: 'Black',
+        size: 'M',
+        label: 'Black / M',
+        deletedAt: null,
+      };
+
+      jest.spyOn(prismaService.cart, 'findFirst').mockResolvedValue(variantCartItem as any);
+      jest.spyOn(prismaService.product, 'findUnique').mockResolvedValue(variantProduct as any);
+
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const tx = {
+          product: {
+            findUniqueOrThrow: jest.fn().mockResolvedValue(variantProduct),
+          },
+          productVariant: {
+            findFirst: jest.fn().mockResolvedValue(variant),
+          },
+          cart: {
+            aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+            update: jest.fn(),
+          },
+        };
+        return callback(tx);
+      });
+
+      await expect(service.updateCartItem('user-1', 'cart-1', { quantity: 3 })).rejects.toThrow(
+        InsufficientStockException,
+      );
     });
 
     it('should allow updating cart item quantity beyond 10 when stock permits', async () => {

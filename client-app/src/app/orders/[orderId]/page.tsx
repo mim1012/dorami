@@ -90,6 +90,7 @@ export default function OrderDetailPage() {
           apiClient.post('/cart', {
             productId: item.productId,
             quantity: item.quantity,
+            ...(item.variantId ? { variantId: item.variantId } : {}),
             ...(item.color ? { color: item.color } : {}),
             ...(item.size ? { size: item.size } : {}),
           }),

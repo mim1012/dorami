@@ -14,6 +14,12 @@
 
 import { refreshAccessToken } from '../api/client';
 
+let lastRefreshSucceededAt = 0;
+let socketRecoveryPromise: Promise<boolean> | null = null;
+
+const RECENT_REFRESH_WINDOW_MS = 3_000;
+const SOCKET_REFRESH_COOLDOWN_MS = 5_000;
+
 /**
  * accessToken 쿠키를 갱신한다.
  *
@@ -22,7 +28,43 @@ import { refreshAccessToken } from '../api/client';
  */
 export async function refreshAuthToken(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  return refreshAccessToken();
+  const refreshed = await refreshAccessToken();
+  if (refreshed) {
+    lastRefreshSucceededAt = Date.now();
+  }
+  return refreshed;
+}
+
+/**
+ * WebSocket 인증 실패 복구 전용 helper.
+ *
+ * 여러 socket(namespace)에서 동시에 AUTH_FAILED가 나더라도 refresh 폭주가 나지 않도록
+ * 최근 성공한 refresh를 재사용하고, recovery 시도를 하나의 promise로 합친다.
+ */
+export async function recoverSocketAuth(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  const now = Date.now();
+  if (now - lastRefreshSucceededAt <= RECENT_REFRESH_WINDOW_MS) {
+    return true;
+  }
+
+  if (socketRecoveryPromise) {
+    return socketRecoveryPromise;
+  }
+
+  socketRecoveryPromise = (async () => {
+    const currentNow = Date.now();
+    if (currentNow - lastRefreshSucceededAt <= SOCKET_REFRESH_COOLDOWN_MS) {
+      return true;
+    }
+
+    return refreshAuthToken();
+  })().finally(() => {
+    socketRecoveryPromise = null;
+  });
+
+  return socketRecoveryPromise;
 }
 
 /**

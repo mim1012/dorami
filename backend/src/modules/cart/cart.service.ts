@@ -18,7 +18,7 @@ import {
   ReservationStatus,
 } from '@live-commerce/shared-types';
 import { Decimal } from '@prisma/client/runtime/library';
-import { Cart, Prisma } from '@prisma/client';
+import { Cart, Prisma, VariantStatus } from '@prisma/client';
 
 // Type for Prisma transaction client
 type PrismaTransactionClient = Omit<
@@ -39,6 +39,15 @@ interface CartModel extends Cart {
   price: Decimal;
   shippingFee: Decimal;
   product?: { imageUrl: string | null; status: string; streamKey?: string | null } | null;
+}
+
+interface ActiveVariantSnapshot {
+  id: string;
+  price: Decimal;
+  stock: number;
+  color: string | null;
+  size: string | null;
+  label: string | null;
 }
 
 @Injectable()
@@ -77,19 +86,35 @@ export class CartService {
    * Optimized: Single query to fetch product, reserved quantity, and existing cart item
    */
   async addToCart(userId: string, addToCartDto: AddToCartDto): Promise<CartItemResponseDto> {
-    const { productId, quantity, color, size } = addToCartDto;
+    const { productId, variantId, quantity } = addToCartDto;
 
-    // 1. Fetch all required data in parallel (N+1 optimization)
-    const [product, existingCartItem] = await Promise.all([
-      this.prisma.product.findUnique({
-        where: { id: productId },
-      }),
+    const variantPromise = variantId
+      ? this.prisma.productVariant.findFirst({
+          where: {
+            id: variantId,
+            productId,
+            deletedAt: null,
+            status: VariantStatus.ACTIVE,
+          },
+          select: {
+            id: true,
+            price: true,
+            stock: true,
+            color: true,
+            size: true,
+            label: true,
+          },
+        })
+      : Promise.resolve(null);
+
+    const [product, variant, existingCartItem] = await Promise.all([
+      this.prisma.product.findUnique({ where: { id: productId } }),
+      variantPromise,
       this.prisma.cart.findFirst({
         where: {
           userId,
           productId,
-          color: color ?? null,
-          size: size ?? null,
+          variantId: variantId ?? null,
           status: SharedCartStatus.ACTIVE,
         },
       }),
@@ -103,23 +128,46 @@ export class CartService {
       throw new BadRequestException('Product is not available for purchase');
     }
 
-    // 2. NOTE: Stock check moved INSIDE transaction to prevent TOCTOU race condition
-    // (all concurrent requests would pass the early check before any transaction starts)
+    if (variantId && !variant) {
+      throw new NotFoundException(`Variant ${variantId} not found for product ${productId}`);
+    }
 
-    // 3. If user already has this product in cart (same color/size), update quantity
+    const selectedVariant = variant as ActiveVariantSnapshot | null;
+    const snapshotColor = selectedVariant?.color ?? addToCartDto.color ?? undefined;
+    const snapshotSize = selectedVariant?.size ?? addToCartDto.size ?? undefined;
+    const snapshotPrice = selectedVariant?.price ?? product.price;
+    const snapshotLabel =
+      selectedVariant?.label ??
+      ([selectedVariant?.color, selectedVariant?.size].filter(Boolean).join(' / ') || undefined);
+
     if (existingCartItem) {
-      // Update existing cart item quantity with transaction to prevent race condition
       const updatedItem = await this.withSerializableRetry(() =>
         this.prisma.$transaction(
           async (tx) => {
-            // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
             const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
             if (freshProduct.status !== ProductStatus.AVAILABLE) {
               throw new BadRequestException('Product is not available for purchase');
             }
-            // Re-check available stock within transaction
-            const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
-            const currentAvailableStock = freshProduct.quantity - currentReserved;
+
+            const freshVariant = selectedVariant
+              ? await tx.productVariant.findFirst({
+                  where: {
+                    id: selectedVariant.id,
+                    productId,
+                    deletedAt: null,
+                    status: VariantStatus.ACTIVE,
+                  },
+                })
+              : null;
+
+            const currentReserved = await this.getReservedQuantityInTransaction(
+              tx,
+              productId,
+              selectedVariant?.id,
+            );
+            const currentAvailableStock = freshVariant
+              ? freshVariant.stock - currentReserved
+              : freshProduct.quantity - currentReserved;
             const newQuantity = existingCartItem.quantity + quantity;
 
             if (currentAvailableStock < newQuantity) {
@@ -128,7 +176,6 @@ export class CartService {
               );
             }
 
-            // Also sync timer settings from product in case they changed after item was first added
             const newExpiresAt = freshProduct.timerEnabled
               ? new Date(Date.now() + freshProduct.timerDuration * 60 * 1000)
               : null;
@@ -137,6 +184,10 @@ export class CartService {
               where: { id: existingCartItem.id },
               data: {
                 quantity: newQuantity,
+                variantLabel: snapshotLabel,
+                color: freshVariant?.color ?? snapshotColor,
+                size: freshVariant?.size ?? snapshotSize,
+                price: freshVariant?.price ?? snapshotPrice,
                 timerEnabled: freshProduct.timerEnabled,
                 expiresAt: newExpiresAt,
               },
@@ -147,22 +198,41 @@ export class CartService {
       );
 
       this.logger.log(`Updated cart item ${updatedItem.id} quantity to ${updatedItem.quantity}`);
-
       return this.mapToResponseDto(updatedItem as CartModel);
     }
 
-    // 4. Create new cart item with timer (wrapped in transaction to prevent race condition)
     const cartItem = await this.withSerializableRetry(() =>
       this.prisma.$transaction(
         async (tx) => {
-          // Re-read product inside transaction to get fresh quantity and status (prevent TOCTOU)
           const freshProduct = await tx.product.findUniqueOrThrow({ where: { id: productId } });
           if (freshProduct.status !== ProductStatus.AVAILABLE) {
             throw new BadRequestException('Product is not available for purchase');
           }
-          // Re-check available stock within transaction to prevent TOCTOU race condition
-          const currentReserved = await this.getReservedQuantityInTransaction(tx, productId);
-          const currentAvailableStock = freshProduct.quantity - currentReserved;
+
+          const freshVariant = selectedVariant
+            ? await tx.productVariant.findFirst({
+                where: {
+                  id: selectedVariant.id,
+                  productId,
+                  deletedAt: null,
+                  status: VariantStatus.ACTIVE,
+                },
+              })
+            : null;
+          if (selectedVariant && !freshVariant) {
+            throw new NotFoundException(
+              `Variant ${selectedVariant.id} not found for product ${productId}`,
+            );
+          }
+
+          const currentReserved = await this.getReservedQuantityInTransaction(
+            tx,
+            productId,
+            selectedVariant?.id,
+          );
+          const currentAvailableStock = freshVariant
+            ? freshVariant.stock - currentReserved
+            : freshProduct.quantity - currentReserved;
 
           if (currentAvailableStock < quantity) {
             throw new InsufficientStockException(productId, currentAvailableStock, quantity);
@@ -176,11 +246,13 @@ export class CartService {
             data: {
               userId,
               productId,
+              variantId: selectedVariant?.id,
               productName: product.name,
-              price: product.price,
+              variantLabel: snapshotLabel,
+              price: freshVariant?.price ?? snapshotPrice,
               quantity,
-              color,
-              size,
+              color: freshVariant?.color ?? snapshotColor,
+              size: freshVariant?.size ?? snapshotSize,
               shippingFee: new Decimal(0),
               timerEnabled: freshProduct.timerEnabled,
               expiresAt,
@@ -194,8 +266,6 @@ export class CartService {
 
     this.logger.log(`Added to cart: ${cartItem.id}, expires at: ${cartItem.expiresAt}`);
 
-    // 5. Emit cart added event for WebSocket broadcast (with user info for real-time display)
-    // Fetch user name for broadcast
     let userName = '익명';
     try {
       const user = await this.prisma.user.findUnique({
@@ -207,7 +277,6 @@ export class CartService {
       // Fallback to anonymous
     }
 
-    // Generate consistent color from userId hash
     const userColor = this.generateUserColor(userId);
 
     this.eventEmitter.emit('cart:added', {
@@ -271,13 +340,31 @@ export class CartService {
         const product = await tx.product.findUniqueOrThrow({
           where: { id: cartItem.productId },
         });
+        const variant = cartItem.variantId
+          ? await (tx as any).productVariant.findFirst({
+              where: {
+                id: cartItem.variantId,
+                productId: cartItem.productId,
+                deletedAt: null,
+                status: VariantStatus.ACTIVE,
+              },
+            })
+          : null;
+
+        if (cartItem.variantId && !variant) {
+          throw new NotFoundException(
+            `Variant ${cartItem.variantId} not found for product ${cartItem.productId}`,
+          );
+        }
 
         // Re-check stock within transaction to prevent TOCTOU race condition
         const reservedQuantity = await this.getReservedQuantityInTransaction(
           tx,
           cartItem.productId,
+          cartItem.variantId ?? undefined,
         );
-        const availableStock = product.quantity - reservedQuantity + cartItem.quantity; // Add current quantity back
+        const availableStock =
+          (variant ? variant.stock : product.quantity) - reservedQuantity + cartItem.quantity; // Add current quantity back
 
         if (availableStock < updateDto.quantity) {
           throw new InsufficientStockException(
@@ -607,10 +694,12 @@ export class CartService {
   private async getReservedQuantityInTransaction(
     tx: PrismaTransactionClient,
     productId: string,
+    variantId?: string,
   ): Promise<number> {
     const result = await tx.cart.aggregate({
       where: {
         productId,
+        ...(variantId ? { variantId } : {}),
         status: SharedCartStatus.ACTIVE,
       },
       _sum: {
@@ -835,6 +924,8 @@ export class CartService {
       id: cartItem.id,
       userId: cartItem.userId,
       productId: cartItem.productId,
+      variantId: cartItem.variantId ?? undefined,
+      variantLabel: cartItem.variantLabel ?? undefined,
       productName: cartItem.productName,
       price: String(price),
       quantity: cartItem.quantity,

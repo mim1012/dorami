@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
+import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
@@ -10,6 +10,16 @@ interface QueuedMessage {
   message: string;
 }
 
+export interface UseChatConnectionResult {
+  socketRef: React.MutableRefObject<Socket | null>;
+  isConnected: boolean;
+  connectionStatus: ChatConnectionStatus;
+  userCount: number;
+  canComposeMessages: boolean;
+  sendMessage: (message: string) => void;
+  deleteMessage: (messageId: string) => void;
+}
+
 export type ChatConnectionStatus =
   | 'connecting'
   | 'connected'
@@ -17,7 +27,14 @@ export type ChatConnectionStatus =
   | 'reconnecting'
   | 'failed';
 
-export function useChatConnection(streamKey: string) {
+interface UseChatConnectionOptions {
+  enabled?: boolean;
+}
+
+export function useChatConnection(
+  streamKey: string,
+  { enabled = true }: UseChatConnectionOptions = {},
+) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
@@ -46,14 +63,16 @@ export function useChatConnection(streamKey: string) {
 
   useEffect(() => {
     // Guard: Don't connect if streamKey is not available
-    if (!streamKey) {
+    if (!streamKey || !enabled) {
       // Clean up any stale socket and queue from previous renders
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
       pendingMessageQueueRef.current = [];
+      authRefreshAttemptedRef.current = false;
       setIsConnected(false);
+      setConnectionStatus('disconnected');
       return;
     }
     const reconnectConfig = RECONNECT_CONFIG.chat;
@@ -80,7 +99,7 @@ export function useChatConnection(streamKey: string) {
     };
 
     const handleAuthReconnect = async () => {
-      const refreshed = await refreshAuthToken();
+      const refreshed = await recoverSocketAuth();
       if (refreshed) {
         socket.connect();
       } else {
@@ -170,7 +189,7 @@ export function useChatConnection(streamKey: string) {
       }
       pendingMessageQueueRef.current = [];
     };
-  }, [streamKey]);
+  }, [enabled, streamKey]);
 
   const sendMessage = (message: string) => {
     const trimmedMessage = message.trim();
@@ -211,6 +230,7 @@ export function useChatConnection(streamKey: string) {
     isConnected,
     connectionStatus,
     userCount,
+    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
     sendMessage,
     deleteMessage,
   };
