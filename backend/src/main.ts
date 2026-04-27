@@ -23,7 +23,6 @@ import { CustomIoAdapter } from './common/adapters/custom-io.adapter';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
-  authenticateSocket,
   authenticateSocketIfPresent,
   type AuthenticatedSocket,
 } from './common/middleware/ws-jwt-auth.middleware';
@@ -961,14 +960,19 @@ async function bootstrap() {
 
   rootNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
-      logger.log(
-        `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
-      );
+      const authenticatedSocket = await authenticateSocketIfPresent(socket, jwtService, prismaService);
+      if (authenticatedSocket) {
+        logger.log(
+          `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
+        );
+      } else {
+        logger.log(`✅ Guest connected to /: ${socket.id}`);
+      }
 
       socket.emit('connected', {
         message: 'Connected to Live Commerce WebSocket',
-        userId: authenticatedSocket.user.userId,
+        userId: authenticatedSocket?.user.userId ?? null,
+        authenticated: !!authenticatedSocket,
       });
 
       // Handle join:stream
@@ -982,7 +986,7 @@ async function bootstrap() {
         logger.log(`📥 Client ${socket.id} joined stream room: ${roomName}`);
 
         rootNamespace.to(roomName).emit('user:joined', {
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? `guest:${socket.id}`,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
@@ -999,7 +1003,7 @@ async function bootstrap() {
         logger.log(`📤 Client ${socket.id} left stream room: ${roomName}`);
 
         rootNamespace.to(roomName).emit('user:left', {
-          userId: authenticatedSocket.user.userId,
+          userId: authenticatedSocket?.user.userId ?? `guest:${socket.id}`,
           streamId: data.streamId,
           timestamp: new Date().toISOString(),
         });
@@ -1016,11 +1020,11 @@ async function bootstrap() {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(`❌ Root connection failed: ${errorMessage}`);
+      logger.error(`❌ Root connection setup failed: ${errorMessage}`);
       if (process.env.NODE_ENV !== 'production') {
         logger.error(error instanceof Error ? error.stack : String(error));
       }
-      socket.emit('error', { message: 'Authentication failed' });
+      socket.emit('error', { message: 'Connection setup failed' });
       socket.disconnect();
     }
   });
