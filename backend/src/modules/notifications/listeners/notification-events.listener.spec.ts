@@ -237,4 +237,26 @@ describe('NotificationEventsListener', () => {
       listener.handleStreamStarted({ streamId: 'stream-id', userId: 'admin-1' }),
     ).resolves.not.toThrow();
   });
+
+  it('dedupes LIVE_START recipients that resolve to the same phone number', async () => {
+    prisma.liveStream.findUnique.mockResolvedValue({
+      title: '라이브',
+      streamKey: 'stream-1',
+      description: '설명',
+    });
+    prisma.user.findMany.mockResolvedValue([
+      { kakaoPhone: '2135551234' },
+      { kakaoPhone: '+12135551234' },
+      { kakaoPhone: '01012345678' },
+    ]);
+
+    await listener.handleStreamStarted({ streamId: 'stream-id', userId: 'admin-1' });
+
+    expect(alimtalkService.sendLiveStartAlimtalk).toHaveBeenCalledWith(
+      ['2135551234', '01012345678'],
+      '라이브',
+      expect.stringContaining('/live/stream-1'),
+      '설명',
+    );
+  });
 });

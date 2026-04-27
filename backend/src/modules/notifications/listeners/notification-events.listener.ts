@@ -25,6 +25,34 @@ export class NotificationEventsListener {
     this.logger.setContext('NotificationEventsListener');
   }
 
+  private normalizePhoneForRecipientDedupe(phone?: string | null): string {
+    const trimmed = phone?.trim() ?? '';
+    if (!trimmed) {
+      return '';
+    }
+
+    if (trimmed.startsWith('+')) {
+      return `+${trimmed.slice(1).replace(/\D/g, '')}`;
+    }
+
+    const digits = trimmed.replace(/\D/g, '');
+    if (!digits) {
+      return '';
+    }
+
+    if (digits.length === 10) {
+      return `+1${digits}`;
+    }
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `+${digits}`;
+    }
+    if (digits.startsWith('82')) {
+      return `+${digits}`;
+    }
+
+    return digits;
+  }
+
   @OnEvent('order:created')
   async handleOrderCreated(payload: { orderId: string; userId: string; streamKeys?: string[] }) {
     this.logger.log(`Sending order created notification to user ${payload.userId}`);
@@ -296,9 +324,21 @@ export class NotificationEventsListener {
         select: { kakaoPhone: true },
       });
 
-      const phoneNumbers = users
-        .map((u: { kakaoPhone: string | null }) => u.kakaoPhone)
-        .filter((p: string | null): p is string => p !== null);
+      const phoneNumbers = Array.from(
+        new Map(
+          users
+            .map((u: { kakaoPhone: string | null }) => u.kakaoPhone)
+            .filter((p: string | null): p is string => p !== null)
+            .map((phone) => [this.normalizePhoneForRecipientDedupe(phone), phone] as const)
+            .filter(([normalized]) => Boolean(normalized)),
+        ).values(),
+      );
+
+      if (users.length !== phoneNumbers.length) {
+        this.logger.log(
+          `Deduped LIVE_START recipients from ${users.length} subscribed users to ${phoneNumbers.length} unique phone numbers`,
+        );
+      }
 
       if (phoneNumbers.length === 0) {
         return;

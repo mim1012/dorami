@@ -421,7 +421,12 @@ function CartPageContent() {
                   !freshHasSoldOut &&
                   !selectedHasSoldOut
                 ) {
-                  router.push('/checkout');
+                  const selectedIds = Array.from(selectedItemIds);
+                  const query = new URLSearchParams();
+                  if (selectedIds.length > 0) {
+                    query.set('cartItemIds', selectedIds.join(','));
+                  }
+                  router.push(`/checkout${query.toString() ? `?${query.toString()}` : ''}`);
                 } else if (freshHasSoldOut || selectedHasSoldOut) {
                   showToast('품절된 상품이 포함되어 있습니다. 삭제 후 결제해주세요.', 'error');
                   queryClient.invalidateQueries({ queryKey: cartKeys.all });
