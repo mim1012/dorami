@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { EncryptionService } from '../../common/services/encryption.service';
 import { isCaliforniaAddress } from '../../common/utils/address.util';
 import { RedisService } from '../../common/redis/redis.service';
 import { InventoryService } from './inventory.service';
@@ -73,6 +74,7 @@ export class OrdersService {
     private notificationsService: NotificationsService,
     private eventEmitter: EventEmitter2,
     private configService: ConfigService,
+    private encryptionService: EncryptionService,
   ) {
     this.orderExpirationMinutes = this.configService.get<number>('ORDER_EXPIRATION_MINUTES', 10);
   }
@@ -595,7 +597,10 @@ export class OrdersService {
             select: { shippingAddress: true },
           });
           if (user?.shippingAddress) {
-            isCA = isCaliforniaAddress(user.shippingAddress);
+            const shippingAddress = this.encryptionService.normalizeAddressValue(user.shippingAddress);
+            if (shippingAddress) {
+              isCA = isCaliforniaAddress(shippingAddress);
+            }
           }
         }
         totalShippingFee = isCA ? caShippingFee : defaultShippingFee;
