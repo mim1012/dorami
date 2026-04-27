@@ -184,6 +184,26 @@ export class AlimtalkService {
     };
   }
 
+  private normalizeKakaoPhone(phone?: string | null): string {
+    const trimmed = phone?.trim() ?? '';
+    if (!trimmed) {
+      return '';
+    }
+
+    if (trimmed.startsWith('+')) {
+      return `+${trimmed.slice(1).replace(/\D/g, '')}`;
+    }
+
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length === 10) {
+      return `+1${digits}`;
+    }
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `+${digits}`;
+    }
+    return digits;
+  }
+
   private extractDestinationResult(result: unknown): {
     code?: string;
     result?: string;
@@ -236,6 +256,7 @@ export class AlimtalkService {
 
   private async _sendSingle(msg: AlimtalkMessage): Promise<KakaoDeliveryResult> {
     try {
+      const normalizedPhone = this.normalizeKakaoPhone(msg.to);
       const alimtalkBuilder = new AlimtalkBuilder()
         .setSenderKey(this.senderKey)
         .setMsgType('AT')
@@ -256,7 +277,7 @@ export class AlimtalkService {
       }
 
       const alimtalk = alimtalkBuilder.build();
-      const destination = new DestinationBuilder().setTo(msg.to).build();
+      const destination = new DestinationBuilder().setTo(normalizedPhone).build();
 
       const request = new OMNIRequestBodyBuilder()
         .setDestinations([destination])
@@ -268,24 +289,30 @@ export class AlimtalkService {
       const dest = this.extractDestinationResult(result);
 
       if (dest?.code === 'A000') {
-        this.logger.log(`Alimtalk sent to ${msg.to}`, { msgKey: dest.msgKey });
+        this.logger.log(`Alimtalk sent to ${normalizedPhone}`, { msgKey: dest.msgKey });
         return {
           status: 'sent',
           channel: 'AT',
-          recipient: msg.to,
+          recipient: normalizedPhone,
           providerCode: dest.code,
           providerMessage: dest.result,
           providerMessageKey: dest.msgKey,
         };
       } else {
         this.logger.warn(`Alimtalk send returned code ${dest?.code}: ${dest?.result}`, {
-          to: msg.to,
+          to: normalizedPhone,
         });
-        return this.buildFailureResult('AT', msg.to, 'provider_rejected', dest?.code, dest?.result);
+        return this.buildFailureResult(
+          'AT',
+          normalizedPhone,
+          'provider_rejected',
+          dest?.code,
+          dest?.result,
+        );
       }
     } catch (error: unknown) {
       this.logSendError('send alimtalk', error);
-      return this.buildFailureResult('AT', msg.to, 'provider_error');
+      return this.buildFailureResult('AT', this.normalizeKakaoPhone(msg.to), 'provider_error');
     }
   }
 
@@ -795,6 +822,7 @@ export class AlimtalkService {
     const productSummary =
       extraItemCount > 0 ? `${productName} 외 ${extraItemCount}건` : productName;
     const text = `라이브에서 담아두신 "${productSummary}" 상품이 아직 장바구니에 남아 있어요!\n\n방송이 끝난 뒤에도 주문이 완료되지 않아 안내드려요.\n장바구니에서 결제하기 버튼을 눌러야 주문이 완료됩니다.\n아래 버튼을 눌러 바로 이어서 진행해 주세요.`;
+    const normalizedPhone = this.normalizeKakaoPhone(phone);
 
     try {
       const button = new KakaoButtonBuilder()
@@ -815,7 +843,7 @@ export class AlimtalkService {
         .setAdFlag('Y')
         .build();
 
-      const destination = new DestinationBuilder().setTo(phone).build();
+      const destination = new DestinationBuilder().setTo(normalizedPhone).build();
 
       const request = new OMNIRequestBodyBuilder()
         .setDestinations([destination])
@@ -826,12 +854,12 @@ export class AlimtalkService {
       const dest = this.extractDestinationResult(result);
 
       if (dest?.code === 'A000') {
-        this.logger.log(`Cart reminder friendtalk sent to ${phone}`);
+        this.logger.log(`Cart reminder friendtalk sent to ${normalizedPhone}`);
         return this.buildBatchResult([
           {
             status: 'sent',
             channel: 'FT',
-            recipient: phone,
+            recipient: normalizedPhone,
             providerCode: dest.code,
             providerMessage: dest.result,
             providerMessageKey: dest.msgKey,
@@ -839,15 +867,23 @@ export class AlimtalkService {
         ]);
       } else {
         this.logger.warn(`Friendtalk send returned code ${dest?.code}: ${dest?.result}`, {
-          to: phone,
+          to: normalizedPhone,
         });
         return this.buildBatchResult([
-          this.buildFailureResult('FT', phone, 'provider_rejected', dest?.code, dest?.result),
+          this.buildFailureResult(
+            'FT',
+            normalizedPhone,
+            'provider_rejected',
+            dest?.code,
+            dest?.result,
+          ),
         ]);
       }
     } catch (error: unknown) {
       this.logSendError('send cart reminder friendtalk', error);
-      return this.buildBatchResult([this.buildFailureResult('FT', phone, 'provider_error')]);
+      return this.buildBatchResult([
+        this.buildFailureResult('FT', normalizedPhone, 'provider_error'),
+      ]);
     }
   }
 

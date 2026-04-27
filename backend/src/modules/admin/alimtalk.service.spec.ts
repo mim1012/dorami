@@ -502,4 +502,15 @@ describe('AlimtalkService', () => {
     expect(replaced).toContain('Zelle Kim / Venmo Kim');
     expect(replaced).not.toContain('국민은행');
   });
+
+  it('normalizes raw 10-digit US kakao_phone values to +1 E.164 before sending', () => {
+    expect((service as any).normalizeKakaoPhone('9177534870')).toBe('+19177534870');
+    expect((service as any).normalizeKakaoPhone(' 2146817720 ')).toBe('+12146817720');
+  });
+
+  it('preserves already normalized +1 kakao_phone values and blanks', () => {
+    expect((service as any).normalizeKakaoPhone('+18581236583')).toBe('+18581236583');
+    expect((service as any).normalizeKakaoPhone('')).toBe('');
+    expect((service as any).normalizeKakaoPhone(undefined)).toBe('');
+  });
 });
