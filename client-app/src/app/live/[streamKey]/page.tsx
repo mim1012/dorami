@@ -21,7 +21,6 @@ import LiveQuickActionBar from '@/components/live/LiveQuickActionBar';
 import LiveCartSheet from '@/components/live/LiveCartSheet';
 import ProductListBottomSheet from '@/components/live/ProductListBottomSheet';
 import { NoticeModal } from '@/components/notices/NoticeModal';
-import { NoticeBox } from '@/components/notices/NoticeBox';
 import { cartKeys, useCart } from '@/lib/hooks/queries/use-cart';
 import { productKeys } from '@/lib/hooks/queries/use-products';
 import { useChatConnection } from '@/hooks/useChatConnection';
@@ -49,7 +48,6 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -119,8 +117,7 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isSessionVerified, isVerifying, isUserAuthenticated } = useAuth();
-  const liveRealtimeEnabled = !isVerifying && isSessionVerified && isUserAuthenticated;
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -129,17 +126,13 @@ export default function LiveStreamPage() {
     const onSessionExpired = () => {
       if (!hasShownSessionExpiredToast.current) {
         hasShownSessionExpiredToast.current = true;
-        showToast(
-          '세션 갱신이 잠시 불안정해요. 방송은 유지되고, 필요할 때만 다시 로그인하시면 됩니다.',
-          'error',
-          {
-            label: '로그인',
-            onClick: () => {
-              const returnTo = window.location.pathname;
-              window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-            },
+        showToast('로그인이 만료되었어요. 다시 로그인하면 방송을 이어서 볼 수 있어요.', 'error', {
+          label: '로그인',
+          onClick: () => {
+            const returnTo = window.location.pathname;
+            window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
           },
-        );
+        });
       }
     };
 
@@ -184,10 +177,9 @@ export default function LiveStreamPage() {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
-    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '', { enabled: liveRealtimeEnabled });
+  } = useChatConnection(streamKey ?? '');
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -303,6 +295,14 @@ export default function LiveStreamPage() {
     }
   }, [streamKey]);
 
+  useEffect(() => {
+    if (!streamKey) return;
+    const interval = setInterval(() => {
+      void fetchAllProducts();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchAllProducts, streamKey]);
+
   // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     let isCancelled = false;
@@ -358,6 +358,7 @@ export default function LiveStreamPage() {
     const handleConnect = () => {
       if (isCancelled) return;
       ws.emit('join:stream', { streamId: streamKey });
+      void safeFetchAllProducts();
     };
 
     const handleFeaturedProductUpdated = (data: any) => {
@@ -367,26 +368,53 @@ export default function LiveStreamPage() {
 
     const handleProductAdded = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) =>
-        prev.some((p) => p.id === data.data.id) ? prev : [data.data, ...prev],
-      );
+      const nextProduct = data.data as Product;
+      setAllProducts((prev) => {
+        if (nextProduct.excludeFromStore || nextProduct.status !== ProductStatus.AVAILABLE) {
+          return prev;
+        }
+        return prev.some((p) => p.id === nextProduct.id) ? prev : [nextProduct, ...prev];
+      });
+      void safeFetchAllProducts();
     };
 
     const handleProductUpdated = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) => prev.map((p) => (p.id === data.data.id ? data.data : p)));
+      const nextProduct = data.data as Product;
+      setAllProducts((prev) => {
+        if (nextProduct.excludeFromStore) {
+          return prev.filter((p) => p.id !== nextProduct.id);
+        }
+        const existing = prev.some((p) => p.id === nextProduct.id);
+        if (!existing) {
+          return nextProduct.status === ProductStatus.AVAILABLE ? [nextProduct, ...prev] : prev;
+        }
+        return prev.map((p) => (p.id === nextProduct.id ? nextProduct : p));
+      });
+      setSelectedProduct((prev) => (prev && prev.id === nextProduct.id ? nextProduct : prev));
+      void safeFetchAllProducts();
     };
 
     const handleProductSoldOut = (data: any) => {
       if (isCancelled) return;
-      setAllProducts((prev) => prev.filter((p) => p.id !== data.data.productId));
+      setAllProducts((prev) =>
+        prev.map((p) =>
+          p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
+        ),
+      );
+      setSelectedProduct((prev) =>
+        prev && prev.id === data.data.productId
+          ? { ...prev, status: ProductStatus.SOLD_OUT }
+          : prev,
+      );
       setFeaturedProductIfActive((prev) => {
         if (prev && prev.id === data.data.productId) {
-          showToast('이 상품이 품절되어 목록에서 숨겨졌습니다.', 'error');
-          return null;
+          showToast('이 상품이 품절되었습니다.', 'error');
+          return { ...prev, status: ProductStatus.SOLD_OUT };
         }
         return prev;
       });
+      void safeFetchAllProducts();
     };
 
     const handleCartItemAdded = (payload: any) => {
@@ -415,6 +443,9 @@ export default function LiveStreamPage() {
 
     const handleReconnect = () => {
       if (isCancelled) return;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[LiveEvents] reconnect - rejoin stream', streamKey);
+      }
       handleConnect();
     };
 
@@ -472,7 +503,6 @@ export default function LiveStreamPage() {
       const previousStatus = previousStreamStatusRef.current;
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
-        setViewerCount(response.data.viewerCount ?? 0);
         setError(null);
         // Cancel pending offline grace timer — stream recovered before 10s elapsed
         if (offlineGraceTimerRef.current) {
@@ -575,6 +605,11 @@ export default function LiveStreamPage() {
     }
   };
 
+  const handleCloseProductModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  }, []);
+
   // Profile completion guard: prevent rendering while redirecting
   // isMobileReady ensures useIsMobile has read window.innerWidth before
   // VideoPlayer renders — prevents Desktop→Mobile remount race condition.
@@ -607,13 +642,11 @@ export default function LiveStreamPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center px-6 animate-bounce-in">
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center shadow-hot-pink">
-            <MonitorOff className="w-14 h-14 text-white/40" aria-hidden="true" />
+          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center animate-pulse">
+            <MonitorOff className="w-14 h-14 text-white/30" aria-hidden="true" />
           </div>
-          <Heading2 className="text-white mb-3 text-2xl">
-            {error || '방송을 찾을 수 없습니다'}
-          </Heading2>
-          <p className="text-white/40 text-sm mb-8">스트림을 찾을 수 없거나 종료되었습니다</p>
+          <Heading2 className="text-white mb-3 text-2xl">방송을 찾을 수 없어요</Heading2>
+          <Body className="text-white/40 mb-8">{error || '잠시 후 다시 시도해주세요'}</Body>
           <button
             onClick={() => router.push('/')}
             className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg gradient-hot-pink"
@@ -666,7 +699,6 @@ export default function LiveStreamPage() {
     quantity: number = 1,
     selectedColor?: string,
     selectedSize?: string,
-    variantId?: string,
   ) => {
     const { isAuthenticated } = useAuthStore.getState();
 
@@ -682,7 +714,6 @@ export default function LiveStreamPage() {
     try {
       await apiClient.post('/cart', {
         productId,
-        variantId,
         quantity,
         color: selectedColor,
         size: selectedSize,
@@ -754,9 +785,6 @@ export default function LiveStreamPage() {
             onProductClick={handleProductClick}
             products={allProducts}
           />
-          <div className="p-3 border-t border-white/10">
-            <NoticeBox />
-          </div>
         </aside>
       )}
 
@@ -772,7 +800,6 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
-              socketAuthReady={liveRealtimeEnabled}
               muted={isMobileMuted}
               volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
@@ -1152,7 +1179,6 @@ export default function LiveStreamPage() {
                   key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
-                  socketAuthReady={liveRealtimeEnabled}
                   onViewerCountChange={handleViewerCountChange}
                   onStreamError={setVideoError}
                 />
@@ -1266,7 +1292,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!canComposeMessages}
+                disabled={!isConnected}
                 compact={false}
               />
             </div>
@@ -1290,11 +1316,12 @@ export default function LiveStreamPage() {
       />
 
       {/* Product Detail Modal */}
-      {selectedProduct && (
+      {selectedProduct && isModalOpen && (
         <ProductDetailModal
+          key={selectedProduct.id}
           product={selectedProduct}
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseProductModal}
           onAddToCart={handleAddToCart}
         />
       )}

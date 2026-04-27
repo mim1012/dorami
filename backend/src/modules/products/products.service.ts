@@ -42,6 +42,7 @@ interface ProductUpdateData {
   discountRate?: Decimal | null;
   originalPrice?: Decimal | null;
   expiresAt?: Date | null;
+  excludeFromStore?: boolean;
 }
 
 type VariantInput = NonNullable<CreateProductDto['variants']>[number];
@@ -202,6 +203,7 @@ export class ProductsService {
         status:
           (createDto.status as PrismaProductStatus | undefined) ?? PrismaProductStatus.AVAILABLE,
         expiresAt: createDto.expiresAt ? new Date(createDto.expiresAt) : null,
+        excludeFromStore: createDto.excludeFromStore ?? false,
       },
     });
 
@@ -233,12 +235,13 @@ export class ProductsService {
     streamKey: string,
     status?: ProductStatus,
     includeExpired = false,
-    options?: { take?: number; skip?: number },
+    options?: { take?: number; skip?: number; includeHidden?: boolean },
   ): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: {
         streamKey,
         ...(status && { status }),
+        ...(options?.includeHidden ? {} : { excludeFromStore: false }),
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
       include: productWithVariantsInclude,
@@ -259,6 +262,7 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: {
         status: 'AVAILABLE',
+        excludeFromStore: false,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       include: productWithVariantsInclude,
@@ -275,10 +279,11 @@ export class ProductsService {
    * Get all products (legacy method)
    */
   @LogErrors('get all products')
-  async findAll(status?: ProductStatus, includeExpired = false): Promise<ProductResponseDto[]> {
+  async findAll(status?: ProductStatus, includeExpired = false, includeHidden = false): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: {
         ...(status ? { status } : {}),
+        ...(includeHidden ? {} : { excludeFromStore: false }),
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
       include: productWithVariantsInclude,
@@ -344,6 +349,12 @@ export class ProductsService {
     }
     if (updateDto.status !== undefined) {
       updateData.status = updateDto.status as PrismaProductStatus;
+      if (updateDto.status === ProductStatus.AVAILABLE) {
+        updateData.excludeFromStore = false;
+      }
+    }
+    if (updateDto.excludeFromStore !== undefined) {
+      updateData.excludeFromStore = updateDto.excludeFromStore;
     }
     if (updateDto.isNew !== undefined) {
       updateData.isNew = updateDto.isNew;
@@ -544,6 +555,7 @@ export class ProductsService {
         discountRate: source.discountRate,
         originalPrice: source.originalPrice,
         status: 'AVAILABLE',
+        excludeFromStore: false,
       },
     });
 
@@ -584,7 +596,10 @@ export class ProductsService {
 
     const result = await this.prisma.product.updateMany({
       where: { id: { in: uniqueIds } },
-      data: { status: dto.status as PrismaProductStatus },
+      data: {
+        status: dto.status as PrismaProductStatus,
+        ...(dto.status === ProductStatus.AVAILABLE ? { excludeFromStore: false } : {}),
+      },
     });
 
     const updatedProducts = await this.prisma.product.findMany({
@@ -742,7 +757,7 @@ export class ProductsService {
       where: { status: 'LIVE' },
       include: {
         products: {
-          where: { status: 'AVAILABLE' },
+          where: { status: 'AVAILABLE', excludeFromStore: false },
           include: productWithVariantsInclude,
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           take: 8,
@@ -786,6 +801,7 @@ export class ProductsService {
         LEFT JOIN order_items oi ON p.id = oi.product_id
         LEFT JOIN orders o ON oi.order_id = o.id
         WHERE p.status = 'AVAILABLE'
+          AND p.exclude_from_store = false
           AND (p.expires_at IS NULL OR p.expires_at > NOW())
           AND (o.status IN ('PAYMENT_CONFIRMED', 'SHIPPED', 'DELIVERED') OR o.id IS NULL)
         GROUP BY p.id
@@ -817,6 +833,7 @@ export class ProductsService {
       const total = await this.prisma.product.count({
         where: {
           status: 'AVAILABLE',
+          excludeFromStore: false,
           OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
       });

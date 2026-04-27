@@ -37,6 +37,7 @@ export interface Product {
   minPrice?: number;
   maxPrice?: number;
   status: ProductStatus;
+  excludeFromStore?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +51,7 @@ export interface ProductListItem {
   price: number;
   imageUrl?: string;
   status: ProductStatus;
+  excludeFromStore?: boolean;
   stock: number;
 }
 

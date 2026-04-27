@@ -24,6 +24,14 @@ import {
   type VariantPriceMode,
 } from '@/lib/utils/product-variants';
 import {
+  buildImportPreview,
+  inferColumnMapping,
+  parseExcelFile,
+  UNMAPPED_COLUMN,
+  type ImportColumnMapping,
+  type ParsedExcelSheet,
+} from '@/lib/utils/product-import';
+import {
   Plus,
   Edit,
   Trash2,
@@ -129,10 +137,20 @@ function mapProductToVariantEditorState(product: Product): {
   variants: EditableProductVariant[];
 } {
   if (!product.variants || product.variants.length === 0) {
+    const hasLegacyOptions = product.colorOptions.length > 0 || product.sizeOptions.length > 0;
+
     return {
-      variantEnabled: false,
+      variantEnabled: hasLegacyOptions,
       variantPriceMode: 'ADD_ON',
-      variants: [createEmptyEditableVariant()],
+      variants: hasLegacyOptions
+        ? buildColorSizeEditableVariants({
+            colors: product.colorOptions,
+            sizes: product.sizeOptions,
+            existingRows: [],
+            priceMode: 'ADD_ON',
+            basePrice: product.price,
+          })
+        : [createEmptyEditableVariant()],
     };
   }
 
@@ -413,6 +431,20 @@ export default function AdminProductsPage() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [parsedExcel, setParsedExcel] = useState<ParsedExcelSheet | null>(null);
+  const [importMapping, setImportMapping] = useState<ImportColumnMapping>({
+    productName: UNMAPPED_COLUMN,
+    option: UNMAPPED_COLUMN,
+    price: UNMAPPED_COLUMN,
+    stock: UNMAPPED_COLUMN,
+  });
+  const [defaultImportStock, setDefaultImportStock] = useState('1');
+  const [defaultImportPrice, setDefaultImportPrice] = useState('');
+  const [bulkImportHideUntilRelease, setBulkImportHideUntilRelease] = useState(true);
+
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
     name: '',
@@ -554,6 +586,19 @@ export default function AdminProductsPage() {
     });
   }, [products, searchQuery, filterStatus, priceMin, priceMax]);
 
+  const importPreview = useMemo(() => {
+    if (!parsedExcel) {
+      return { products: [], warnings: [], errors: [] };
+    }
+
+    return buildImportPreview({
+      parsed: parsedExcel,
+      mapping: importMapping,
+      defaultStock: defaultImportStock,
+      defaultPrice: defaultImportPrice,
+    });
+  }, [parsedExcel, importMapping, defaultImportPrice, defaultImportStock]);
+
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
@@ -635,6 +680,94 @@ export default function AdminProductsPage() {
     } catch (err: any) {
       console.error('Bulk status change failed:', err);
       showToast(`상태 변경에 실패했습니다: ${err.message}`, 'error');
+    }
+  };
+
+  const resetImportState = () => {
+    setImportFileName('');
+    setParsedExcel(null);
+    setImportMapping({
+      productName: UNMAPPED_COLUMN,
+      option: UNMAPPED_COLUMN,
+      price: UNMAPPED_COLUMN,
+      stock: UNMAPPED_COLUMN,
+    });
+    setDefaultImportStock('1');
+    setDefaultImportPrice('');
+    setBulkImportHideUntilRelease(true);
+  };
+
+  const handleCloseImportModal = () => {
+    if (isImporting) return;
+    setIsImportModalOpen(false);
+    resetImportState();
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const parsed = await parseExcelFile(file);
+      setParsedExcel(parsed);
+      setImportFileName(file.name);
+      setImportMapping(inferColumnMapping(parsed.headers));
+      showToast(`엑셀을 읽었습니다. 시트: ${parsed.sheetName}`, 'success');
+    } catch (err: any) {
+      console.error('Failed to parse excel file:', err);
+      showToast(err?.message || '엑셀 파일을 읽지 못했습니다.', 'error');
+      resetImportState();
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleImportMappingChange = (field: keyof ImportColumnMapping, value: string) => {
+    setImportMapping((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleImportProducts = async () => {
+    if (!parsedExcel) {
+      showToast('먼저 엑셀 파일을 업로드해주세요.', 'error');
+      return;
+    }
+    if (!formData.streamKey.trim()) {
+      showToast('업로드할 Stream Key를 먼저 입력해주세요.', 'error');
+      return;
+    }
+    if (importPreview.errors.length > 0) {
+      showToast(importPreview.errors[0], 'error');
+      return;
+    }
+    if (importPreview.products.length === 0) {
+      showToast('등록할 수 있는 상품이 없습니다.', 'error');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      for (const product of importPreview.products) {
+        await apiClient.post('/products', {
+          streamKey: formData.streamKey.trim(),
+          name: product.name,
+          price: product.price,
+          stock: product.stock,
+          colorOptions: product.optionValues,
+          sizeOptions: [],
+          status: bulkImportHideUntilRelease ? 'SOLD_OUT' : 'AVAILABLE',
+          excludeFromStore: bulkImportHideUntilRelease,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      await fetchProducts();
+      showToast(`${importPreview.products.length}개 상품을 업로드했습니다.`, 'success');
+      handleCloseImportModal();
+    } catch (err: any) {
+      console.error('Failed to import products:', err);
+      showToast(`대량 업로드에 실패했습니다: ${err?.message || '알 수 없는 오류'}`, 'error');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -1128,6 +1261,14 @@ export default function AdminProductsPage() {
             </>
           )}
           <Button
+            variant="outline"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Upload className="w-5 h-5" />
+            엑셀 업로드
+          </Button>
+          <Button
             variant="primary"
             onClick={() => handleOpenModal()}
             className="flex items-center gap-2"
@@ -1273,6 +1414,267 @@ export default function AdminProductsPage() {
           </div>
         )}
       </div>
+
+      {/* Excel Import Modal */}
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        title="엑셀 상품 업로드"
+        maxWidth="xl"
+      >
+        <div className="space-y-4 max-h-[75vh] overflow-y-auto px-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Stream Key"
+              name="bulk-stream-key"
+              value={formData.streamKey}
+              onChange={(e) => setFormData((prev) => ({ ...prev, streamKey: e.target.value }))}
+              placeholder="예: abc123def456"
+              fullWidth
+              helperText="이 Stream Key로 업로드된 상품을 묶습니다"
+            />
+            <div>
+              <label className="block text-sm font-medium text-secondary-text mb-2">
+                업로드할 엑셀
+              </label>
+              <label className="block cursor-pointer rounded-lg border border-dashed border-gray-300 bg-content-bg px-4 py-3 text-sm text-primary-text hover:bg-gray-50 transition-colors">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportFileChange}
+                  className="hidden"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate">{importFileName || '엑셀 파일 선택'}</span>
+                  <Upload className="w-4 h-4 flex-shrink-0" />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {parsedExcel && (
+            <>
+              <div className="rounded-xl border border-gray-200 bg-content-bg p-4 text-sm space-y-2">
+                <div className="flex flex-wrap gap-4 text-secondary-text">
+                  <span>
+                    선택 시트:{' '}
+                    <strong className="text-primary-text">{parsedExcel.sheetName}</strong>
+                  </span>
+                  <span>
+                    헤더 행:{' '}
+                    <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong>
+                  </span>
+                  <span>
+                    원본 행 수:{' '}
+                    <strong className="text-primary-text">{parsedExcel.rows.length}</strong>
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead>
+                      <tr>
+                        {parsedExcel.headers.map((header) => (
+                          <th
+                            key={header}
+                            className="px-2 py-2 text-left text-secondary-text whitespace-nowrap"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedExcel.rawPreviewRows
+                        .slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3)
+                        .map((row, index) => (
+                          <tr
+                            key={`${index}-${row.join('|')}`}
+                            className="border-t border-gray-100"
+                          >
+                            {parsedExcel.headers.map((header, headerIndex) => (
+                              <td
+                                key={`${header}-${headerIndex}`}
+                                className="px-2 py-2 whitespace-nowrap text-primary-text"
+                              >
+                                {row[headerIndex] || '-'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    ['productName', '상품명 컬럼'],
+                    ['option', '옵션 컬럼'],
+                    ['price', '가격 컬럼'],
+                    ['stock', '재고 컬럼'],
+                  ] as const
+                ).map(([field, label]) => (
+                  <div key={field}>
+                    <label className="block text-sm font-medium text-secondary-text mb-2">
+                      {label}
+                    </label>
+                    <select
+                      value={importMapping[field]}
+                      onChange={(e) => handleImportMappingChange(field, e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-primary-text"
+                    >
+                      <option value={UNMAPPED_COLUMN}>선택 안 함</option>
+                      {parsedExcel.headers.map((header) => (
+                        <option key={`${field}-${header}`} value={header}>
+                          {header}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-hot-pink/20 bg-hot-pink/5 p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkImportHideUntilRelease}
+                    onChange={(e) => setBulkImportHideUntilRelease(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-primary-text">
+                      대량등록 전용 숨김 처리
+                    </span>
+                    <span className="block text-xs text-secondary-text mt-1">
+                      체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다.
+                      이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="기본 재고"
+                  name="defaultImportStock"
+                  type="number"
+                  value={defaultImportStock}
+                  onChange={(e) => setDefaultImportStock(e.target.value)}
+                  placeholder="재고 컬럼이 없을 때 사용"
+                  fullWidth
+                  helperText="재고 컬럼이 없거나 비었을 때 사용합니다"
+                />
+                <Input
+                  label="기본 가격"
+                  name="defaultImportPrice"
+                  type="number"
+                  value={defaultImportPrice}
+                  onChange={(e) => setDefaultImportPrice(e.target.value)}
+                  placeholder="가격 컬럼이 없을 때 사용"
+                  fullWidth
+                  helperText="가격 컬럼이 없는 업체 파일에만 입력하세요"
+                />
+              </div>
+
+              {importPreview.errors.length > 0 && (
+                <div className="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error space-y-1">
+                  {importPreview.errors.map((error) => (
+                    <p key={error}>{error}</p>
+                  ))}
+                </div>
+              )}
+
+              {importPreview.warnings.length > 0 && (
+                <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning space-y-1">
+                  {importPreview.warnings.slice(0, 6).map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                  {importPreview.warnings.length > 6 && (
+                    <p>외 {importPreview.warnings.length - 6}개 경고</p>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-gray-200 bg-content-bg p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-primary-text">정규화 미리보기</h3>
+                    <p className="text-xs text-secondary-text">
+                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는
+                      품절입니다.
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-hot-pink">
+                    {importPreview.products.length}개 상품 생성 예정
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-secondary-text">
+                        <th className="px-2 py-2 text-left">상품명</th>
+                        <th className="px-2 py-2 text-left">옵션</th>
+                        <th className="px-2 py-2 text-right">가격</th>
+                        <th className="px-2 py-2 text-right">재고</th>
+                        <th className="px-2 py-2 text-left">원본 행</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.products.slice(0, 20).map((product) => (
+                        <tr key={product.key} className="border-b border-gray-50 text-primary-text">
+                          <td className="px-2 py-2">{product.name}</td>
+                          <td className="px-2 py-2">
+                            {product.optionValues.length > 0
+                              ? product.optionValues.join(', ')
+                              : '-'}
+                          </td>
+                          <td className="px-2 py-2 text-right">{formatPrice(product.price)}</td>
+                          <td className="px-2 py-2 text-right">{product.stock}</td>
+                          <td className="px-2 py-2">{product.sourceRows.join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {importPreview.products.length > 20 && (
+                  <p className="text-xs text-secondary-text">
+                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체{' '}
+                    {importPreview.products.length}개가 진행됩니다.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              onClick={handleCloseImportModal}
+              disabled={isImporting}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              onClick={handleImportProducts}
+              disabled={
+                !parsedExcel ||
+                isImporting ||
+                importPreview.errors.length > 0 ||
+                importPreview.products.length === 0
+              }
+            >
+              {isImporting ? '업로드 중...' : `품절 상태로 ${importPreview.products.length}개 등록`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Product Form Modal */}
       <Modal

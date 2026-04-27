@@ -105,6 +105,7 @@ export function mapProductToDto(product: ProductWithVariants): ProductResponseDt
     minPrice: derivedMinPrice,
     maxPrice: derivedMaxPrice,
     status: product.status as ProductStatus,
+    excludeFromStore: product.excludeFromStore ?? false,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
     expiresAt: product.expiresAt?.toISOString() ?? null,

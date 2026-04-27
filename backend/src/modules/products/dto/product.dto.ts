@@ -208,6 +208,15 @@ export class CreateProductDto {
   freeShippingMessage?: string;
 
   @ApiPropertyOptional({
+    description: 'Hide product from store/past-products until released',
+    example: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  excludeFromStore?: boolean;
+
+  @ApiPropertyOptional({
     description: 'Enable cart reservation timer',
     example: false,
     default: false,
@@ -395,6 +404,14 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(50)
   freeShippingMessage?: string;
+
+  @ApiPropertyOptional({
+    description: 'Hide product from store/past-products until released',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  excludeFromStore?: boolean;
 
   @ApiPropertyOptional({ description: 'Enable cart reservation timer', example: false })
   @IsOptional()
@@ -589,6 +606,9 @@ export class ProductResponseDto {
     example: ProductStatus.AVAILABLE,
   })
   status!: ProductStatus;
+
+  @ApiProperty({ description: 'Whether the product is hidden from store listings', example: false })
+  excludeFromStore!: boolean;
 
   @ApiProperty({ description: 'Created timestamp', example: '2024-01-15T10:30:00.000Z' })
   createdAt!: Date;

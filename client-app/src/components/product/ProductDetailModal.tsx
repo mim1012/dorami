@@ -66,8 +66,6 @@ export default function ProductDetailModal({
     }
   }, [isOpen, product.id]);
 
-  if (!isOpen) return null;
-
   const maxQuantity = Math.max(displayStock || 0, 1);
   const totalPrice = displayPrice * quantity;
 
@@ -76,6 +74,8 @@ export default function ProductDetailModal({
       setQuantity(maxQuantity);
     }
   }, [maxQuantity, quantity]);
+
+  if (!isOpen) return null;
 
   const handleAddToCart = async () => {
     await onAddToCart(product.id, quantity, selectedColor, selectedSize, selectedVariant?.id);

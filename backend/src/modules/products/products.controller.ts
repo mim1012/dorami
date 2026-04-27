@@ -256,11 +256,12 @@ export class ProductsController {
       return await this.productsService.findByStreamKey(streamKey, status, false, {
         take: parsedTake,
         skip: parsedSkip,
+        includeHidden: false,
       });
     }
 
     // Otherwise return all products
-    return await this.productsService.findAll(status);
+    return await this.productsService.findAll(status, false, false);
   }
 
   /**
@@ -302,10 +303,10 @@ export class ProductsController {
     const includeExpiredProducts = includeExpired === 'true' || includeExpired === '1';
 
     if (streamKey) {
-      return await this.productsService.findByStreamKey(streamKey, status, includeExpiredProducts);
+      return await this.productsService.findByStreamKey(streamKey, status, includeExpiredProducts, { includeHidden: true });
     }
 
-    return await this.productsService.findAll(status, includeExpiredProducts);
+    return await this.productsService.findAll(status, includeExpiredProducts, true);
   }
 
   /**

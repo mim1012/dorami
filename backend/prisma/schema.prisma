@@ -191,6 +191,7 @@ model Product {
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
   expiresAt           DateTime?     @map("expires_at")
+  excludeFromStore    Boolean       @default(false) @map("exclude_from_store")
 
   // Relations
   carts        Cart[]
