@@ -295,6 +295,14 @@ export default function LiveStreamPage() {
     }
   }, [streamKey]);
 
+  useEffect(() => {
+    if (!streamKey) return;
+    const interval = setInterval(() => {
+      void fetchAllProducts();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchAllProducts, streamKey]);
+
   // ── Featured product fetch + all products + real-time WS ─────────────────
   useEffect(() => {
     let isCancelled = false;
@@ -350,6 +358,7 @@ export default function LiveStreamPage() {
     const handleConnect = () => {
       if (isCancelled) return;
       ws.emit('join:stream', { streamId: streamKey });
+      void safeFetchAllProducts();
     };
 
     const handleFeaturedProductUpdated = (data: any) => {
@@ -359,19 +368,20 @@ export default function LiveStreamPage() {
 
     const handleProductAdded = (data: any) => {
       if (isCancelled) return;
+      const nextProduct = data.data as Product;
       setAllProducts((prev) => {
-        const nextProduct = data.data as Product;
         if (nextProduct.excludeFromStore || nextProduct.status !== ProductStatus.AVAILABLE) {
           return prev;
         }
         return prev.some((p) => p.id === nextProduct.id) ? prev : [nextProduct, ...prev];
       });
+      void safeFetchAllProducts();
     };
 
     const handleProductUpdated = (data: any) => {
       if (isCancelled) return;
+      const nextProduct = data.data as Product;
       setAllProducts((prev) => {
-        const nextProduct = data.data as Product;
         if (nextProduct.excludeFromStore) {
           return prev.filter((p) => p.id !== nextProduct.id);
         }
@@ -381,6 +391,8 @@ export default function LiveStreamPage() {
         }
         return prev.map((p) => (p.id === nextProduct.id ? nextProduct : p));
       });
+      setSelectedProduct((prev) => (prev && prev.id === nextProduct.id ? nextProduct : prev));
+      void safeFetchAllProducts();
     };
 
     const handleProductSoldOut = (data: any) => {
@@ -390,6 +402,11 @@ export default function LiveStreamPage() {
           p.id === data.data.productId ? { ...p, status: ProductStatus.SOLD_OUT } : p,
         ),
       );
+      setSelectedProduct((prev) =>
+        prev && prev.id === data.data.productId
+          ? { ...prev, status: ProductStatus.SOLD_OUT }
+          : prev,
+      );
       setFeaturedProductIfActive((prev) => {
         if (prev && prev.id === data.data.productId) {
           showToast('이 상품이 품절되었습니다.', 'error');
@@ -397,6 +414,7 @@ export default function LiveStreamPage() {
         }
         return prev;
       });
+      void safeFetchAllProducts();
     };
 
     const handleCartItemAdded = (payload: any) => {
@@ -656,6 +674,11 @@ export default function LiveStreamPage() {
       </div>
     );
   }
+
+  const handleCloseProductModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  }, []);
 
   const handleProductClick = async (product: Product | FeaturedProduct) => {
     if ('streamKey' in product && 'colorOptions' in product) {
@@ -1295,11 +1318,12 @@ export default function LiveStreamPage() {
       />
 
       {/* Product Detail Modal */}
-      {selectedProduct && (
+      {selectedProduct && isModalOpen && (
         <ProductDetailModal
+          key={selectedProduct.id}
           product={selectedProduct}
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseProductModal}
           onAddToCart={handleAddToCart}
         />
       )}
