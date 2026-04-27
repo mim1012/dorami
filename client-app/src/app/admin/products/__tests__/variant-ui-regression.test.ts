@@ -12,4 +12,12 @@ describe('Admin products variant pricing UI regression', () => {
     expect(source).toContain('variantPriceMode');
     expect(source).toContain('variantEnabled');
   });
+
+  it('auto-enables edit modal variant UI for legacy products that only have color/size options', () => {
+    expect(source).toContain(
+      'const hasLegacyOptions = product.colorOptions.length > 0 || product.sizeOptions.length > 0;',
+    );
+    expect(source).toContain('variantEnabled: hasLegacyOptions');
+    expect(source).toContain('buildColorSizeEditableVariants({');
+  });
 });

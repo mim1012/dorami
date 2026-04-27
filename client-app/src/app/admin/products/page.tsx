@@ -137,10 +137,20 @@ function mapProductToVariantEditorState(product: Product): {
   variants: EditableProductVariant[];
 } {
   if (!product.variants || product.variants.length === 0) {
+    const hasLegacyOptions = product.colorOptions.length > 0 || product.sizeOptions.length > 0;
+
     return {
-      variantEnabled: false,
+      variantEnabled: hasLegacyOptions,
       variantPriceMode: 'ADD_ON',
-      variants: [createEmptyEditableVariant()],
+      variants: hasLegacyOptions
+        ? buildColorSizeEditableVariants({
+            colors: product.colorOptions,
+            sizes: product.sizeOptions,
+            existingRows: [],
+            priceMode: 'ADD_ON',
+            basePrice: product.price,
+          })
+        : [createEmptyEditableVariant()],
     };
   }
 
