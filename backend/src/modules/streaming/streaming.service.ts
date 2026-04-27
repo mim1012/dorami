@@ -153,6 +153,10 @@ export class StreamingService implements OnModuleInit {
     }
   }
 
+  private async getCurrentViewerCount(streamKey: string): Promise<number> {
+    return this.redisService.getClient().scard(`stream:${streamKey}:viewer_ids`);
+  }
+
   private getStreamOwnershipWhere(streamId: string, userId: string, userRole?: string) {
     return userRole === 'ADMIN'
       ? { id: streamId }
@@ -544,8 +548,7 @@ export class StreamingService implements OnModuleInit {
     return Promise.all(
       sessions.map(async (s) => {
         const normalizedStatus = s.status === StreamStatus.PENDING ? 'SCHEDULED' : s.status;
-        const viewerCountStr = await this.redisService.get(`stream:${s.streamKey}:viewers`);
-        const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+        const viewerCount = await this.getCurrentViewerCount(s.streamKey);
         return {
           id: s.id,
           streamKey: s.streamKey,
@@ -697,9 +700,7 @@ export class StreamingService implements OnModuleInit {
       }
     }
 
-    // Get viewer count from Redis
-    const viewerCountStr = await this.redisService.get(`stream:${streamKey}:viewers`);
-    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+    const viewerCount = await this.getCurrentViewerCount(streamKey);
 
     return {
       status,
@@ -855,9 +856,7 @@ export class StreamingService implements OnModuleInit {
       };
     }
 
-    // Get viewer count from Redis
-    const viewerCountStr = await this.redisService.get(`stream:${liveStream.streamKey}:viewers`);
-    const viewerCount = viewerCountStr ? parseInt(viewerCountStr, 10) : 0;
+    const viewerCount = await this.getCurrentViewerCount(liveStream.streamKey);
 
     // Calculate duration
     const duration = liveStream.startedAt

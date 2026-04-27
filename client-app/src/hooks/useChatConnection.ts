@@ -10,6 +10,16 @@ interface QueuedMessage {
   message: string;
 }
 
+export interface UseChatConnectionResult {
+  socketRef: React.MutableRefObject<Socket | null>;
+  isConnected: boolean;
+  connectionStatus: ChatConnectionStatus;
+  userCount: number;
+  canComposeMessages: boolean;
+  sendMessage: (message: string) => void;
+  deleteMessage: (messageId: string) => void;
+}
+
 export type ChatConnectionStatus =
   | 'connecting'
   | 'connected'
@@ -211,6 +221,7 @@ export function useChatConnection(streamKey: string) {
     isConnected,
     connectionStatus,
     userCount,
+    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
     sendMessage,
     deleteMessage,
   };
