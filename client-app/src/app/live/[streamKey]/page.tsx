@@ -184,6 +184,7 @@ export default function LiveStreamPage() {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
+    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
   } = useChatConnection(streamKey ?? '', { enabled: liveRealtimeEnabled });
@@ -471,6 +472,7 @@ export default function LiveStreamPage() {
       const previousStatus = previousStreamStatusRef.current;
       if (nextStatus === 'LIVE') {
         setStreamStatus(response.data);
+        setViewerCount(response.data.viewerCount ?? 0);
         setError(null);
         // Cancel pending offline grace timer — stream recovered before 10s elapsed
         if (offlineGraceTimerRef.current) {
@@ -1262,7 +1264,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!isConnected}
+                disabled={!canComposeMessages}
                 compact={false}
               />
             </div>

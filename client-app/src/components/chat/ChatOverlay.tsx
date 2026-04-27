@@ -23,8 +23,15 @@ export default function ChatOverlay({
   const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
   const inputRef = useRef<ChatInputHandle>(null);
 
-  const { socketRef, isConnected, connectionStatus, userCount, sendMessage, deleteMessage } =
-    useChatConnection(streamKey);
+  const {
+    socketRef,
+    isConnected,
+    connectionStatus,
+    userCount,
+    canComposeMessages,
+    sendMessage,
+    deleteMessage,
+  } = useChatConnection(streamKey);
   const { messages } = useChatMessages(socketRef);
 
   const handleSendMessage = (message: string) => {
@@ -61,7 +68,7 @@ export default function ChatOverlay({
       <ChatInput
         ref={inputRef}
         onSendMessage={handleSendMessage}
-        disabled={!isConnected}
+        disabled={!canComposeMessages}
         connectionStatus={connectionStatus}
         compact={compact}
       />
