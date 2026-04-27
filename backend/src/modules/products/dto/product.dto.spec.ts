@@ -3,7 +3,6 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
   CreateProductDto,
-  CreateProductVariantDto,
   ProductResponseDto,
   ProductStatus,
   ProductVariantResponseDto,

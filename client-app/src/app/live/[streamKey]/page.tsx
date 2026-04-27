@@ -605,6 +605,11 @@ export default function LiveStreamPage() {
     }
   };
 
+  const handleCloseProductModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  }, []);
+
   // Profile completion guard: prevent rendering while redirecting
   // isMobileReady ensures useIsMobile has read window.innerWidth before
   // VideoPlayer renders — prevents Desktop→Mobile remount race condition.
@@ -637,13 +642,11 @@ export default function LiveStreamPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center px-6 animate-bounce-in">
-          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center shadow-hot-pink">
-            <MonitorOff className="w-14 h-14 text-white/40" aria-hidden="true" />
+          <div className="w-28 h-28 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center animate-pulse">
+            <MonitorOff className="w-14 h-14 text-white/30" aria-hidden="true" />
           </div>
-          <Heading2 className="text-white mb-3 text-2xl">
-            {error || '방송을 찾을 수 없습니다'}
-          </Heading2>
-          <p className="text-white/40 text-sm mb-8">스트림을 찾을 수 없거나 종료되었습니다</p>
+          <Heading2 className="text-white mb-3 text-2xl">방송을 찾을 수 없어요</Heading2>
+          <Body className="text-white/40 mb-8">{error || '잠시 후 다시 시도해주세요'}</Body>
           <button
             onClick={() => router.push('/')}
             className="px-10 py-3.5 text-white rounded-full font-bold transition-all active:scale-95 shadow-lg gradient-hot-pink"
@@ -674,11 +677,6 @@ export default function LiveStreamPage() {
       </div>
     );
   }
-
-  const handleCloseProductModal = useCallback(() => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
-  }, []);
 
   const handleProductClick = async (product: Product | FeaturedProduct) => {
     if ('streamKey' in product && 'colorOptions' in product) {
