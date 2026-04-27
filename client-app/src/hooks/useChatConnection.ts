@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
+import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
@@ -89,7 +89,7 @@ export function useChatConnection(
     };
 
     const handleAuthReconnect = async () => {
-      const refreshed = await refreshAuthToken();
+      const refreshed = await recoverSocketAuth();
       if (refreshed) {
         socket.connect();
       } else {

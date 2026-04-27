@@ -5,7 +5,7 @@ import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
 import { sendStreamMetrics, buildStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
-import { isAuthError, refreshAuthToken } from '@/lib/auth/token-manager';
+import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SOCKET_URL } from '@/lib/config/socket-url';
@@ -644,7 +644,7 @@ export default function VideoPlayer({
 
       if (reason === 'io server disconnect' && !authRefreshAttemptedRef.current) {
         authRefreshAttemptedRef.current = true;
-        void refreshAuthToken().then((refreshed) => {
+        void recoverSocketAuth().then((refreshed) => {
           if (refreshed) {
             socket.connect();
           }
@@ -660,7 +660,7 @@ export default function VideoPlayer({
       }
 
       authRefreshAttemptedRef.current = true;
-      void refreshAuthToken().then((refreshed) => {
+      void recoverSocketAuth().then((refreshed) => {
         if (refreshed) {
           socket.connect();
         }
