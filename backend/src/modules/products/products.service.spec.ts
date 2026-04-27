@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProductStatus } from './dto/product.dto';
+import { ProductStatus, VariantStatus } from './dto/product.dto';
 import {
   ProductNotFoundException,
   InsufficientStockException,
@@ -24,6 +24,15 @@ describe('ProductsService', () => {
       delete: jest.fn(),
       count: jest.fn(),
     },
+    productVariant: {
+      create: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn(),
+      updateMany: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+    },
     liveStream: {
       findUnique: jest.fn(),
     },
@@ -32,6 +41,7 @@ describe('ProductsService', () => {
       aggregate: jest.fn(),
       updateMany: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   const mockEventEmitter = {
@@ -58,7 +68,61 @@ describe('ProductsService', () => {
     _eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
     // Reset all mocks before each test
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockPrismaService.$transaction.mockImplementation(async (operations: unknown[]) =>
+      Promise.all(operations),
+    );
+    mockPrismaService.productVariant.findFirst.mockResolvedValue(null);
+    mockPrismaService.productVariant.findUnique.mockResolvedValue(null);
+    mockPrismaService.productVariant.create.mockImplementation(async ({ data }: any) => ({
+      ...buildVariant({ id: data?.id ?? `${data?.color ?? 'variant'}-${data?.size ?? 'default'}` }),
+      ...data,
+    }));
+    mockPrismaService.productVariant.update.mockImplementation(async ({ data, where }: any) => ({
+      ...buildVariant({ id: where?.id ?? 'variant-1' }),
+      ...data,
+    }));
+  });
+
+  const buildVariant = (overrides: Record<string, unknown> = {}) => ({
+    id: 'variant-1',
+    productId: 'product-1',
+    color: 'Black',
+    size: 'M',
+    label: 'Black / M',
+    price: { toString: () => '29000' },
+    stock: 3,
+    status: 'ACTIVE',
+    sortOrder: 0,
+    deletedAt: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  });
+
+  const buildProduct = (overrides: Record<string, unknown> = {}) => ({
+    id: 'product-1',
+    streamKey: 'stream-123',
+    name: 'Test Product',
+    price: { toString: () => '29000' },
+    quantity: 50,
+    colorOptions: ['Red'],
+    sizeOptions: ['M'],
+    shippingFee: { toString: () => '3000' },
+    freeShippingMessage: null,
+    timerEnabled: false,
+    timerDuration: 10,
+    imageUrl: null,
+    images: [],
+    sortOrder: 0,
+    isNew: false,
+    discountRate: null,
+    originalPrice: null,
+    expiresAt: null,
+    status: 'AVAILABLE',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
   });
 
   it('should be defined', () => {
@@ -81,24 +145,16 @@ describe('ProductsService', () => {
         status: 'ACTIVE',
       };
 
-      const mockProduct = {
+      const mockProduct = buildProduct({
         id: '123',
         streamKey: createDto.streamKey,
         name: createDto.name,
-        description: createDto.description,
-        price: { toNumber: () => 10000 },
+        price: { toString: () => '10000' },
         quantity: createDto.stock,
+        colorOptions: [],
+        sizeOptions: [],
         status: 'ACTIVE',
-        shippingFee: { toString: () => '3000' },
-        timerEnabled: false,
-        timerDuration: 10,
-        colorOptions: null,
-        sizeOptions: null,
-        freeShippingMessage: null,
-        metadata: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      });
 
       jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
       jest.spyOn(prisma.product, 'create').mockResolvedValue(mockProduct as any);
@@ -107,6 +163,94 @@ describe('ProductsService', () => {
 
       expect(result).toBeDefined();
       expect(result.name).toBe(createDto.name);
+    });
+
+    it('should save variants and derive summary fields from active variants', async () => {
+      const createDto = {
+        streamKey: 'test-stream-key',
+        name: 'Variant Product',
+        price: 99999,
+        stock: 999,
+        variants: [
+          { color: 'Black', size: 'M', label: 'Black / M', price: 31000, stock: 2, sortOrder: 1 },
+          { color: 'Black', size: 'L', label: 'Black / L', price: 29000, stock: 5, sortOrder: 2 },
+          {
+            color: 'White',
+            size: 'S',
+            label: 'White / S',
+            price: 27000,
+            stock: 7,
+            status: VariantStatus.SOLD_OUT,
+          },
+        ],
+      };
+      const mockStream = { id: 'stream-123', streamKey: 'test-stream-key', status: 'ACTIVE' };
+      const createdProduct = buildProduct({
+        id: 'product-variant',
+        streamKey: createDto.streamKey,
+        name: createDto.name,
+        price: { toString: () => '99999' },
+        quantity: 999,
+        colorOptions: [],
+        sizeOptions: [],
+      });
+      const persistedVariants = [
+        buildVariant({
+          id: 'variant-1',
+          productId: 'product-variant',
+          color: 'Black',
+          size: 'M',
+          label: 'Black / M',
+          price: { toString: () => '31000' },
+          stock: 2,
+          sortOrder: 1,
+        }),
+        buildVariant({
+          id: 'variant-2',
+          productId: 'product-variant',
+          color: 'Black',
+          size: 'L',
+          label: 'Black / L',
+          price: { toString: () => '29000' },
+          stock: 5,
+          sortOrder: 2,
+        }),
+        buildVariant({
+          id: 'variant-3',
+          productId: 'product-variant',
+          color: 'White',
+          size: 'S',
+          label: 'White / S',
+          price: { toString: () => '27000' },
+          stock: 7,
+          status: VariantStatus.SOLD_OUT,
+        }),
+      ];
+
+      jest.spyOn(prisma.liveStream, 'findUnique').mockResolvedValue(mockStream as any);
+      jest.spyOn(prisma.product, 'create').mockResolvedValue(createdProduct as any);
+      jest.spyOn(prisma.product, 'findUnique').mockResolvedValue({
+        ...createdProduct,
+        variants: persistedVariants,
+      } as any);
+      jest.spyOn(prisma.productVariant, 'findMany').mockResolvedValue(persistedVariants as any);
+      (jest.spyOn(prisma.productVariant, 'upsert') as any).mockImplementation(
+        async ({ create }: any) => ({
+          ...buildVariant(),
+          ...create,
+        }),
+      );
+
+      const result = await service.create(createDto);
+
+      expect(prisma.productVariant.create).toHaveBeenCalledTimes(3);
+      expect(result.variants).toHaveLength(3);
+      expect(result.price).toBe(29000);
+      expect(result.stock).toBe(7);
+      expect(result.minPrice).toBe(29000);
+      expect(result.maxPrice).toBe(31000);
+      expect(result.colorOptions).toEqual(['Black']);
+      expect(result.sizeOptions).toEqual(['M', 'L']);
     });
   });
 
@@ -277,23 +421,7 @@ describe('ProductsService', () => {
 
   describe('findById', () => {
     it('should return a product by id', async () => {
-      const mockProduct = {
-        id: 'product-1',
-        streamKey: 'stream-123',
-        name: 'Test Product',
-        price: { toString: () => '29000' },
-        quantity: 50,
-        colorOptions: ['Red'],
-        sizeOptions: ['M'],
-        shippingFee: { toString: () => '3000' },
-        freeShippingMessage: null,
-        timerEnabled: false,
-        timerDuration: 10,
-        imageUrl: null,
-        status: 'AVAILABLE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const mockProduct = buildProduct();
 
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
 
@@ -301,6 +429,47 @@ describe('ProductsService', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBe('product-1');
+    });
+
+    it('should return variants and summary fields when product has variants', async () => {
+      const mockProduct = buildProduct({
+        variants: [
+          buildVariant({
+            id: 'variant-1',
+            color: 'Black',
+            size: 'M',
+            price: { toString: () => '31000' },
+            stock: 2,
+          }),
+          buildVariant({
+            id: 'variant-2',
+            color: 'Ivory',
+            size: 'L',
+            price: { toString: () => '28000' },
+            stock: 4,
+          }),
+          buildVariant({
+            id: 'variant-3',
+            color: 'Black',
+            size: 'S',
+            price: { toString: () => '26000' },
+            stock: 1,
+            status: 'SOLD_OUT',
+          }),
+        ],
+      });
+
+      jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
+
+      const result = await service.findById('product-1');
+
+      expect(result.variants).toHaveLength(3);
+      expect(result.price).toBe(28000);
+      expect(result.stock).toBe(6);
+      expect(result.minPrice).toBe(28000);
+      expect(result.maxPrice).toBe(31000);
+      expect(result.colorOptions).toEqual(['Black', 'Ivory']);
+      expect(result.sizeOptions).toEqual(['M', 'L']);
     });
 
     it('should throw EntityNotFoundException when product does not exist', async () => {
@@ -311,23 +480,7 @@ describe('ProductsService', () => {
   });
 
   describe('update', () => {
-    const mockProduct = {
-      id: 'product-1',
-      streamKey: 'stream-123',
-      name: 'Test Product',
-      price: { toString: () => '29000' },
-      quantity: 50,
-      colorOptions: ['Red'],
-      sizeOptions: ['M'],
-      shippingFee: { toString: () => '3000' },
-      freeShippingMessage: null,
-      timerEnabled: false,
-      timerDuration: 10,
-      imageUrl: null,
-      status: 'AVAILABLE',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const mockProduct = buildProduct();
 
     it('should update a product successfully', async () => {
       jest.spyOn(prisma.product, 'findUnique').mockResolvedValue(mockProduct as any);
@@ -340,6 +493,93 @@ describe('ProductsService', () => {
 
       expect(result.name).toBe('Updated Product');
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('product:updated', expect.any(Object));
+    });
+
+    it('should replace variants through upsert and soft-deactivate omitted variants', async () => {
+      const existingProduct = buildProduct({
+        variants: [
+          buildVariant({ id: 'variant-1', productId: 'product-1', color: 'Black', size: 'M' }),
+          buildVariant({ id: 'variant-2', productId: 'product-1', color: 'White', size: 'L' }),
+        ],
+      });
+      const updatedProduct = buildProduct({ id: 'product-1', variants: undefined });
+      const refreshedVariants = [
+        buildVariant({
+          id: 'variant-1',
+          productId: 'product-1',
+          color: 'Black',
+          size: 'M',
+          price: { toString: () => '33000' },
+          stock: 4,
+          sortOrder: 0,
+        }),
+        buildVariant({
+          id: 'variant-3',
+          productId: 'product-1',
+          color: 'Navy',
+          size: 'S',
+          price: { toString: () => '28000' },
+          stock: 6,
+          sortOrder: 1,
+        }),
+        buildVariant({
+          id: 'variant-2',
+          productId: 'product-1',
+          color: 'White',
+          size: 'L',
+          price: { toString: () => '30000' },
+          stock: 0,
+          status: VariantStatus.HIDDEN,
+          deletedAt: new Date('2026-01-02T00:00:00.000Z'),
+        }),
+      ];
+
+      jest
+        .spyOn(prisma.product, 'findUnique')
+        .mockResolvedValueOnce(existingProduct as any)
+        .mockResolvedValueOnce({
+          ...updatedProduct,
+          variants: refreshedVariants,
+        } as any);
+      jest.spyOn(prisma.product, 'update').mockResolvedValue(updatedProduct as any);
+      jest
+        .spyOn(prisma.productVariant, 'findUnique')
+        .mockResolvedValueOnce(buildVariant({ id: 'variant-1' }) as any);
+      jest.spyOn(prisma.productVariant, 'findFirst').mockResolvedValueOnce(null as any);
+      (jest.spyOn(prisma.productVariant, 'upsert') as any).mockImplementation(
+        async ({ create }: any) => ({
+          ...buildVariant(),
+          ...create,
+        }),
+      );
+      jest.spyOn(prisma.productVariant, 'updateMany').mockResolvedValue({ count: 1 } as any);
+      jest.spyOn(prisma.productVariant, 'findMany').mockResolvedValue(refreshedVariants as any);
+
+      const result = await service.update('product-1', {
+        variants: [
+          {
+            id: 'variant-1',
+            color: 'Black',
+            size: 'M',
+            label: 'Black / M',
+            price: 33000,
+            stock: 4,
+          },
+          { color: 'Navy', size: 'S', label: 'Navy / S', price: 28000, stock: 6, sortOrder: 1 },
+        ],
+      });
+
+      expect(prisma.productVariant.update).toHaveBeenCalledTimes(1);
+      expect(prisma.productVariant.create).toHaveBeenCalledTimes(1);
+      expect(prisma.productVariant.updateMany).toHaveBeenCalledWith({
+        where: { productId: 'product-1', id: { notIn: ['variant-1', 'Navy-S'] } },
+        data: { status: 'HIDDEN', deletedAt: expect.any(Date) },
+      });
+      expect(result.variants).toHaveLength(3);
+      expect(result.price).toBe(28000);
+      expect(result.stock).toBe(10);
+      expect(result.colorOptions).toEqual(['Black', 'Navy']);
+      expect(result.sizeOptions).toEqual(['M', 'S']);
     });
 
     it('should throw EntityNotFoundException when product does not exist', async () => {
@@ -514,31 +754,54 @@ describe('ProductsService', () => {
 
   describe('findAll', () => {
     it('should return all products', async () => {
-      const mockProducts = [
-        {
-          id: 'product-1',
-          streamKey: 'stream-123',
-          name: 'Test Product',
-          price: { toString: () => '29000' },
-          quantity: 50,
-          colorOptions: [],
-          sizeOptions: [],
-          shippingFee: { toString: () => '3000' },
-          freeShippingMessage: null,
-          timerEnabled: false,
-          timerDuration: 10,
-          imageUrl: null,
-          status: 'AVAILABLE',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+      const mockProducts = [buildProduct()];
 
       jest.spyOn(prisma.product, 'findMany').mockResolvedValue(mockProducts as any);
 
       const result = await service.findAll();
 
       expect(result).toHaveLength(1);
+    });
+
+    it('should derive summaries for product lists when variants are present', async () => {
+      const mockProducts = [
+        buildProduct({
+          variants: [
+            buildVariant({
+              id: 'variant-1',
+              color: 'Black',
+              size: 'M',
+              price: { toString: () => '31000' },
+              stock: 2,
+            }),
+            buildVariant({
+              id: 'variant-2',
+              color: 'Black',
+              size: 'L',
+              price: { toString: () => '29000' },
+              stock: 5,
+            }),
+            buildVariant({
+              id: 'variant-3',
+              color: 'White',
+              size: 'S',
+              price: { toString: () => '27000' },
+              stock: 9,
+              status: 'SOLD_OUT',
+            }),
+          ],
+        }),
+      ];
+
+      jest.spyOn(prisma.product, 'findMany').mockResolvedValue(mockProducts as any);
+
+      const [result] = await service.findAll();
+
+      expect(result.price).toBe(29000);
+      expect(result.stock).toBe(7);
+      expect(result.colorOptions).toEqual(['Black']);
+      expect(result.sizeOptions).toEqual(['M', 'L']);
+      expect(result.variants).toHaveLength(3);
     });
 
     it('should filter by status when provided', async () => {
