@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
 
@@ -40,6 +41,7 @@ export function useChatConnection(
   const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
+  const authRecoveryAttemptedRef = useRef(false);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -97,6 +99,23 @@ export function useChatConnection(
       socket.emit('chat:join-room', { liveId: streamKey });
     };
 
+    const tryRecoverAuthenticatedSocket = async () => {
+      if (authRecoveryAttemptedRef.current) {
+        return;
+      }
+
+      authRecoveryAttemptedRef.current = true;
+      const recovered = await recoverSocketAuth();
+      if (!recovered) {
+        return;
+      }
+
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      socket.connect();
+    };
+
     // Connection events
     socket.on('connect', () => {
       // Don't set connected yet — wait for server auth confirmation
@@ -105,28 +124,42 @@ export function useChatConnection(
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', (payload?: { data?: { authenticated?: boolean } }) => {
+    socket.on('connection:success', async (payload?: { data?: { authenticated?: boolean } }) => {
       const authenticated = !!payload?.data?.authenticated;
       setIsConnected(true);
       setIsSocketAuthenticated(authenticated);
       setConnectionStatus('connected');
-      flushPendingMessages();
+
+      if (authenticated) {
+        authRecoveryAttemptedRef.current = false;
+        flushPendingMessages();
+        return;
+      }
+
+      await tryRecoverAuthenticatedSocket();
     });
 
     // Server sends auth error details before disconnecting
-    socket.on('error', (err: { errorCode?: string; message?: string }) => {
+    socket.on('error', async (err: { errorCode?: string; message?: string }) => {
       console.error('[Chat WebSocket] server error:', err.errorCode, err.message);
+      if (isAuthError((err as unknown as Error) ?? new Error(err.message ?? ''))) {
+        await tryRecoverAuthenticatedSocket();
+      }
     });
 
-    socket.on('disconnect', async (reason) => {
+    socket.on('disconnect', async () => {
       setIsConnected(false);
       setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
     });
 
-    socket.on('connect_error', async () => {
+    socket.on('connect_error', async (error) => {
       setIsConnected(false);
       setIsSocketAuthenticated(false);
+
+      if (isAuthError(error as Error)) {
+        await tryRecoverAuthenticatedSocket();
+      }
     });
 
     // Track user count locally via join/leave events
