@@ -48,6 +48,7 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -117,7 +118,7 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { isAuthenticated, isLoading: isAuthLoading, isSessionVerified, isVerifying } = useAuth();
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -173,13 +174,16 @@ export default function LiveStreamPage() {
   }, [snapshot, streamKey]);
 
   // Shared chat connection — used by both mobile and desktop chat UI
+  const liveChatEnabled = !isAuthLoading && !isVerifying && isSessionVerified && isAuthenticated;
+
   const {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
+    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '');
+  } = useChatConnection(streamKey ?? '', { enabled: liveChatEnabled });
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -1119,7 +1123,7 @@ export default function LiveStreamPage() {
                 {/* Chat input pill */}
                 <div
                   className={`flex-1 rounded-full px-3.5 xs:px-4 py-2.5 xs:py-3 border backdrop-blur-md ${
-                    !isConnected ? 'bg-black/20 border-white/5' : 'bg-black/30 border-white/10'
+                    !canComposeMessages ? 'bg-black/20 border-white/5' : 'bg-black/30 border-white/10'
                   }`}
                 >
                   <input
@@ -1132,8 +1136,8 @@ export default function LiveStreamPage() {
                         setMobileMessage('');
                       }
                     }}
-                    placeholder={!isConnected ? '채팅 연결 중...' : '메시지를 입력하세요...'}
-                    disabled={layout.bottomInput.disabled || !isConnected}
+                    placeholder={!canComposeMessages ? '채팅 연결 중...' : '메시지를 입력하세요...'}
+                    disabled={layout.bottomInput.disabled || !canComposeMessages}
                     className="w-full bg-transparent text-white text-[13px] xs:text-sm placeholder:text-white/50 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -1287,7 +1291,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!isConnected}
+                disabled={!canComposeMessages}
                 compact={false}
               />
             </div>
