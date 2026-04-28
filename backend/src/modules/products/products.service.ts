@@ -17,8 +17,14 @@ import {
 import { LogErrors } from '../../common/decorators/log-errors.decorator';
 import { findOrThrow } from '../../common/prisma/find-or-throw.util';
 import { Decimal } from '@prisma/client/runtime/library';
-import { ProductStatus as PrismaProductStatus, StreamStatus, Prisma } from '@prisma/client';
-import { mapProductToDto } from './product.mapper';
+import {
+  Prisma,
+  ProductStatus as PrismaProductStatus,
+  ProductVariant,
+  StreamStatus,
+  VariantStatus,
+} from '@prisma/client';
+import { mapProductToDto, ProductWithVariants } from './product.mapper';
 
 // Type for product update data
 interface ProductUpdateData {
@@ -39,6 +45,25 @@ interface ProductUpdateData {
   excludeFromStore?: boolean;
 }
 
+type VariantInput = NonNullable<CreateProductDto['variants']>[number];
+
+function buildVariantIdentityKey(variant: Pick<VariantInput, 'color' | 'size'>) {
+  return `${variant.color?.trim() ?? ''}::${variant.size?.trim() ?? ''}`;
+}
+
+type ProductWithLiveStream = ProductWithVariants & {
+  liveStream?: {
+    title: string;
+    endedAt: Date | null;
+  } | null;
+};
+
+const productWithVariantsInclude = {
+  variants: {
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+  },
+} satisfies Prisma.ProductInclude;
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -47,6 +72,87 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  private async loadProductWithVariants(id: string): Promise<ProductWithVariants> {
+    return (await findOrThrow(
+      this.prisma.product.findUnique({
+        where: { id },
+        include: productWithVariantsInclude,
+      }),
+      'Product',
+      id,
+    )) as ProductWithVariants;
+  }
+
+  private buildVariantMutationData(productId: string, variant: VariantInput, sortOrder: number) {
+    return {
+      productId,
+      color: variant.color ?? null,
+      size: variant.size ?? null,
+      label: variant.label ?? null,
+      price: new Decimal(variant.price),
+      stock: variant.stock,
+      status: variant.status ?? VariantStatus.ACTIVE,
+      sortOrder: variant.sortOrder ?? sortOrder,
+      deletedAt: null,
+    };
+  }
+
+  private async syncVariants(
+    productId: string,
+    variants: VariantInput[],
+  ): Promise<ProductVariant[]> {
+    const seenKeys = new Set<string>();
+    for (const variant of variants) {
+      const identityKey = buildVariantIdentityKey(variant);
+      if (seenKeys.has(identityKey)) {
+        throw new BadRequestException('Duplicate color/size variant combination is not allowed');
+      }
+      seenKeys.add(identityKey);
+    }
+
+    const persistedVariants: ProductVariant[] = [];
+
+    for (const [index, variant] of variants.entries()) {
+      const variantData = this.buildVariantMutationData(productId, variant, index);
+
+      const existingVariant = variant.id
+        ? await this.prisma.productVariant.findUnique({ where: { id: variant.id } })
+        : await this.prisma.productVariant.findFirst({
+            where: {
+              productId,
+              color: variant.color ?? null,
+              size: variant.size ?? null,
+            },
+          });
+
+      const persistedVariant = existingVariant
+        ? await this.prisma.productVariant.update({
+            where: { id: existingVariant.id },
+            data: variantData,
+          })
+        : await this.prisma.productVariant.create({
+            data: variantData,
+          });
+
+      persistedVariants.push(persistedVariant);
+    }
+
+    const activeVariantIds = persistedVariants.map((variant) => variant.id);
+
+    await this.prisma.productVariant.updateMany({
+      where: {
+        productId,
+        ...(activeVariantIds.length > 0 ? { id: { notIn: activeVariantIds } } : {}),
+      },
+      data: {
+        status: VariantStatus.HIDDEN,
+        deletedAt: new Date(),
+      },
+    });
+
+    return persistedVariants;
+  }
 
   /**
    * Create a new product
@@ -71,7 +177,7 @@ export class ProductsService {
       this.logger.log(`LiveStream found: id=${stream.id}, status=${stream.status}`);
     }
 
-    const product = await this.prisma.product.create({
+    const createdProduct = await this.prisma.product.create({
       data: {
         streamKey: streamKey ?? null,
         name: createDto.name,
@@ -94,11 +200,19 @@ export class ProductsService {
           createDto.originalPrice !== null && createDto.originalPrice !== undefined
             ? new Decimal(createDto.originalPrice)
             : null,
+        status:
+          (createDto.status as PrismaProductStatus | undefined) ?? PrismaProductStatus.AVAILABLE,
         expiresAt: createDto.expiresAt ? new Date(createDto.expiresAt) : null,
-        status: (createDto.status as PrismaProductStatus | undefined) ?? PrismaProductStatus.AVAILABLE,
         excludeFromStore: createDto.excludeFromStore ?? false,
       },
     });
+
+    let product: ProductWithVariants = createdProduct as ProductWithVariants;
+
+    if (createDto.variants?.length) {
+      await this.syncVariants(createdProduct.id, createDto.variants);
+      product = await this.loadProductWithVariants(createdProduct.id);
+    }
 
     this.logger.log(`Product created: ${product.id} for stream ${product.streamKey}`);
 
@@ -130,12 +244,13 @@ export class ProductsService {
         ...(options?.includeHidden ? {} : { excludeFromStore: false }),
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
+      include: productWithVariantsInclude,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       take: options?.take ?? 100,
       skip: options?.skip ?? 0,
     });
 
-    return products.map((product) => mapProductToDto(product));
+    return products.map((product: ProductWithVariants) => mapProductToDto(product));
   }
 
   /**
@@ -150,30 +265,36 @@ export class ProductsService {
         excludeFromStore: false,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
+      include: productWithVariantsInclude,
       orderBy: {
         createdAt: 'desc',
       },
       take: limit,
     });
 
-    return products.map((p) => mapProductToDto(p));
+    return products.map((product: ProductWithVariants) => mapProductToDto(product));
   }
 
   /**
    * Get all products (legacy method)
    */
   @LogErrors('get all products')
-  async findAll(status?: ProductStatus, includeExpired = false, includeHidden = false): Promise<ProductResponseDto[]> {
+  async findAll(
+    status?: ProductStatus,
+    includeExpired = false,
+    includeHidden = false,
+  ): Promise<ProductResponseDto[]> {
     const products = await this.prisma.product.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(includeHidden ? {} : { excludeFromStore: false }),
         ...(includeExpired ? {} : { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }),
       },
+      include: productWithVariantsInclude,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
-    return products.map((p) => mapProductToDto(p));
+    return products.map((product: ProductWithVariants) => mapProductToDto(product));
   }
 
   /**
@@ -182,11 +303,7 @@ export class ProductsService {
    */
   @LogErrors('get product by id')
   async findById(id: string): Promise<ProductResponseDto> {
-    const product = await findOrThrow(
-      this.prisma.product.findUnique({ where: { id } }),
-      'Product',
-      id,
-    );
+    const product = await this.loadProductWithVariants(id);
     return mapProductToDto(product);
   }
 
@@ -197,7 +314,7 @@ export class ProductsService {
   @LogErrors('update product')
   async update(id: string, updateDto: UpdateProductDto): Promise<ProductResponseDto> {
     // Check if product exists
-    await findOrThrow(this.prisma.product.findUnique({ where: { id } }), 'Product', id);
+    await this.loadProductWithVariants(id);
 
     // Check if trying to reduce quantity below items in carts
     if (updateDto.stock !== undefined && updateDto.stock < 0) {
@@ -262,10 +379,17 @@ export class ProductsService {
       updateData.expiresAt = updateDto.expiresAt ? new Date(updateDto.expiresAt) : null;
     }
 
-    const product = await this.prisma.product.update({
+    const updatedProduct = await this.prisma.product.update({
       where: { id },
       data: updateData,
     });
+
+    let product: ProductWithVariants = updatedProduct as ProductWithVariants;
+
+    if (updateDto.variants) {
+      await this.syncVariants(id, updateDto.variants);
+      product = await this.loadProductWithVariants(id);
+    }
 
     this.logger.log(`Product updated: ${product.id}`);
 
@@ -308,11 +432,11 @@ export class ProductsService {
    */
   @LogErrors('delete product')
   async delete(id: string): Promise<void> {
-    const product = await findOrThrow(
+    const product = (await findOrThrow(
       this.prisma.product.findUnique({ where: { id } }),
       'Product',
       id,
-    );
+    )) as ProductWithVariants;
 
     // Clear active carts for this product before deleting
     const expiredCarts = await this.prisma.cart.updateMany({
@@ -372,11 +496,11 @@ export class ProductsService {
    */
   @LogErrors('update stock')
   async updateStock(id: string, updateStockDto: UpdateStockDto): Promise<ProductResponseDto> {
-    const product = await findOrThrow(
+    const product = (await findOrThrow(
       this.prisma.product.findUnique({ where: { id } }),
       'Product',
       id,
-    );
+    )) as ProductWithVariants;
 
     const newStock = product.quantity + updateStockDto.quantity;
 
@@ -411,11 +535,11 @@ export class ProductsService {
    */
   @LogErrors('duplicate product')
   async duplicate(id: string): Promise<ProductResponseDto> {
-    const source = await findOrThrow(
+    const source = (await findOrThrow(
       this.prisma.product.findUnique({ where: { id } }),
       'Product',
       id,
-    );
+    )) as ProductWithVariants;
 
     const product = await this.prisma.product.create({
       data: {
@@ -484,6 +608,7 @@ export class ProductsService {
 
     const updatedProducts = await this.prisma.product.findMany({
       where: { id: { in: uniqueIds } },
+      include: productWithVariantsInclude,
     });
 
     // Emit events for each product
@@ -558,9 +683,8 @@ export class ProductsService {
   }> {
     const skip = (page - 1) * limit;
 
-    const whereCondition = {
-      status: 'AVAILABLE' as const,
-      excludeFromStore: false,
+    const whereCondition: Prisma.ProductWhereInput = {
+      status: 'AVAILABLE',
       AND: [
         { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
         {
@@ -581,16 +705,17 @@ export class ProductsService {
                   contains: search.trim(),
                   mode: Prisma.QueryMode.insensitive,
                 },
-              },
+              } satisfies Prisma.ProductWhereInput,
             ]
           : []),
       ],
     };
 
     // Get products from ended (OFFLINE) live streams OR products with no streamKey (null or empty string)
-    const products = await this.prisma.product.findMany({
+    const products = (await this.prisma.product.findMany({
       where: whereCondition,
       include: {
+        ...productWithVariantsInclude,
         liveStream: {
           select: {
             title: true,
@@ -604,7 +729,7 @@ export class ProductsService {
       ],
       skip,
       take: limit,
-    });
+    })) as ProductWithLiveStream[];
 
     const total = await this.prisma.product.count({
       where: whereCondition,
@@ -615,7 +740,7 @@ export class ProductsService {
     );
 
     return {
-      products: products.map((p) => mapProductToDto(p)),
+      products: products.map((product: ProductWithVariants) => mapProductToDto(product)),
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -637,6 +762,7 @@ export class ProductsService {
       include: {
         products: {
           where: { status: 'AVAILABLE', excludeFromStore: false },
+          include: productWithVariantsInclude,
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           take: 8,
         },
@@ -648,7 +774,7 @@ export class ProductsService {
     }
 
     return {
-      products: activeLive.products.map((p) => mapProductToDto(p)),
+      products: activeLive.products.map((product: ProductWithVariants) => mapProductToDto(product)),
       streamTitle: activeLive.title,
       streamKey: activeLive.streamKey,
     };
@@ -687,17 +813,20 @@ export class ProductsService {
         LIMIT ${limit} OFFSET ${skip}
       `;
 
-      const productIds = productsWithCounts.map((p) => p.id);
+      const productIds = productsWithCounts.map((productWithCount) => productWithCount.id);
 
       // Step 2: Get full product details
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
+        include: productWithVariantsInclude,
       });
 
       // Step 3: Merge counts back and maintain sort order
-      const productsWithSoldCount = productIds.map((id) => {
-        const product = products.find((p) => p.id === id)!;
-        const countData = productsWithCounts.find((p) => p.id === id)!;
+      const productsWithSoldCount = productIds.map((productId) => {
+        const product = products.find(
+          (candidate: ProductWithVariants) => candidate.id === productId,
+        )!;
+        const countData = productsWithCounts.find((candidate) => candidate.id === productId)!;
         return {
           product,
           soldCount: Number(countData.sold_count),
@@ -714,10 +843,12 @@ export class ProductsService {
       });
 
       return {
-        data: productsWithSoldCount.map(({ product, soldCount }) => ({
-          ...mapProductToDto(product),
-          soldCount,
-        })),
+        data: productsWithSoldCount.map(
+          ({ product, soldCount }: { product: ProductWithVariants; soldCount: number }) => ({
+            ...mapProductToDto(product),
+            soldCount,
+          }),
+        ),
         meta: {
           total,
           page,
