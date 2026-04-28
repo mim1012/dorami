@@ -124,8 +124,10 @@ export function useChatConnection(
       setIsSocketAuthenticated(authenticated);
       setConnectionStatus('connected');
 
-      const { isAuthenticated } = useAuthStore.getState();
-      if (isAuthenticated && !authenticated && !authRefreshAttemptedRef.current) {
+      const { isAuthenticated, authStatus } = useAuthStore.getState();
+      const shouldAttemptRecovery =
+        !authenticated && (isAuthenticated || authStatus === 'verifying');
+      if (shouldAttemptRecovery && !authRefreshAttemptedRef.current) {
         authRefreshAttemptedRef.current = true;
         await handleAuthReconnect();
         return;
