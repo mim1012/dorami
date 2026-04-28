@@ -1,7 +1,4 @@
-import {
-  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
-  type AdminNotificationTemplateType,
-} from '@live-commerce/shared-types';
+import type { NotificationEventType } from '@live-commerce/shared-types';
 
 export interface NotificationSourceItem {
   title: string;
@@ -27,7 +24,7 @@ export interface NotificationPresentation {
   sourceGroups: NotificationSourceGroup[];
 }
 
-const PRESENTATIONS: Record<AdminNotificationTemplateType, NotificationPresentation> = {
+const PRESENTATIONS: Record<NotificationEventType, NotificationPresentation> = {
   LIVE_START: {
     sendTiming: '라이브 방송을 시작하는 순간 고객에게 자동 발송됩니다.',
     valueIntro:
@@ -100,23 +97,56 @@ const PRESENTATIONS: Record<AdminNotificationTemplateType, NotificationPresentat
       },
     ],
   },
+  PAYMENT_REMINDER: {
+    sendTiming: '입금 대기 주문이 있을 때 고객에게 알림톡으로 자동 발송됩니다.',
+    valueIntro:
+      '여기서는 템플릿 코드만 관리하면 됩니다. 주문 금액과 결제 안내는 자동으로 채워지며, 새 템플릿은 #{결제수단} · #{송금계정} · #{수취인명}을 쓰면 됩니다. Zelle/Venmo만 설정하면 그 값만 들어가고 은행명은 끼어들지 않습니다.',
+    primaryAction: {
+      label: '주문 관리로 이동',
+      path: '/admin/orders',
+    },
+    secondaryAction: {
+      label: '결제 설정으로 이동',
+      path: '/admin/settings',
+    },
+    sourceGroups: [
+      {
+        heading: '주문에서 자동으로 가져오는 항목',
+        items: [
+          {
+            title: '주문번호 · 금액',
+            description: '입금 대기 상태의 주문 데이터에서 자동으로 가져옵니다.',
+          },
+        ],
+      },
+      {
+        heading: '관리자 설정에서 가져오는 항목',
+        items: [
+          {
+            title: '결제 수단 안내 (#{결제수단} · #{송금계정} · #{수취인명})',
+            description:
+              'Zelle/Venmo만 설정하면 그 값만 자동으로 사용합니다. 기존 심사본이 있다면 #{은행명} · #{계좌번호} · #{예금주}도 계속 호환됩니다.',
+          },
+        ],
+      },
+    ],
+  },
   CART_EXPIRING: {
     sendTiming:
-      '방송이 종료된 뒤 설정한 N시간이 지나면, 그 방송 상품을 장바구니에 담아 둔 고객에게 친구톡으로 자동 발송됩니다.',
+      '장바구니에 담아두고도 일정 시간 동안 주문하지 않은 고객에게 친구톡으로 자동 발송됩니다.',
     valueIntro:
-      '여기서는 템플릿 코드만 관리하면 됩니다. 고객별 같은 방송 장바구니 상품을 묶어서 첫 상품명과 추가 상품 건수가 자동으로 채워지며, 지연 시간은 관리자 설정의 방송 종료 후 기준을 따릅니다.',
+      '여기서는 템플릿 코드만 관리하면 됩니다. 고객 정보와 상품 정보는 장바구니 데이터에서 자동으로 채워지며, 발송 시점은 관리자 설정의 장기 미구매 시간 기준을 따릅니다.',
     primaryAction: {
       label: '상품 관리로 이동',
       path: '/admin/products',
     },
     sourceGroups: [
       {
-        heading: '같은 방송 장바구니에서 자동으로 가져오는 항목',
+        heading: '장바구니에서 자동으로 가져오는 항목',
         items: [
           {
-            title: '고객명 · 첫 상품명 · 추가 상품 건수',
-            description:
-              '같은 streamKey에 연결된 활성 장바구니 상품을 묶어 #{상품명} 외 #{수량}건 형태로 사용합니다.',
+            title: '고객명 · 상품명 · 수량',
+            description: '고객이 장바구니에 담아둔 실제 데이터를 그대로 사용합니다.',
           },
         ],
       },
@@ -124,14 +154,6 @@ const PRESENTATIONS: Record<AdminNotificationTemplateType, NotificationPresentat
   },
 };
 
-function isAdminNotificationTemplateType(type: string): type is AdminNotificationTemplateType {
-  return ADMIN_NOTIFICATION_TEMPLATE_TYPES.includes(type as AdminNotificationTemplateType);
-}
-
-export function getNotificationPresentation(type: string): NotificationPresentation {
-  if (!isAdminNotificationTemplateType(type)) {
-    throw new Error(`Unsupported notification presentation type: ${type}`);
-  }
-
+export function getNotificationPresentation(type: NotificationEventType): NotificationPresentation {
   return PRESENTATIONS[type];
 }

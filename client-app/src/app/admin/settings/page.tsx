@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -17,18 +16,22 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
+  MessageSquare,
+  X,
 } from 'lucide-react';
 import { NoticeManagement } from '@/components/admin/settings/NoticeManagement';
 import { NoticeListManagement } from '@/components/admin/settings/NoticeListManagement';
 import { PointsConfiguration } from '@/components/admin/settings/PointsConfiguration';
 import { getUserMessage } from '@/lib/errors/error-messages';
+import { NOTIFICATION_VARIABLES, type NotificationEventType } from '@live-commerce/shared-types';
+import { getNotificationStatusText } from './notifications/view-model';
 import {
-  ADMIN_NOTIFICATION_TEMPLATE_TYPES,
-  NOTIFICATION_VARIABLES,
-  type AdminNotificationTemplateType,
-  type NotificationEventType,
-} from '@live-commerce/shared-types';
-import { getNotificationPresentation } from './notifications/presentation';
+  TEST_ENDPOINTS,
+  buildTestMessage,
+  getVisibleTemplates,
+  isManagedNotificationType,
+  type TestDeliveryResponse,
+} from './notifications/shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,18 +97,6 @@ const SECTION_NAV: { key: SectionKey; label: string; icon: typeof DollarSign }[]
   { key: 'noticeList', label: '공지목록', icon: SettingsIcon },
   { key: 'footer', label: '푸터 설정', icon: SettingsIcon },
 ];
-
-const EVENT_TYPES = [...ADMIN_NOTIFICATION_TEMPLATE_TYPES];
-
-function isManagedNotificationType(type: string): type is AdminNotificationTemplateType {
-  return EVENT_TYPES.includes(type as AdminNotificationTemplateType);
-}
-
-function getVisibleTemplates(templates: NotificationTemplate[]): NotificationTemplate[] {
-  return EVENT_TYPES.map((type) => templates.find((template) => template.type === type)).filter(
-    Boolean,
-  ) as NotificationTemplate[];
-}
 
 function SectionCard({
   icon: Icon,
@@ -189,7 +180,6 @@ function QuickNav({
 }
 
 export default function AdminSettingsPage() {
-  const router = useRouter();
   const [settings, setSettings] = useState<SystemSettings>({
     defaultCartTimerMinutes: 60,
     abandonedCartReminderHours: 24,
@@ -218,8 +208,20 @@ export default function AdminSettingsPage() {
   const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([]);
   const [notificationSavingId, setNotificationSavingId] = useState<string | null>(null);
   const [notificationFeedback, setNotificationFeedback] = useState<string | null>(null);
+  const [activeNotificationType, setActiveNotificationType] =
+    useState<NotificationEventType>('ORDER_CONFIRMATION');
+  const [isSendingNotificationTest, setIsSendingNotificationTest] = useState(false);
+  const [notificationTestPhone, setNotificationTestPhone] = useState('');
+  const [notificationTestTarget, setNotificationTestTarget] =
+    useState<NotificationEventType | null>(null);
+  const [notificationTestMessage, setNotificationTestMessage] = useState<string | null>(null);
+  const [notificationTestTone, setNotificationTestTone] = useState<'success' | 'error'>('success');
 
   const visibleNotificationTemplates = getVisibleTemplates(notificationTemplates);
+  const activeNotificationTemplate =
+    visibleNotificationTemplates.find((template) => template.type === activeNotificationType) ??
+    visibleNotificationTemplates[0] ??
+    null;
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -240,9 +242,13 @@ export default function AdminSettingsPage() {
           venmoEmail: settingsResponse.data.venmoEmail ?? '',
           venmoRecipientName: settingsResponse.data.venmoRecipientName ?? '',
         });
-        setNotificationTemplates(
+        const filteredTemplates = getVisibleTemplates(
           templatesResponse.data.filter((template) => isManagedNotificationType(template.type)),
         );
+        setNotificationTemplates(filteredTemplates);
+        if (filteredTemplates.length > 0) {
+          setActiveNotificationType(filteredTemplates[0].type);
+        }
       } catch (err: unknown) {
         console.error('Failed to load settings:', err);
         setError(getUserMessage(err));
@@ -292,6 +298,71 @@ export default function AdminSettingsPage() {
       setError(getUserMessage(err));
     } finally {
       setNotificationSavingId(null);
+    }
+  };
+
+  const handleNotificationTemplateCodeChange = (templateId: string, value: string) => {
+    setNotificationTemplates((prev) =>
+      prev.map((template) =>
+        template.id === templateId ? { ...template, kakaoTemplateCode: value } : template,
+      ),
+    );
+  };
+
+  const handleNotificationTemplateSave = async (template: NotificationTemplate) => {
+    setNotificationSavingId(template.id);
+    setNotificationFeedback(null);
+    setError(null);
+
+    try {
+      await apiClient.patch(`/admin/notification-templates/${template.id}`, {
+        kakaoTemplateCode: template.kakaoTemplateCode,
+        enabled: template.enabled,
+      });
+      setNotificationFeedback(`${NOTIFICATION_VARIABLES[template.type].label} 템플릿 코드를 저장했습니다.`);
+    } catch (err: unknown) {
+      setError(getUserMessage(err));
+    } finally {
+      setNotificationSavingId(null);
+    }
+  };
+
+  const openNotificationTestModal = (type: NotificationEventType) => {
+    setNotificationTestTarget(type);
+    setNotificationTestPhone('');
+    setNotificationTestMessage(null);
+    setNotificationTestTone('success');
+  };
+
+  const closeNotificationTestModal = () => {
+    setNotificationTestTarget(null);
+    setNotificationTestPhone('');
+    setNotificationTestMessage(null);
+    setNotificationTestTone('success');
+  };
+
+  const handleSendNotificationTest = async () => {
+    if (!notificationTestTarget) {
+      return;
+    }
+
+    setIsSendingNotificationTest(true);
+    setNotificationTestMessage(null);
+
+    try {
+      const response = await apiClient.post<TestDeliveryResponse>(TEST_ENDPOINTS[notificationTestTarget], {
+        phone: notificationTestPhone.trim(),
+      });
+      setNotificationTestMessage(buildTestMessage(response.data.result));
+      setNotificationTestTone(response.data.result.totals.failed > 0 ? 'error' : 'success');
+      if (response.data.result.totals.failed === 0) {
+        setTimeout(closeNotificationTestModal, 1800);
+      }
+    } catch (err: unknown) {
+      setNotificationTestMessage(getUserMessage(err));
+      setNotificationTestTone('error');
+    } finally {
+      setIsSendingNotificationTest(false);
     }
   };
 
@@ -452,9 +523,9 @@ export default function AdminSettingsPage() {
             <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 리마인드 설정</h4>
             <div className="space-y-4 mb-4">
               <Input
-                label="방송 종료 후 장바구니 리마인드 지연 시간 (시간)"
+                label="장기 미구매 장바구니 알림 기준 (시간)"
                 type="number"
-                min={0}
+                min={1}
                 max={168}
                 value={settings.abandonedCartReminderHours}
                 onChange={(e) =>
@@ -462,15 +533,15 @@ export default function AdminSettingsPage() {
                     ...settings,
                     abandonedCartReminderHours: Math.min(
                       168,
-                      Math.max(0, parseInt(e.target.value || '0', 10) || 0),
+                      Math.max(1, parseInt(e.target.value || '24', 10) || 24),
                     ),
                   })
                 }
                 fullWidth
               />
               <p className="text-xs text-gray-500 mt-1">
-                방송이 끝난 뒤 이 시간이 지나면 해당 방송 상품을 장바구니에 담아 둔 고객에게 1회
-                친구톡을 보냅니다. 0이면 방송 종료 직후 스케줄러가 바로 처리합니다.
+                타이머 만료 기준이 아니라 장바구니에 담은 뒤 이 시간이 지나도 주문하지 않은 고객에게
+                1회 알림을 보냅니다.
               </p>
             </div>
           </div>
@@ -516,134 +587,156 @@ export default function AdminSettingsPage() {
         isOpen={expandedSections.notification}
         onToggle={() => handleToggleSection('notification')}
       >
-        <div className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="alimtalkEnabled"
-                checked={settings.alimtalkEnabled}
-                onChange={(e) => setSettings({ ...settings, alimtalkEnabled: e.target.checked })}
-                className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-              />
-              <div>
-                <label
-                  htmlFor="alimtalkEnabled"
-                  className="text-sm font-semibold text-gray-700 cursor-pointer"
-                >
-                  카카오 메시지 전체 활성화
-                </label>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="alimtalkEnabled"
+                    checked={settings.alimtalkEnabled}
+                    onChange={(e) =>
+                      setSettings({ ...settings, alimtalkEnabled: e.target.checked })
+                    }
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#FF4D8D] focus:ring-[#FF4D8D]"
+                  />
+                  <div>
+                    <label
+                      htmlFor="alimtalkEnabled"
+                      className="cursor-pointer text-sm font-semibold text-gray-800"
+                    >
+                      카카오 메시지 전체 활성화
+                    </label>
+                    <p className="mt-1 text-sm text-gray-500">
+                      전체 스위치와 이벤트별 설정, 템플릿 코드, 테스트 발송을 이 화면에서 바로 관리합니다.
+                    </p>
+                  </div>
+                </div>
                 <p className="text-xs text-gray-500">
-                  이 스위치를 끄면 아래 이벤트별 토글이 켜져 있어도 실제 알림톡/친구톡은 모두
-                  멈춥니다.
+                  상세페이지 없이 여기서 바로 저장/테스트까지 끝내는 구조입니다.
                 </p>
               </div>
             </div>
-
-            <p className="text-xs text-gray-500">
-              아래 카드에서 주문 확인 알림톡, 장바구니 리마인드 친구톡, 라이브 시작 알림톡을 각각
-              따로 켜고 끌 수 있습니다.
-            </p>
-
-            {settings.alimtalkEnabled && (
-              <p className="text-xs text-gray-400">
-                Bizgo 연동이 정상일 때만 실제 카카오 발송이 진행됩니다. API 인증 정보는 서버
-                환경변수로 관리됩니다.
-              </p>
-            )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-            <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4 space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-gray-900">
-                  주문 확인 알림 묶음 발송 지연
-                </h4>
-                <p className="mt-1 text-sm text-gray-600 leading-relaxed">
-                  라이브 방송 상품 주문은 방송 종료 후 같은 고객 + 같은 streamKey 기준으로 1번만
-                  묶어서 ORDER_CONFIRMATION 알림톡을 보냅니다.
+                <h4 className="text-sm font-semibold text-gray-900">주문 확인 묶음 발송 지연</h4>
+                <p className="mt-1 text-sm text-gray-500">
+                  라이브 주문만 방송 종료 후 묶어서 보냅니다. 일반 주문 즉시 발송에는 영향 없습니다.
                 </p>
               </div>
-              <Input
-                label="방송 종료 후 N시간 뒤 발송"
-                type="number"
-                min={0}
-                max={168}
-                step="1"
-                value={settings.orderConfirmationDelayHours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    orderConfirmationDelayHours: Math.min(
-                      168,
-                      Math.max(0, parseInt(e.target.value || '0', 10) || 0),
-                    ),
-                  })
-                }
-                fullWidth
-              />
-              <p className="text-xs text-gray-500">
-                0이면 방송 종료 직후 바로 묶음 알림톡이 발송됩니다. 일반 비라이브 주문의 즉시
-                ORDER_CONFIRMATION에는 영향을 주지 않습니다.
+              {settings.orderConfirmationDelayHours === 0 && (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  종료 직후
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="w-full sm:max-w-xs">
+                <Input
+                  label="방송 종료 후 N시간"
+                  type="number"
+                  min={0}
+                  max={168}
+                  step="1"
+                  value={settings.orderConfirmationDelayHours}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      orderConfirmationDelayHours: Math.min(
+                        168,
+                        Math.max(0, parseInt(e.target.value || '0', 10) || 0),
+                      ),
+                    })
+                  }
+                  fullWidth
+                />
+              </div>
+              <p className="pb-1 text-xs text-gray-500">
+                0이면 방송 종료 직후 처리 대상으로 잡힙니다.
               </p>
             </div>
+          </div>
 
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-gray-900">이벤트별 발송 토글</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  운영자가 헷갈리지 않게 메인 설정 화면에서도 채널별 이벤트 상태를 바로 바꿀 수 있게
-                  했습니다. 템플릿 코드 수정과 테스트 발송은 전용 화면에서 이어집니다.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => router.push('/admin/settings/notifications')}
-              >
-                템플릿 코드 관리
-              </Button>
+          {notificationFeedback && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+              <CheckCircle className="h-4 w-4" />
+              <span>{notificationFeedback}</span>
             </div>
+          )}
 
-            {notificationFeedback && (
-              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                <CheckCircle className="h-4 w-4" />
-                <span>{notificationFeedback}</span>
-              </div>
-            )}
-
-            <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_auto_auto] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <span>이벤트</span>
+              <span>상태</span>
+              <span className="text-right">토글</span>
+            </div>
+            <div className="divide-y divide-gray-100">
               {visibleNotificationTemplates.map((template) => {
                 const config = NOTIFICATION_VARIABLES[template.type];
-                const presentation = getNotificationPresentation(template.type);
-                const channelBadgeClass =
-                  config.channel === 'AT'
-                    ? 'bg-sky-100 text-sky-700 border-sky-200'
-                    : 'bg-violet-100 text-violet-700 border-violet-200';
                 const isSavingToggle = notificationSavingId === template.id;
+                const statusText = getNotificationStatusText(
+                  settings.alimtalkEnabled,
+                  template.enabled,
+                );
+                const isActive = activeNotificationTemplate?.id === template.id;
 
                 return (
-                  <div
+                  <button
                     key={template.id}
-                    className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-4"
+                    type="button"
+                    onClick={() => setActiveNotificationType(template.type)}
+                    className={`grid w-full grid-cols-1 gap-3 px-4 py-4 text-left transition-colors md:grid-cols-[minmax(0,1.4fr)_auto_auto] md:items-center ${
+                      isActive ? 'bg-pink-50/50' : 'hover:bg-gray-50'
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h5 className="text-sm font-semibold text-gray-900">{config.label}</h5>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${channelBadgeClass}`}
-                          >
-                            {config.channel === 'AT' ? '알림톡' : '친구톡'}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900">{config.label}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            config.channel === 'AT'
+                              ? 'bg-sky-100 text-sky-700'
+                              : 'bg-violet-100 text-violet-700'
+                          }`}
+                        >
+                          {config.channel === 'AT' ? '알림톡' : '친구톡'}
+                        </span>
+                        {config.channel === 'AT' && !template.kakaoTemplateCode?.trim() && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            코드 미설정
                           </span>
-                        </div>
-                        <p className="text-xs text-gray-500">{presentation.sendTiming}</p>
+                        )}
                       </div>
+                    </div>
+
+                    <div className="md:justify-self-start">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          statusText === '켜짐'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : statusText === '전체 OFF'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 md:justify-self-end">
                       <button
                         type="button"
                         role="switch"
                         aria-checked={template.enabled}
                         disabled={isSavingToggle}
-                        onClick={() => handleNotificationToggle(template, !template.enabled)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleNotificationToggle(template, !template.enabled);
+                        }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           template.enabled ? 'bg-[#FF4D8D]' : 'bg-gray-300'
                         } ${isSavingToggle ? 'cursor-wait opacity-70' : ''}`}
@@ -655,38 +748,75 @@ export default function AdminSettingsPage() {
                         />
                       </button>
                     </div>
-
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm text-gray-600">
-                      <p className="font-medium text-gray-800">현재 상태</p>
-                      <p className="mt-1">
-                        {template.enabled
-                          ? '이 이벤트는 개별 발송 ON 상태입니다.'
-                          : '이 이벤트는 개별 발송 OFF 상태입니다.'}
-                        {!settings.alimtalkEnabled
-                          ? ' 단, 전체 활성화가 꺼져 있어서 지금은 실제 발송이 멈춰 있습니다.'
-                          : ''}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-gray-500">
-                        {config.channel === 'AT' && !template.kakaoTemplateCode?.trim()
-                          ? '카카오 템플릿 코드 미설정'
-                          : '템플릿 코드 설정 확인 가능'}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push('/admin/settings/notifications')}
-                      >
-                        코드/테스트 관리
-                      </Button>
-                    </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
+
+          {activeNotificationTemplate && (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    {NOTIFICATION_VARIABLES[activeNotificationTemplate.type].label}
+                  </h4>
+                  <p className="mt-1 text-xs text-gray-500">
+                    템플릿 코드 저장과 테스트 발송을 여기서 바로 처리합니다.
+                  </p>
+                </div>
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  {getNotificationStatusText(
+                    settings.alimtalkEnabled,
+                    activeNotificationTemplate.enabled,
+                  )}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">카카오템플릿 코드</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    value={activeNotificationTemplate.kakaoTemplateCode ?? ''}
+                    onChange={(event) =>
+                      handleNotificationTemplateCodeChange(
+                        activeNotificationTemplate.id,
+                        event.target.value,
+                      )
+                    }
+                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm transition-colors focus:border-[#FF4D8D] focus:outline-none focus:ring-2 focus:ring-pink-100"
+                    placeholder="예: ORDER_CONFIRMATION"
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={() => void handleNotificationTemplateSave(activeNotificationTemplate)}
+                    disabled={notificationSavingId === activeNotificationTemplate.id}
+                    className="sm:w-auto"
+                  >
+                    {notificationSavingId === activeNotificationTemplate.id ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-1.5" />
+                    )}
+                    저장
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openNotificationTestModal(activeNotificationTemplate.type)}
+                    className="sm:w-auto"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1.5" />
+                    테스트 발송
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  카카오 심사 완료된 템플릿 코드만 입력하면 됩니다. 본문은 운영 심사본 기준으로
+                  관리됩니다.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </SectionCard>
       {/* Extended Sections */}
@@ -754,6 +884,64 @@ export default function AdminSettingsPage() {
           <p className="text-xs text-gray-400">저장 후 사이트 푸터에 즉시 반영됩니다.</p>
         </div>
       </SectionCard>
+
+      {notificationTestTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">테스트 발송</h3>
+              <button
+                type="button"
+                onClick={closeNotificationTestModal}
+                className="rounded-lg p-1.5 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm text-gray-600">
+              {NOTIFICATION_VARIABLES[notificationTestTarget].label} 템플릿으로 테스트 발송합니다.
+            </p>
+
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">수신자 전화번호</label>
+            <input
+              type="text"
+              value={notificationTestPhone}
+              onChange={(event) => setNotificationTestPhone(event.target.value)}
+              className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900"
+              placeholder="01012345678"
+            />
+
+            {notificationTestMessage && (
+              <p
+                className={`mb-3 text-sm ${
+                  notificationTestTone === 'success' ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {notificationTestMessage}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeNotificationTestModal}>
+                닫기
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => void handleSendNotificationTest()}
+                disabled={isSendingNotificationTest || notificationTestPhone.trim().length === 0}
+              >
+                {isSendingNotificationTest ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <MessageSquare className="w-4 h-4 mr-1.5" />
+                )}
+                보내기
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Save */}
       <div className="sticky bottom-4">
