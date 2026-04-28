@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
-import { useAuthStore } from '@/lib/store/auth';
+import { shouldUseAuthenticatedChatConnection, type ChatConnectionSuccessPayload } from './chat-connection.utils';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -39,7 +39,6 @@ export function useChatConnection(
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
-  const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
   const authRefreshAttemptedRef = useRef(false);
@@ -74,7 +73,6 @@ export function useChatConnection(
       pendingMessageQueueRef.current = [];
       authRefreshAttemptedRef.current = false;
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
       return;
     }
@@ -118,23 +116,22 @@ export function useChatConnection(
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', async (payload?: { data?: { authenticated?: boolean } }) => {
-      const authenticated = !!payload?.data?.authenticated;
-      setIsConnected(true);
-      setIsSocketAuthenticated(authenticated);
-      setConnectionStatus('connected');
+    socket.on('connection:success', async (payload?: ChatConnectionSuccessPayload) => {
+      if (!shouldUseAuthenticatedChatConnection(payload)) {
+        setIsConnected(false);
+        setConnectionStatus('connecting');
 
-      const { isAuthenticated } = useAuthStore.getState();
-      if (isAuthenticated && !authenticated && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
+        if (!authRefreshAttemptedRef.current) {
+          authRefreshAttemptedRef.current = true;
+          await handleAuthReconnect();
+        }
         return;
       }
 
+      setIsConnected(true);
+      setConnectionStatus('connected');
       authRefreshAttemptedRef.current = false;
-      if (authenticated) {
-        flushPendingMessages();
-      }
+      flushPendingMessages();
     });
 
     // Server sends auth error details before disconnecting
@@ -144,7 +141,6 @@ export function useChatConnection(
 
     socket.on('disconnect', async (reason) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
 
       // "io server disconnect" means the server forcefully closed the connection
@@ -157,7 +153,6 @@ export function useChatConnection(
 
     socket.on('connect_error', async (error) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
 
       if (!socket.disconnected) {
         return;
@@ -193,9 +188,7 @@ export function useChatConnection(
     });
 
     socket.io.on('reconnect', () => {
-      // Note: socket.on('connect') is also fired on reconnect, so emitJoin is called there
-      // Avoid double-calling emitJoin here
-      flushPendingMessages();
+      // Wait for authenticated connection:success before flushing queued messages.
     });
 
     return () => {
@@ -221,7 +214,7 @@ export function useChatConnection(
     };
 
     const socket = socketRef.current;
-    if (socket && isConnected && isSocketAuthenticated && socket.connected) {
+    if (socket && isConnected && socket.connected) {
       socket.emit('chat:send-message', payload);
       return;
     }
@@ -247,8 +240,7 @@ export function useChatConnection(
     isConnected,
     connectionStatus,
     userCount,
-    canComposeMessages:
-      isSocketAuthenticated && (isConnected || connectionStatus === 'reconnecting'),
+    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
     sendMessage,
     deleteMessage,
   };

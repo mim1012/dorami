@@ -509,11 +509,6 @@ export default function LiveStreamPage() {
         }
         if (previousStatus !== 'LIVE') {
           dispatch({ type: 'STREAM_RECOVERED' });
-          // Only force-remount player if stream was genuinely offline long enough
-          // (grace timer had fired). Transient SRS reconnects don't set previousStatus to null.
-          if (previousStatus !== null) {
-            setPlayerSessionSeed((prev) => prev + 1);
-          }
         }
       } else if (nextStatus === 'OFFLINE') {
         if (previousStatus === null) {
