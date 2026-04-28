@@ -388,6 +388,157 @@ function SortableRow({
   );
 }
 
+function MobileProductCard({
+  product,
+  selectedIds,
+  toggleSelect,
+  formatPrice,
+  getStatusBadge,
+  handleOpenModal,
+  handleMarkAsSoldOut,
+  handleDelete,
+}: {
+  product: Product;
+  selectedIds: Set<string>;
+  toggleSelect: (id: string) => void;
+  formatPrice: (price: number) => string;
+  getStatusBadge: (status: string) => { text: string; color: string };
+  handleOpenModal: (product?: Product) => void;
+  handleMarkAsSoldOut: (id: string) => void;
+  handleDelete: (id: string) => void;
+}) {
+  const statusBadge = getStatusBadge(product.status);
+
+  return (
+    <div
+      className={`rounded-2xl border p-4 shadow-sm transition-colors ${
+        selectedIds.has(product.id)
+          ? 'border-hot-pink/40 bg-hot-pink/5'
+          : 'border-gray-200 bg-content-bg'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={selectedIds.has(product.id)}
+          onChange={() => toggleSelect(product.id)}
+          className="mt-1 h-5 w-5 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
+        />
+
+        <div className="flex-1 space-y-3">
+          <div className="flex items-start gap-3">
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="h-16 w-16 flex-shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-white">
+                <Package className="h-7 w-7 text-secondary-text opacity-30" />
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Body className="font-semibold text-primary-text">{product.name}</Body>
+                  <p className="mt-1 text-xs text-secondary-text">
+                    등록일 {formatDate(product.createdAt)}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge.color}`}
+                >
+                  {statusBadge.text}
+                </span>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                {Array.isArray(product.colorOptions) && product.colorOptions.length > 0 && (
+                  <span className="rounded-full bg-info/20 px-2 py-0.5 text-xs text-info">
+                    색상 {product.colorOptions.join(', ')}
+                  </span>
+                )}
+                {Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0 && (
+                  <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-500">
+                    사이즈 {product.sizeOptions.join(', ')}
+                  </span>
+                )}
+                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                  재고 {product.stock}개
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white/70 p-3">
+            {product.originalPrice != null && product.originalPrice > product.price ? (
+              <div className="space-y-1">
+                <span className="text-xs text-secondary-text line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Body className="font-bold text-primary-text">{formatPrice(product.price)}</Body>
+                  <span className="rounded bg-error/20 px-1.5 py-0.5 text-xs font-semibold text-error">
+                    -
+                    {Math.round(
+                      ((product.originalPrice - product.price) / product.originalPrice) * 1000,
+                    ) / 10}
+                    %
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Body className="font-bold text-primary-text">{formatPrice(product.price)}</Body>
+                {product.shippingFee > 0 && (
+                  <Body className="text-xs text-secondary-text">
+                    +배송비 {formatPrice(product.shippingFee)}
+                  </Body>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => handleOpenModal(product)} className="w-full">
+              수정
+            </Button>
+            {product.status === 'AVAILABLE' ? (
+              <Button
+                variant="outline"
+                onClick={() => handleMarkAsSoldOut(product.id)}
+                className="w-full border-warning text-warning hover:bg-warning/10"
+              >
+                품절 처리
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => handleDelete(product.id)}
+                className="w-full border-error text-error hover:bg-error/10"
+              >
+                삭제
+              </Button>
+            )}
+          </div>
+
+          {product.status === 'AVAILABLE' && (
+            <Button
+              variant="outline"
+              onClick={() => handleDelete(product.id)}
+              className="w-full border-error text-error hover:bg-error/10"
+            >
+              삭제
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Main Page Component ---
 export default function AdminProductsPage() {
   const router = useRouter();
@@ -1244,7 +1395,7 @@ export default function AdminProductsPage() {
           <h1 className="text-3xl font-bold text-primary-text mb-2">상품 관리</h1>
           <p className="text-secondary-text">라이브에서 판매할 상품을 등록하고 관리하세요</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden flex-wrap items-center gap-2 sm:flex">
           {selectedIds.size > 0 && (
             <>
               <Button
@@ -1289,6 +1440,38 @@ export default function AdminProductsPage() {
             className="flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
+            상품 등록
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-card border border-gray-200 bg-content-bg p-4 sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <Body className="font-semibold text-primary-text">모바일 빠른 액션</Body>
+            <p className="mt-1 text-xs text-secondary-text">
+              자주 쓰는 등록/업로드 작업을 먼저 배치했습니다.
+            </p>
+          </div>
+          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-secondary-text">
+            총 {filteredProducts.length}개
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            엑셀 업로드
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => handleOpenModal()}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
             상품 등록
           </Button>
         </div>
@@ -1363,72 +1546,147 @@ export default function AdminProductsPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <table className="w-full">
-                <thead className="bg-white/50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-2 py-4 w-8" />
-                    <th className="px-2 py-4 w-10">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedIds.size === filteredProducts.length &&
-                          filteredProducts.length > 0
-                        }
-                        onChange={toggleSelectAll}
-                        className="w-5 h-5 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
-                      />
-                    </th>
-                    <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
-                      상품 정보
-                    </th>
-                    <th className="px-4 py-4 text-right text-sm font-semibold text-secondary-text">
-                      가격
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      재고
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      등록일
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      상태
-                    </th>
-                    <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
-                      액션
-                    </th>
-                  </tr>
-                </thead>
-                <SortableContext
-                  items={filteredProducts.map((p) => p.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredProducts.map((product) => (
-                      <SortableRow
-                        key={product.id}
-                        product={product}
-                        selectedIds={selectedIds}
-                        toggleSelect={toggleSelect}
-                        formatPrice={formatPrice}
-                        getStatusBadge={getStatusBadge}
-                        handleOpenModal={handleOpenModal}
-                        handleMarkAsSoldOut={handleMarkAsSoldOut}
-                        handleDelete={handleDelete}
-                      />
-                    ))}
-                  </tbody>
-                </SortableContext>
-              </table>
-            </DndContext>
-          </div>
+          <>
+            <div className="space-y-3 p-3 sm:hidden">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
+                <Body className="font-semibold text-primary-text">카드형 상품 목록</Body>
+                <span className="text-xs text-secondary-text">
+                  모바일에서 터치하기 쉽게 정리했어요
+                </span>
+              </div>
+              {filteredProducts.map((product) => (
+                <MobileProductCard
+                  key={product.id}
+                  product={product}
+                  selectedIds={selectedIds}
+                  toggleSelect={toggleSelect}
+                  formatPrice={formatPrice}
+                  getStatusBadge={getStatusBadge}
+                  handleOpenModal={handleOpenModal}
+                  handleMarkAsSoldOut={handleMarkAsSoldOut}
+                  handleDelete={handleDelete}
+                />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto sm:block">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <table className="w-full">
+                  <thead className="bg-white/50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-2 py-4 w-8" />
+                      <th className="px-2 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedIds.size === filteredProducts.length &&
+                            filteredProducts.length > 0
+                          }
+                          onChange={toggleSelectAll}
+                          className="w-5 h-5 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
+                        />
+                      </th>
+                      <th className="px-4 py-4 text-left text-sm font-semibold text-secondary-text">
+                        상품 정보
+                      </th>
+                      <th className="px-4 py-4 text-right text-sm font-semibold text-secondary-text">
+                        가격
+                      </th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                        재고
+                      </th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                        등록일
+                      </th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                        상태
+                      </th>
+                      <th className="px-4 py-4 text-center text-sm font-semibold text-secondary-text">
+                        액션
+                      </th>
+                    </tr>
+                  </thead>
+                  <SortableContext
+                    items={filteredProducts.map((p) => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredProducts.map((product) => (
+                        <SortableRow
+                          key={product.id}
+                          product={product}
+                          selectedIds={selectedIds}
+                          toggleSelect={toggleSelect}
+                          formatPrice={formatPrice}
+                          getStatusBadge={getStatusBadge}
+                          handleOpenModal={handleOpenModal}
+                          handleMarkAsSoldOut={handleMarkAsSoldOut}
+                          handleDelete={handleDelete}
+                        />
+                      ))}
+                    </tbody>
+                  </SortableContext>
+                </table>
+              </DndContext>
+            </div>
+          </>
         )}
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-4 z-10 sm:hidden">
+          <div className="rounded-2xl border border-hot-pink/20 bg-content-bg/95 p-3 shadow-lg backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Body className="font-semibold text-primary-text">
+                  선택한 상품 {selectedIds.size}개
+                </Body>
+                <p className="mt-1 text-xs text-secondary-text">모바일 일괄 작업</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                className="shrink-0"
+              >
+                선택 해제
+              </Button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkStatusChange('AVAILABLE')}
+                className="border-success text-success hover:bg-success/10"
+              >
+                판매중
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkStatusChange('SOLD_OUT')}
+                className="border-warning text-warning hover:bg-warning/10"
+              >
+                품절
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="border-error text-error hover:bg-error/10"
+              >
+                {isBulkDeleting ? '삭제 중' : '삭제'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Excel Import Modal */}
       <Modal
@@ -1449,7 +1707,9 @@ export default function AdminProductsPage() {
               helperText="이 Stream Key로 업로드된 상품을 묶습니다"
             />
             <div>
-              <label className="block text-sm font-medium text-secondary-text mb-2">업로드할 엑셀</label>
+              <label className="block text-sm font-medium text-secondary-text mb-2">
+                업로드할 엑셀
+              </label>
               <label className="block cursor-pointer rounded-lg border border-dashed border-gray-300 bg-content-bg px-4 py-3 text-sm text-primary-text hover:bg-gray-50 transition-colors">
                 <input
                   type="file"
@@ -1469,45 +1729,69 @@ export default function AdminProductsPage() {
             <>
               <div className="rounded-xl border border-gray-200 bg-content-bg p-4 text-sm space-y-2">
                 <div className="flex flex-wrap gap-4 text-secondary-text">
-                  <span>선택 시트: <strong className="text-primary-text">{parsedExcel.sheetName}</strong></span>
-                  <span>헤더 행: <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong></span>
-                  <span>원본 행 수: <strong className="text-primary-text">{parsedExcel.rows.length}</strong></span>
+                  <span>
+                    선택 시트:{' '}
+                    <strong className="text-primary-text">{parsedExcel.sheetName}</strong>
+                  </span>
+                  <span>
+                    헤더 행:{' '}
+                    <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong>
+                  </span>
+                  <span>
+                    원본 행 수:{' '}
+                    <strong className="text-primary-text">{parsedExcel.rows.length}</strong>
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr>
                         {parsedExcel.headers.map((header) => (
-                          <th key={header} className="px-2 py-2 text-left text-secondary-text whitespace-nowrap">
+                          <th
+                            key={header}
+                            className="px-2 py-2 text-left text-secondary-text whitespace-nowrap"
+                          >
                             {header}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {parsedExcel.rawPreviewRows.slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3).map((row, index) => (
-                        <tr key={`${index}-${row.join('|')}`} className="border-t border-gray-100">
-                          {parsedExcel.headers.map((header, headerIndex) => (
-                            <td key={`${header}-${headerIndex}`} className="px-2 py-2 whitespace-nowrap text-primary-text">
-                              {row[headerIndex] || '-'}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      {parsedExcel.rawPreviewRows
+                        .slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3)
+                        .map((row, index) => (
+                          <tr
+                            key={`${index}-${row.join('|')}`}
+                            className="border-t border-gray-100"
+                          >
+                            {parsedExcel.headers.map((header, headerIndex) => (
+                              <td
+                                key={`${header}-${headerIndex}`}
+                                className="px-2 py-2 whitespace-nowrap text-primary-text"
+                              >
+                                {row[headerIndex] || '-'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {([
-                  ['productName', '상품명 컬럼'],
-                  ['option', '옵션 컬럼'],
-                  ['price', '가격 컬럼'],
-                  ['stock', '재고 컬럼'],
-                ] as const).map(([field, label]) => (
+                {(
+                  [
+                    ['productName', '상품명 컬럼'],
+                    ['option', '옵션 컬럼'],
+                    ['price', '가격 컬럼'],
+                    ['stock', '재고 컬럼'],
+                  ] as const
+                ).map(([field, label]) => (
                   <div key={field}>
-                    <label className="block text-sm font-medium text-secondary-text mb-2">{label}</label>
+                    <label className="block text-sm font-medium text-secondary-text mb-2">
+                      {label}
+                    </label>
                     <select
                       value={importMapping[field]}
                       onChange={(e) => handleImportMappingChange(field, e.target.value)}
@@ -1533,8 +1817,13 @@ export default function AdminProductsPage() {
                     className="mt-1 h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
                   />
                   <span>
-                    <span className="block text-sm font-semibold text-primary-text">대량등록 전용 숨김 처리</span>
-                    <span className="block text-xs text-secondary-text mt-1">체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다. 이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.</span>
+                    <span className="block text-sm font-semibold text-primary-text">
+                      대량등록 전용 숨김 처리
+                    </span>
+                    <span className="block text-xs text-secondary-text mt-1">
+                      체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다.
+                      이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.
+                    </span>
                   </span>
                 </label>
               </div>
@@ -1586,7 +1875,8 @@ export default function AdminProductsPage() {
                   <div>
                     <h3 className="text-sm font-semibold text-primary-text">정규화 미리보기</h3>
                     <p className="text-xs text-secondary-text">
-                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는 품절입니다.
+                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는
+                      품절입니다.
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-hot-pink">
@@ -1608,7 +1898,11 @@ export default function AdminProductsPage() {
                       {importPreview.products.slice(0, 20).map((product) => (
                         <tr key={product.key} className="border-b border-gray-50 text-primary-text">
                           <td className="px-2 py-2">{product.name}</td>
-                          <td className="px-2 py-2">{product.optionValues.length > 0 ? product.optionValues.join(', ') : '-'}</td>
+                          <td className="px-2 py-2">
+                            {product.optionValues.length > 0
+                              ? product.optionValues.join(', ')
+                              : '-'}
+                          </td>
                           <td className="px-2 py-2 text-right">{formatPrice(product.price)}</td>
                           <td className="px-2 py-2 text-right">{product.stock}</td>
                           <td className="px-2 py-2">{product.sourceRows.join(', ')}</td>
@@ -1619,7 +1913,8 @@ export default function AdminProductsPage() {
                 </div>
                 {importPreview.products.length > 20 && (
                   <p className="text-xs text-secondary-text">
-                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체 {importPreview.products.length}개가 진행됩니다.
+                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체{' '}
+                    {importPreview.products.length}개가 진행됩니다.
                   </p>
                 )}
               </div>
@@ -1627,7 +1922,13 @@ export default function AdminProductsPage() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-2">
-            <Button type="button" variant="outline" fullWidth onClick={handleCloseImportModal} disabled={isImporting}>
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              onClick={handleCloseImportModal}
+              disabled={isImporting}
+            >
               취소
             </Button>
             <Button
@@ -1635,7 +1936,12 @@ export default function AdminProductsPage() {
               variant="primary"
               fullWidth
               onClick={handleImportProducts}
-              disabled={!parsedExcel || isImporting || importPreview.errors.length > 0 || importPreview.products.length === 0}
+              disabled={
+                !parsedExcel ||
+                isImporting ||
+                importPreview.errors.length > 0 ||
+                importPreview.products.length === 0
+              }
             >
               {isImporting ? '업로드 중...' : `품절 상태로 ${importPreview.products.length}개 등록`}
             </Button>
@@ -1650,7 +1956,10 @@ export default function AdminProductsPage() {
         title={editingProduct ? '상품 수정' : '상품 등록'}
         maxWidth="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto px-1 pb-24 sm:max-h-[70vh] sm:px-2 sm:pb-28">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto px-1 pb-24 sm:max-h-[70vh] sm:px-2 sm:pb-28"
+        >
           <Input
             label="Stream Key"
             name="streamKey"
@@ -1931,14 +2240,21 @@ export default function AdminProductsPage() {
                   <div className="rounded-xl border border-dashed border-hot-pink/30 bg-hot-pink/5 p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                       <div>
-                        <Body className="font-semibold text-primary-text">동일 재고/가격 빠른 적용</Body>
+                        <Body className="font-semibold text-primary-text">
+                          동일 재고/가격 빠른 적용
+                        </Body>
                         <p className="mt-1 text-xs text-secondary-text">
-                          모바일에서 옵션별 가격/재고를 빠르게 입력하려면 아래 값을 한 번에 적용하세요.
+                          모바일에서 옵션별 가격/재고를 빠르게 입력하려면 아래 값을 한 번에
+                          적용하세요.
                         </p>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px] lg:flex-1">
                         <Input
-                          label={formData.variantPriceMode === 'ADD_ON' ? '전체 가격 추가금' : '전체 가격'}
+                          label={
+                            formData.variantPriceMode === 'ADD_ON'
+                              ? '전체 가격 추가금'
+                              : '전체 가격'
+                          }
                           type="number"
                           step="0.01"
                           value={variantBulkPrice}
@@ -1989,7 +2305,9 @@ export default function AdminProductsPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-primary-text">
-                              {variant.label || [variant.color, variant.size].filter(Boolean).join(' / ') || '기본 옵션'}
+                              {variant.label ||
+                                [variant.color, variant.size].filter(Boolean).join(' / ') ||
+                                '기본 옵션'}
                             </p>
                             <p className="mt-1 text-xs text-secondary-text">
                               색상 {variant.color || '-'} / 사이즈 {variant.size || '-'}
@@ -2004,7 +2322,9 @@ export default function AdminProductsPage() {
                           <Input
                             label="조합명"
                             value={variant.label ?? ''}
-                            onChange={(e) => handleVariantFieldChange(index, 'label', e.target.value)}
+                            onChange={(e) =>
+                              handleVariantFieldChange(index, 'label', e.target.value)
+                            }
                             placeholder={`${variant.color || ''}${variant.color && variant.size ? ' / ' : ''}${variant.size || ''}`}
                             fullWidth
                           />
@@ -2013,7 +2333,9 @@ export default function AdminProductsPage() {
                             type="number"
                             step="0.01"
                             value={variant.price}
-                            onChange={(e) => handleVariantFieldChange(index, 'price', e.target.value)}
+                            onChange={(e) =>
+                              handleVariantFieldChange(index, 'price', e.target.value)
+                            }
                             placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
                             fullWidth
                           />
@@ -2021,7 +2343,9 @@ export default function AdminProductsPage() {
                             label="재고"
                             type="number"
                             value={variant.stock}
-                            onChange={(e) => handleVariantFieldChange(index, 'stock', e.target.value)}
+                            onChange={(e) =>
+                              handleVariantFieldChange(index, 'stock', e.target.value)
+                            }
                             placeholder="0"
                             fullWidth
                           />
@@ -2029,7 +2353,9 @@ export default function AdminProductsPage() {
                             상태
                             <select
                               value={variant.status}
-                              onChange={(e) => handleVariantFieldChange(index, 'status', e.target.value)}
+                              onChange={(e) =>
+                                handleVariantFieldChange(index, 'status', e.target.value)
+                              }
                               className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
                             >
                               <option value="ACTIVE">판매중</option>
