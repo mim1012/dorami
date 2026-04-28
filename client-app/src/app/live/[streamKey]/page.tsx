@@ -177,7 +177,6 @@ export default function LiveStreamPage() {
     socketRef: chatSocketRef,
     isConnected,
     userCount,
-    canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
   } = useChatConnection(streamKey ?? '');
@@ -1293,7 +1292,7 @@ export default function LiveStreamPage() {
               <ChatInput
                 ref={desktopInputRef}
                 onSendMessage={handleDesktopSendMessage}
-                disabled={!canComposeMessages}
+                disabled={!isConnected}
                 compact={false}
               />
             </div>

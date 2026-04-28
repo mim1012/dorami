@@ -3,7 +3,6 @@ import { io, Socket } from 'socket.io-client';
 import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
-import { useAuthStore } from '@/lib/store/auth';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -39,7 +38,6 @@ export function useChatConnection(
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
-  const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
   const authRefreshAttemptedRef = useRef(false);
@@ -74,7 +72,6 @@ export function useChatConnection(
       pendingMessageQueueRef.current = [];
       authRefreshAttemptedRef.current = false;
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
       return;
     }
@@ -118,23 +115,11 @@ export function useChatConnection(
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', async (payload?: { data?: { authenticated?: boolean } }) => {
-      const authenticated = !!payload?.data?.authenticated;
+    socket.on('connection:success', () => {
       setIsConnected(true);
-      setIsSocketAuthenticated(authenticated);
       setConnectionStatus('connected');
-
-      const { isAuthenticated } = useAuthStore.getState();
-      if (isAuthenticated && !authenticated && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
-        return;
-      }
-
       authRefreshAttemptedRef.current = false;
-      if (authenticated) {
-        flushPendingMessages();
-      }
+      flushPendingMessages();
     });
 
     // Server sends auth error details before disconnecting
@@ -144,7 +129,6 @@ export function useChatConnection(
 
     socket.on('disconnect', async (reason) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
 
       // "io server disconnect" means the server forcefully closed the connection
@@ -157,7 +141,6 @@ export function useChatConnection(
 
     socket.on('connect_error', async (error) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
 
       if (!socket.disconnected) {
         return;
@@ -221,7 +204,7 @@ export function useChatConnection(
     };
 
     const socket = socketRef.current;
-    if (socket && isConnected && isSocketAuthenticated && socket.connected) {
+    if (socket && isConnected && socket.connected) {
       socket.emit('chat:send-message', payload);
       return;
     }
@@ -247,8 +230,7 @@ export function useChatConnection(
     isConnected,
     connectionStatus,
     userCount,
-    canComposeMessages:
-      isSocketAuthenticated && (isConnected || connectionStatus === 'reconnecting'),
+    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
     sendMessage,
     deleteMessage,
   };
