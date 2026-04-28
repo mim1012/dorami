@@ -176,7 +176,7 @@ export function useChatConnection(
     };
 
     const socket = socketRef.current;
-    if (socket && isConnected && socket.connected) {
+    if (socket && isConnected && isSocketAuthenticated && socket.connected) {
       socket.emit('chat:send-message', payload);
       return;
     }
@@ -202,7 +202,8 @@ export function useChatConnection(
     isConnected,
     connectionStatus,
     userCount,
-    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
+    canComposeMessages:
+      isSocketAuthenticated && (isConnected || connectionStatus === 'reconnecting'),
     sendMessage,
     deleteMessage,
   };
