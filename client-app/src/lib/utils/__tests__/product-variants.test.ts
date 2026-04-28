@@ -1,6 +1,7 @@
 import {
   buildColorSizeEditableVariants,
   convertVariantRowsPriceMode,
+  applyBulkValuesToEditableVariants,
   createEmptyEditableVariant,
   deriveOptionSummaries,
   inferVariantPriceMode,
@@ -205,6 +206,49 @@ describe('product variant helpers', () => {
         price: '29000',
         stock: '5',
         status: 'ACTIVE',
+      },
+    ]);
+  });
+
+  it('applies bulk price and stock inputs to every editable variant row', () => {
+    expect(
+      applyBulkValuesToEditableVariants(
+        [
+          {
+            color: 'Black',
+            size: 'M',
+            label: 'Black / M',
+            price: '1000',
+            stock: '1',
+            status: 'ACTIVE',
+          },
+          {
+            color: 'Ivory',
+            size: 'L',
+            label: 'Ivory / L',
+            price: '2000',
+            stock: '2',
+            status: 'SOLD_OUT',
+          },
+        ],
+        { price: '3500', stock: '7' },
+      ),
+    ).toEqual([
+      {
+        color: 'Black',
+        size: 'M',
+        label: 'Black / M',
+        price: '3500',
+        stock: '7',
+        status: 'ACTIVE',
+      },
+      {
+        color: 'Ivory',
+        size: 'L',
+        label: 'Ivory / L',
+        price: '3500',
+        stock: '7',
+        status: 'SOLD_OUT',
       },
     ]);
   });

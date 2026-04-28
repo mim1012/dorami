@@ -13,11 +13,15 @@ describe('Admin products variant pricing UI regression', () => {
     expect(source).toContain('variantEnabled');
   });
 
-  it('auto-enables edit modal variant UI for legacy products that only have color/size options', () => {
-    expect(source).toContain(
-      'const hasLegacyOptions = product.colorOptions.length > 0 || product.sizeOptions.length > 0;',
-    );
-    expect(source).toContain('variantEnabled: hasLegacyOptions');
-    expect(source).toContain('buildColorSizeEditableVariants({');
+  it('keeps bulk option apply controls for identical stock and price updates', () => {
+    expect(source).toContain('전체 가격');
+    expect(source).toContain('전체 재고');
+    expect(source).toContain('입력값 전체 적용');
+  });
+
+  it('keeps a dedicated mobile variant editing layout in the product modal', () => {
+    expect(source).toContain('lg:hidden');
+    expect(source).toContain('모바일에서 옵션별 가격/재고를 빠르게 입력');
+    expect(source).toContain('sticky bottom-0');
   });
 });

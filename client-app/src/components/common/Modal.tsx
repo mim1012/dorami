@@ -25,7 +25,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center px-2 py-2 sm:items-center sm:px-4 sm:py-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -35,7 +35,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
 
       {/* Modal */}
       <div
-        className={`relative bg-content-bg rounded-button p-6 w-full ${maxWidthClasses[maxWidth]} mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto pb-[env(safe-area-inset-bottom)]`}
+        className={`relative w-full overflow-y-auto rounded-[20px] bg-content-bg p-4 pb-[env(safe-area-inset-bottom)] shadow-xl ${maxWidthClasses[maxWidth]} max-h-[calc(100vh-1rem)] sm:mx-0 sm:max-h-[calc(100vh-2rem)] sm:rounded-button sm:p-6`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

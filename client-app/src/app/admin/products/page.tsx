@@ -12,6 +12,7 @@ import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import { formatPrice } from '@/lib/utils/price';
 import {
+  applyBulkValuesToEditableVariants,
   buildColorSizeEditableVariants,
   convertVariantRowsPriceMode,
   createEmptyEditableVariant,
@@ -137,20 +138,10 @@ function mapProductToVariantEditorState(product: Product): {
   variants: EditableProductVariant[];
 } {
   if (!product.variants || product.variants.length === 0) {
-    const hasLegacyOptions = product.colorOptions.length > 0 || product.sizeOptions.length > 0;
-
     return {
-      variantEnabled: hasLegacyOptions,
+      variantEnabled: false,
       variantPriceMode: 'ADD_ON',
-      variants: hasLegacyOptions
-        ? buildColorSizeEditableVariants({
-            colors: product.colorOptions,
-            sizes: product.sizeOptions,
-            existingRows: [],
-            priceMode: 'ADD_ON',
-            basePrice: product.price,
-          })
-        : [createEmptyEditableVariant()],
+      variants: [createEmptyEditableVariant()],
     };
   }
 
@@ -444,6 +435,8 @@ export default function AdminProductsPage() {
   const [defaultImportStock, setDefaultImportStock] = useState('1');
   const [defaultImportPrice, setDefaultImportPrice] = useState('');
   const [bulkImportHideUntilRelease, setBulkImportHideUntilRelease] = useState(true);
+  const [variantBulkPrice, setVariantBulkPrice] = useState('');
+  const [variantBulkStock, setVariantBulkStock] = useState('');
 
   const [formData, setFormData] = useState<ProductFormData>({
     streamKey: '',
@@ -863,12 +856,31 @@ export default function AdminProductsPage() {
     }));
   };
 
+  const handleApplyVariantBulkValues = () => {
+    const nextPrice = variantBulkPrice.trim();
+    const nextStock = variantBulkStock.trim();
+
+    if (!nextPrice && !nextStock) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      variants: applyBulkValuesToEditableVariants(prev.variants, {
+        price: nextPrice || undefined,
+        stock: nextStock || undefined,
+      }),
+    }));
+  };
+
   // --- Modal Close ---
   const handleCloseModal = () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
     setSelectedFile(null);
     setGalleryFiles([]);
+    setVariantBulkPrice('');
+    setVariantBulkStock('');
     setEditingProduct(null);
     setFormErrors({});
     setIsModalOpen(false);
@@ -876,6 +888,9 @@ export default function AdminProductsPage() {
 
   // --- Modal Open ---
   const handleOpenModal = (product?: Product) => {
+    setVariantBulkPrice('');
+    setVariantBulkStock('');
+
     if (product) {
       setEditingProduct(product);
       const hasDiscount = product.originalPrice != null && product.originalPrice > product.price;
@@ -1434,9 +1449,7 @@ export default function AdminProductsPage() {
               helperText="이 Stream Key로 업로드된 상품을 묶습니다"
             />
             <div>
-              <label className="block text-sm font-medium text-secondary-text mb-2">
-                업로드할 엑셀
-              </label>
+              <label className="block text-sm font-medium text-secondary-text mb-2">업로드할 엑셀</label>
               <label className="block cursor-pointer rounded-lg border border-dashed border-gray-300 bg-content-bg px-4 py-3 text-sm text-primary-text hover:bg-gray-50 transition-colors">
                 <input
                   type="file"
@@ -1456,69 +1469,45 @@ export default function AdminProductsPage() {
             <>
               <div className="rounded-xl border border-gray-200 bg-content-bg p-4 text-sm space-y-2">
                 <div className="flex flex-wrap gap-4 text-secondary-text">
-                  <span>
-                    선택 시트:{' '}
-                    <strong className="text-primary-text">{parsedExcel.sheetName}</strong>
-                  </span>
-                  <span>
-                    헤더 행:{' '}
-                    <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong>
-                  </span>
-                  <span>
-                    원본 행 수:{' '}
-                    <strong className="text-primary-text">{parsedExcel.rows.length}</strong>
-                  </span>
+                  <span>선택 시트: <strong className="text-primary-text">{parsedExcel.sheetName}</strong></span>
+                  <span>헤더 행: <strong className="text-primary-text">{parsedExcel.headerRowIndex}</strong></span>
+                  <span>원본 행 수: <strong className="text-primary-text">{parsedExcel.rows.length}</strong></span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-xs">
                     <thead>
                       <tr>
                         {parsedExcel.headers.map((header) => (
-                          <th
-                            key={header}
-                            className="px-2 py-2 text-left text-secondary-text whitespace-nowrap"
-                          >
+                          <th key={header} className="px-2 py-2 text-left text-secondary-text whitespace-nowrap">
                             {header}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {parsedExcel.rawPreviewRows
-                        .slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3)
-                        .map((row, index) => (
-                          <tr
-                            key={`${index}-${row.join('|')}`}
-                            className="border-t border-gray-100"
-                          >
-                            {parsedExcel.headers.map((header, headerIndex) => (
-                              <td
-                                key={`${header}-${headerIndex}`}
-                                className="px-2 py-2 whitespace-nowrap text-primary-text"
-                              >
-                                {row[headerIndex] || '-'}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
+                      {parsedExcel.rawPreviewRows.slice(parsedExcel.headerRowIndex, parsedExcel.headerRowIndex + 3).map((row, index) => (
+                        <tr key={`${index}-${row.join('|')}`} className="border-t border-gray-100">
+                          {parsedExcel.headers.map((header, headerIndex) => (
+                            <td key={`${header}-${headerIndex}`} className="px-2 py-2 whitespace-nowrap text-primary-text">
+                              {row[headerIndex] || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {(
-                  [
-                    ['productName', '상품명 컬럼'],
-                    ['option', '옵션 컬럼'],
-                    ['price', '가격 컬럼'],
-                    ['stock', '재고 컬럼'],
-                  ] as const
-                ).map(([field, label]) => (
+                {([
+                  ['productName', '상품명 컬럼'],
+                  ['option', '옵션 컬럼'],
+                  ['price', '가격 컬럼'],
+                  ['stock', '재고 컬럼'],
+                ] as const).map(([field, label]) => (
                   <div key={field}>
-                    <label className="block text-sm font-medium text-secondary-text mb-2">
-                      {label}
-                    </label>
+                    <label className="block text-sm font-medium text-secondary-text mb-2">{label}</label>
                     <select
                       value={importMapping[field]}
                       onChange={(e) => handleImportMappingChange(field, e.target.value)}
@@ -1544,13 +1533,8 @@ export default function AdminProductsPage() {
                     className="mt-1 h-4 w-4 rounded border-gray-300 text-hot-pink focus:ring-hot-pink"
                   />
                   <span>
-                    <span className="block text-sm font-semibold text-primary-text">
-                      대량등록 전용 숨김 처리
-                    </span>
-                    <span className="block text-xs text-secondary-text mt-1">
-                      체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다.
-                      이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.
-                    </span>
+                    <span className="block text-sm font-semibold text-primary-text">대량등록 전용 숨김 처리</span>
+                    <span className="block text-xs text-secondary-text mt-1">체크하면 이번 엑셀 업로드 상품만 품절 상태 + 지난상품 비노출로 등록됩니다. 이후 판매중으로 변경하면 해당 streamKey 라이브에 실시간 노출됩니다.</span>
                   </span>
                 </label>
               </div>
@@ -1602,8 +1586,7 @@ export default function AdminProductsPage() {
                   <div>
                     <h3 className="text-sm font-semibold text-primary-text">정규화 미리보기</h3>
                     <p className="text-xs text-secondary-text">
-                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는
-                      품절입니다.
+                      같은 상품명+가격 행은 하나로 묶고 옵션은 합칩니다. 업로드 시 기본 상태는 품절입니다.
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-hot-pink">
@@ -1625,11 +1608,7 @@ export default function AdminProductsPage() {
                       {importPreview.products.slice(0, 20).map((product) => (
                         <tr key={product.key} className="border-b border-gray-50 text-primary-text">
                           <td className="px-2 py-2">{product.name}</td>
-                          <td className="px-2 py-2">
-                            {product.optionValues.length > 0
-                              ? product.optionValues.join(', ')
-                              : '-'}
-                          </td>
+                          <td className="px-2 py-2">{product.optionValues.length > 0 ? product.optionValues.join(', ') : '-'}</td>
                           <td className="px-2 py-2 text-right">{formatPrice(product.price)}</td>
                           <td className="px-2 py-2 text-right">{product.stock}</td>
                           <td className="px-2 py-2">{product.sourceRows.join(', ')}</td>
@@ -1640,8 +1619,7 @@ export default function AdminProductsPage() {
                 </div>
                 {importPreview.products.length > 20 && (
                   <p className="text-xs text-secondary-text">
-                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체{' '}
-                    {importPreview.products.length}개가 진행됩니다.
+                    미리보기는 20개까지만 표시합니다. 실제 업로드는 전체 {importPreview.products.length}개가 진행됩니다.
                   </p>
                 )}
               </div>
@@ -1649,13 +1627,7 @@ export default function AdminProductsPage() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              fullWidth
-              onClick={handleCloseImportModal}
-              disabled={isImporting}
-            >
+            <Button type="button" variant="outline" fullWidth onClick={handleCloseImportModal} disabled={isImporting}>
               취소
             </Button>
             <Button
@@ -1663,12 +1635,7 @@ export default function AdminProductsPage() {
               variant="primary"
               fullWidth
               onClick={handleImportProducts}
-              disabled={
-                !parsedExcel ||
-                isImporting ||
-                importPreview.errors.length > 0 ||
-                importPreview.products.length === 0
-              }
+              disabled={!parsedExcel || isImporting || importPreview.errors.length > 0 || importPreview.products.length === 0}
             >
               {isImporting ? '업로드 중...' : `품절 상태로 ${importPreview.products.length}개 등록`}
             </Button>
@@ -1683,7 +1650,7 @@ export default function AdminProductsPage() {
         title={editingProduct ? '상품 수정' : '상품 등록'}
         maxWidth="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-2">
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(100vh-9rem)] overflow-y-auto px-1 pb-24 sm:max-h-[70vh] sm:px-2 sm:pb-28">
           <Input
             label="Stream Key"
             name="streamKey"
@@ -1961,7 +1928,121 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  <div className="rounded-xl border border-dashed border-hot-pink/30 bg-hot-pink/5 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <Body className="font-semibold text-primary-text">동일 재고/가격 빠른 적용</Body>
+                        <p className="mt-1 text-xs text-secondary-text">
+                          모바일에서 옵션별 가격/재고를 빠르게 입력하려면 아래 값을 한 번에 적용하세요.
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px] lg:flex-1">
+                        <Input
+                          label={formData.variantPriceMode === 'ADD_ON' ? '전체 가격 추가금' : '전체 가격'}
+                          type="number"
+                          step="0.01"
+                          value={variantBulkPrice}
+                          onChange={(e) => setVariantBulkPrice(e.target.value)}
+                          placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                          fullWidth
+                        />
+                        <Input
+                          label="전체 재고"
+                          type="number"
+                          value={variantBulkStock}
+                          onChange={(e) => setVariantBulkStock(e.target.value)}
+                          placeholder="0"
+                          fullWidth
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setVariantBulkPrice('');
+                          setVariantBulkStock('');
+                        }}
+                        className="sm:w-auto"
+                      >
+                        입력값 지우기
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleApplyVariantBulkValues}
+                        disabled={!variantBulkPrice.trim() && !variantBulkStock.trim()}
+                        className="sm:w-auto"
+                      >
+                        입력값 전체 적용
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 lg:hidden">
+                    {formData.variants.map((variant, index) => (
+                      <div
+                        key={`${variant.id ?? 'new-mobile'}-${variant.color}-${variant.size}-${index}`}
+                        className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-primary-text">
+                              {variant.label || [variant.color, variant.size].filter(Boolean).join(' / ') || '기본 옵션'}
+                            </p>
+                            <p className="mt-1 text-xs text-secondary-text">
+                              색상 {variant.color || '-'} / 사이즈 {variant.size || '-'}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-secondary-text">
+                            옵션 {index + 1}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <Input
+                            label="조합명"
+                            value={variant.label ?? ''}
+                            onChange={(e) => handleVariantFieldChange(index, 'label', e.target.value)}
+                            placeholder={`${variant.color || ''}${variant.color && variant.size ? ' / ' : ''}${variant.size || ''}`}
+                            fullWidth
+                          />
+                          <Input
+                            label={formData.variantPriceMode === 'ADD_ON' ? '추가금' : '개별 가격'}
+                            type="number"
+                            step="0.01"
+                            value={variant.price}
+                            onChange={(e) => handleVariantFieldChange(index, 'price', e.target.value)}
+                            placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                            fullWidth
+                          />
+                          <Input
+                            label="재고"
+                            type="number"
+                            value={variant.stock}
+                            onChange={(e) => handleVariantFieldChange(index, 'stock', e.target.value)}
+                            placeholder="0"
+                            fullWidth
+                          />
+                          <label className="flex flex-col gap-1 text-sm font-medium text-primary-text">
+                            상태
+                            <select
+                              value={variant.status}
+                              onChange={(e) => handleVariantFieldChange(index, 'status', e.target.value)}
+                              className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm focus:border-hot-pink focus:outline-none"
+                            >
+                              <option value="ACTIVE">판매중</option>
+                              <option value="SOLD_OUT">품절</option>
+                              <option value="HIDDEN">숨김</option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden lg:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead>
                         <tr className="text-left text-secondary-text">
@@ -2042,7 +2123,7 @@ export default function AdminProductsPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:flex-wrap sm:items-center">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -2121,7 +2202,7 @@ export default function AdminProductsPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <label className="flex-1 cursor-pointer">
                 <input
                   type="file"
@@ -2158,7 +2239,7 @@ export default function AdminProductsPage() {
             </label>
 
             {formData.images.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {formData.images.map((url, idx) => (
                   <div key={url} className="relative group">
                     <img
@@ -2178,7 +2259,7 @@ export default function AdminProductsPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <label className="flex-1 cursor-pointer">
                 <input
                   type="file"
@@ -2215,24 +2296,26 @@ export default function AdminProductsPage() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              fullWidth
-              onClick={handleCloseModal}
-              disabled={isSubmitting}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              fullWidth
-              disabled={isSubmitting || isUploadingGallery}
-            >
-              {isSubmitting ? '저장 중...' : editingProduct ? '수정하기' : '등록하기'}
-            </Button>
+          <div className="sticky bottom-0 -mx-1 border-t border-gray-200 bg-content-bg/95 px-1 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-4 backdrop-blur sm:-mx-2 sm:px-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+              >
+                취소
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                disabled={isSubmitting || isUploadingGallery}
+              >
+                {isSubmitting ? '저장 중...' : editingProduct ? '수정하기' : '등록하기'}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>
