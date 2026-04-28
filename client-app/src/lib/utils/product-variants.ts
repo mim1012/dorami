@@ -161,6 +161,17 @@ export function convertVariantRowsPriceMode(
   });
 }
 
+export function applyBulkValuesToEditableVariants(
+  rows: EditableProductVariant[],
+  { price, stock }: { price?: string; stock?: string },
+): EditableProductVariant[] {
+  return rows.map((row) => ({
+    ...row,
+    price: price ?? row.price,
+    stock: stock ?? row.stock,
+  }));
+}
+
 export function validateColorSizeVariants(
   rows: EditableProductVariant[],
   {
