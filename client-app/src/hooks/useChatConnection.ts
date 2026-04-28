@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
+import { shouldUseAuthenticatedChatConnection, type ChatConnectionSuccessPayload } from './chat-connection.utils';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -115,7 +116,18 @@ export function useChatConnection(
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', () => {
+    socket.on('connection:success', async (payload?: ChatConnectionSuccessPayload) => {
+      if (!shouldUseAuthenticatedChatConnection(payload)) {
+        setIsConnected(false);
+        setConnectionStatus('connecting');
+
+        if (!authRefreshAttemptedRef.current) {
+          authRefreshAttemptedRef.current = true;
+          await handleAuthReconnect();
+        }
+        return;
+      }
+
       setIsConnected(true);
       setConnectionStatus('connected');
       authRefreshAttemptedRef.current = false;
@@ -176,9 +188,7 @@ export function useChatConnection(
     });
 
     socket.io.on('reconnect', () => {
-      // Note: socket.on('connect') is also fired on reconnect, so emitJoin is called there
-      // Avoid double-calling emitJoin here
-      flushPendingMessages();
+      // Wait for authenticated connection:success before flushing queued messages.
     });
 
     return () => {

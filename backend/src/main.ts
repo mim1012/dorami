@@ -23,10 +23,12 @@ import { CustomIoAdapter } from './common/adapters/custom-io.adapter';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
+  authenticateSocket,
   authenticateSocketIfPresent,
   type AuthenticatedSocket,
 } from './common/middleware/ws-jwt-auth.middleware';
 import { rateLimitCheck } from './common/middleware/ws-rate-limit.middleware';
+import { resolveChatUsername } from './modules/chat/chat-identity.util';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -401,25 +403,17 @@ async function bootstrap() {
 
   chatNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocketIfPresent(
-        socket,
-        jwtService,
-        prismaService,
+      const authenticatedSocket = await authenticateSocket(socket, jwtService, prismaService);
+      logger.log(
+        `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
       );
-      if (authenticatedSocket) {
-        logger.log(
-          `✅ Client connected to /chat: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
-        );
-      } else {
-        logger.log(`✅ Guest connected to /chat: ${socket.id}`);
-      }
 
       socket.emit('connection:success', {
         type: 'connection:success',
         data: {
           message: 'Connected to chat server',
-          userId: authenticatedSocket?.user.userId ?? null,
-          authenticated: !!authenticatedSocket,
+          userId: authenticatedSocket.user.userId,
+          authenticated: true,
           timestamp: new Date().toISOString(),
         },
       });
@@ -429,17 +423,16 @@ async function bootstrap() {
           return;
         }
         const roomName = `live:${payload.liveId}`;
-        const participantId = getLiveParticipantId(socket, authenticatedSocket);
         await socket.join(roomName);
 
-        logger.log(`📥 Participant ${participantId} joined room ${roomName}`);
+        logger.log(`📥 User ${authenticatedSocket.user.userId} joined room ${roomName}`);
         await emitChatHistory(socket, payload.liveId);
 
         chatNamespace.to(roomName).emit('chat:user-joined', {
           type: 'chat:user-joined',
           data: {
-            userId: participantId,
-            authenticated: !!authenticatedSocket,
+            userId: authenticatedSocket.user.userId,
+            authenticated: true,
             liveId: payload.liveId,
             timestamp: new Date().toISOString(),
           },
@@ -459,16 +452,15 @@ async function bootstrap() {
           return;
         }
         const roomName = `live:${payload.liveId}`;
-        const participantId = getLiveParticipantId(socket, authenticatedSocket);
         await socket.leave(roomName);
 
-        logger.log(`📤 Participant ${participantId} left room ${roomName}`);
+        logger.log(`📤 User ${authenticatedSocket.user.userId} left room ${roomName}`);
 
         chatNamespace.to(roomName).emit('chat:user-left', {
           type: 'chat:user-left',
           data: {
-            userId: participantId,
-            authenticated: !!authenticatedSocket,
+            userId: authenticatedSocket.user.userId,
+            authenticated: true,
             liveId: payload.liveId,
             timestamp: new Date().toISOString(),
           },
@@ -487,19 +479,6 @@ async function bootstrap() {
         'chat:send-message',
         async (payload: { liveId: string; message: string; clientMessageId?: string }) => {
           if (!rateLimitCheck(socket, 'chat:send-message', { windowMs: 10000, maxEvents: 20 })) {
-            return;
-          }
-
-          const writerSocket =
-            authenticatedSocket ??
-            (await authenticateSocketIfPresent(socket, jwtService, prismaService));
-          if (!writerSocket) {
-            socket.emit('error', {
-              type: 'error',
-              errorCode: 'FORBIDDEN',
-              message: 'Login required to send messages',
-              timestamp: new Date().toISOString(),
-            });
             return;
           }
 
@@ -530,18 +509,23 @@ async function bootstrap() {
           let username = '익명';
           try {
             const user = await prismaService.user.findUnique({
-              where: { id: writerSocket.user.userId },
-              select: { instagramId: true },
+              where: { id: authenticatedSocket.user.userId },
+              select: { instagramId: true, name: true },
             });
-            username = user?.instagramId ?? '익명';
-          } catch {
-            // Fallback to anonymous
+            username = resolveChatUsername(user);
+            logger.log(
+              `[chat] send-message userId=${authenticatedSocket.user.userId} username=${username}`,
+            );
+          } catch (error) {
+            logger.warn(
+              `[chat] failed to resolve username for userId=${authenticatedSocket.user.userId}: ${error}`,
+            );
           }
 
           const messageData = {
             id: randomUUID(),
             liveId: payload.liveId,
-            userId: writerSocket.user.userId,
+            userId: authenticatedSocket.user.userId,
             username,
             message: sanitizedMessage,
             clientMessageId: payload.clientMessageId,
@@ -570,10 +554,7 @@ async function bootstrap() {
       );
 
       socket.on('chat:delete-message', async (payload: { liveId: string; messageId: string }) => {
-        const adminSocket =
-          authenticatedSocket ??
-          (await authenticateSocketIfPresent(socket, jwtService, prismaService));
-        if (!adminSocket || adminSocket.user.role !== 'ADMIN') {
+        if (authenticatedSocket.user.role !== 'ADMIN') {
           socket.emit('error', {
             type: 'error',
             errorCode: 'FORBIDDEN',
@@ -596,7 +577,7 @@ async function bootstrap() {
         const roomName = `live:${payload.liveId}`;
 
         logger.log(
-          `🗑️  Admin ${adminSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`,
+          `🗑️  Admin ${authenticatedSocket.user.userId} deleted message ${payload.messageId} in ${roomName}`,
         );
 
         chatNamespace.to(roomName).emit('chat:message-deleted', {
@@ -604,7 +585,7 @@ async function bootstrap() {
           data: {
             messageId: payload.messageId,
             liveId: payload.liveId,
-            deletedBy: adminSocket.user.userId,
+            deletedBy: authenticatedSocket.user.userId,
             timestamp: new Date().toISOString(),
           },
         });

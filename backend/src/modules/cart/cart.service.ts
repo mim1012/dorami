@@ -19,6 +19,7 @@ import {
 } from '@live-commerce/shared-types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Cart, Prisma, VariantStatus } from '@prisma/client';
+import { resolveChatUsername } from '../chat/chat-identity.util';
 
 // Type for Prisma transaction client
 type PrismaTransactionClient = Omit<
@@ -270,9 +271,9 @@ export class CartService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { instagramId: true },
+        select: { instagramId: true, name: true },
       });
-      userName = user?.instagramId ?? '익명';
+      userName = resolveChatUsername(user);
     } catch {
       // Fallback to anonymous
     }
