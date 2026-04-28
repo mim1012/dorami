@@ -118,6 +118,8 @@ export default function LiveStreamPage() {
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
   const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const liveAccessReady = !isAuthLoading;
+  const canAccessLive = liveAccessReady && isAuthenticated;
 
   // ── Auth: 라이브 페이지는 비인증 유저도 시청 허용 (구매/채팅만 제한) ──────
   // 세션 만료 시에도 방송에서 이탈하지 않도록 redirect하지 않는다.
@@ -180,7 +182,7 @@ export default function LiveStreamPage() {
     canComposeMessages,
     sendMessage: chatSendMessage,
     deleteMessage: chatDeleteMessage,
-  } = useChatConnection(streamKey ?? '');
+  } = useChatConnection(streamKey ?? '', { enabled: canAccessLive });
   const { messages: chatMessages } = useChatMessages(chatSocketRef);
   const mobileInputRef = useRef<ChatInputHandle>(null);
   const mobileChatListRef = useRef<ChatMessageListHandle>(null);
@@ -249,6 +251,17 @@ export default function LiveStreamPage() {
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [streamStatus?.startedAt]);
+
+  useEffect(() => {
+    if (!liveAccessReady) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const returnTo = pathname + (typeof window !== 'undefined' ? window.location.search : '');
+      router.replace(`/login?redirect=${encodeURIComponent(returnTo)}`);
+    }
+  }, [isAuthenticated, liveAccessReady, pathname, router]);
 
   // ── Socket → FSM dispatch ──────────────────────────────────────────────────
   useEffect(() => {
@@ -621,6 +634,20 @@ export default function LiveStreamPage() {
       </div>
     );
 
+  if (!liveAccessReady || !canAccessLive) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-5">
+            <div className="absolute inset-0 rounded-full border-4 border-[#FF007A]/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FF007A] animate-spin"></div>
+          </div>
+          <Body className="text-white/60 text-lg font-medium">로그인 확인 중...</Body>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !isMobileReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -801,6 +828,7 @@ export default function LiveStreamPage() {
               key={`player-${streamKey}-${playerSessionSeed}`}
               streamKey={streamKey}
               title={streamStatus.title}
+              socketAuthReady={canAccessLive}
               muted={isMobileMuted}
               volume={mobileVolume}
               onViewerCountChange={handleViewerCountChange}
@@ -1180,6 +1208,7 @@ export default function LiveStreamPage() {
                   key={`player-${streamKey}-${playerSessionSeed}`}
                   streamKey={streamKey}
                   title={streamStatus.title}
+                  socketAuthReady={canAccessLive}
                   onViewerCountChange={handleViewerCountChange}
                   onStreamError={setVideoError}
                 />

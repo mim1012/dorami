@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_PATHS = ['/admin'];
 const PUBLIC_EXACT_ROUTES = ['/'];
-const PUBLIC_PREFIX_ROUTES = [
-  '/login',
-  '/auth',
-  '/profile/register',
-  '/open-in-browser',
-  '/live',
-];
+const PUBLIC_PREFIX_ROUTES = ['/login', '/auth', '/profile/register', '/open-in-browser'];
 const PROFILE_OPTIONAL_PATHS = ['/profile/register'];
 const KAKAO_OPEN_EXTERNAL_QUERY = 'openExternal';
 const KAKAO_OPEN_EXTERNAL_VALUE = '1';
