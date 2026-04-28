@@ -48,6 +48,7 @@ import { InquiryBottomSheet } from '@/components/inquiry/InquiryBottomSheet';
 import { useToast } from '@/components/common/Toast';
 import { sendStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useAuth } from '@/lib/hooks/use-auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 
@@ -117,7 +118,7 @@ export default function LiveStreamPage() {
   const [playerSessionSeed, setPlayerSessionSeed] = useState(0);
   const { showToast } = useToast();
   const hasShownSessionExpiredToast = useRef(false);
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const liveAccessReady = !isAuthLoading;
   const canAccessLive = liveAccessReady && isAuthenticated;
 
@@ -190,7 +191,7 @@ export default function LiveStreamPage() {
   // Desktop chat state
   const desktopInputRef = useRef<ChatInputHandle>(null);
   const desktopChatListRef = useRef<ChatMessageListHandle>(null);
-  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN');
+  const isAdmin = user?.role === 'ADMIN';
 
   // Elapsed time timer for mobile top bar
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
