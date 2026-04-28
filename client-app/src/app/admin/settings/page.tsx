@@ -32,6 +32,7 @@ import {
   isManagedNotificationType,
   type TestDeliveryResponse,
 } from './notifications/shared';
+import { getNotificationTimingSettings } from './notifications/timing-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,6 +219,7 @@ export default function AdminSettingsPage() {
   const [notificationTestTone, setNotificationTestTone] = useState<'success' | 'error'>('success');
 
   const visibleNotificationTemplates = getVisibleTemplates(notificationTemplates);
+  const notificationTimingSettings = getNotificationTimingSettings();
   const activeNotificationTemplate =
     visibleNotificationTemplates.find((template) => template.type === activeNotificationType) ??
     visibleNotificationTemplates[0] ??
@@ -520,33 +522,6 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="border border-gray-100 rounded-xl p-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-4">장바구니 리마인드 설정</h4>
-            <div className="space-y-4 mb-4">
-              <Input
-                label="장기 미구매 장바구니 알림 기준 (시간)"
-                type="number"
-                min={1}
-                max={168}
-                value={settings.abandonedCartReminderHours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    abandonedCartReminderHours: Math.min(
-                      168,
-                      Math.max(1, parseInt(e.target.value || '24', 10) || 24),
-                    ),
-                  })
-                }
-                fullWidth
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                타이머 만료 기준이 아니라 장바구니에 담은 뒤 이 시간이 지나도 주문하지 않은 고객에게
-                1회 알림을 보냅니다.
-              </p>
-            </div>
-          </div>
-
-          <div className="border border-gray-100 rounded-xl p-4">
             <h4 className="text-sm font-semibold text-gray-900 mb-4">배송 설정</h4>
             <div className="space-y-4">
               <Input
@@ -620,44 +595,69 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900">주문 확인 묶음 발송 지연</h4>
-                <p className="mt-1 text-sm text-gray-500">
-                  라이브 주문만 방송 종료 후 묶어서 보냅니다. 일반 주문 즉시 발송에는 영향 없습니다.
-                </p>
-              </div>
-              {settings.orderConfirmationDelayHours === 0 && (
-                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                  종료 직후
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="w-full sm:max-w-xs">
-                <Input
-                  label="방송 종료 후 N시간"
-                  type="number"
-                  min={0}
-                  max={168}
-                  step="1"
-                  value={settings.orderConfirmationDelayHours}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      orderConfirmationDelayHours: Math.min(
-                        168,
-                        Math.max(0, parseInt(e.target.value || '0', 10) || 0),
-                      ),
-                    })
-                  }
-                  fullWidth
-                />
-              </div>
-              <p className="pb-1 text-xs text-gray-500">
-                0이면 방송 종료 직후 처리 대상으로 잡힙니다.
+          <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">알림 타이밍 설정</h4>
+              <p className="mt-1 text-sm text-gray-500">
+                주문 확인 묶음 발송 지연과 장바구니 리마인드 시간을 이 섹션에서 함께 관리합니다.
               </p>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              {notificationTimingSettings.map((timing) => {
+                const value =
+                  timing.id === 'order-confirmation-delay'
+                    ? settings.orderConfirmationDelayHours
+                    : settings.abandonedCartReminderHours;
+
+                return (
+                  <div
+                    key={timing.id}
+                    className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-900">{timing.title}</h5>
+                        <p className="mt-1 text-sm text-gray-500">{timing.description}</p>
+                      </div>
+                      {typeof timing.zeroBadge !== 'undefined' && value === 0 && (
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                          {timing.zeroBadge}
+                        </span>
+                      )}
+                    </div>
+                    <Input
+                      label={timing.label}
+                      type="number"
+                      min={timing.min}
+                      max={timing.max}
+                      step="1"
+                      value={value}
+                      onChange={(e) => {
+                        const parsedValue =
+                          timing.id === 'order-confirmation-delay'
+                            ? Math.min(
+                                timing.max,
+                                Math.max(timing.min, parseInt(e.target.value || '0', 10) || 0),
+                              )
+                            : Math.min(
+                                timing.max,
+                                Math.max(timing.min, parseInt(e.target.value || '24', 10) || 24),
+                              );
+
+                        setSettings({
+                          ...settings,
+                          [timing.id === 'order-confirmation-delay'
+                            ? 'orderConfirmationDelayHours'
+                            : 'abandonedCartReminderHours']: parsedValue,
+                        });
+                      }}
+                      fullWidth
+                    />
+                    <p className="text-xs text-gray-500">{timing.helperText}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
