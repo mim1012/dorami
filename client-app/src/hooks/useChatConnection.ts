@@ -159,14 +159,14 @@ export function useChatConnection(
       }
 
       authRefreshAttemptedRef.current = false;
+      setIsConnected(true);
+      setConnectionStatus('connected');
       startJoinRetry();
     });
 
     socket.on('chat:join-room:success', () => {
       hasJoinedRoomRef.current = true;
       stopJoinRetry();
-      setIsConnected(true);
-      setConnectionStatus('connected');
       flushPendingMessages();
     });
 
