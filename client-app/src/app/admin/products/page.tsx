@@ -12,6 +12,7 @@ import { productKeys } from '@/lib/hooks/queries/use-products';
 import { validateProductForm, type ProductFormErrors } from '@/lib/schemas/product';
 import { formatPrice } from '@/lib/utils/price';
 import {
+  applyBulkVariantFields,
   buildColorSizeEditableVariants,
   convertVariantRowsPriceMode,
   createEmptyEditableVariant,
@@ -465,6 +466,8 @@ export default function AdminProductsPage() {
     isNew: false,
     expiresAtHours: undefined,
   });
+  const [bulkVariantPrice, setBulkVariantPrice] = useState('');
+  const [bulkVariantStock, setBulkVariantStock] = useState('');
 
   // DnD sensors
   const sensors = useSensors(
@@ -863,6 +866,16 @@ export default function AdminProductsPage() {
     }));
   };
 
+  const handleApplyBulkVariantValues = () => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: applyBulkVariantFields(prev.variants, {
+        price: bulkVariantPrice,
+        stock: bulkVariantStock,
+      }),
+    }));
+  };
+
   // --- Modal Close ---
   const handleCloseModal = () => {
     if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -871,6 +884,8 @@ export default function AdminProductsPage() {
     setGalleryFiles([]);
     setEditingProduct(null);
     setFormErrors({});
+    setBulkVariantPrice('');
+    setBulkVariantStock('');
     setIsModalOpen(false);
   };
 
@@ -935,6 +950,8 @@ export default function AdminProductsPage() {
     }
     setSelectedFile(null);
     setGalleryFiles([]);
+    setBulkVariantPrice('');
+    setBulkVariantStock('');
     setIsModalOpen(true);
   };
 
@@ -1959,6 +1976,42 @@ export default function AdminProductsPage() {
                         옵션별 개별 가격
                       </button>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/70 p-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                      <Input
+                        label={formData.variantPriceMode === 'ADD_ON' ? '전체 추가금' : '전체 개별 가격'}
+                        type="number"
+                        step="0.01"
+                        value={bulkVariantPrice}
+                        onChange={(e) => setBulkVariantPrice(e.target.value)}
+                        placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                        fullWidth
+                      />
+                      <Input
+                        label="전체 재고"
+                        type="number"
+                        value={bulkVariantStock}
+                        onChange={(e) => setBulkVariantStock(e.target.value)}
+                        placeholder="0"
+                        fullWidth
+                      />
+                      <div className="lg:min-w-[180px]">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          fullWidth
+                          onClick={handleApplyBulkVariantValues}
+                          disabled={bulkVariantPrice === '' && bulkVariantStock === ''}
+                        >
+                          입력값 전체 적용
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-secondary-text">
+                      동일 가격/재고 조합이 많으면 한 번 입력 후 전체 옵션 행에 일괄 적용할 수 있습니다.
+                    </p>
                   </div>
 
                   <div className="overflow-x-auto">

@@ -1,4 +1,5 @@
 import {
+  applyBulkVariantFields,
   buildColorSizeEditableVariants,
   convertVariantRowsPriceMode,
   createEmptyEditableVariant,
@@ -78,6 +79,74 @@ describe('product variant helpers', () => {
       'Black',
       'Ivory',
       'Navy',
+    ]);
+  });
+
+  it('applies shared price and stock values across all variant rows', () => {
+    expect(
+      applyBulkVariantFields(
+        [
+          {
+            color: 'Black',
+            size: 'M',
+            label: 'Black / M',
+            price: '1000',
+            stock: '1',
+            status: 'ACTIVE',
+          },
+          {
+            color: 'Ivory',
+            size: 'L',
+            label: 'Ivory / L',
+            price: '2500',
+            stock: '3',
+            status: 'SOLD_OUT',
+          },
+        ],
+        { price: '1999', stock: '8' },
+      ),
+    ).toEqual([
+      {
+        color: 'Black',
+        size: 'M',
+        label: 'Black / M',
+        price: '1999',
+        stock: '8',
+        status: 'ACTIVE',
+      },
+      {
+        color: 'Ivory',
+        size: 'L',
+        label: 'Ivory / L',
+        price: '1999',
+        stock: '8',
+        status: 'SOLD_OUT',
+      },
+    ]);
+
+    expect(
+      applyBulkVariantFields(
+        [
+          {
+            color: 'Black',
+            size: 'M',
+            label: 'Black / M',
+            price: '1000',
+            stock: '1',
+            status: 'ACTIVE',
+          },
+        ],
+        { price: '', stock: '12' },
+      ),
+    ).toEqual([
+      {
+        color: 'Black',
+        size: 'M',
+        label: 'Black / M',
+        price: '1000',
+        stock: '12',
+        status: 'ACTIVE',
+      },
     ]);
   });
 

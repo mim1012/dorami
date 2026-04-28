@@ -45,6 +45,24 @@ export function createEmptyEditableVariant(): EditableProductVariant {
   };
 }
 
+export function applyBulkVariantFields(
+  rows: EditableProductVariant[],
+  { price, stock }: { price?: string; stock?: string },
+): EditableProductVariant[] {
+  const shouldApplyPrice = price !== undefined && price !== '';
+  const shouldApplyStock = stock !== undefined && stock !== '';
+
+  if (!shouldApplyPrice && !shouldApplyStock) {
+    return rows;
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    ...(shouldApplyPrice ? { price: price! } : {}),
+    ...(shouldApplyStock ? { stock: stock! } : {}),
+  }));
+}
+
 export function parseVariantOptionCsv(input: string): string[] {
   const seen = new Set<string>();
 
