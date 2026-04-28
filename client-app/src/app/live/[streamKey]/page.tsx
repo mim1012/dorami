@@ -603,6 +603,11 @@ export default function LiveStreamPage() {
     }
   };
 
+  const handleCloseProductModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+  }, []);
+
   // Profile completion guard: prevent rendering while redirecting
   // isMobileReady ensures useIsMobile has read window.innerWidth before
   // VideoPlayer renders — prevents Desktop→Mobile remount race condition.
@@ -672,11 +677,6 @@ export default function LiveStreamPage() {
       </div>
     );
   }
-
-  const handleCloseProductModal = useCallback(() => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
-  }, []);
 
   const handleProductClick = async (product: Product | FeaturedProduct) => {
     if ('streamKey' in product && 'colorOptions' in product) {
