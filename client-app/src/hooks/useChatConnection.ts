@@ -103,11 +103,15 @@ export function useChatConnection(
 
     const handleAuthReconnect = async () => {
       const refreshed = await recoverSocketAuth();
-      if (refreshed) {
-        socket.connect();
-      } else {
+      if (!refreshed) {
+        return false;
+      }
+
+      if (socket.connected) {
         socket.disconnect();
       }
+      socket.connect();
+      return true;
     };
 
     // Connection events
@@ -125,18 +129,17 @@ export function useChatConnection(
       setConnectionStatus('connected');
 
       const { isAuthenticated, authStatus } = useAuthStore.getState();
-      const shouldAttemptRecovery =
-        !authenticated && (isAuthenticated || authStatus === 'verifying');
+      const shouldAttemptRecovery = !authenticated && isAuthenticated && authStatus === 'verified';
       if (shouldAttemptRecovery && !authRefreshAttemptedRef.current) {
         authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
-        return;
+        const upgraded = await handleAuthReconnect();
+        if (upgraded) {
+          return;
+        }
       }
 
       authRefreshAttemptedRef.current = false;
-      if (authenticated) {
-        flushPendingMessages();
-      }
+      flushPendingMessages();
     });
 
     // Server sends auth error details before disconnecting
