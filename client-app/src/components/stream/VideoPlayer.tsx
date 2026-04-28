@@ -68,6 +68,7 @@ export default function VideoPlayer({
   const streamEndedRef = useRef(false);
   const playerModeRef = useRef<'flv' | 'hls' | null>(null);
   const reconnectResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
   const authRefreshAttemptedRef = useRef(false);
 
   const [viewerCount, setViewerCount] = useState(0);
@@ -155,8 +156,14 @@ export default function VideoPlayer({
     });
   }, []);
 
+  const canUseVideoElement = useCallback(() => {
+    return isMountedRef.current && !!videoRef.current && videoRef.current.isConnected;
+  }, []);
+
   const initializeHlsPlayer = useCallback(() => {
-    if (!videoRef.current) return;
+    if (!canUseVideoElement()) return;
+    const video = videoRef.current;
+    if (!video) return;
 
     // Clear any existing interval (e.g. orphaned FLV interval during fallback)
     if (latencyIntervalRef.current) {
@@ -168,11 +175,12 @@ export default function VideoPlayer({
     setPlayerModeWithRef('hls');
 
     // Check if browser supports native HLS (Safari)
-    if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
-      videoRef.current.src = hlsUrl;
-      videoRef.current.addEventListener(
+    if (video.canPlayType('application/vnd.apple.mpegurl') && !Hls.isSupported()) {
+      video.src = hlsUrl;
+      video.addEventListener(
         'loadedmetadata',
         () => {
+          if (!canUseVideoElement()) return;
           videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
           connectWebSocket();
@@ -191,9 +199,14 @@ export default function VideoPlayer({
       });
 
       hls.loadSource(hlsUrl);
-      hls.attachMedia(videoRef.current);
+      if (!canUseVideoElement()) {
+        hls.destroy();
+        return;
+      }
+      hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (!canUseVideoElement()) return;
         videoRef.current?.play().catch(() => {});
         setIsPlaying(true);
         connectWebSocket();
@@ -235,10 +248,12 @@ export default function VideoPlayer({
     } else {
       setError('Your browser does not support video playback');
     }
-  }, [hlsUrl]);
+  }, [canUseVideoElement, hlsUrl]);
 
   const initializeFlvPlayer = useCallback(async () => {
-    if (!videoRef.current) return;
+    if (!canUseVideoElement()) return;
+    const video = videoRef.current;
+    if (!video) return;
 
     if (mpegtsPlayerRef.current) {
       mpegtsPlayerRef.current.destroy();
@@ -261,6 +276,8 @@ export default function VideoPlayer({
 
     try {
       const mpegts = await import('mpegts.js');
+
+      if (!canUseVideoElement()) return;
 
       if (!mpegts.default.isSupported()) {
         // Browser doesn't support MSE/FLV — fall back to HLS
@@ -289,12 +306,18 @@ export default function VideoPlayer({
         },
       );
 
-      player.attachMediaElement(videoRef.current);
+      if (!canUseVideoElement()) {
+        player.destroy();
+        return;
+      }
+
+      player.attachMediaElement(video);
       player.load();
 
-      videoRef.current.addEventListener(
+      video.addEventListener(
         'loadedmetadata',
         () => {
+          if (!canUseVideoElement()) return;
           videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
           connectWebSocket();
@@ -361,7 +384,7 @@ export default function VideoPlayer({
       // mpegts.js import failed — fall back to HLS
       initializeHlsPlayer();
     }
-  }, [flvUrl, initializeHlsPlayer]);
+  }, [canUseVideoElement, flvUrl, initializeHlsPlayer]);
 
   // Visibility change: handle tab switch and background recovery
   useEffect(() => {
@@ -397,6 +420,7 @@ export default function VideoPlayer({
     if (!videoRef.current) return;
 
     const video = videoRef.current;
+    isMountedRef.current = true;
 
     // KPI + buffering state via video element events
     const onWaiting = () => {
@@ -538,13 +562,16 @@ export default function VideoPlayer({
     video.addEventListener('stalled', onStalled);
     video.addEventListener('ratechange', onRateChange);
 
-    // Player initialization starts immediately; WebSocket connects
-    // only after player is ready (loadedmetadata / MANIFEST_PARSED).
-    // This prevents wasted WebSocket connections when the component
-    // unmounts before the player has loaded any data.
-    initializeFlvPlayer();
+    // Defer player initialization by one frame so a same-frame unmount/remount
+    // never lets MSE attach to a detached video element.
+    const initTimer = setTimeout(() => {
+      if (!canUseVideoElement()) return;
+      initializeFlvPlayer();
+    }, 0);
 
     return () => {
+      isMountedRef.current = false;
+      clearTimeout(initTimer);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
       video.removeEventListener('stalled', onStalled);
@@ -556,7 +583,7 @@ export default function VideoPlayer({
       cleanupPlayer();
       disconnectWebSocket();
     };
-  }, [streamKey]);
+  }, [canUseVideoElement, initializeFlvPlayer, streamKey]);
 
   const cleanupPlayer = () => {
     if (latencyIntervalRef.current) {

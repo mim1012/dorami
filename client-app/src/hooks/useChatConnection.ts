@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
-import { useAuthStore } from '@/lib/store/auth';
+import { shouldUseAuthenticatedChatConnection, type ChatConnectionSuccessPayload } from './chat-connection.utils';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -39,10 +39,11 @@ export function useChatConnection(
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('disconnected');
   const [userCount, setUserCount] = useState(0);
-  const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
   const authRefreshAttemptedRef = useRef(false);
+  const hasJoinedRoomRef = useRef(false);
+  const joinRetryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -53,7 +54,7 @@ export function useChatConnection(
     const socket = socketRef.current;
     const queuedMessages = pendingMessageQueueRef.current;
 
-    if (!socket || !socket.connected || queuedMessages.length === 0) {
+    if (!socket || !socket.connected || !hasJoinedRoomRef.current || queuedMessages.length === 0) {
       return;
     }
 
@@ -73,8 +74,12 @@ export function useChatConnection(
       }
       pendingMessageQueueRef.current = [];
       authRefreshAttemptedRef.current = false;
+      hasJoinedRoomRef.current = false;
+      if (joinRetryTimerRef.current) {
+        clearInterval(joinRetryTimerRef.current);
+        joinRetryTimerRef.current = null;
+      }
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
       return;
     }
@@ -101,6 +106,27 @@ export function useChatConnection(
       socket.emit('chat:join-room', { liveId: streamKey });
     };
 
+    const stopJoinRetry = () => {
+      if (joinRetryTimerRef.current) {
+        clearInterval(joinRetryTimerRef.current);
+        joinRetryTimerRef.current = null;
+      }
+    };
+
+    const startJoinRetry = () => {
+      stopJoinRetry();
+      hasJoinedRoomRef.current = false;
+      emitJoin();
+      joinRetryTimerRef.current = setInterval(() => {
+        if (!socket.connected || hasJoinedRoomRef.current) {
+          stopJoinRetry();
+          return;
+        }
+
+        emitJoin();
+      }, 1000);
+    };
+
     const handleAuthReconnect = async () => {
       const refreshed = await recoverSocketAuth();
       if (refreshed) {
@@ -112,29 +138,36 @@ export function useChatConnection(
 
     // Connection events
     socket.on('connect', () => {
-      // Don't set connected yet — wait for server auth confirmation
-      // Join chat room (server will authenticate in connection handler)
-      emitJoin();
+      hasJoinedRoomRef.current = false;
+      setIsConnected(false);
+      setConnectionStatus('connecting');
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', async (payload?: { data?: { authenticated?: boolean } }) => {
-      const authenticated = !!payload?.data?.authenticated;
-      setIsConnected(true);
-      setIsSocketAuthenticated(authenticated);
-      setConnectionStatus('connected');
+    socket.on('connection:success', async (payload?: ChatConnectionSuccessPayload) => {
+      if (!shouldUseAuthenticatedChatConnection(payload)) {
+        setIsConnected(false);
+        setConnectionStatus('connecting');
+        hasJoinedRoomRef.current = false;
+        stopJoinRetry();
 
-      const { isAuthenticated } = useAuthStore.getState();
-      if (isAuthenticated && !authenticated && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
+        if (!authRefreshAttemptedRef.current) {
+          authRefreshAttemptedRef.current = true;
+          await handleAuthReconnect();
+        }
         return;
       }
 
       authRefreshAttemptedRef.current = false;
-      if (authenticated) {
-        flushPendingMessages();
-      }
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      startJoinRetry();
+    });
+
+    socket.on('chat:join-room:success', () => {
+      hasJoinedRoomRef.current = true;
+      stopJoinRetry();
+      flushPendingMessages();
     });
 
     // Server sends auth error details before disconnecting
@@ -144,8 +177,9 @@ export function useChatConnection(
 
     socket.on('disconnect', async (reason) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
+      hasJoinedRoomRef.current = false;
+      stopJoinRetry();
 
       // "io server disconnect" means the server forcefully closed the connection
       // (e.g., auth failure). Attempt token refresh and reconnect once.
@@ -157,7 +191,8 @@ export function useChatConnection(
 
     socket.on('connect_error', async (error) => {
       setIsConnected(false);
-      setIsSocketAuthenticated(false);
+      hasJoinedRoomRef.current = false;
+      stopJoinRetry();
 
       if (!socket.disconnected) {
         return;
@@ -193,12 +228,12 @@ export function useChatConnection(
     });
 
     socket.io.on('reconnect', () => {
-      // Note: socket.on('connect') is also fired on reconnect, so emitJoin is called there
-      // Avoid double-calling emitJoin here
-      flushPendingMessages();
+      // Wait for authenticated connection:success before flushing queued messages.
     });
 
     return () => {
+      stopJoinRetry();
+      hasJoinedRoomRef.current = false;
       if (socketRef.current) {
         socketRef.current.emit('chat:leave-room', { liveId: streamKey });
         socketRef.current.disconnect();
@@ -221,7 +256,7 @@ export function useChatConnection(
     };
 
     const socket = socketRef.current;
-    if (socket && isConnected && isSocketAuthenticated && socket.connected) {
+    if (socket && isConnected && socket.connected && hasJoinedRoomRef.current) {
       socket.emit('chat:send-message', payload);
       return;
     }
@@ -234,7 +269,7 @@ export function useChatConnection(
   };
 
   const deleteMessage = (messageId: string) => {
-    if (socketRef.current && isConnected) {
+    if (socketRef.current && isConnected && hasJoinedRoomRef.current) {
       socketRef.current.emit('chat:delete-message', {
         liveId: streamKey,
         messageId,
@@ -247,8 +282,7 @@ export function useChatConnection(
     isConnected,
     connectionStatus,
     userCount,
-    canComposeMessages:
-      isSocketAuthenticated && (isConnected || connectionStatus === 'reconnecting'),
+    canComposeMessages: isConnected || connectionStatus === 'reconnecting',
     sendMessage,
     deleteMessage,
   };
