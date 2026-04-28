@@ -14,10 +14,8 @@ import { formatPrice } from '@/lib/utils/price';
 import {
   applyBulkValuesToEditableVariants,
   buildColorSizeEditableVariants,
-  convertVariantRowsPriceMode,
   createEmptyEditableVariant,
   deriveOptionSummaries,
-  inferVariantPriceMode,
   parseVariantOptionCsv,
   serializeVariantsForSubmit,
   validateColorSizeVariants,
@@ -114,21 +112,8 @@ const formatDate = (dateString: string) => {
   });
 };
 
-function calcDiscountRate(originalPrice: string, discountPrice: string): number | null {
-  const orig = parseFloat(originalPrice);
-  const disc = parseFloat(discountPrice);
-  if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc <= 0 || disc >= orig) return null;
-  return Math.round(((orig - disc) / orig) * 1000) / 10;
-}
-
-function getCurrentSellingPrice(
-  formData: Pick<ProductFormData, 'discountEnabled' | 'discountPrice' | 'originalPrice'>,
-) {
-  const sourcePrice =
-    formData.discountEnabled && formData.discountPrice
-      ? formData.discountPrice
-      : formData.originalPrice;
-  const parsed = Number.parseFloat(sourcePrice);
+function getCurrentSellingPrice(formData: Pick<ProductFormData, 'originalPrice'>) {
+  const parsed = Number.parseFloat(formData.originalPrice);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
@@ -140,24 +125,20 @@ function mapProductToVariantEditorState(product: Product): {
   if (!product.variants || product.variants.length === 0) {
     return {
       variantEnabled: false,
-      variantPriceMode: 'ADD_ON',
+      variantPriceMode: 'DIRECT',
       variants: [createEmptyEditableVariant()],
     };
   }
 
-  const variantPriceMode = inferVariantPriceMode(product.variants as any);
-  const basePrice = product.price;
-
   return {
     variantEnabled: true,
-    variantPriceMode,
+    variantPriceMode: 'DIRECT',
     variants: product.variants.map((variant) => ({
       id: variant.id,
       color: variant.color ?? '',
       size: variant.size ?? '',
       label: variant.label ?? '',
-      price:
-        variantPriceMode === 'ADD_ON' ? String(variant.price - basePrice) : String(variant.price),
+      price: String(variant.price),
       stock: String(variant.stock),
       status: variant.status,
     })),
@@ -1049,10 +1030,9 @@ export default function AdminProductsPage() {
       setFormData({
         streamKey: product.streamKey || '',
         name: product.name,
-        // originalPrice = 정가 (할인 있으면 originalPrice, 없으면 price)
-        originalPrice: hasDiscount ? product.originalPrice!.toString() : product.price.toString(),
-        discountEnabled: hasDiscount,
-        discountPrice: hasDiscount ? product.price.toString() : '',
+        originalPrice: product.price.toString(),
+        discountEnabled: false,
+        discountPrice: '',
         stock: product.stock.toString(),
         status: product.status,
         variantEnabled: variantEditorState.variantEnabled,
@@ -1086,7 +1066,7 @@ export default function AdminProductsPage() {
         stock: '',
         status: 'AVAILABLE',
         variantEnabled: false,
-        variantPriceMode: 'ADD_ON',
+        variantPriceMode: 'DIRECT',
         colorOptions: '',
         sizeOptions: '',
         variants: [createEmptyEditableVariant()],
@@ -1373,11 +1353,6 @@ export default function AdminProductsPage() {
         return { text: status, color: 'bg-gray-500/20 text-gray-500' };
     }
   };
-
-  // Compute live discount rate for form preview
-  const liveDiscountRate = formData.discountEnabled
-    ? calcDiscountRate(formData.originalPrice, formData.discountPrice)
-    : null;
 
   if (isLoading) {
     return (
@@ -1990,13 +1965,13 @@ export default function AdminProductsPage() {
             <div>
               <Body className="font-semibold text-primary-text">상품 기본정보</Body>
               <p className="mt-1 text-xs text-secondary-text">
-                옵션 사용 여부와 관계없이 대표 판매 정보로 사용됩니다.
+                고객에게 보여줄 노출가와 기본 재고를 설정합니다.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Input
-                label="판매 가격"
+                label="노출가"
                 name="originalPrice"
                 type="number"
                 step="0.01"
@@ -2019,7 +1994,7 @@ export default function AdminProductsPage() {
                 disabled={formData.variantEnabled}
                 helperText={
                   formData.variantEnabled
-                    ? '옵션 사용 시 활성 옵션 재고 합계로 자동 계산됩니다.'
+                    ? '옵션 사용 시 옵션별 재고 합계로 자동 계산됩니다.'
                     : undefined
                 }
                 error={formErrors.stock}
@@ -2041,67 +2016,16 @@ export default function AdminProductsPage() {
                 </select>
               </label>
               <div className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-secondary-text">
-                대표 판매가: {currentSellingPrice != null ? formatPrice(currentSellingPrice) : '-'}
+                노출가: {currentSellingPrice != null ? formatPrice(currentSellingPrice) : '-'}
                 {formData.variantEnabled && variantPreviewRows.length > 0 && (
                   <div className="mt-1 text-xs">
-                    조합 수 {variantPreviewRows.length}개 / 옵션 가격 모드{' '}
-                    {formData.variantPriceMode === 'ADD_ON'
-                      ? '기본 가격 + 추가금'
-                      : '옵션별 개별 가격'}
+                    조합 수 {variantPreviewRows.length}개 / 옵션별 가격·재고는 아래에서 직접
+                    설정합니다
                   </div>
                 )}
               </div>
             </div>
           </div>
-
-          {/* 할인 토글 */}
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={formData.discountEnabled}
-                onChange={(e) =>
-                  setFormData({ ...formData, discountEnabled: e.target.checked, discountPrice: '' })
-                }
-                className="w-4 h-4 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
-              />
-              <span className="text-sm font-medium text-primary-text">할인 적용</span>
-            </label>
-          </div>
-
-          {/* 할인 가격 입력 (할인 활성 시만 표시) */}
-          {formData.discountEnabled && (
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Input
-                    label="할인 가격"
-                    name="discountPrice"
-                    type="number"
-                    step="0.01"
-                    value={formData.discountPrice}
-                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
-                    placeholder="24.00"
-                    required
-                    fullWidth
-                    error={formErrors.discountPrice}
-                  />
-                </div>
-                {liveDiscountRate !== null && (
-                  <div className="mt-5">
-                    <span className="inline-block px-2.5 py-1.5 rounded-lg bg-error/15 text-error text-sm font-bold whitespace-nowrap">
-                      할인율: {liveDiscountRate}%
-                    </span>
-                  </div>
-                )}
-              </div>
-              {formData.discountPrice &&
-                formData.originalPrice &&
-                parseFloat(formData.discountPrice) >= parseFloat(formData.originalPrice) && (
-                  <p className="text-xs text-error mt-1">할인 가격은 정가보다 작아야 합니다</p>
-                )}
-            </div>
-          )}
 
           <div className="space-y-4 rounded-xl border border-gray-200 p-4">
             <div className="flex items-start justify-between gap-3">
@@ -2119,12 +2043,13 @@ export default function AdminProductsPage() {
                     setFormData((prev) => ({
                       ...prev,
                       variantEnabled: e.target.checked,
+                      variantPriceMode: 'DIRECT',
                       variants: e.target.checked
                         ? buildColorSizeEditableVariants({
                             colors: parseVariantOptionCsv(prev.colorOptions),
                             sizes: parseVariantOptionCsv(prev.sizeOptions),
                             existingRows: prev.variants,
-                            priceMode: prev.variantPriceMode,
+                            priceMode: 'DIRECT',
                             basePrice: getCurrentSellingPrice(prev),
                           })
                         : [createEmptyEditableVariant()],
@@ -2182,59 +2107,12 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="space-y-3 rounded-xl border border-gray-100 bg-white/60 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <Body className="font-semibold text-primary-text">옵션 가격 설정</Body>
-                      <p className="mt-1 text-xs text-secondary-text">
-                        {formData.variantPriceMode === 'ADD_ON'
-                          ? '기본 판매 가격을 기준으로 옵션별 추가금을 입력합니다.'
-                          : '각 옵션 조합의 최종 판매 가격을 직접 입력합니다.'}
-                      </p>
-                    </div>
-                    <div className="inline-flex rounded-lg border border-gray-200 p-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            variantPriceMode: 'ADD_ON',
-                            variants: convertVariantRowsPriceMode(prev.variants, {
-                              from: prev.variantPriceMode,
-                              to: 'ADD_ON',
-                              basePrice: getCurrentSellingPrice(prev),
-                            }),
-                          }))
-                        }
-                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                          formData.variantPriceMode === 'ADD_ON'
-                            ? 'bg-hot-pink text-white'
-                            : 'text-secondary-text hover:bg-gray-50'
-                        }`}
-                      >
-                        기본 가격 + 추가금
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            variantPriceMode: 'DIRECT',
-                            variants: convertVariantRowsPriceMode(prev.variants, {
-                              from: prev.variantPriceMode,
-                              to: 'DIRECT',
-                              basePrice: getCurrentSellingPrice(prev),
-                            }),
-                          }))
-                        }
-                        className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                          formData.variantPriceMode === 'DIRECT'
-                            ? 'bg-hot-pink text-white'
-                            : 'text-secondary-text hover:bg-gray-50'
-                        }`}
-                      >
-                        옵션별 개별 가격
-                      </button>
-                    </div>
+                  <div>
+                    <Body className="font-semibold text-primary-text">옵션별 가격 / 재고 설정</Body>
+                    <p className="mt-1 text-xs text-secondary-text">
+                      노출가는 위에서 관리하고, 실제 판매 가격과 재고는 각 옵션 조합별로 직접
+                      입력합니다.
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-dashed border-hot-pink/30 bg-hot-pink/5 p-4">
@@ -2250,16 +2128,12 @@ export default function AdminProductsPage() {
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px] lg:flex-1">
                         <Input
-                          label={
-                            formData.variantPriceMode === 'ADD_ON'
-                              ? '전체 가격 추가금'
-                              : '전체 가격'
-                          }
+                          label={'전체 가격'}
                           type="number"
                           step="0.01"
                           value={variantBulkPrice}
                           onChange={(e) => setVariantBulkPrice(e.target.value)}
-                          placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                          placeholder="29.00"
                           fullWidth
                         />
                         <Input
@@ -2329,18 +2203,18 @@ export default function AdminProductsPage() {
                             fullWidth
                           />
                           <Input
-                            label={formData.variantPriceMode === 'ADD_ON' ? '추가금' : '개별 가격'}
+                            label="옵션별 가격"
                             type="number"
                             step="0.01"
                             value={variant.price}
                             onChange={(e) =>
                               handleVariantFieldChange(index, 'price', e.target.value)
                             }
-                            placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                            placeholder="29.00"
                             fullWidth
                           />
                           <Input
-                            label="재고"
+                            label="옵션별 재고"
                             type="number"
                             value={variant.stock}
                             onChange={(e) =>
@@ -2375,10 +2249,8 @@ export default function AdminProductsPage() {
                           <th className="py-2 pr-3">색상</th>
                           <th className="py-2 pr-3">사이즈</th>
                           <th className="py-2 pr-3">조합명</th>
-                          <th className="py-2 pr-3">
-                            {formData.variantPriceMode === 'ADD_ON' ? '추가금' : '개별 가격'}
-                          </th>
-                          <th className="py-2 pr-3">재고</th>
+                          <th className="py-2 pr-3">옵션별 가격</th>
+                          <th className="py-2 pr-3">옵션별 재고</th>
                           <th className="py-2 pr-3">상태</th>
                         </tr>
                       </thead>
@@ -2407,7 +2279,7 @@ export default function AdminProductsPage() {
                                 onChange={(e) =>
                                   handleVariantFieldChange(index, 'price', e.target.value)
                                 }
-                                placeholder={formData.variantPriceMode === 'ADD_ON' ? '0' : '29.00'}
+                                placeholder="29.00"
                                 fullWidth
                               />
                             </td>
@@ -2444,7 +2316,7 @@ export default function AdminProductsPage() {
               </>
             ) : (
               <p className="text-sm text-secondary-text">
-                옵션을 끄면 일반 단일 상품처럼 대표 가격/재고/판매 상태만 저장됩니다.
+                옵션을 끄면 노출가와 단일 재고/판매 상태만 저장됩니다.
               </p>
             )}
           </div>
