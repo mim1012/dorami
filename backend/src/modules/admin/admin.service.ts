@@ -146,7 +146,7 @@ const MANAGED_NOTIFICATION_DEFAULTS: Record<
   LIVE_START: {
     name: 'LIVE_START',
     template:
-      '[#{쇼핑몰명}] 라이브가 시작되었습니다.\n제목: #{라이브주제}\n#{상세내용}\n바로가기: #{방송URL}',
+      '[#{쇼핑몰명}] 라이브 방송 시작 안내\n\n고객님께서 신청하신 라이브 방송이 시작되었습니다.\n\n■ 방송 주제 : #{라이브주제}\n■ 방송 내용 : #{상세내용}\n\n라이브 시청 : #{방송URL}',
   },
 };
 
