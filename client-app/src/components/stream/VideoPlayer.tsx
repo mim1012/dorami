@@ -5,7 +5,6 @@ import Hls from 'hls.js';
 import { io, Socket } from 'socket.io-client';
 import { sendStreamMetrics, buildStreamMetrics } from '@/lib/analytics/stream-metrics';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
-import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SOCKET_URL } from '@/lib/config/socket-url';
@@ -68,7 +67,6 @@ export default function VideoPlayer({
   const streamEndedRef = useRef(false);
   const playerModeRef = useRef<'flv' | 'hls' | null>(null);
   const reconnectResetTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const authRefreshAttemptedRef = useRef(false);
 
   const [viewerCount, setViewerCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -614,8 +612,6 @@ export default function VideoPlayer({
     socket.on('connect', () => {
       if (streamEndedRef.current) return;
 
-      authRefreshAttemptedRef.current = false;
-
       if (!activeViewerKeys.has(streamKey)) {
         activeViewerKeys.add(streamKey);
         socket.emit('stream:viewer:join', { streamKey });
@@ -641,30 +637,10 @@ export default function VideoPlayer({
     socket.on('disconnect', (reason) => {
       if (streamEndedRef.current) return;
       console.log(`[Stream WebSocket] disconnected: ${reason}`);
-
-      if (reason === 'io server disconnect' && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        void recoverSocketAuth().then((refreshed) => {
-          if (refreshed) {
-            socket.connect();
-          }
-        });
-      }
     });
 
     socket.on('connect_error', (error) => {
       console.error('[Stream WebSocket] connect error:', error);
-
-      if (authRefreshAttemptedRef.current || !isAuthError(error as Error)) {
-        return;
-      }
-
-      authRefreshAttemptedRef.current = true;
-      void recoverSocketAuth().then((refreshed) => {
-        if (refreshed) {
-          socket.connect();
-        }
-      });
     });
 
     socket.io.on('reconnect_error', (error) => {
@@ -723,7 +699,6 @@ export default function VideoPlayer({
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-    authRefreshAttemptedRef.current = false;
   };
 
   useEffect(() => {

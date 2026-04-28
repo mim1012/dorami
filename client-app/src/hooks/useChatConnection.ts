@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { isAuthError, recoverSocketAuth } from '@/lib/auth/token-manager';
 import { RECONNECT_CONFIG } from '@/lib/socket/reconnect-config';
 import { SOCKET_URL } from '@/lib/config/socket-url';
-import { useAuthStore } from '@/lib/store/auth';
 
 interface QueuedMessage {
   clientMessageId: string;
@@ -42,7 +40,6 @@ export function useChatConnection(
   const [isSocketAuthenticated, setIsSocketAuthenticated] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
-  const authRefreshAttemptedRef = useRef(false);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -72,7 +69,6 @@ export function useChatConnection(
         socketRef.current = null;
       }
       pendingMessageQueueRef.current = [];
-      authRefreshAttemptedRef.current = false;
       setIsConnected(false);
       setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
@@ -101,19 +97,6 @@ export function useChatConnection(
       socket.emit('chat:join-room', { liveId: streamKey });
     };
 
-    const handleAuthReconnect = async () => {
-      const refreshed = await recoverSocketAuth();
-      if (!refreshed) {
-        return false;
-      }
-
-      if (socket.connected) {
-        socket.disconnect();
-      }
-      socket.connect();
-      return true;
-    };
-
     // Connection events
     socket.on('connect', () => {
       // Don't set connected yet — wait for server auth confirmation
@@ -122,23 +105,11 @@ export function useChatConnection(
     });
 
     // Server sends this after successful authentication
-    socket.on('connection:success', async (payload?: { data?: { authenticated?: boolean } }) => {
+    socket.on('connection:success', (payload?: { data?: { authenticated?: boolean } }) => {
       const authenticated = !!payload?.data?.authenticated;
       setIsConnected(true);
       setIsSocketAuthenticated(authenticated);
       setConnectionStatus('connected');
-
-      const { isAuthenticated, authStatus } = useAuthStore.getState();
-      const shouldAttemptRecovery = !authenticated && isAuthenticated && authStatus === 'verified';
-      if (shouldAttemptRecovery && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        const upgraded = await handleAuthReconnect();
-        if (upgraded) {
-          return;
-        }
-      }
-
-      authRefreshAttemptedRef.current = false;
       flushPendingMessages();
     });
 
@@ -151,32 +122,11 @@ export function useChatConnection(
       setIsConnected(false);
       setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
-
-      // "io server disconnect" means the server forcefully closed the connection
-      // (e.g., auth failure). Attempt token refresh and reconnect once.
-      if (reason === 'io server disconnect' && !authRefreshAttemptedRef.current) {
-        authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
-      }
     });
 
-    socket.on('connect_error', async (error) => {
+    socket.on('connect_error', async () => {
       setIsConnected(false);
       setIsSocketAuthenticated(false);
-
-      if (!socket.disconnected) {
-        return;
-      }
-
-      if (isAuthError(error as Error)) {
-        if (authRefreshAttemptedRef.current) {
-          // Already tried a refresh — stop reconnecting to prevent infinite loop
-          socket.disconnect();
-          return;
-        }
-        authRefreshAttemptedRef.current = true;
-        await handleAuthReconnect();
-      }
     });
 
     // Track user count locally via join/leave events
