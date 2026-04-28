@@ -28,7 +28,7 @@ import {
   type AdminNotificationTemplateType,
   type NotificationEventType,
 } from '@live-commerce/shared-types';
-import { getNotificationPresentation } from './notifications/presentation';
+import { getNotificationStatusText } from './notifications/view-model';
 
 export const dynamic = 'force-dynamic';
 
@@ -516,128 +516,148 @@ export default function AdminSettingsPage() {
         isOpen={expandedSections.notification}
         onToggle={() => handleToggleSection('notification')}
       >
-        <div className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="alimtalkEnabled"
-                checked={settings.alimtalkEnabled}
-                onChange={(e) => setSettings({ ...settings, alimtalkEnabled: e.target.checked })}
-                className="w-4 h-4 text-[#FF4D8D] focus:ring-[#FF4D8D] border-gray-300 rounded"
-              />
-              <div>
-                <label
-                  htmlFor="alimtalkEnabled"
-                  className="text-sm font-semibold text-gray-700 cursor-pointer"
-                >
-                  카카오 메시지 전체 활성화
-                </label>
-                <p className="text-xs text-gray-500">
-                  이 스위치를 끄면 아래 이벤트별 토글이 켜져 있어도 실제 알림톡/친구톡은 모두
-                  멈춥니다.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              아래 카드에서 주문 확인 알림톡, 장바구니 리마인드 친구톡, 라이브 시작 알림톡을 각각
-              따로 켜고 끌 수 있습니다.
-            </p>
-
-            {settings.alimtalkEnabled && (
-              <p className="text-xs text-gray-400">
-                Bizgo 연동이 정상일 때만 실제 카카오 발송이 진행됩니다. API 인증 정보는 서버
-                환경변수로 관리됩니다.
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-            <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4 space-y-3">
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900">
-                  주문 확인 알림 묶음 발송 지연
-                </h4>
-                <p className="mt-1 text-sm text-gray-600 leading-relaxed">
-                  라이브 방송 상품 주문은 방송 종료 후 같은 고객 + 같은 streamKey 기준으로 1번만
-                  묶어서 ORDER_CONFIRMATION 알림톡을 보냅니다.
-                </p>
-              </div>
-              <Input
-                label="방송 종료 후 N시간 뒤 발송"
-                type="number"
-                min={0}
-                max={168}
-                step="1"
-                value={settings.orderConfirmationDelayHours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    orderConfirmationDelayHours: Math.min(
-                      168,
-                      Math.max(0, parseInt(e.target.value || '0', 10) || 0),
-                    ),
-                  })
-                }
-                fullWidth
-              />
-              <p className="text-xs text-gray-500">
-                0이면 방송 종료 직후 바로 묶음 알림톡이 발송됩니다. 일반 비라이브 주문의 즉시
-                ORDER_CONFIRMATION에는 영향을 주지 않습니다.
-              </p>
-            </div>
-
-            <div className="flex items-start justify-between gap-3">
+        <div className="space-y-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-gray-900">이벤트별 발송 토글</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  운영자가 헷갈리지 않게 메인 설정 화면에서도 채널별 이벤트 상태를 바로 바꿀 수 있게
-                  했습니다. 템플릿 코드 수정과 테스트 발송은 전용 화면에서 이어집니다.
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="alimtalkEnabled"
+                    checked={settings.alimtalkEnabled}
+                    onChange={(e) =>
+                      setSettings({ ...settings, alimtalkEnabled: e.target.checked })
+                    }
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-[#FF4D8D] focus:ring-[#FF4D8D]"
+                  />
+                  <div>
+                    <label
+                      htmlFor="alimtalkEnabled"
+                      className="cursor-pointer text-sm font-semibold text-gray-800"
+                    >
+                      카카오 메시지 전체 활성화
+                    </label>
+                    <p className="mt-1 text-sm text-gray-500">
+                      전체 스위치만 켜두고, 아래에서 이벤트별로 바로 ON/OFF 하면 됩니다.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  템플릿 코드 수정이나 테스트 발송이 필요할 때만 상세 화면으로 들어가면 됩니다.
                 </p>
               </div>
               <Button
                 variant="outline"
                 onClick={() => router.push('/admin/settings/notifications')}
               >
-                템플릿 코드 관리
+                코드/테스트 관리
               </Button>
             </div>
+          </div>
 
-            {notificationFeedback && (
-              <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                <CheckCircle className="h-4 w-4" />
-                <span>{notificationFeedback}</span>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900">주문 확인 묶음 발송 지연</h4>
+                <p className="mt-1 text-sm text-gray-500">
+                  라이브 주문만 방송 종료 후 묶어서 보냅니다. 일반 주문 즉시 발송에는 영향 없습니다.
+                </p>
               </div>
-            )}
+              {settings.orderConfirmationDelayHours === 0 && (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  종료 직후
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="w-full sm:max-w-xs">
+                <Input
+                  label="방송 종료 후 N시간"
+                  type="number"
+                  min={0}
+                  max={168}
+                  step="1"
+                  value={settings.orderConfirmationDelayHours}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      orderConfirmationDelayHours: Math.min(
+                        168,
+                        Math.max(0, parseInt(e.target.value || '0', 10) || 0),
+                      ),
+                    })
+                  }
+                  fullWidth
+                />
+              </div>
+              <p className="pb-1 text-xs text-gray-500">
+                0이면 방송 종료 직후 처리 대상으로 잡힙니다.
+              </p>
+            </div>
+          </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+          {notificationFeedback && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+              <CheckCircle className="h-4 w-4" />
+              <span>{notificationFeedback}</span>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_auto_auto] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <span>이벤트</span>
+              <span>상태</span>
+              <span className="text-right">토글</span>
+            </div>
+            <div className="divide-y divide-gray-100">
               {visibleNotificationTemplates.map((template) => {
                 const config = NOTIFICATION_VARIABLES[template.type];
-                const presentation = getNotificationPresentation(template.type);
-                const channelBadgeClass =
-                  config.channel === 'AT'
-                    ? 'bg-sky-100 text-sky-700 border-sky-200'
-                    : 'bg-violet-100 text-violet-700 border-violet-200';
                 const isSavingToggle = notificationSavingId === template.id;
+                const statusText = getNotificationStatusText(
+                  settings.alimtalkEnabled,
+                  template.enabled,
+                );
 
                 return (
                   <div
                     key={template.id}
-                    className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-4"
+                    className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.4fr)_auto_auto] md:items-center"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h5 className="text-sm font-semibold text-gray-900">{config.label}</h5>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${channelBadgeClass}`}
-                          >
-                            {config.channel === 'AT' ? '알림톡' : '친구톡'}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900">{config.label}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            config.channel === 'AT'
+                              ? 'bg-sky-100 text-sky-700'
+                              : 'bg-violet-100 text-violet-700'
+                          }`}
+                        >
+                          {config.channel === 'AT' ? '알림톡' : '친구톡'}
+                        </span>
+                        {config.channel === 'AT' && !template.kakaoTemplateCode?.trim() && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            코드 미설정
                           </span>
-                        </div>
-                        <p className="text-xs text-gray-500">{presentation.sendTiming}</p>
+                        )}
                       </div>
+                    </div>
+
+                    <div className="md:justify-self-start">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          statusText === '켜짐'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : statusText === '전체 OFF'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {statusText}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 md:justify-self-end">
                       <button
                         type="button"
                         role="switch"
@@ -654,32 +674,12 @@ export default function AdminSettingsPage() {
                           }`}
                         />
                       </button>
-                    </div>
-
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm text-gray-600">
-                      <p className="font-medium text-gray-800">현재 상태</p>
-                      <p className="mt-1">
-                        {template.enabled
-                          ? '이 이벤트는 개별 발송 ON 상태입니다.'
-                          : '이 이벤트는 개별 발송 OFF 상태입니다.'}
-                        {!settings.alimtalkEnabled
-                          ? ' 단, 전체 활성화가 꺼져 있어서 지금은 실제 발송이 멈춰 있습니다.'
-                          : ''}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-gray-500">
-                        {config.channel === 'AT' && !template.kakaoTemplateCode?.trim()
-                          ? '카카오 템플릿 코드 미설정'
-                          : '템플릿 코드 설정 확인 가능'}
-                      </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => router.push('/admin/settings/notifications')}
                       >
-                        코드/테스트 관리
+                        상세
                       </Button>
                     </div>
                   </div>

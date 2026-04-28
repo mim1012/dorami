@@ -20,7 +20,7 @@ import {
   NOTIFICATION_VARIABLES,
   type AdminNotificationTemplateType,
 } from '@live-commerce/shared-types';
-import { getNotificationPresentation } from './presentation';
+import { getNotificationEditorSummary, getNotificationStatusText } from './view-model';
 
 interface NotificationTemplate {
   id: string;
@@ -36,6 +36,7 @@ interface NotificationTemplate {
 interface NotificationSettingsConfig {
   orderConfirmationDelayHours: number;
   abandonedCartReminderHours: number;
+  alimtalkEnabled: boolean;
 }
 
 type KakaoDeliveryStatus = 'sent' | 'failed' | 'skipped';
@@ -142,6 +143,7 @@ export default function NotificationSettingsPage() {
   const [settingsConfig, setSettingsConfig] = useState<NotificationSettingsConfig>({
     orderConfirmationDelayHours: 0,
     abandonedCartReminderHours: 24,
+    alimtalkEnabled: false,
   });
   const [activeType, setActiveType] = useState<AdminNotificationTemplateType>('ORDER_CONFIRMATION');
   const [isLoading, setIsLoading] = useState(true);
@@ -178,6 +180,7 @@ export default function NotificationSettingsPage() {
         setSettingsConfig({
           orderConfirmationDelayHours: settingsResponse.data.orderConfirmationDelayHours ?? 0,
           abandonedCartReminderHours: settingsResponse.data.abandonedCartReminderHours ?? 24,
+          alimtalkEnabled: settingsResponse.data.alimtalkEnabled ?? false,
         });
 
         if (filtered.length > 0) {
@@ -198,12 +201,6 @@ export default function NotificationSettingsPage() {
       prev.map((template) =>
         template.id === id ? { ...template, kakaoTemplateCode: value } : template,
       ),
-    );
-  };
-
-  const handleEnabledChange = (id: string, enabled: boolean) => {
-    setTemplates((prev) =>
-      prev.map((template) => (template.id === id ? { ...template, enabled } : template)),
     );
   };
 
@@ -309,8 +306,7 @@ export default function NotificationSettingsPage() {
             카카오 알림 설정
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            알림톡/친구톡 본문은 심사본 기준으로 읽기 전용이며, 이 화면에서는 템플릿 코드와 이벤트별
-            ON/OFF만 관리합니다.
+            여기서는 템플릿 코드와 테스트만 관리합니다. 켜고 끄기는 설정 화면에서 바로 바꿉니다.
           </p>
         </div>
       </div>
@@ -372,44 +368,30 @@ export default function NotificationSettingsPage() {
           {activeTemplate && (
             <div className="p-6">
               {(() => {
-                const presentation = getNotificationPresentation(activeTemplate.type);
+                const editorSummary = getNotificationEditorSummary(activeTemplate.type);
 
                 return (
                   <>
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="mb-6 flex items-center justify-between gap-4">
                       <div>
                         <h3 className="text-base font-bold text-gray-900">
                           {NOTIFICATION_VARIABLES[activeTemplate.type].label}
                         </h3>
-                        <p className="mt-1 text-sm text-gray-500">{presentation.sendTiming}</p>
+                        <p className="mt-1 text-sm text-gray-500">{editorSummary.sendTiming}</p>
                       </div>
                       <div className="flex items-center gap-3 flex-wrap justify-end">
-                        <label className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 shadow-sm">
-                          <span
-                            className={`text-xs font-semibold ${
-                              activeTemplate.enabled ? 'text-emerald-600' : 'text-gray-500'
-                            }`}
-                          >
-                            {activeTemplate.enabled ? '발송 ON' : '발송 OFF'}
-                          </span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={activeTemplate.enabled}
-                            onClick={() =>
-                              handleEnabledChange(activeTemplate.id, !activeTemplate.enabled)
-                            }
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              activeTemplate.enabled ? 'bg-[#FF4D8D]' : 'bg-gray-300'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                activeTemplate.enabled ? 'translate-x-5' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                        </label>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            activeTemplate.enabled && settingsConfig.alimtalkEnabled
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {getNotificationStatusText(
+                            settingsConfig.alimtalkEnabled,
+                            activeTemplate.enabled,
+                          )}
+                        </span>
                         {successId === activeTemplate.id && (
                           <span className="flex items-center gap-1.5 text-sm text-green-600">
                             <CheckCircle className="h-4 w-4" />
@@ -440,48 +422,34 @@ export default function NotificationSettingsPage() {
                     </div>
 
                     <div className="space-y-5">
-                      <div className="rounded-xl border border-pink-100 bg-pink-50/70 p-4">
-                        <p className="text-sm font-semibold text-pink-700">값 입력 방식</p>
-                        <p className="mt-1 text-sm text-pink-700/90">{presentation.valueIntro}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {presentation.primaryAction && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(presentation.primaryAction!.path)}
-                            >
-                              {presentation.primaryAction.label}
-                            </Button>
-                          )}
-                          {presentation.secondaryAction && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push(presentation.secondaryAction!.path)}
-                            >
-                              {presentation.secondaryAction.label}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {presentation.sourceGroups.map((group) => (
-                          <div
-                            key={group.heading}
-                            className="rounded-xl border border-gray-200 bg-gray-50/70 p-4"
-                          >
-                            <p className="text-sm font-semibold text-gray-900">{group.heading}</p>
-                            <div className="mt-3 space-y-3">
-                              {group.items.map((item) => (
-                                <div key={item.title}>
-                                  <p className="text-sm font-medium text-gray-800">{item.title}</p>
-                                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
-                                </div>
-                              ))}
-                            </div>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-semibold text-gray-900">여기서 하는 일</p>
+                            <p className="text-sm text-gray-600">{editorSummary.manageHere}</p>
+                            <p className="text-sm text-gray-600">{editorSummary.statusHint}</p>
                           </div>
-                        ))}
+                          <div className="flex flex-wrap gap-2">
+                            {editorSummary.actions.map((action) => (
+                              <Button
+                                key={`${activeTemplate.id}-${action.path}`}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(action.path)}
+                              >
+                                {action.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <ul className="mt-4 space-y-2 text-sm text-gray-600">
+                          {editorSummary.valueSources.map((line) => (
+                            <li key={line} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#FF4D8D]" />
+                              <span>{line}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
 
                       {activeTemplate.type === 'ORDER_CONFIRMATION' && (
