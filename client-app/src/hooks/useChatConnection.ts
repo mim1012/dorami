@@ -42,6 +42,8 @@ export function useChatConnection(
   const socketRef = useRef<Socket | null>(null);
   const pendingMessageQueueRef = useRef<QueuedMessage[]>([]);
   const authRecoveryAttemptedRef = useRef(false);
+  const hasJoinedRoomRef = useRef(false);
+  const joinRetryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const createMessageId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -99,6 +101,26 @@ export function useChatConnection(
       socket.emit('chat:join-room', { liveId: streamKey });
     };
 
+    const stopJoinRetry = () => {
+      if (joinRetryTimerRef.current) {
+        clearInterval(joinRetryTimerRef.current);
+        joinRetryTimerRef.current = null;
+      }
+    };
+
+    const startJoinRetry = () => {
+      hasJoinedRoomRef.current = false;
+      stopJoinRetry();
+      emitJoin();
+      joinRetryTimerRef.current = setInterval(() => {
+        if (!socket.connected || hasJoinedRoomRef.current) {
+          stopJoinRetry();
+          return;
+        }
+        emitJoin();
+      }, 1000);
+    };
+
     const tryRecoverAuthenticatedSocket = async () => {
       if (authRecoveryAttemptedRef.current) {
         return;
@@ -118,9 +140,7 @@ export function useChatConnection(
 
     // Connection events
     socket.on('connect', () => {
-      // Don't set connected yet — wait for server auth confirmation
-      // Join chat room (server will authenticate in connection handler)
-      emitJoin();
+      setConnectionStatus('connecting');
     });
 
     // Server sends this after successful authentication
@@ -132,6 +152,7 @@ export function useChatConnection(
 
       if (authenticated) {
         authRecoveryAttemptedRef.current = false;
+        startJoinRetry();
         flushPendingMessages();
         return;
       }
@@ -151,6 +172,8 @@ export function useChatConnection(
       setIsConnected(false);
       setIsSocketAuthenticated(false);
       setConnectionStatus('disconnected');
+      hasJoinedRoomRef.current = false;
+      stopJoinRetry();
     });
 
     socket.on('connect_error', async (error) => {
@@ -160,6 +183,12 @@ export function useChatConnection(
       if (isAuthError(error as Error)) {
         await tryRecoverAuthenticatedSocket();
       }
+    });
+
+    socket.on('chat:join-room:success', () => {
+      hasJoinedRoomRef.current = true;
+      stopJoinRetry();
+      flushPendingMessages();
     });
 
     // Track user count locally via join/leave events
@@ -192,6 +221,8 @@ export function useChatConnection(
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+      stopJoinRetry();
+      hasJoinedRoomRef.current = false;
       pendingMessageQueueRef.current = [];
     };
   }, [enabled, streamKey]);
@@ -209,7 +240,7 @@ export function useChatConnection(
     };
 
     const socket = socketRef.current;
-    if (socket && isConnected && isSocketAuthenticated && socket.connected) {
+    if (socket && isConnected && isSocketAuthenticated && hasJoinedRoomRef.current && socket.connected) {
       socket.emit('chat:send-message', payload);
       return;
     }
