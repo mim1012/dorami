@@ -493,15 +493,6 @@ async function bootstrap() {
           const writerSocket =
             authenticatedSocket ??
             (await authenticateSocketIfPresent(socket, jwtService, prismaService));
-          if (!writerSocket) {
-            socket.emit('error', {
-              type: 'error',
-              errorCode: 'FORBIDDEN',
-              message: 'Login required to send messages',
-              timestamp: new Date().toISOString(),
-            });
-            return;
-          }
 
           if (!payload.message || typeof payload.message !== 'string') {
             socket.emit('error', {
@@ -526,22 +517,25 @@ async function bootstrap() {
           }
 
           const roomName = `live:${payload.liveId}`;
-
+          const senderUserId = writerSocket?.user.userId ?? `guest:${socket.id}`;
           let username = '익명';
-          try {
-            const user = await prismaService.user.findUnique({
-              where: { id: writerSocket.user.userId },
-              select: { instagramId: true },
-            });
-            username = user?.instagramId ?? '익명';
-          } catch {
-            // Fallback to anonymous
+
+          if (writerSocket) {
+            try {
+              const user = await prismaService.user.findUnique({
+                where: { id: writerSocket.user.userId },
+                select: { instagramId: true },
+              });
+              username = user?.instagramId ?? '익명';
+            } catch {
+              // Fallback to anonymous
+            }
           }
 
           const messageData = {
             id: randomUUID(),
             liveId: payload.liveId,
-            userId: writerSocket.user.userId,
+            userId: senderUserId,
             username,
             message: sanitizedMessage,
             clientMessageId: payload.clientMessageId,
@@ -960,7 +954,11 @@ async function bootstrap() {
 
   rootNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocketIfPresent(socket, jwtService, prismaService);
+      const authenticatedSocket = await authenticateSocketIfPresent(
+        socket,
+        jwtService,
+        prismaService,
+      );
       if (authenticatedSocket) {
         logger.log(
           `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
