@@ -505,7 +505,6 @@ async function bootstrap() {
           }
 
           const roomName = `live:${payload.liveId}`;
-
           let username = '익명';
           try {
             const user = await prismaService.user.findUnique({
@@ -941,7 +940,11 @@ async function bootstrap() {
 
   rootNamespace.on('connection', async (socket) => {
     try {
-      const authenticatedSocket = await authenticateSocketIfPresent(socket, jwtService, prismaService);
+      const authenticatedSocket = await authenticateSocketIfPresent(
+        socket,
+        jwtService,
+        prismaService,
+      );
       if (authenticatedSocket) {
         logger.log(
           `✅ Client connected to /: ${authenticatedSocket.id} (User: ${authenticatedSocket.user.userId})`,
