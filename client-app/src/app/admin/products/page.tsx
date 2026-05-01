@@ -1452,6 +1452,52 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="rounded-card border border-hot-pink/20 bg-content-bg p-4 shadow-sm sm:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Body className="font-semibold text-primary-text">선택한 상품 {selectedIds.size}개</Body>
+              <p className="mt-1 text-xs text-secondary-text">모바일 일괄 작업</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="shrink-0"
+            >
+              선택 해제
+            </Button>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkStatusChange('AVAILABLE')}
+              className="border-success text-success hover:bg-success/10"
+            >
+              판매중
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkStatusChange('SOLD_OUT')}
+              className="border-warning text-warning hover:bg-warning/10"
+            >
+              일괄 품절
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="border-error text-error hover:bg-error/10"
+            >
+              {isBulkDeleting ? '삭제 중' : '삭제'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Search & Filter */}
       <div className="bg-content-bg border border-gray-200 rounded-card p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
@@ -1647,7 +1693,7 @@ export default function AdminProductsPage() {
                 onClick={() => handleBulkStatusChange('SOLD_OUT')}
                 className="border-warning text-warning hover:bg-warning/10"
               >
-                품절
+                일괄 품절
               </Button>
               <Button
                 variant="outline"
