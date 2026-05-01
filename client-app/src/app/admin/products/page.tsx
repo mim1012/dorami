@@ -711,6 +711,12 @@ export default function AdminProductsPage() {
     });
   }, [products, searchQuery, filterStatus, priceMin, priceMax]);
 
+  const selectedFilteredCount = filteredProducts.filter((product) => selectedIds.has(product.id)).length;
+  const hasFilteredSelection = selectedFilteredCount > 0;
+  const areAllFilteredProductsSelected =
+    filteredProducts.length > 0 &&
+    filteredProducts.every((product) => selectedIds.has(product.id));
+
   const importPreview = useMemo(() => {
     if (!parsedExcel) {
       return { products: [], warnings: [], errors: [] };
@@ -1283,11 +1289,12 @@ export default function AdminProductsPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredProducts.length) {
+    if (areAllFilteredProductsSelected) {
       setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredProducts.map((p) => p.id)));
+      return;
     }
+
+    setSelectedIds(new Set(filteredProducts.map((product) => product.id)));
   };
 
   const handleBulkDelete = async () => {
@@ -1569,11 +1576,29 @@ export default function AdminProductsPage() {
         ) : (
           <>
             <div className="space-y-3 p-3 sm:hidden">
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
-                <Body className="font-semibold text-primary-text">카드형 상품 목록</Body>
-                <span className="text-xs text-secondary-text">
-                  모바일에서 터치하기 쉽게 정리했어요
-                </span>
+              <div className="rounded-xl bg-white/70 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Body className="font-semibold text-primary-text">카드형 상품 목록</Body>
+                  <span className="text-xs text-secondary-text">
+                    모바일에서 터치하기 쉽게 정리했어요
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    variant={areAllFilteredProductsSelected ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={toggleSelectAll}
+                    disabled={filteredProducts.length === 0}
+                    className="shrink-0"
+                  >
+                    {areAllFilteredProductsSelected ? '전체 해제' : '전체 선택'}
+                  </Button>
+                  {hasFilteredSelection && (
+                    <Body className="text-xs text-secondary-text">
+                      현재 필터 결과 {filteredProducts.length}개 중 {selectedFilteredCount}개 선택됨
+                    </Body>
+                  )}
+                </div>
               </div>
               {filteredProducts.map((product) => (
                 <MobileProductCard
@@ -1603,10 +1628,7 @@ export default function AdminProductsPage() {
                       <th className="px-2 py-4 w-10">
                         <input
                           type="checkbox"
-                          checked={
-                            selectedIds.size === filteredProducts.length &&
-                            filteredProducts.length > 0
-                          }
+                          checked={areAllFilteredProductsSelected}
                           onChange={toggleSelectAll}
                           className="w-5 h-5 text-hot-pink border-gray-300 rounded focus:ring-hot-pink"
                         />

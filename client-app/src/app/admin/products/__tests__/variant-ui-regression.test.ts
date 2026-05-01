@@ -43,4 +43,10 @@ describe('Admin products variant pricing UI regression', () => {
     expect(source).toContain('모바일 일괄 작업');
     expect(source).toContain('fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)]');
   });
+
+  it('adds mobile select-all controls so filtered products can be sold out in one shot', () => {
+    expect(source).toContain('전체 선택');
+    expect(source).toContain('전체 해제');
+    expect(source).toContain('filteredProducts.every((product) => selectedIds.has(product.id))');
+  });
 });
